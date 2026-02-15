@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Studio Pro - Step 1 (Restored)</title>
+    <title>Studio Pro - Compressed Stable Version</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/1.0.11/pako.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.min.js"></script>
@@ -17,7 +17,7 @@
         /* ダッシュボード */
         .project-header { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
         .stamp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; }
-        .special-grid { border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 15px; }
+        .special-grid { border-bottom: 2px solid #444; padding-bottom: 15px; margin-bottom: 15px; }
         .stamp-card { background: var(--card); border-radius: 10px; padding: 10px; border: 1px solid #333; text-align: center; cursor: pointer; }
         .stamp-card .thumb { width: 80px; height: 80px; margin: 0 auto 8px; border-radius: 4px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .stamp-card .thumb img { max-width: 100%; max-height: 100%; }
@@ -25,32 +25,36 @@
         /* エディタ */
         .editor-header { position: sticky; top: 0; background: var(--bg); z-index: 100; padding: 10px 0; border-bottom: 2px solid #333; text-align: center; }
         #preview-area { margin: 0 auto 10px; border: 2px solid #444; border-radius: 8px; position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        #main-canvas { max-width: 100%; max-height: 100%; }
         #play-state-overlay { position: absolute; bottom: 5px; font-size: 10px; background: rgba(0,0,0,0.5); padding: 2px 8px; border-radius: 10px; left: 50%; transform: translateX(-50%); }
+
         .btn-group { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
-        button { padding: 12px 15px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 12px; }
+        button { padding: 10px 14px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 12px; }
         .btn-blue { background: var(--primary); color: white; }
-        .btn-green { background: #00897b; color: white; }
+        .btn-green { background: #00B900; color: white; }
         .btn-red { background: var(--accent); color: white; }
         .btn-gray { background: #444; color: white; }
-        .frame-item { background: var(--card); padding: 10px; border-radius: 10px; display: flex; align-items: center; gap: 12px; margin-bottom: 10px; border: 1px solid #333; }
-        .list-thumb { width: 70px; height: 70px; border-radius: 6px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 1px solid #444; }
+
+        .frame-item { background: var(--card); padding: 10px; border-radius: 10px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; border: 1px solid #333; }
+        .list-thumb { width: 60px; height: 60px; border-radius: 4px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 1px solid #444; }
         .list-thumb img { max-width: 100%; max-height: 100%; }
         .item-ctrls { display: flex; flex-direction: column; gap: 4px; margin-left: auto; }
+        .btn-mini { padding: 4px 8px; font-size: 11px; }
     </style>
 </head>
 <body>
 
 <div id="project-screen" class="screen active">
-    <h1>Studio Pro - Step 1</h1>
+    <h1>Studio Pro - Compressed</h1>
     <div class="project-header">
         <div style="margin-bottom:10px;">
             プロジェクト名: <input type="text" id="project-name" value="my_stamp_project" style="background:#000; color:#fff; border:1px solid #444; padding:5px; border-radius:4px;">
         </div>
         <div class="btn-group">
-            <button class="btn-gray" onclick="exportProjectZip()">保存(ZIP)</button>
-            <button class="btn-gray" onclick="document.getElementById('load-zip').click()">読込</button>
+            <button class="btn-gray" onclick="exportBackupZip()">プロジェクト保存(ZIP)</button>
+            <button class="btn-gray" onclick="document.getElementById('load-zip').click()">復元読込</button>
             <input type="file" id="load-zip" style="display:none" onchange="importProjectZip(this)">
-            <button class="btn-red" onclick="buildReleaseZip()">リリース用一括APNG生成</button>
+            <button class="btn-green" onclick="buildReleaseZip()">リリース用一括APNG生成 (圧縮)</button>
         </div>
     </div>
     
@@ -70,8 +74,8 @@
 
         <div class="btn-group">
             <button class="btn-blue" onclick="document.getElementById('bulk-upload').click()">一括読込</button>
-            <button class="btn-green" id="fill-btn" onclick="smartFill()">パターン自動充填</button>
-            <button class="btn-red" onclick="clearCurrentFrames()">全消去</button>
+            <button class="btn-green" id="fill-btn" onclick="smartFill()">パターン充填</button>
+            <button class="btn-red" onclick="clearCurrentFrames()">枠内全消去</button>
             <input type="file" id="bulk-upload" multiple accept="image/*" style="display:none" onchange="handleBulkUpload(this)">
         </div>
     </div>
@@ -79,23 +83,21 @@
 </div>
 
 <script>
-    // 各タイプの解像度設定
     const CONFIG = {
         main: { w: 240, h: 240, maxF: 1, label: "Main" },
         tab: { w: 96, h: 74, maxF: 1, label: "Tab" },
         stamp: { w: 320, h: 270, maxF: 20, label: "Stamp" }
     };
 
-    let project = { name: "my_stamp_project", stamps: {} };
+    let project = { stamps: {} };
     let currentId = "01";
-    let currentType = "stamp"; // 'main', 'tab', 'stamp'
+    let currentType = "stamp";
     let isPlaying = false;
     let previewTimer = null;
     const mainCanvas = document.getElementById('main-canvas');
     const mainCtx = mainCanvas.getContext('2d');
 
     function initProject() {
-        // Special枠 (Main, Tab)
         const sg = document.getElementById('special-grid');
         sg.innerHTML = '';
         ['main', 'tab'].forEach(id => {
@@ -103,12 +105,11 @@
             renderCard(sg, id, CONFIG[id].label);
         });
 
-        // 通常スタンプ枠 (24個)
         const g = document.getElementById('stamp-grid');
         g.innerHTML = '';
         for (let i = 1; i <= 24; i++) {
             const id = String(i).padStart(2, '0');
-            if (!project.stamps[id]) project.stamps[id] = { delay: 200, buffers: new Array(20).fill(null) };
+            if (!project.stamps[id]) project.stamps[id] = { delay: 100, buffers: new Array(20).fill(null) };
             renderCard(g, id, `#${id}`);
         }
     }
@@ -121,7 +122,7 @@
         const thumbSrc = buf ? arrayBufferToDataURL(buf, id === 'main' ? 'main' : (id === 'tab' ? 'tab' : 'stamp')) : '';
         card.innerHTML = `
             <div class="thumb transparent-bg">${thumbSrc ? `<img src="${thumbSrc}">` : ''}</div>
-            <div style="font-size:11px; color:#888;">${label}</div>
+            <div style="font-size:10px; color:#888;">${label}</div>
         `;
         container.appendChild(card);
     }
@@ -134,11 +135,10 @@
         document.getElementById('editing-id-label').innerText = CONFIG[currentType].label + (currentType === 'stamp' ? ` #${id}` : '');
         document.getElementById('fill-btn').style.display = currentType === 'stamp' ? 'inline-block' : 'none';
 
-        // キャンバスサイズ設定
         mainCanvas.width = CONFIG[currentType].w;
         mainCanvas.height = CONFIG[currentType].h;
-        document.getElementById('preview-area').style.width = (CONFIG[currentType].w / 2) + 'px';
-        document.getElementById('preview-area').style.height = (CONFIG[currentType].h / 2) + 'px';
+        document.getElementById('preview-area').style.width = (CONFIG[currentType].w / 1.5) + 'px';
+        document.getElementById('preview-area').style.height = (CONFIG[currentType].h / 1.5) + 'px';
 
         document.getElementById('project-screen').classList.remove('active');
         document.getElementById('editor-screen').classList.add('active');
@@ -155,7 +155,7 @@
             const div = document.createElement('div');
             div.className = 'frame-item';
             div.innerHTML = `
-                <div style="font-size:12px; width:20px;">${i+1}</div>
+                <div style="font-size:12px; width:20px; color:#666;">${i+1}</div>
                 <div class="list-thumb transparent-bg">${thumbSrc ? `<img src="${thumbSrc}">` : ''}</div>
                 <div style="flex-grow:1"><input type="file" accept="image/*" onchange="loadSingle(${i}, this)" style="width:90%"></div>
                 <div class="item-ctrls">
@@ -169,8 +169,7 @@
     async function loadSingle(i, input) {
         if (!input.files[0]) return;
         project.stamps[currentId].buffers[i] = await processImage(input.files[0], currentType);
-        renderEditorLists();
-        updateStaticPreview();
+        renderEditorLists(); updateStaticPreview();
     }
 
     async function handleBulkUpload(input) {
@@ -179,8 +178,7 @@
         for (let i = 0; i < sData.buffers.length && i < files.length; i++) {
             sData.buffers[i] = await processImage(files[i], currentType);
         }
-        renderEditorLists();
-        updateStaticPreview();
+        renderEditorLists(); updateStaticPreview();
     }
 
     function updateStaticPreview(idx = null) {
@@ -204,32 +202,68 @@
                 updateStaticPreview(activeIdxs[count % activeIdxs.length]);
                 count++;
             }, project.stamps[currentId].delay);
-        } else {
-            clearInterval(previewTimer);
-        }
+        } else { clearInterval(previewTimer); }
     }
 
-    // --- LINE用 APNG生成 (圧縮なしバージョン) ---
+    // --- 実績のある圧縮版APNGエンコード ---
+    function encodeApng(activeBuffers, width, height, delay) {
+        // 第4引数を「256」に指定することでpakoによる圧縮が有効化されます
+        const apng = UPNG.encode(activeBuffers, width, height, 256, new Array(activeBuffers.length).fill(delay));
+        
+        // LINEスタンプ用のループ設定 (acTLチャンクの書き換え)
+        const view = new DataView(apng);
+        let offset = 8;
+        while (offset < apng.byteLength) {
+            const len = view.getUint32(offset);
+            const type = view.getUint32(offset + 4);
+            if (type === 0x6163544C) { // acTL
+                view.setUint32(offset + 12, 1); // num_plays = 1
+                break;
+            }
+            offset += 12 + len;
+        }
+        return apng;
+    }
+
     async function buildReleaseZip() {
         const zip = new JSZip();
         for (let id in project.stamps) {
             const sData = project.stamps[id];
             const active = sData.buffers.filter(b => b !== null);
             if (active.length === 0) continue;
-
             const type = (id === 'main' || id === 'tab') ? id : 'stamp';
-            // UPNG.encodeの第4引数「0」はロスレス（非圧縮）
-            const apng = UPNG.encode(active, CONFIG[type].w, CONFIG[type].h, 0, new Array(active.length).fill(sData.delay));
+            const apng = encodeApng(active, CONFIG[type].w, CONFIG[type].h, sData.delay);
             zip.file(`${id}.png`, apng);
         }
         const blob = await zip.generateAsync({type:"blob"});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `RELEASE_${document.getElementById('project-name').value}.zip`;
-        a.click();
+        saveBlob(blob, `RELEASE_${document.getElementById('project-name').value}.zip`);
     }
 
-    // --- ユーティリティ ---
+    async function exportBackupZip() {
+        const zip = new JSZip();
+        const root = zip.folder("backup");
+        for (let id in project.stamps) {
+            const f = root.folder(id);
+            project.stamps[id].buffers.forEach((b, i) => { if(b) f.file(`${i}.raw`, b); });
+        }
+        saveBlob(await zip.generateAsync({type:"blob"}), "stamp_backup.zip");
+    }
+
+    async function importProjectZip(input) {
+        if(!input.files[0]) return;
+        const zip = await JSZip.loadAsync(input.files[0]);
+        for (let path in zip.files) {
+            const pts = path.split('/'); if(pts.length < 3) continue;
+            const id = pts[pts.length-2], file = pts[pts.length-1];
+            if(project.stamps[id] && file.endsWith(".raw")) {
+                const i = parseInt(file);
+                project.stamps[id].buffers[i] = await zip.files[path].async("arraybuffer");
+            }
+        }
+        initProject(); alert("復元完了");
+    }
+
+    // --- 共通ユーティリティ ---
     function processImage(file, type) {
         return new Promise(resolve => {
             const reader = new FileReader();
@@ -257,22 +291,22 @@
     }
 
     function showDashboard() {
-        clearInterval(previewTimer); isPlaying = false;
+        if(previewTimer) clearInterval(previewTimer); isPlaying = false;
         document.getElementById('editor-screen').classList.remove('active');
         document.getElementById('project-screen').classList.add('active');
         initProject();
     }
 
-    function clearCurrentFrames() {
-        if(confirm("この枠の画像をすべて消去しますか？")) {
-            project.stamps[currentId].buffers.fill(null);
-            renderEditorLists(); updateStaticPreview();
-        }
-    }
-
     function deleteFrame(i) {
         project.stamps[currentId].buffers[i] = null;
         renderEditorLists(); updateStaticPreview();
+    }
+
+    function clearCurrentFrames() {
+        if(confirm("全消去しますか？")) {
+            project.stamps[currentId].buffers.fill(null);
+            renderEditorLists(); updateStaticPreview();
+        }
     }
 
     function smartFill() {
@@ -283,14 +317,8 @@
         renderEditorLists();
     }
 
-    async function exportProjectZip() {
-        const zip = new JSZip();
-        zip.file("project.json", JSON.stringify(project)); // 簡易保存用
-        const blob = await zip.generateAsync({type:"blob"});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = "backup.zip";
-        a.click();
+    function saveBlob(b, n) {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = n; a.click();
     }
 
     initProject();
