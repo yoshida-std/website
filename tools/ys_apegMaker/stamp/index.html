@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Studio Pro - Fixed Layout</title>
+    <title>Studio Pro - Final Reliable Edition</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.min.js"></script>
     <style>
@@ -27,9 +27,8 @@
 
         /* エディタ：上部固定レイアウト */
         .editor-container { display: flex; flex-direction: column; height: 100vh; max-width: 500px; margin: 0 auto; background: var(--bg); }
-        
         .sticky-top { background: #1a1a1a; border-bottom: 2px solid #333; z-index: 100; flex-shrink: 0; }
-        .editor-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid #333; }
+        .editor-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; }
         
         .preview-section { padding: 10px 0; display: flex; flex-direction: column; align-items: center; background: #000; }
         #preview-area { position: relative; border: 1px solid #444; width: 140px; height: 118px; background: #000; }
@@ -39,28 +38,30 @@
         .bg-red-fill { background-color: #ff0000; }
         .bg-yellow-fill { background-color: #ffff00; }
 
-        /* 操作ボタンエリア（固定） */
         .action-bar { display: flex; gap: 8px; padding: 8px 12px; background: #222; justify-content: center; border-bottom: 1px solid #333; }
 
-        /* フレームリスト */
+        /* フレームリスト（修正版） */
         .editor-scroll { flex: 1; overflow-y: auto; padding: 5px 10px; background: #121212; }
-        .frame-row { display: flex; align-items: center; background: var(--card); margin-bottom: 4px; padding: 2px 8px; border-radius: 6px; border: 1px solid #333; height: 64px; gap: 8px; box-sizing: border-box; }
+        .frame-row { display: flex; align-items: center; background: var(--card); margin-bottom: 4px; padding: 0 10px; border-radius: 6px; border: 1px solid #333; height: 60px; gap: 10px; box-sizing: border-box; }
         .active-row { border-color: var(--primary) !important; background: #1a2a1a !important; }
         
-        .frame-thumb-wrapper { width: 56px; height: 56px; background: #000; border-radius: 4px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; border: 1px solid #444; }
-        .frame-thumb-wrapper img { max-width: 100%; max-height: 100%; z-index: 2; position: relative; }
+        .frame-num { font-size: 11px; color: #666; width: 15px; font-weight: bold; }
+        .frame-thumb-wrapper { width: 48px; height: 48px; background: #000; border-radius: 4px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; border: 1px solid #444; cursor: pointer; }
+        .frame-thumb-wrapper img { max-width: 100%; max-height: 100%; z-index: 2; }
 
-        .frame-controls { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
-        .bg-selector { display: flex; gap: 6px; align-items: center; }
+        /* 背景色選択 */
+        .bg-selector { display: flex; gap: 4px; }
         .bg-opt { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; cursor: pointer; }
         .opt-none { background: #444; position: relative; }
         .opt-none::after { content: ""; position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: red; transform: rotate(45deg); }
         .opt-red { background: #f00; }
         .opt-yellow { background: #ff0; }
-        .bg-opt.selected { border: 2px solid white; box-shadow: 0 0 3px var(--primary); }
+        .bg-opt.selected { border: 1px solid white; outline: 1px solid var(--primary); }
 
-        .row-btns { display: flex; gap: 4px; }
-        .btn-mini { padding: 3px 8px; font-size: 11px; background: #444; }
+        /* 右側に配置するボタン群 */
+        .row-actions-right { margin-left: auto; display: flex; gap: 4px; }
+        .btn-mini { padding: 4px 8px; font-size: 11px; background: #444; min-width: 30px; }
+        .btn-mini-red { background: #633; color: #f99; }
     </style>
 </head>
 <body>
@@ -87,28 +88,24 @@
             <div class="editor-header">
                 <button class="btn-gray" onclick="showDashboard()">戻る</button>
                 <span id="title-label" style="font-size:14px; font-weight:bold;">STAMP</span>
-                <button class="btn-blue" id="bulk-btn" onclick="document.getElementById('bulk-upload').click()">一括アップ</button>
+                <button class="btn-blue" id="bulk-btn" onclick="document.getElementById('bulk-upload').click()">一括↑</button>
             </div>
-
             <div class="preview-section">
                 <div id="preview-area" onclick="togglePreview()">
                     <div id="preview-bg-layer" class="canvas-bg-layer checker-base"></div>
                     <canvas id="main-canvas"></canvas>
                 </div>
             </div>
-
             <div class="action-bar">
-                <button class="btn-green" style="flex:2;" onclick="exportSingleImage()">APNGを生成して保存</button>
+                <button id="save-apng-btn" class="btn-green" style="flex:2;" onclick="exportSingleImage()">APNGを生成して保存</button>
                 <button class="btn-red" style="flex:1;" onclick="clearAllFrames()">全消去</button>
             </div>
-
             <div style="font-size:11px; padding:5px; text-align:center; color:#aaa; background:#111;">
                 Frame: <span id="current-frame-num" style="color:var(--primary); font-weight:bold;">1</span> / <span id="max-frame-num">20</span> | 
-                速度: <label><input type="radio" name="speed" value="100" checked onchange="setSpeed(100)"> 0.1s</label>
+                <label><input type="radio" name="speed" value="100" checked onchange="setSpeed(100)"> 0.1s</label>
                 <label><input type="radio" name="speed" value="200" onchange="setSpeed(200)"> 0.2s</label>
             </div>
         </div>
-
         <div id="frame-list-scroll" class="editor-scroll"></div>
     </div>
     <input type="file" id="bulk-upload" multiple accept="image/*" style="display:none" onchange="handleBulkUpload(this)">
@@ -118,19 +115,24 @@
     const CONFIG = { stamp: { w: 320, h: 270, maxF: 20 }, main: { w: 240, h: 240, maxF: 20 }, tab: { w: 96, h: 74, maxF: 1 } };
     let project = { name: "my_stickers", main: createData('main'), tab: createData('tab'), stamps: {} };
     let currentId = "01", currentType = "stamp", isPlaying = false, previewTimer = null, currentIdx = 0;
-    const urlCache = new Map();
+    
+    // サムネイル「？」対策：Blob URLを維持するマップ
+    const blobUrlMap = new WeakMap(); 
 
     function createData(type) {
         const max = CONFIG[type].maxF;
         return { delay: 100, buffers: new Array(max).fill(null), bgSettings: new Array(max).fill('none') };
     }
 
-    function getSafeUrl(buf) {
-        if (!buf) return '';
-        if (urlCache.has(buf)) return urlCache.get(buf);
-        const url = URL.createObjectURL(new Blob([buf], {type:'image/png'}));
-        urlCache.set(buf, url);
-        return url;
+    // 安定してURLを取得する関数
+    function getSafeUrl(buffer) {
+        if (!buffer) return '';
+        // ArrayBufferをキーにしてURLを管理
+        if (!buffer._blobUrl) {
+            const blob = new Blob([buffer], {type:'image/png'});
+            buffer._blobUrl = URL.createObjectURL(blob);
+        }
+        return buffer._blobUrl;
     }
 
     const mainCanvas = document.getElementById('main-canvas');
@@ -161,11 +163,13 @@
         currentId = id;
         currentType = (id === 'main') ? 'main' : (id === 'tab' ? 'tab' : 'stamp');
         const data = (currentType === 'stamp') ? project.stamps[id] : project[currentType];
-        const conf = CONFIG[currentType];
+        
         document.getElementById('title-label').innerText = id.toUpperCase();
+        const conf = CONFIG[currentType];
         mainCanvas.width = conf.w; mainCanvas.height = conf.h;
         document.getElementById('max-frame-num').innerText = conf.maxF;
         document.getElementsByName('speed').forEach(r => r.checked = (parseInt(r.value) === data.delay));
+        
         renderFrameList();
         updatePreview(0);
         document.getElementById('project-screen').classList.remove('active');
@@ -175,29 +179,27 @@
     function renderFrameList() {
         const list = document.getElementById('frame-list-scroll'); list.innerHTML = '';
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
+        
         data.buffers.forEach((buf, i) => {
             const bg = data.bgSettings[i];
             const row = document.createElement('div');
             row.className = `frame-row ${currentIdx === i ? 'active-row' : ''}`;
             row.id = `row-${i}`;
             row.innerHTML = `
-                <div style="font-size:10px; width:12px; color:#666;">${i+1}</div>
+                <div class="frame-num">${i+1}</div>
                 <div class="frame-thumb-wrapper" onclick="uploadSingle(${i})">
                     <div class="canvas-bg-layer ${getBgClass(bg)}"></div>
-                    ${buf ? `<img src="${getSafeUrl(buf)}">` : '<span style="color:#333; font-size:20px;">+</span>'}
+                    ${buf ? `<img src="${getSafeUrl(buf)}">` : '<span style="color:#444; font-size:18px;">+</span>'}
                 </div>
-                <div class="frame-controls">
-                    <div class="bg-selector">
-                        <div class="bg-opt opt-none ${bg==='none'?'selected':''}" onclick="setFrameBg(${i},'none')"></div>
-                        <div class="bg-opt opt-red ${bg==='red'?'selected':''}" onclick="setFrameBg(${i},'red')"></div>
-                        <div class="bg-opt opt-yellow ${bg==='yellow'?'selected':''}" onclick="setFrameBg(${i},'yellow')"></div>
-                        <span style="font-size:10px; color:#666; margin-left:5px;">背景色</span>
-                    </div>
-                    <div class="row-btns">
-                        <button class="btn-mini" onclick="moveFrame(${i},-1)">↑</button>
-                        <button class="btn-mini" onclick="moveFrame(${i},1)">↓</button>
-                        <button class="btn-mini" style="background:#844" onclick="deleteFrame(${i})">削除</button>
-                    </div>
+                <div class="bg-selector">
+                    <div class="bg-opt opt-none ${bg==='none'?'selected':''}" onclick="setFrameBg(${i},'none')"></div>
+                    <div class="bg-opt opt-red ${bg==='red'?'selected':''}" onclick="setFrameBg(${i},'red')"></div>
+                    <div class="bg-opt opt-yellow ${bg==='yellow'?'selected':''}" onclick="setFrameBg(${i},'yellow')"></div>
+                </div>
+                <div class="row-actions-right">
+                    <button class="btn-mini" onclick="moveFrame(${i},-1)">↑</button>
+                    <button class="btn-mini" onclick="moveFrame(${i},1)">↓</button>
+                    <button class="btn-mini btn-mini-red" onclick="deleteFrame(${i})">削</button>
                 </div>
             `;
             list.appendChild(row);
@@ -249,9 +251,7 @@
                     const c = cvs.getContext('2d');
                     const scale = Math.min(conf.w/img.width, conf.h/img.height);
                     c.drawImage(img, (conf.w-img.width*scale)/2, (conf.h-img.height*scale)/2, img.width*scale, img.height*scale);
-                    const buf = c.getImageData(0,0,conf.w,conf.h).data.buffer;
-                    getSafeUrl(buf); 
-                    resolve(buf);
+                    resolve(c.getImageData(0,0,conf.w,conf.h).data.buffer);
                 };
                 img.src = e.target.result;
             };
@@ -276,8 +276,7 @@
     function clearAllFrames() {
         if(!confirm("現在の全フレームを削除しますか？")) return;
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
-        data.buffers.fill(null);
-        renderFrameList(); updatePreview(0);
+        data.buffers.fill(null); renderFrameList(); updatePreview(0);
     }
 
     function setSpeed(ms) {
@@ -312,12 +311,18 @@
         if(row) row.classList.add('active-row');
     }
 
+    // --- APNG生成（確実に動作するよう修正） ---
     async function exportSingleImage() {
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
         const activeBuffers = data.buffers.filter(b => b !== null);
         if (activeBuffers.length === 0) return alert("画像がありません");
-        const apng = UPNG.encode(activeBuffers, mainCanvas.width, mainCanvas.height, 256, new Array(activeBuffers.length).fill(data.delay));
-        saveBlob(new Blob([apng], {type:'image/png'}), `${currentId}.png`);
+        
+        try {
+            const apng = UPNG.encode(activeBuffers, mainCanvas.width, mainCanvas.height, 256, new Array(activeBuffers.length).fill(data.delay));
+            saveBlob(new Blob([apng], {type:'image/png'}), `${currentId}.png`);
+        } catch (e) {
+            alert("APNGの生成に失敗しました: " + e.message);
+        }
     }
 
     async function buildReleaseZip() {
