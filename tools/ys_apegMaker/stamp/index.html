@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Studio Pro - Animation Expanded</title>
+    <title>Studio Pro - Main Animation Fixed</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/1.0.11/pako.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.min.js"></script>
@@ -11,14 +11,13 @@
         :root { --primary: #2196F3; --accent: #ff5252; --bg: #121212; --card: #1e1e1e; --text: #eee; --checker: #333; }
         body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow-x: hidden; }
         .transparent-bg { background-color: #222; background-image: linear-gradient(45deg, var(--checker) 25%, transparent 25%), linear-gradient(-45deg, var(--checker) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--checker) 75%), linear-gradient(-45deg, transparent 75%, var(--checker) 75%); background-size: 8px 8px; }
-        
-        /* 背景色バリエーション */
         .bg-red { background: #800 !important; background-image: none !important; }
         .bg-yellow { background: #880 !important; background-image: none !important; }
 
         .screen { display: none; padding: 15px; box-sizing: border-box; min-height: 100vh; }
         .active { display: block; }
 
+        /* ダッシュボード */
         .project-header { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
         .stamp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 12px; }
         .special-grid { border-bottom: 2px solid #444; padding-bottom: 15px; margin-bottom: 15px; }
@@ -30,10 +29,10 @@
         .editor-header { position: sticky; top: 0; background: var(--bg); z-index: 100; padding: 10px 0; border-bottom: 2px solid #333; text-align: center; }
         .preview-container { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 10px; }
         #preview-area { border: 2px solid #444; border-radius: 8px; position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        #current-frame-indicator { background: var(--primary); color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 14px; min-width: 60px; }
+        #current-frame-indicator { background: var(--primary); color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 14px; min-width: 80px; }
         
         .btn-group { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
-        button { padding: 10px 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 12px; }
+        button { padding: 10px 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 11px; }
         .btn-blue { background: var(--primary); color: white; }
         .btn-green { background: #00B900; color: white; }
         .btn-orange { background: #FF9800; color: white; }
@@ -41,7 +40,7 @@
         .btn-gray { background: #444; color: white; }
 
         .frame-item { background: var(--card); padding: 8px; border-radius: 10px; display: flex; align-items: center; gap: 10px; margin-bottom: 8px; border: 1px solid #333; }
-        .list-thumb { width: 60px; height: 60px; border-radius: 6px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 2px solid var(--primary); cursor: pointer; }
+        .list-thumb { width: 60px; height: 60px; border-radius: 6px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 2px solid var(--primary); cursor: pointer; position: relative; }
         .list-thumb img { max-width: 100%; max-height: 100%; }
         .item-ctrls { display: flex; flex-direction: column; gap: 4px; margin-left: auto; }
         .btn-mini { padding: 6px 10px; font-size: 12px; }
@@ -50,10 +49,10 @@
 <body>
 
 <div id="project-screen" class="screen active">
-    <h2>Studio Pro</h2>
+    <h2 style="margin:0 0 10px 0;">Studio Pro</h2>
     <div class="project-header">
         <div style="margin-bottom:12px;">
-            プロジェクト名: <input type="text" id="project-name" value="my_stamp_project" style="background:#000; color:#fff; border:1px solid #444; padding:8px; border-radius:6px;">
+            プロジェクト名: <input type="text" id="project-name" value="my_stamp_project" style="background:#000; color:#fff; border:1px solid #444; padding:8px; border-radius:6px; width:150px;">
         </div>
         <div class="btn-group">
             <button class="btn-gray" onclick="exportBackupZip()">保存(Backup)</button>
@@ -62,7 +61,11 @@
             <button class="btn-green" style="flex-grow:1;" onclick="buildReleaseZip()">一括APNG生成 (ZIP)</button>
         </div>
     </div>
+
+    <div style="font-size:12px; color:#888; margin-bottom:8px;">メイン・タブ画像</div>
     <div id="special-grid" class="stamp-grid special-grid"></div>
+    
+    <div style="font-size:12px; color:#888; margin-bottom:8px;">スタンプ (01-24)</div>
     <div id="stamp-grid" class="stamp-grid"></div>
 </div>
 
@@ -97,7 +100,7 @@
 
 <script>
     const CONFIG = {
-        main: { w: 240, h: 240, maxF: 20, label: "Main" }, // Mainも20フレーム化
+        main: { w: 240, h: 240, maxF: 20, label: "Main" },
         tab: { w: 96, h: 74, maxF: 1, label: "Tab" },
         stamp: { w: 320, h: 270, maxF: 20, label: "Stamp" }
     };
@@ -108,23 +111,31 @@
     let isPlaying = false;
     let previewTimer = null;
     let currentPreviewIdx = 0;
+    let currentBgClass = ""; // エディタの背景状態を保持
+
     const mainCanvas = document.getElementById('main-canvas');
     const mainCtx = mainCanvas.getContext('2d');
 
+    // プロジェクト初期化
     function initProject() {
+        // Main, Tab の初期化と描画
         const sg = document.getElementById('special-grid');
         sg.innerHTML = '';
         ['main', 'tab'].forEach(id => {
-            const fMax = CONFIG[id].maxF;
-            if (!project.stamps[id]) project.stamps[id] = { delay: 100, buffers: new Array(fMax).fill(null) };
+            if (!project.stamps[id]) {
+                project.stamps[id] = { delay: 100, buffers: new Array(CONFIG[id].maxF).fill(null) };
+            }
             renderCard(sg, id, CONFIG[id].label);
         });
 
+        // 01-24 スタンプの初期化と描画
         const g = document.getElementById('stamp-grid');
         g.innerHTML = '';
         for (let i = 1; i <= 24; i++) {
             const id = String(i).padStart(2, '0');
-            if (!project.stamps[id]) project.stamps[id] = { delay: 100, buffers: new Array(20).fill(null) };
+            if (!project.stamps[id]) {
+                project.stamps[id] = { delay: 100, buffers: new Array(20).fill(null) };
+            }
             renderCard(g, id, `#${id}`);
         }
     }
@@ -161,6 +172,7 @@
         document.getElementById('editor-screen').classList.add('active');
         renderEditorLists();
         updateStaticPreview(0);
+        changeEditorBg(currentBgClass); // 背景状態を維持
     }
 
     function renderEditorLists() {
@@ -172,9 +184,9 @@
             const div = document.createElement('div');
             div.className = 'frame-item';
             div.innerHTML = `
-                <div style="font-size:14px; width:25px; font-weight:bold;">${i+1}</div>
-                <div class="list-thumb transparent-bg" onclick="document.getElementById('file-${i}').click()">
-                    ${thumbSrc ? `<img src="${thumbSrc}">` : '<span style="font-size:10px;color:#666;">TAP</span>'}
+                <div style="font-size:14px; width:25px; font-weight:bold; color:var(--primary);">${i+1}</div>
+                <div class="list-thumb transparent-bg ${currentBgClass}" onclick="document.getElementById('file-${i}').click()">
+                    ${thumbSrc ? `<img src="${thumbSrc}">` : '<span style="font-size:9px;color:#888;">SELECT</span>'}
                     <input type="file" id="file-${i}" accept="image/*" onchange="loadSingle(${i}, this)" style="display:none">
                 </div>
                 <div class="item-ctrls">
@@ -189,8 +201,8 @@
         });
     }
 
-    // --- 背景色変更 ---
     function changeEditorBg(className) {
+        currentBgClass = className;
         const area = document.getElementById('preview-area');
         area.className = 'transparent-bg ' + className;
         document.querySelectorAll('.list-thumb').forEach(el => {
@@ -198,7 +210,6 @@
         });
     }
 
-    // --- アニメーション制御 ---
     function togglePreview() {
         if (CONFIG[currentType].maxF === 1) return;
         isPlaying = !isPlaying;
@@ -219,7 +230,7 @@
 
     function updateStaticPreview(idx) {
         const bufs = project.stamps[currentId].buffers;
-        const target = idx !== null ? idx : bufs.findIndex(b => b !== null);
+        const target = (idx !== null && bufs[idx]) ? idx : bufs.findIndex(b => b !== null);
         mainCtx.clearRect(0,0,mainCanvas.width,mainCanvas.height);
         if (target !== -1 && bufs[target]) {
             mainCtx.putImageData(new ImageData(new Uint8ClampedArray(bufs[target]), mainCanvas.width, mainCanvas.height), 0, 0);
@@ -227,7 +238,6 @@
         }
     }
 
-    // --- 移動機能 ---
     function moveFrame(i, dir) {
         const bufs = project.stamps[currentId].buffers;
         const target = i + dir;
@@ -237,7 +247,7 @@
         updateStaticPreview(target);
     }
 
-    // --- 以下、コア機能 (圧縮エンコード等はそのまま継承) ---
+    // コア・エンコード (256色圧縮 + ループ1回)
     function encodeApng(activeBuffers, width, height, delay) {
         const apng = UPNG.encode(activeBuffers, width, height, 256, new Array(activeBuffers.length).fill(delay));
         const view = new DataView(apng);
@@ -319,7 +329,7 @@
 
     function deleteFrame(i) {
         project.stamps[currentId].buffers[i] = null;
-        renderEditorLists(); updateStaticPreview(i);
+        renderEditorLists(); updateStaticPreview(null);
     }
 
     function smartFill() {
@@ -333,4 +343,31 @@
     async function exportBackupZip() {
         const zip = new JSZip();
         for (let id in project.stamps) {
-            const f = zip
+            const f = zip.folder(id);
+            project.stamps[id].buffers.forEach((b, i) => { if(b) f.file(`${i}.raw`, b); });
+        }
+        saveBlob(await zip.generateAsync({type:"blob"}), "project_backup.zip");
+    }
+
+    async function importProjectZip(input) {
+        if(!input.files[0]) return;
+        const zip = await JSZip.loadAsync(input.files[0]);
+        for (let path in zip.files) {
+            const pts = path.split('/'); if(pts.length < 2) continue;
+            const id = pts[0], file = pts[1];
+            if(project.stamps[id] && file.endsWith(".raw")) {
+                const i = parseInt(file);
+                project.stamps[id].buffers[i] = await zip.files[path].async("arraybuffer");
+            }
+        }
+        initProject(); alert("復元完了");
+    }
+
+    function saveBlob(b, n) {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = n; a.click();
+    }
+
+    initProject();
+</script>
+</body>
+</html>
