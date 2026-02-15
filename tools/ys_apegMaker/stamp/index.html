@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Studio Pro - Compact Edition</title>
+    <title>Studio Pro - Fixed Layout</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.min.js"></script>
     <style>
@@ -21,46 +21,46 @@
         .active { display: block; }
         .project-header { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
         .stamp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
-        .stamp-card { background: var(--card); border-radius: 8px; padding: 8px; border: 1px solid #333; text-align: center; }
-        .stamp-card .thumb { width: 60px; height: 60px; margin: 0 auto 5px; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .stamp-card .thumb img { max-width: 100%; max-height: 100%; }
+        .stamp-card { background: var(--card); border-radius: 8px; padding: 8px; border: 1px solid #333; text-align: center; cursor: pointer; }
+        .stamp-card .thumb { width: 60px; height: 60px; margin: 0 auto 5px; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #444; }
+        .stamp-card .thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
-        /* エディタ：コンパクトレイアウト */
+        /* エディタ：上部固定レイアウト */
         .editor-container { display: flex; flex-direction: column; height: 100vh; max-width: 500px; margin: 0 auto; background: var(--bg); }
         
-        .editor-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #1a1a1a; border-bottom: 1px solid #333; }
+        .sticky-top { background: #1a1a1a; border-bottom: 2px solid #333; z-index: 100; flex-shrink: 0; }
+        .editor-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid #333; }
         
-        /* プレビューエリアを小さく調整 */
-        .preview-section { background: #000; padding: 10px 0; display: flex; flex-direction: column; align-items: center; border-bottom: 1px solid #333; }
-        #preview-area { position: relative; border: 1px solid #444; width: 160px; height: 135px; background: #000; transform-origin: center; }
+        .preview-section { padding: 10px 0; display: flex; flex-direction: column; align-items: center; background: #000; }
+        #preview-area { position: relative; border: 1px solid #444; width: 140px; height: 118px; background: #000; }
         #main-canvas { width: 100%; height: 100%; position: relative; z-index: 2; }
-        
         .canvas-bg-layer { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 1; }
         .checker-base { background-image: linear-gradient(45deg, var(--checker) 25%, transparent 25%), linear-gradient(-45deg, var(--checker) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--checker) 75%), linear-gradient(-45deg, transparent 75%, var(--checker) 75%); background-size: 8px 8px; background-color: #222; }
         .bg-red-fill { background-color: #ff0000; }
         .bg-yellow-fill { background-color: #ffff00; }
 
-        /* リスト部分：高さをサムネイルに合わせる */
+        /* 操作ボタンエリア（固定） */
+        .action-bar { display: flex; gap: 8px; padding: 8px 12px; background: #222; justify-content: center; border-bottom: 1px solid #333; }
+
+        /* フレームリスト */
         .editor-scroll { flex: 1; overflow-y: auto; padding: 5px 10px; background: #121212; }
         .frame-row { display: flex; align-items: center; background: var(--card); margin-bottom: 4px; padding: 2px 8px; border-radius: 6px; border: 1px solid #333; height: 64px; gap: 8px; box-sizing: border-box; }
         .active-row { border-color: var(--primary) !important; background: #1a2a1a !important; }
         
         .frame-thumb-wrapper { width: 56px; height: 56px; background: #000; border-radius: 4px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; border: 1px solid #444; }
-        .frame-thumb-wrapper img { max-width: 100%; max-height: 100%; z-index: 2; }
+        .frame-thumb-wrapper img { max-width: 100%; max-height: 100%; z-index: 2; position: relative; }
 
         .frame-controls { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
-        .bg-selector { display: flex; gap: 6px; }
-        .bg-opt { width: 20px; height: 20px; border-radius: 3px; border: 1px solid #555; }
+        .bg-selector { display: flex; gap: 6px; align-items: center; }
+        .bg-opt { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; cursor: pointer; }
         .opt-none { background: #444; position: relative; }
         .opt-none::after { content: ""; position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: red; transform: rotate(45deg); }
         .opt-red { background: #f00; }
         .opt-yellow { background: #ff0; }
-        .bg-opt.selected { border: 2px solid white; box-shadow: 0 0 4px var(--primary); }
+        .bg-opt.selected { border: 2px solid white; box-shadow: 0 0 3px var(--primary); }
 
         .row-btns { display: flex; gap: 4px; }
-        .btn-mini { padding: 2px 6px; font-size: 10px; background: #555; }
-
-        .editor-footer { padding: 10px; background: #1a1a1a; display: flex; gap: 10px; border-top: 1px solid #333; }
+        .btn-mini { padding: 3px 8px; font-size: 11px; background: #444; }
     </style>
 </head>
 <body>
@@ -72,41 +72,44 @@
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
             <button class="btn-gray" onclick="exportBackupZip()">バックアップ</button>
             <button class="btn-blue" onclick="document.getElementById('load-zip').click()">復元</button>
-            <button class="btn-green" style="grid-column: span 2;" onclick="buildReleaseZip()">リリース用ZIP作成</button>
+            <button class="btn-green" style="grid-column: span 2;" onclick="buildReleaseZip()">リリース用ZIP作成 (APNG)</button>
         </div>
         <input type="file" id="load-zip" style="display:none" onchange="importBackupZip(this)">
     </div>
     <div id="special-grid" class="stamp-grid"></div>
-    <div style="color:#888; font-size:12px; margin:15px 0 5px;">アニメーションスタンプ</div>
+    <div style="color:#888; font-size:12px; margin:15px 0 5px;">アニメーションスタンプ (24枚)</div>
     <div id="stamp-grid" class="stamp-grid"></div>
 </div>
 
 <div id="editor-screen" class="screen" style="padding:0; overflow:hidden;">
     <div class="editor-container">
-        <div class="editor-header">
-            <button class="btn-gray" onclick="showDashboard()">戻る</button>
-            <span id="title-label" style="font-size:14px; font-weight:bold;">Stamp 01</span>
-            <button class="btn-blue" id="bulk-btn" onclick="document.getElementById('bulk-upload').click()">一括↑</button>
-        </div>
-
-        <div class="preview-section">
-            <div id="preview-area" onclick="togglePreview()">
-                <div id="preview-bg-layer" class="canvas-bg-layer checker-base"></div>
-                <canvas id="main-canvas"></canvas>
+        <div class="sticky-top">
+            <div class="editor-header">
+                <button class="btn-gray" onclick="showDashboard()">戻る</button>
+                <span id="title-label" style="font-size:14px; font-weight:bold;">STAMP</span>
+                <button class="btn-blue" id="bulk-btn" onclick="document.getElementById('bulk-upload').click()">一括アップ</button>
             </div>
-            <div style="font-size:11px; margin-top:5px; color:#aaa;">
-                Frame: <span id="current-frame-num">1</span> / <span id="max-frame-num">20</span> | 
-                <label><input type="radio" name="speed" value="100" checked onchange="setSpeed(100)"> 0.1s</label>
+
+            <div class="preview-section">
+                <div id="preview-area" onclick="togglePreview()">
+                    <div id="preview-bg-layer" class="canvas-bg-layer checker-base"></div>
+                    <canvas id="main-canvas"></canvas>
+                </div>
+            </div>
+
+            <div class="action-bar">
+                <button class="btn-green" style="flex:2;" onclick="exportSingleImage()">APNGを生成して保存</button>
+                <button class="btn-red" style="flex:1;" onclick="clearAllFrames()">全消去</button>
+            </div>
+
+            <div style="font-size:11px; padding:5px; text-align:center; color:#aaa; background:#111;">
+                Frame: <span id="current-frame-num" style="color:var(--primary); font-weight:bold;">1</span> / <span id="max-frame-num">20</span> | 
+                速度: <label><input type="radio" name="speed" value="100" checked onchange="setSpeed(100)"> 0.1s</label>
                 <label><input type="radio" name="speed" value="200" onchange="setSpeed(200)"> 0.2s</label>
             </div>
         </div>
 
         <div id="frame-list-scroll" class="editor-scroll"></div>
-
-        <div class="editor-footer">
-            <button class="btn-green" style="flex:2;" onclick="exportSingleImage()">APNG保存</button>
-            <button class="btn-red" style="flex:1;" onclick="clearAllFrames()">全消去</button>
-        </div>
     </div>
     <input type="file" id="bulk-upload" multiple accept="image/*" style="display:none" onchange="handleBulkUpload(this)">
 </div>
@@ -137,7 +140,6 @@
         const sg = document.getElementById('special-grid'); sg.innerHTML = '';
         renderCard(sg, 'main', project.main, 'Main');
         renderCard(sg, 'tab', project.tab, 'Tab');
-
         const g = document.getElementById('stamp-grid'); g.innerHTML = '';
         for (let i = 1; i <= 24; i++) {
             const id = String(i).padStart(2, '0');
@@ -160,12 +162,10 @@
         currentType = (id === 'main') ? 'main' : (id === 'tab' ? 'tab' : 'stamp');
         const data = (currentType === 'stamp') ? project.stamps[id] : project[currentType];
         const conf = CONFIG[currentType];
-
         document.getElementById('title-label').innerText = id.toUpperCase();
         mainCanvas.width = conf.w; mainCanvas.height = conf.h;
         document.getElementById('max-frame-num').innerText = conf.maxF;
         document.getElementsByName('speed').forEach(r => r.checked = (parseInt(r.value) === data.delay));
-
         renderFrameList();
         updatePreview(0);
         document.getElementById('project-screen').classList.remove('active');
@@ -175,7 +175,6 @@
     function renderFrameList() {
         const list = document.getElementById('frame-list-scroll'); list.innerHTML = '';
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
-        
         data.buffers.forEach((buf, i) => {
             const bg = data.bgSettings[i];
             const row = document.createElement('div');
@@ -185,18 +184,19 @@
                 <div style="font-size:10px; width:12px; color:#666;">${i+1}</div>
                 <div class="frame-thumb-wrapper" onclick="uploadSingle(${i})">
                     <div class="canvas-bg-layer ${getBgClass(bg)}"></div>
-                    ${buf ? `<img src="${getSafeUrl(buf)}">` : '<span style="color:#333">+</span>'}
+                    ${buf ? `<img src="${getSafeUrl(buf)}">` : '<span style="color:#333; font-size:20px;">+</span>'}
                 </div>
                 <div class="frame-controls">
                     <div class="bg-selector">
                         <div class="bg-opt opt-none ${bg==='none'?'selected':''}" onclick="setFrameBg(${i},'none')"></div>
                         <div class="bg-opt opt-red ${bg==='red'?'selected':''}" onclick="setFrameBg(${i},'red')"></div>
                         <div class="bg-opt opt-yellow ${bg==='yellow'?'selected':''}" onclick="setFrameBg(${i},'yellow')"></div>
+                        <span style="font-size:10px; color:#666; margin-left:5px;">背景色</span>
                     </div>
                     <div class="row-btns">
                         <button class="btn-mini" onclick="moveFrame(${i},-1)">↑</button>
                         <button class="btn-mini" onclick="moveFrame(${i},1)">↓</button>
-                        <button class="btn-mini" style="background:#844" onclick="deleteFrame(${i})">消</button>
+                        <button class="btn-mini" style="background:#844" onclick="deleteFrame(${i})">削除</button>
                     </div>
                 </div>
             `;
@@ -250,7 +250,7 @@
                     const scale = Math.min(conf.w/img.width, conf.h/img.height);
                     c.drawImage(img, (conf.w-img.width*scale)/2, (conf.h-img.height*scale)/2, img.width*scale, img.height*scale);
                     const buf = c.getImageData(0,0,conf.w,conf.h).data.buffer;
-                    getSafeUrl(buf); // 事前にURL化してキャッシュ
+                    getSafeUrl(buf); 
                     resolve(buf);
                 };
                 img.src = e.target.result;
@@ -303,11 +303,9 @@
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
         const buf = data.buffers[idx];
         const bg = data.bgSettings[idx];
-        
         document.getElementById('preview-bg-layer').className = `canvas-bg-layer ${getBgClass(bg)}`;
         mainCtx.clearRect(0,0,mainCanvas.width,mainCanvas.height);
         if (buf) mainCtx.putImageData(new ImageData(new Uint8ClampedArray(buf), mainCanvas.width, mainCanvas.height), 0, 0);
-        
         document.getElementById('current-frame-num').innerText = idx + 1;
         document.querySelectorAll('.frame-row').forEach(el => el.classList.remove('active-row'));
         const row = document.getElementById(`row-${idx}`);
