@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Studio Pro - Auto Backup Edition</title>
+    <title>Studio Pro - Auto Backup Fix</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/1.0.11/pako.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.min.js"></script>
@@ -22,6 +22,7 @@
         .stamp-card { background: var(--card); border-radius: 8px; padding: 6px; border: 1px solid #333; text-align: center; cursor: pointer; }
         .stamp-card .thumb { height: 70px; display: flex; align-items: center; justify-content: center; border-radius: 4px; border: 1px solid #444; margin-bottom: 4px; overflow: hidden; }
 
+        /* エディタ上部固定 */
         .editor-top-fixed { position: sticky; top: 0; background: var(--bg); z-index: 100; padding-bottom: 10px; border-bottom: 2px solid #333; }
         .preview-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 0; }
         #preview-area { border: 2px solid #555; border-radius: 4px; position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; overflow: hidden; }
@@ -59,7 +60,7 @@
             <input type="file" id="load-zip" style="display:none" onchange="importProjectZip(this)">
             <button class="btn-green" style="flex-grow:1" onclick="buildReleaseZip()">一括生成 (ZIP)</button>
         </div>
-        <div id="auto-save-status">オートセーブ: 無効</div>
+        <div id="auto-save-status">オートセーブ: 無効 (HTTPS環境が必要です)</div>
     </div>
     <div id="special-grid" class="stamp-grid" style="margin-bottom:20px; border-bottom:1px solid #444; padding-bottom:15px;"></div>
     <div id="stamp-grid" class="stamp-grid"></div>
@@ -109,11 +110,10 @@
 
     let project = { stamps: {} };
     let currentId = "01", currentType = "stamp", isPlaying = false, previewTimer = null, currentIdx = 0;
-    let folderHandle = null; // オートセーブ用フォルダハンドル
+    let folderHandle = null; 
     const mainCanvas = document.getElementById('main-canvas');
     const mainCtx = mainCanvas.getContext('2d');
 
-    // タイムスタンプ生成
     function getTimestamp() {
         const now = new Date();
         return now.getFullYear() +
@@ -124,39 +124,44 @@
             String(now.getSeconds()).padStart(2, '0');
     }
 
-    // フォルダ権限リクエスト
+    // --- 【修正】フォルダ権限リクエストの強化 ---
     async function requestFolderPermission() {
+        if (!window.showDirectoryPicker) {
+            alert("お使いのブラウザ、または現在の環境（非HTTPS等）ではフォルダ保存機能がサポートされていません。ChromeまたはEdgeを使用し、セキュアな環境で実行してください。");
+            return;
+        }
         try {
-            folderHandle = await window.showDirectoryPicker();
+            folderHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
             document.getElementById('auto-save-status').innerText = "オートセーブ: 有効 (フォルダ選択済)";
             document.getElementById('btn-auto-save').classList.replace('btn-orange', 'btn-green');
-            document.getElementById('btn-auto-save').innerText = "フォルダ変更";
+            document.getElementById('btn-auto-save').innerText = "保存先変更OK";
         } catch (e) {
-            console.warn("Folder access denied", e);
+            console.error("Access error:", e);
+            if (e.name !== 'AbortError') alert("フォルダアクセスが拒否されました: " + e.message);
         }
     }
 
-    // オートセーブ実行
     async function triggerAutoSave() {
         if (!folderHandle) return;
         const projName = document.getElementById('project-name').value || 'project';
         const fileName = `${projName}_${getTimestamp()}.zip`;
         
-        const zip = new JSZip();
-        zip.file("project.json", JSON.stringify(project, (k, v) => (v instanceof ArrayBuffer) ? Array.from(new Uint8Array(v)) : v));
-        const blob = await zip.generateAsync({type:"blob"});
-
         try {
+            const zip = new JSZip();
+            zip.file("project.json", JSON.stringify(project, (k, v) => (v instanceof ArrayBuffer) ? Array.from(new Uint8Array(v)) : v));
+            const blob = await zip.generateAsync({type:"blob"});
+
             const fileHandle = await folderHandle.getFileHandle(fileName, { create: true });
             const writable = await fileHandle.createWritable();
             await writable.write(blob);
             await writable.close();
-            console.log("Auto-saved:", fileName);
+            console.log("Auto-save complete:", fileName);
         } catch (e) {
-            console.error("Auto-save failed", e);
+            console.error("Auto-save failed:", e);
         }
     }
 
+    // --- その他基本ロジック ---
     function initProject() {
         const sg = document.getElementById('special-grid'); sg.innerHTML = '';
         ['main', 'tab'].forEach(id => {
@@ -176,7 +181,8 @@
         card.className = 'stamp-card';
         card.onclick = () => openEditor(id);
         const buf = project.stamps[id].buffers[0];
-        const thumbSrc = buf ? arrayBufferToDataURL(buf, (id==='main'||id==='tab')?id:'stamp') : '';
+        const type = (id==='main'||id==='tab') ? id : 'stamp';
+        const thumbSrc = buf ? arrayBufferToDataURL(buf, type) : '';
         card.innerHTML = `<div class="thumb transparent-bg">${thumbSrc ? `<img src="${thumbSrc}" style="max-width:100%;max-height:100%">`:''}</div><div style="font-size:10px;">${label}</div>`;
         container.appendChild(card);
     }
@@ -185,23 +191,20 @@
         currentId = id; currentType = (id === 'main' || id === 'tab') ? id : 'stamp';
         mainCanvas.width = CONFIG[currentType].w;
         mainCanvas.height = CONFIG[currentType].h;
-        const displayScale = currentType === 'tab' ? 1.2 : 0.8;
+        const displayScale = currentType === 'tab' ? 1.5 : 0.8;
         mainCanvas.style.width = (CONFIG[currentType].w * displayScale) + 'px';
         mainCanvas.style.height = (CONFIG[currentType].h * displayScale) + 'px';
-
         document.getElementById('anim-controls').style.display = (currentType === 'tab') ? 'none' : 'block';
         document.getElementById('tab-controls').style.display = (currentType === 'tab') ? 'block' : 'none';
         document.getElementById('frame-info-bar').style.display = (currentType === 'tab') ? 'none' : 'block';
-
         document.getElementById('project-screen').classList.remove('active');
         document.getElementById('editor-screen').classList.add('active');
         renderEditorLists(); updateStaticPreview(0);
     }
 
     async function showDashboard() {
-        clearInterval(previewTimer);
-        isPlaying = false;
-        await triggerAutoSave(); // ダッシュボードに戻るタイミングで保存
+        clearInterval(previewTimer); isPlaying = false;
+        await triggerAutoSave(); 
         document.getElementById('editor-screen').classList.remove('active');
         document.getElementById('project-screen').classList.add('active');
         initProject();
@@ -238,8 +241,7 @@
     }
 
     function updateStaticPreview(idx) {
-        currentIdx = idx;
-        const sData = project.stamps[currentId];
+        currentIdx = idx; const sData = project.stamps[currentId];
         const target = (currentType === 'tab') ? 0 : ((idx !== null && sData.buffers[idx]) ? idx : sData.buffers.findIndex(b => b !== null));
         const bgClass = (target !== -1) ? (sData.debugBgs[target] || 'debug-none') : 'debug-none';
         document.getElementById('preview-area').className = 'transparent-bg ' + bgClass;
@@ -261,15 +263,11 @@
         } else { clearInterval(previewTimer); }
     }
 
-    // --- Core Logic ---
+    // --- Core Funcs ---
     function setDebugBg(i, c) { project.stamps[currentId].debugBgs[i] = c; renderEditorLists(); updateStaticPreview(currentIdx); }
     function setDelay(ms) { project.stamps[currentId].delay = ms; updateStaticPreview(currentIdx); }
     async function loadSingle(i, input) { if (!input.files[0]) return; project.stamps[currentId].buffers[i] = await processImage(input.files[0], currentType); renderEditorLists(); updateStaticPreview(i); triggerAutoSave(); }
-    async function handleBulkUpload(input) { 
-        const files = Array.from(input.files).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
-        for (let i=0; i<project.stamps[currentId].buffers.length && i<files.length; i++) project.stamps[currentId].buffers[i] = await processImage(files[i], currentType);
-        renderEditorLists(); updateStaticPreview(0); triggerAutoSave();
-    }
+    async function handleBulkUpload(input) { const files = Array.from(input.files).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true})); for (let i=0; i<project.stamps[currentId].buffers.length && i<files.length; i++) project.stamps[currentId].buffers[i] = await processImage(files[i], currentType); renderEditorLists(); updateStaticPreview(0); triggerAutoSave(); }
     async function handleApngImport(input) {
         const file = input.files[0]; if (!file) return;
         const reader = new FileReader();
