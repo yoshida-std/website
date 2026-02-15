@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Studio Pro - Stable Final</title>
+    <title>Studio Pro - Restored Success Version</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/1.0.11/pako.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.min.js"></script>
@@ -16,19 +16,19 @@
         .btn-red { background: var(--accent); }
         .btn-gray { background: #444; }
 
+        /* ダッシュボード */
         .screen { display: none; height: 100vh; overflow-y: auto; padding: 15px; box-sizing: border-box; }
         .active { display: block; }
-
-        /* ダッシュボード */
         .project-header { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
         .stamp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
         .stamp-card { background: var(--card); border-radius: 8px; padding: 8px; border: 1px solid #333; text-align: center; cursor: pointer; }
-        .stamp-card .thumb { width: 60px; height: 60px; margin: 0 auto 5px; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #444; }
-        .stamp-card img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .stamp-card .thumb { width: 60px; height: 60px; margin: 0 auto 5px; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #444; position: relative; }
+        .stamp-card .thumb img { max-width: 100%; max-height: 100%; object-fit: contain; z-index: 2; }
 
         /* エディタ */
         .editor-container { display: flex; flex-direction: column; height: 100vh; max-width: 500px; margin: 0 auto; }
         .sticky-top { background: #1a1a1a; border-bottom: 2px solid #333; flex-shrink: 0; }
+        .editor-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; }
         .preview-section { padding: 10px 0; display: flex; flex-direction: column; align-items: center; background: #000; }
         #preview-area { position: relative; width: 140px; height: 118px; border: 1px solid #444; }
         #main-canvas { width: 100%; height: 100%; position: relative; z-index: 2; }
@@ -38,36 +38,36 @@
         .action-bar { display: flex; gap: 8px; padding: 10px; background: #222; border-bottom: 1px solid #333; }
         .editor-scroll { flex: 1; overflow-y: auto; padding: 5px 10px; background: #121212; }
         
-        /* フレームリスト: ボタンを右側に集約 */
+        /* リスト項目 */
         .frame-row { display: flex; align-items: center; background: var(--card); margin-bottom: 4px; padding: 0 10px; border-radius: 6px; border: 1px solid #333; height: 60px; }
         .active-row { border-color: var(--primary) !important; background: #1a2a1a !important; }
-        .row-actions-right { margin-left: auto; display: flex; gap: 5px; }
-        .btn-mini { padding: 4px 8px; font-size: 11px; background: #444; }
         .frame-thumb { width: 48px; height: 48px; background: #000; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; border: 1px solid #444; margin: 0 10px; }
         .frame-thumb img { max-width: 100%; max-height: 100%; z-index: 2; }
+        .row-actions-right { margin-left: auto; display: flex; gap: 5px; }
+        .btn-mini { padding: 4px 8px; font-size: 11px; background: #444; }
     </style>
 </head>
 <body>
 
 <div id="project-screen" class="screen active">
     <div class="project-header">
-        <input type="text" id="project-name" value="my_stamp_project" style="background:#333; color:white; border:1px solid #444; padding:8px; border-radius:4px; width:100%; margin-bottom:10px;">
+        <input type="text" id="project-name" value="stamp_project" style="background:#333; color:white; border:1px solid #444; padding:8px; border-radius:4px; width:100%; margin-bottom:10px;">
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
-            <button class="btn-gray" onclick="exportBackupZip()">バックアップ</button>
-            <button class="btn-blue" onclick="document.getElementById('load-zip').click()">復元</button>
-            <button class="btn-green" style="grid-column: span 2;" onclick="buildReleaseZip()">リリース用ZIP作成 (APNG圧縮)</button>
+            <button class="btn-gray" onclick="exportBackupZip()">保存(Backup)</button>
+            <button class="btn-blue" onclick="document.getElementById('load-zip').click()">復元(Restore)</button>
+            <button class="btn-green" style="grid-column: span 2;" onclick="buildReleaseZip()">リリース用ZIP作成 (APNG)</button>
         </div>
         <input type="file" id="load-zip" style="display:none" onchange="importBackupZip(this)">
     </div>
     <div id="special-grid" class="stamp-grid"></div>
-    <div style="margin:15px 0 5px; font-size:12px; color:#888; text-align:center;">スタンプリスト</div>
+    <div style="margin:15px 0 5px; font-size:12px; color:#888; text-align:center;">アニメーションスタンプ</div>
     <div id="stamp-grid" class="stamp-grid"></div>
 </div>
 
 <div id="editor-screen" class="screen" style="padding:0; overflow:hidden;">
     <div class="editor-container">
         <div class="sticky-top">
-            <div style="display:flex; justify-content:space-between; padding:8px 12px; align-items:center;">
+            <div class="editor-header">
                 <button class="btn-gray" onclick="showDashboard()">戻る</button>
                 <b id="title-label">EDITOR</b>
                 <button class="btn-blue" onclick="document.getElementById('bulk-upload').click()">一括↑</button>
@@ -79,7 +79,7 @@
                 </div>
             </div>
             <div class="action-bar">
-                <button class="btn-green" style="flex:2;" onclick="exportSingleAPNG()">APNGを生成して保存</button>
+                <button class="btn-green" style="flex:2;" onclick="exportSingleAPNG()">APNGを保存</button>
                 <button class="btn-red" style="flex:1;" onclick="clearAllFrames()">全消去</button>
             </div>
         </div>
@@ -116,7 +116,7 @@
         const card = document.createElement('div');
         card.className = 'stamp-card'; card.onclick = () => openEditor(id);
         const thumb = data.urls.find(u => u !== null);
-        card.innerHTML = `<div class="thumb">${thumb ? `<img src="${thumb}">` : ''}</div><div style="font-size:10px; color:#aaa;">${label}</div>`;
+        card.innerHTML = `<div class="thumb"><div class="canvas-bg-layer checker-base"></div>${thumb ? `<img src="${thumb}">` : ''}</div><div style="font-size:10px; color:#aaa;">${label}</div>`;
         container.appendChild(card);
     }
 
@@ -137,7 +137,7 @@
             const row = document.createElement('div');
             row.className = `frame-row ${currentIdx === i ? 'active-row' : ''}`;
             row.innerHTML = `
-                <div style="font-size:11px; color:#666;">${i+1}</div>
+                <div style="font-size:11px; color:#666; width:15px;">${i+1}</div>
                 <div class="frame-thumb" onclick="uploadSingle(${i})">
                     <div class="canvas-bg-layer checker-base"></div>
                     ${data.urls[i] ? `<img src="${data.urls[i]}">` : '<b>+</b>'}
@@ -196,34 +196,66 @@
         input.click();
     }
 
-    // --- 安定版の圧縮ロジック ---
-    function encodeApng(bufs, w, h, delay) {
-        // LINE成功時の設定: 256色パレット + Pako圧縮
+    // --- メイン画像実装時に成功していたAPNG生成コードの再現 ---
+    function encodeApngDirect(bufs, w, h, delay) {
+        // 当時成功していたのは、UPNG.encodeの第4引数(cnum)を256に指定したシンプルな形式です
         return UPNG.encode(bufs, w, h, 256, new Array(bufs.length).fill(delay));
     }
 
     async function exportSingleAPNG() {
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
-        const validBufs = data.buffers.filter(b => b);
-        if (validBufs.length === 0) return alert("画像なし");
+        const bufs = data.buffers.filter(b => b);
+        if (bufs.length === 0) return alert("画像がありません");
         try {
-            const out = encodeApng(validBufs, CONFIG[currentType].w, CONFIG[currentType].h, data.delay);
+            const out = encodeApngDirect(bufs, CONFIG[currentType].w, CONFIG[currentType].h, data.delay);
             saveBlob(new Blob([out], {type:'image/png'}), `${currentId}.png`);
-        } catch (e) { alert("生成失敗"); }
+        } catch (e) { alert("エラー: " + e.message); }
     }
 
     async function buildReleaseZip() {
         const zip = new JSZip();
+        const pName = document.getElementById('project-name').value;
         const add = (id, d, w, h) => {
             const b = d.buffers.filter(x => x);
-            if(b.length > 0) zip.file(`${id}.png`, encodeApng(b, w, h, d.delay));
+            if(b.length > 0) zip.file(`${id}.png`, encodeApngDirect(b, w, h, d.delay));
         };
         add('main', project.main, 240, 240); add('tab', project.tab, 96, 74);
         for(let id in project.stamps) add(id, project.stamps[id], 320, 270);
-        saveBlob(await zip.generateAsync({type:"blob"}), `RELEASE_${document.getElementById('project-name').value}.zip`);
+        saveBlob(await zip.generateAsync({type:"blob"}), `RELEASE_${pName}.zip`);
     }
 
-    // --- 各種操作 ---
+    // --- ダッシュボード機能 (保存/復元) ---
+    async function exportBackupZip() {
+        const zip = new JSZip();
+        const pName = document.getElementById('project-name').value;
+        const root = zip.folder(pName);
+        const save = (id, d) => {
+            const f = root.folder(id);
+            d.buffers.forEach((b, i) => { if(b) f.file(`${i}.raw`, b); });
+        };
+        save('main', project.main); save('tab', project.tab);
+        for(let id in project.stamps) save(id, project.stamps[id]);
+        saveBlob(await zip.generateAsync({type:"blob"}), `${pName}_backup.zip`);
+    }
+
+    async function importBackupZip(input) {
+        if(!input.files[0]) return;
+        const zip = await JSZip.loadAsync(input.files[0]);
+        for (let path in zip.files) {
+            const pts = path.split('/'); if(pts.length < 3) continue;
+            const id = pts[pts.length-2], file = pts[pts.length-1];
+            const target = (id==='main')?project.main:(id==='tab')?project.tab:project.stamps[id];
+            if(target && file.endsWith(".raw")) {
+                const i = parseInt(file);
+                const buf = await zip.files[path].async("arraybuffer");
+                target.buffers[i] = buf;
+                target.urls[i] = URL.createObjectURL(new Blob([buf], {type:'image/png'}));
+            }
+        }
+        initProject(); alert("プロジェクトを復元しました");
+    }
+
+    // --- 補助機能 ---
     function moveFrame(i, d) {
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
         const t = i + d; if (t < 0 || t >= data.buffers.length) return;
@@ -236,7 +268,7 @@
         data.buffers[i] = null; data.urls[i] = null; renderFrameList(); updatePreview(i);
     }
     function clearAllFrames() {
-        if(!confirm("消去しますか？")) return;
+        if(!confirm("現在のスタンプの全フレームを削除しますか？")) return;
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
         data.buffers.fill(null); data.urls.fill(null); renderFrameList(); updatePreview(0);
     }
@@ -254,35 +286,6 @@
         isPlaying = true; let s = 0;
         previewTimer = setInterval(() => { updatePreview(v[s]); s = (s + 1) % v.length; }, data.delay);
     }
-
-    // --- バックアップ・復元 ---
-    async function exportBackupZip() {
-        const zip = new JSZip(); const root = zip.folder(document.getElementById('project-name').value);
-        const save = (id, d) => {
-            const f = root.folder(id);
-            d.buffers.forEach((b, i) => { if(b) f.file(`${i}.raw`, b); });
-        };
-        save('main', project.main); save('tab', project.tab);
-        for(let id in project.stamps) save(id, project.stamps[id]);
-        saveBlob(await zip.generateAsync({type:"blob"}), `${document.getElementById('project-name').value}_backup.zip`);
-    }
-    async function importBackupZip(input) {
-        if(!input.files[0]) return;
-        const zip = await JSZip.loadAsync(input.files[0]);
-        for (let path in zip.files) {
-            const pts = path.split('/'); if(pts.length < 3) continue;
-            const id = pts[pts.length-2], file = pts[pts.length-1];
-            const target = (id==='main')?project.main:(id==='tab')?project.tab:project.stamps[id];
-            if(target && file.endsWith(".raw")) {
-                const i = parseInt(file);
-                const buf = await zip.files[path].async("arraybuffer");
-                target.buffers[i] = buf;
-                target.urls[i] = URL.createObjectURL(new Blob([buf], {type:'image/png'}));
-            }
-        }
-        initProject(); alert("復元完了");
-    }
-
     function showDashboard() {
         if(isPlaying) togglePreview();
         document.getElementById('editor-screen').classList.remove('active');
