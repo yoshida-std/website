@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Studio Pro - LINE Final Fix</title>
+    <title>Studio Pro - Stable Compression</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/1.0.11/pako.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.min.js"></script>
@@ -18,7 +18,6 @@
 
         .screen { display: none; height: 100vh; overflow-y: auto; padding: 15px; box-sizing: border-box; }
         .active { display: block; }
-
         .project-header { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
         .stamp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
         .stamp-card { background: var(--card); border-radius: 8px; padding: 8px; border: 1px solid #333; text-align: center; }
@@ -48,11 +47,11 @@
 
 <div id="project-screen" class="screen active">
     <div class="project-header">
-        <input type="text" id="project-name" value="stickers_v2" style="background:#333; color:white; border:1px solid #444; padding:8px; border-radius:4px; width:100%; margin-bottom:10px;">
+        <input type="text" id="project-name" value="stickers_v3" style="background:#333; color:white; border:1px solid #444; padding:8px; border-radius:4px; width:100%; margin-bottom:10px;">
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
             <button class="btn-gray" onclick="exportBackupZip()">バックアップ</button>
             <button class="btn-blue" onclick="document.getElementById('load-zip').click()">復元</button>
-            <button class="btn-green" style="grid-column: span 2;" onclick="buildReleaseZip()">リリース用ZIP作成</button>
+            <button class="btn-green" style="grid-column: span 2;" onclick="buildReleaseZip()">リリース用ZIP作成 (圧縮あり)</button>
         </div>
         <input type="file" id="load-zip" style="display:none" onchange="importBackupZip(this)">
     </div>
@@ -79,7 +78,7 @@
                 <button class="btn-red" style="flex:1;" onclick="clearAllFrames()">全消去</button>
             </div>
             <div style="font-size:11px; text-align:center; padding:5px; background:#111; color:#aaa;">
-                100ms (0.1s) intervals for LINE standard
+                LINE COMPATIBLE MODE: 256 Colors + Pako Compression
             </div>
         </div>
         <div id="frame-list-scroll" class="editor-scroll"></div>
@@ -163,7 +162,6 @@
                     const s = Math.min(w/img.width, h/img.height);
                     ctx.drawImage(img, (w-img.width*s)/2, (h-img.height*s)/2, img.width*s, img.height*s);
                     const buf = ctx.getImageData(0,0,w,h).data.buffer;
-                    // LINEが壊れた画像を認識しないよう、Blob生成を確実にする
                     const url = URL.createObjectURL(new Blob([buf], {type:'image/png'}));
                     resolve({buffer: buf, url: url});
                 };
@@ -196,11 +194,10 @@
         input.click();
     }
 
-    // --- 【重要】LINE成功ロジックの再構築 ---
+    // --- 【重要】圧縮を有効にしたLINE成功バージョンのエンコード ---
     function encodeApng(bufs, w, h, delay) {
-        // 色数を0（自動）にすることで、不適切な減色によるチャンク破壊を防ぐ
-        // LINE用には 256色指定が最も安定する場合もあるため、エラー時はここを 256 に戻す
-        return UPNG.encode(bufs, w, h, 0, new Array(bufs.length).fill(delay));
+        // 第4引数を「256」に指定することで、パレット圧縮とPakoによるdeflateが有効になります
+        return UPNG.encode(bufs, w, h, 256, new Array(bufs.length).fill(delay));
     }
 
     async function exportSingleAPNG() {
@@ -209,10 +206,9 @@
         if (validBufs.length === 0) return alert("画像なし");
         try {
             const conf = CONFIG[currentType];
-            // encodeApng内のUPNG引数を変更
-            const out = (currentType === 'tab') ? UPNG.encode([validBufs[0]], conf.w, conf.h, 0) : encodeApng(validBufs, conf.w, conf.h, data.delay);
+            const out = (currentType === 'tab') ? UPNG.encode([validBufs[0]], conf.w, conf.h, 256) : encodeApng(validBufs, conf.w, conf.h, data.delay);
             saveBlob(new Blob([out], {type:'image/png'}), `${currentId}.png`);
-        } catch (e) { alert("APNG生成中にエラーが発生しました。"); }
+        } catch (e) { alert("生成失敗"); }
     }
 
     async function buildReleaseZip() {
@@ -220,15 +216,16 @@
         const add = (id, d, w, h) => {
             const b = d.buffers.filter(x => x);
             if(b.length > 0) {
-                const out = (id === 'tab') ? UPNG.encode([b[0]], w, h, 0) : encodeApng(b, w, h, d.delay);
+                const out = (id === 'tab') ? UPNG.encode([b[0]], w, h, 256) : encodeApng(b, w, h, d.delay);
                 zip.file(`${id}.png`, out);
             }
         };
         add('main', project.main, 240, 240); add('tab', project.tab, 96, 74);
         for(let id in project.stamps) add(id, project.stamps[id], 320, 270);
-        saveBlob(await zip.generateAsync({type:"blob"}), `RELEASE_LINE.zip`);
+        saveBlob(await zip.generateAsync({type:"blob"}), `RELEASE_COMPRESSED.zip`);
     }
 
+    // --- その他UI操作 ---
     function moveFrame(i, d) {
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
         const t = i + d; if (t < 0 || t >= data.buffers.length) return;
@@ -248,10 +245,7 @@
         currentIdx = idx;
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
         mainCtx.clearRect(0,0,mainCanvas.width,mainCanvas.height);
-        if (data.buffers[idx]) {
-            const imgData = new ImageData(new Uint8ClampedArray(data.buffers[idx]), mainCanvas.width, mainCanvas.height);
-            mainCtx.putImageData(imgData, 0, 0);
-        }
+        if (data.buffers[idx]) mainCtx.putImageData(new ImageData(new Uint8ClampedArray(data.buffers[idx]), mainCanvas.width, mainCanvas.height), 0, 0);
     }
     function togglePreview() {
         if (isPlaying) { clearInterval(previewTimer); isPlaying = false; return; }
@@ -261,10 +255,8 @@
         isPlaying = true; let s = 0;
         previewTimer = setInterval(() => { updatePreview(v[s]); s = (s + 1) % v.length; }, data.delay);
     }
-
     async function exportBackupZip() {
-        const zip = new JSZip();
-        const root = zip.folder(document.getElementById('project-name').value);
+        const zip = new JSZip(); const root = zip.folder(document.getElementById('project-name').value);
         const save = (id, d) => {
             const f = root.folder(id);
             d.buffers.forEach((b, i) => { if(b) f.file(`${i}.raw`, b); });
@@ -273,7 +265,6 @@
         for(let id in project.stamps) save(id, project.stamps[id]);
         saveBlob(await zip.generateAsync({type:"blob"}), `backup.zip`);
     }
-
     async function importBackupZip(input) {
         if(!input.files[0]) return;
         const zip = await JSZip.loadAsync(input.files[0]);
@@ -290,7 +281,6 @@
         }
         initProject(); alert("復元完了");
     }
-
     function showDashboard() {
         if(isPlaying) togglePreview();
         document.getElementById('editor-screen').classList.remove('active');
