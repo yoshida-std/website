@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Studio Pro - APNG Fix Edition</title>
+    <title>Studio Pro - APNG Fix v2</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.min.js"></script>
     <style>
@@ -21,12 +21,10 @@
         .screen { display: none; padding: 15px; box-sizing: border-box; min-height: 100vh; }
         .active { display: flex; flex-direction: column; }
 
-        /* スタート画面 */
         #start-screen { align-items: center; justify-content: center; text-align: center; }
         .start-card { background: var(--card); padding: 30px; border-radius: 16px; border: 1px solid #333; width: 100%; max-width: 380px; }
         .input-field { width: 100%; padding: 10px; margin: 10px 0; background: #000; border: 1px solid #444; color: #fff; border-radius: 6px; box-sizing: border-box; }
 
-        /* ダッシュボード */
         .project-header { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
         .stamp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
         .stamp-card { background: var(--card); border-radius: 8px; padding: 6px; border: 1px solid #333; text-align: center; cursor: pointer; }
@@ -35,7 +33,6 @@
         .debug-red { background-color: #b3261e !important; background-image: none !important; }
         .debug-yellow { background-color: #f9ab00 !important; background-image: none !important; }
 
-        /* エディタ */
         .editor-top-fixed { position: sticky; top: 0; background: var(--bg); z-index: 100; padding-bottom: 10px; border-bottom: 2px solid #333; }
         .preview-wrapper { display: flex; flex-direction: column; align-items: center; padding: 10px 0; }
         #preview-area { border: 2px solid #555; border-radius: 4px; position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; overflow: hidden; }
@@ -57,8 +54,8 @@
         <hr style="border:0; border-top:1px solid #333; margin:15px 0;">
         <input type="text" id="new-project-name" class="input-field" placeholder="プロジェクト名">
         <select id="profile-select" class="input-field">
-            <option value="stamp">アニメーションスタンプ (320x270 / 24枚)</option>
-            <option value="emoji">アニメーション絵文字 (180x180 / 40枚)</option>
+            <option value="stamp">アニメーションスタンプ (320x270)</option>
+            <option value="emoji">アニメーション絵文字 (180x180)</option>
         </select>
         <button class="btn-blue" style="width:100%;" onclick="createNewProject()">新規プロジェクト作成</button>
         <div style="margin:15px 0; color:#555; font-size:12px;">──────── OR ────────</div>
@@ -75,13 +72,11 @@
         </div>
         <div style="display:flex; gap:6px; margin-top:10px;">
             <button class="btn-orange" style="flex:1" onclick="exportBackupZip()">保存 (Backup)</button>
-            <button class="btn-green" style="flex:2" onclick="buildReleaseZip()">一括APNG生成 (Release)</button>
+            <button class="btn-green" style="flex:2" onclick="buildReleaseZip()">一括APNG生成</button>
         </div>
     </div>
-    <div id="special-area">
-        <div id="special-grid" class="stamp-grid" style="margin-bottom:15px; border-bottom:1px solid #444; padding-bottom:15px;"></div>
-    </div>
-    <div id="content-label" style="font-size:11px; color:#888; margin-bottom:5px;">コンテンツ一覧</div>
+    <div id="special-grid" class="stamp-grid" style="margin-bottom:15px; border-bottom:1px solid #444; padding-bottom:15px;"></div>
+    <div id="content-label" style="font-size:11px; color:#888; margin-bottom:5px;">一覧</div>
     <div id="stamp-grid" class="stamp-grid"></div>
 </div>
 
@@ -94,7 +89,6 @@
             </div>
             <div id="frame-info-bar" style="margin-top:5px; font-weight:bold; color:var(--primary); font-size:16px;">FRAME: 1</div>
         </div>
-        
         <div id="anim-controls">
             <div style="display:flex; gap:4px; justify-content:center; margin-bottom:8px;">
                 <button id="delay-100" class="btn-gray" onclick="setDelay(100)">0.1s</button>
@@ -107,12 +101,10 @@
                 <button class="btn-orange" onclick="smartFill()">充填</button>
             </div>
         </div>
-
         <div id="tab-controls" style="display:none; text-align:center;">
-            <button class="btn-blue" style="padding:10px 20px" onclick="document.getElementById('file-0').click()">画像を読込</button>
-            <button class="btn-orange" style="padding:10px 20px" onclick="exportSingleAPNG()">個別保存</button>
+            <button class="btn-blue" onclick="document.getElementById('file-0').click()">画像を読込</button>
+            <button class="btn-orange" onclick="exportSingleAPNG()">個別保存</button>
         </div>
-
         <input type="file" id="bulk-upload" multiple accept="image/*" style="display:none" onchange="handleBulkUpload(this)">
         <input type="file" id="apng-import-trigger" accept="image/png" style="display:none" onchange="handleApngImport(this)">
     </div>
@@ -130,7 +122,6 @@
     const mainCanvas = document.getElementById('main-canvas');
     const mainCtx = mainCanvas.getContext('2d');
 
-    // --- Start Logic ---
     function createNewProject() {
         const name = document.getElementById('new-project-name').value.trim() || "my_project";
         const profKey = document.getElementById('profile-select').value;
@@ -185,8 +176,7 @@
         currentId = id; const dim = getDim(id);
         mainCanvas.width = dim.w; mainCanvas.height = dim.h;
         const scale = id === 'tab' ? 2 : (dim.w > 300 ? 0.7 : 1.2);
-        mainCanvas.style.width = (dim.w * scale) + 'px';
-        mainCanvas.style.height = (dim.h * scale) + 'px';
+        mainCanvas.style.width = (dim.w * scale) + 'px'; mainCanvas.style.height = (dim.h * scale) + 'px';
         document.getElementById('anim-controls').style.display = (id === 'tab') ? 'none' : 'block';
         document.getElementById('tab-controls').style.display = (id === 'tab') ? 'block' : 'none';
         document.getElementById('project-screen').classList.remove('active');
@@ -220,9 +210,9 @@
                     <button class="btn-dbg btn-orange ${dbg==='debug-yellow'?'btn-active':''}" onclick="setDebugBg(${i},'debug-yellow')">黄</button>
                 </div>
                 <input type="file" id="file-${i}" accept="image/*" onchange="loadSingle(${i}, this)" style="display:none">
-                <button class="btn-gray" style="padding:5px;" onclick="moveFrame(${i}, -1)">▲</button>
-                <button class="btn-gray" style="padding:5px;" onclick="moveFrame(${i}, 1)">▼</button>
-                <button class="btn-red" style="margin-left:auto; padding:10px 8px;" onclick="deleteFrame(${i})">×</button>
+                <button class="btn-gray" onclick="moveFrame(${i}, -1)">▲</button>
+                <button class="btn-gray" onclick="moveFrame(${i}, 1)">▼</button>
+                <button class="btn-red" style="margin-left:auto;" onclick="deleteFrame(${i})">×</button>
             `;
             list.appendChild(div);
         });
@@ -251,20 +241,13 @@
         } else { clearInterval(previewTimer); }
     }
 
-    // --- Core Logic ---
     async function loadSingle(i, input) { if (!input.files[0]) return; project.stamps[currentId].buffers[i] = await processImage(input.files[0], getDim(currentId)); renderEditorLists(); updateStaticPreview(i); }
     function setDebugBg(i, c) { project.stamps[currentId].debugBgs[i] = c; renderEditorLists(); updateStaticPreview(currentIdx); }
     function setDelay(ms) { project.stamps[currentId].delay = ms; updateDelayUI(); }
-    function updateDelayUI() { const d = project.stamps[currentId].delay; document.getElementById('delay-100').className = d===100?'btn-blue':'btn-gray'; document.getElementById('delay-200').className = d===200?'btn-blue':'btn-gray'; }
+    function updateDelayUI() { const d = project.stamps[currentId].delay; if(document.getElementById('delay-100')){ document.getElementById('delay-100').className = d===100?'btn-blue':'btn-gray'; document.getElementById('delay-200').className = d===200?'btn-blue':'btn-gray'; } }
     function deleteFrame(i) { project.stamps[currentId].buffers[i] = null; renderEditorLists(); updateStaticPreview(null); }
     function moveFrame(i, d) { const b = project.stamps[currentId].buffers, db = project.stamps[currentId].debugBgs, t = i+d; if(t<0 || t>=b.length) return; [b[i],b[t]] = [b[t],b[i]]; [db[i],db[t]] = [db[t],db[i]]; renderEditorLists(); updateStaticPreview(t); }
     function smartFill() { const b = project.stamps[currentId].buffers, p = b.filter(x=>x!==null); if(p.length<1) return; for(let i=0; i<b.length; i++) if(!b[i]) b[i] = p[i % p.length]; renderEditorLists(); }
-    
-    async function handleBulkUpload(input) { 
-        const files = Array.from(input.files).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
-        for (let i=0; i<20 && i<files.length; i++) project.stamps[currentId].buffers[i] = await processImage(files[i], getDim(currentId));
-        renderEditorLists(); updateStaticPreview(0);
-    }
 
     async function handleApngImport(input) {
         const file = input.files[0]; if (!file) return;
@@ -272,41 +255,36 @@
         reader.onload = async (e) => {
             try {
                 const img = UPNG.decode(e.target.result);
-                const frames = UPNG.toRGBA8(img); // これが ArrayBuffer[] を返す
-                const sData = project.stamps[currentId];
+                const frames = UPNG.toRGBA8(img);
                 const dim = getDim(currentId);
-
-                // インポート前に一度リセット
-                sData.buffers = new Array(20).fill(null);
-
+                project.stamps[currentId].buffers = new Array(20).fill(null);
                 for (let i = 0; i < frames.length && i < 20; i++) {
-                    const rgbaData = new Uint8ClampedArray(frames[i]);
-                    sData.buffers[i] = await resizeRgba(rgbaData, img.width, img.height, dim.w, dim.h);
+                    project.stamps[currentId].buffers[i] = await resizeRgbaToBuffer(new Uint8ClampedArray(frames[i]), img.width, img.height, dim.w, dim.h);
                 }
                 renderEditorLists(); updateStaticPreview(0);
-                alert(`${frames.length}フレーム読み込みました。`);
-            } catch (err) {
-                console.error("APNG Import Error:", err);
-                alert("APNG解析失敗: ファイルが壊れているか、非対応の形式です。");
-            }
+                alert(`${frames.length}フレーム読込完了 (サイズ: ${img.width}x${img.height} → ${dim.w}x${dim.h})`);
+            } catch (err) { alert("APNG解析失敗"); }
         };
         reader.readAsArrayBuffer(file);
     }
 
-    function resizeRgba(rgbaClamped, sw, sh, dw, dh) {
+    function resizeRgbaToBuffer(rgba, sw, sh, dw, dh) {
         return new Promise(resolve => {
-            const offscreen = document.createElement('canvas');
-            offscreen.width = sw; offscreen.height = sh;
-            const oCtx = offscreen.getContext('2d');
-            oCtx.putImageData(new ImageData(rgbaClamped, sw, sh), 0, 0);
-
-            const target = document.createElement('canvas');
-            target.width = dw; target.height = dh;
-            const tCtx = target.getContext('2d');
+            const c1 = document.createElement('canvas'); c1.width = sw; c1.height = sh;
+            c1.getContext('2d').putImageData(new ImageData(rgba, sw, sh), 0, 0);
+            const c2 = document.createElement('canvas'); c2.width = dw; c2.height = dh;
+            const tCtx = c2.getContext('2d');
             const s = Math.min(dw/sw, dh/sh);
-            tCtx.drawImage(offscreen, (dw-sw*s)/2, (dh-sh*s)/2, sw*s, sh*s);
-            resolve(tCtx.getImageData(0,0,dw,dh).data.buffer);
+            tCtx.drawImage(c1, (dw-sw*s)/2, (dh-sh*s)/2, sw*s, sh*s);
+            // 確実に ArrayBuffer として返す
+            resolve(tCtx.getImageData(0,0,dw,dh).data.buffer.slice(0));
         });
+    }
+
+    async function handleBulkUpload(input) { 
+        const files = Array.from(input.files).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
+        for (let i=0; i<20 && i<files.length; i++) project.stamps[currentId].buffers[i] = await processImage(files[i], getDim(currentId));
+        renderEditorLists(); updateStaticPreview(0);
     }
 
     function processImage(file, dim) {
@@ -319,7 +297,7 @@
                     const ctx = cvs.getContext('2d');
                     const s = Math.min(dim.w/img.width, dim.h/img.height);
                     ctx.drawImage(img, (dim.w-img.width*s)/2, (dim.h-img.height*s)/2, img.width*s, img.height*s);
-                    resolve(ctx.getImageData(0,0,dim.w,dim.h).data.buffer);
+                    resolve(ctx.getImageData(0,0,dim.w,dim.h).data.buffer.slice(0));
                 };
                 img.src = e.target.result;
             };
@@ -333,7 +311,6 @@
         return cvs.toDataURL();
     }
 
-    // --- Save / Load ---
     function getTS() { return new Date().toISOString().replace(/[:T-]/g,'').slice(0,14); }
     async function exportBackupZip() {
         const zip = new JSZip();
