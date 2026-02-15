@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Studio Pro - Final Stable Edition</title>
+    <title>Studio Pro - Ultimate Fixed Edition</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.min.js"></script>
     <style>
@@ -30,7 +30,7 @@
         .editor-top { position: sticky; top: 0; background: var(--bg); z-index: 100; padding-bottom: 5px; border-bottom: 2px solid #333; }
         
         .preview-wrapper { width: 100%; display: flex; justify-content: center; padding: 10px 0; }
-        #preview-area { position: relative; border: 2px solid #444; overflow: hidden; width: 320px; height: 270px; }
+        #preview-area { position: relative; border: 2px solid #444; overflow: hidden; }
         canvas { display: block; width: 100%; height: 100%; position: relative; z-index: 2; }
         
         .canvas-bg-layer { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 1; }
@@ -59,6 +59,7 @@
         .btn-green { background: var(--primary); }
         .btn-red { background: var(--accent); }
         .btn-gray { background: #444; }
+        .btn-orange { background: #FF9800; }
     </style>
 </head>
 <body>
@@ -66,12 +67,13 @@
 <div id="project-screen" class="screen active">
     <h2 style="text-align:center; color: var(--primary);">Studio Pro</h2>
     <div class="project-header">
-        <input type="text" id="project-name" value="my_stickers" style="background:#333; color:white; border:1px solid #444; padding:10px; border-radius:4px; width:94%; margin-bottom:10px;">
-        <div style="display:flex; gap:8px; justify-content: center;">
+        <input type="text" id="project-name" value="my_stickers" style="background:#333; color:white; border:1px solid #444; padding:10px; border-radius:4px; width:94%; margin-bottom:15px;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
             <button class="btn-gray" onclick="exportBackupZip()">バックアップZIP</button>
             <button class="btn-blue" onclick="document.getElementById('load-zip').click()">復元</button>
-            <input type="file" id="load-zip" style="display:none" onchange="importBackupZip(this)">
+            <button class="btn-green" style="grid-column: span 2;" onclick="buildReleaseZip()">リリース用ZIP作成 (APNG)</button>
         </div>
+        <input type="file" id="load-zip" style="display:none" onchange="importBackupZip(this)">
     </div>
     
     <div class="section-label">メイン・タブ (Special)</div>
@@ -105,7 +107,7 @@
         </div>
         <div id="frame-list-scroll" class="editor-scroll"></div>
         <div class="editor-footer">
-            <button class="btn-green" style="flex:2;" onclick="exportSingleImage()">APNG生成・保存</button>
+            <button class="btn-green" style="flex:2;" onclick="exportSingleImage()">APNGを生成して保存</button>
             <button class="btn-red" style="flex:1;" onclick="clearAllFrames()">全消去</button>
         </div>
     </div>
@@ -113,7 +115,8 @@
 </div>
 
 <script>
-    // --- Data Model ---
+    // --- Data Management ---
+    const CONFIG = { stamp: { w: 320, h: 270, maxF: 20 }, main: { w: 240, h: 240, maxF: 20 }, tab: { w: 96, h: 74, maxF: 1 } };
     let project = { 
         name: "my_stickers", 
         main: { delay: 100, buffers: new Array(20).fill(null), bgSettings: new Array(20).fill('none') },
@@ -121,26 +124,25 @@
         stamps: {} 
     };
     let currentId = "01", currentType = "stamp", isPlaying = false, previewTimer = null, currentIdx = 0;
-    const CONFIG = { stamp: { w: 320, h: 270, maxF: 20 }, main: { w: 240, h: 240, maxF: 20 }, tab: { w: 96, h: 74, maxF: 1 } };
-    
+    const urlCache = new Map(); // サムネイル「？」対策：一度作ったURLを再利用
+
+    function getSafeUrl(buf) {
+        if (!buf) return '';
+        if (urlCache.has(buf)) return urlCache.get(buf);
+        const url = URL.createObjectURL(new Blob([buf], {type:'image/png'}));
+        urlCache.set(buf, url);
+        return url;
+    }
+
     const mainCanvas = document.getElementById('main-canvas');
     const mainCtx = mainCanvas.getContext('2d');
 
-    // URL生成の安定化
-    function getSafeUrl(buf) {
-        if (!buf) return '';
-        try {
-            return URL.createObjectURL(new Blob([buf], {type:'image/png'}));
-        } catch(e) { return ''; }
-    }
-
-    // --- Dashboard ---
+    // --- Dashboard logic ---
     function initProject() {
-        // Special (Main/Tab)
+        // Special
         const sg = document.getElementById('special-grid'); sg.innerHTML = '';
         renderCard(sg, 'main', project.main, 'Main', 'badge-main');
         renderCard(sg, 'tab', project.tab, 'Tab', 'badge-tab');
-
         // Stamps
         const g = document.getElementById('stamp-grid'); g.innerHTML = '';
         for (let i = 1; i <= 24; i++) {
@@ -163,7 +165,7 @@
         container.appendChild(card);
     }
 
-    // --- Editor ---
+    // --- Editor logic ---
     function openEditor(id) {
         currentId = id;
         currentType = (id === 'main') ? 'main' : (id === 'tab' ? 'tab' : 'stamp');
@@ -176,8 +178,7 @@
         document.getElementById('preview-area').style.height = conf.h + "px";
         document.getElementById('max-frame-num').innerText = conf.maxF;
         
-        // UI表示切り替え
-        document.getElementById('bulk-btn').style.display = (currentType === 'tab') ? 'none' : 'block';
+        document.getElementById('bulk-btn').style.display = (currentType === 'tab') ? 'none' : 'inline-block';
         document.getElementById('speed-ctrl').style.display = (currentType === 'tab') ? 'none' : 'flex';
         document.getElementsByName('speed').forEach(r => r.checked = (parseInt(r.value) === data.delay));
 
@@ -188,8 +189,7 @@
     }
 
     function renderFrameList() {
-        const list = document.getElementById('frame-list-scroll');
-        list.innerHTML = '';
+        const list = document.getElementById('frame-list-scroll'); list.innerHTML = '';
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
         const max = CONFIG[currentType].maxF;
 
@@ -200,21 +200,22 @@
             row.className = `frame-row ${currentIdx === i ? 'active-row' : ''}`;
             row.id = `row-${i}`;
             row.innerHTML = `
-                <div style="font-size:10px; font-weight:bold; width:15px; color:#666;">${i+1}</div>
+                <div style="font-size:10px; width:15px; color:#888;">${i+1}</div>
                 <div class="frame-thumb-wrapper" onclick="uploadSingle(${i})">
                     <div class="canvas-bg-layer ${getBgClass(bg)}"></div>
                     ${buf ? `<img src="${getSafeUrl(buf)}">` : '<span style="z-index:3; color:#444; font-size:18px;">+</span>'}
                 </div>
-                <div style="flex-grow:1; display:flex; flex-direction:column; gap:8px;">
+                <div style="flex-grow:1; display:flex; flex-direction:column; gap:6px;">
                     <div class="bg-selector">
                         <div class="bg-opt opt-none ${bg==='none'?'selected':''}" onclick="setFrameBg(${i},'none')"></div>
                         <div class="bg-opt opt-red ${bg==='red'?'selected':''}" onclick="setFrameBg(${i},'red')"></div>
                         <div class="bg-opt opt-yellow ${bg==='yellow'?'selected':''}" onclick="setFrameBg(${i},'yellow')"></div>
+                        <span style="font-size:10px; color:#888;">背景色</span>
                     </div>
-                    <div style="display:flex; gap:8px;">
-                        <button class="btn-gray" style="padding:4px 10px; font-size:11px;" onclick="moveFrame(${i},-1)">↑</button>
-                        <button class="btn-gray" style="padding:4px 10px; font-size:11px;" onclick="moveFrame(${i},1)">↓</button>
-                        <button class="btn-red" style="padding:4px 10px; font-size:11px;" onclick="deleteFrame(${i})">削除</button>
+                    <div style="display:flex; gap:5px;">
+                        <button class="btn-gray" style="padding:4px 8px; font-size:11px;" onclick="moveFrame(${i},-1)">↑</button>
+                        <button class="btn-gray" style="padding:4px 8px; font-size:11px;" onclick="moveFrame(${i},1)">↓</button>
+                        <button class="btn-red" style="padding:4px 8px; font-size:11px;" onclick="deleteFrame(${i})">削除</button>
                     </div>
                 </div>
             `;
@@ -239,9 +240,7 @@
         const files = Array.from(input.files).sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
         const max = CONFIG[currentType].maxF;
-        for (let i = 0; i < Math.min(files.length, max); i++) {
-            data.buffers[i] = await processImage(files[i]);
-        }
+        for (let i = 0; i < Math.min(files.length, max); i++) data.buffers[i] = await processImage(files[i]);
         input.value = ''; renderFrameList(); updatePreview(0);
     }
 
@@ -267,8 +266,7 @@
                     const cvs = document.createElement('canvas'); cvs.width = conf.w; cvs.height = conf.h;
                     const c = cvs.getContext('2d');
                     const scale = Math.min(conf.w/img.width, conf.h/img.height);
-                    const w = img.width * scale, h = img.height * scale;
-                    c.drawImage(img, (conf.w-w)/2, (conf.h-h)/2, w, h);
+                    c.drawImage(img, (conf.w-img.width*scale)/2, (conf.h-img.height*scale)/2, img.width*scale, img.height*scale);
                     resolve(c.getImageData(0,0,conf.w,conf.h).data.buffer);
                 };
                 img.src = e.target.result;
@@ -288,8 +286,14 @@
 
     function deleteFrame(idx) {
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
-        data.buffers[idx] = null;
-        renderFrameList(); updatePreview(idx);
+        data.buffers[idx] = null; renderFrameList(); updatePreview(idx);
+    }
+
+    function clearAllFrames() {
+        if(!confirm("現在の全フレームを削除しますか？")) return;
+        const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
+        data.buffers.fill(null);
+        renderFrameList(); updatePreview(0);
     }
 
     function setSpeed(ms) {
@@ -328,17 +332,12 @@
 
     async function exportSingleImage() {
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
-        const activeBuffers = data.buffers.filter(b => b);
+        const activeBuffers = data.buffers.filter(b => b !== null);
         if (activeBuffers.length === 0) return alert("画像がありません");
         
-        // APNG作成（UPNG.js使用）
         const apng = UPNG.encode(activeBuffers, mainCanvas.width, mainCanvas.height, 256, new Array(activeBuffers.length).fill(data.delay));
-        
-        if (apng.byteLength > 1024 * 1024) alert("警告: ファイルサイズが1MBを超えています。");
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([apng], {type:'image/png'}));
-        a.download = `${currentId}.png`;
-        a.click();
+        if (apng.byteLength > 1024 * 1024) alert("警告: 1MBを超えています。");
+        saveBlob(new Blob([apng], {type:'image/png'}), `${currentId}.png`);
     }
 
     function showDashboard() {
@@ -348,21 +347,34 @@
         initProject();
     }
 
-    // --- Backup & Restore ---
+    // --- ZIP & Backup ---
+    async function buildReleaseZip() {
+        const zip = new JSZip(); let count = 0;
+        const process = (id, d, w, h) => {
+            const bufs = d.buffers.filter(b => b);
+            if(bufs.length > 0) {
+                const out = (id==='tab')?UPNG.encode(bufs,w,h,256):UPNG.encode(bufs,w,h,256,new Array(bufs.length).fill(d.delay));
+                zip.file(`${id}.png`, out); count++;
+            }
+        };
+        process('main', project.main, 240, 240);
+        process('tab', project.tab, 96, 74);
+        for(let id in project.stamps) process(id, project.stamps[id], 320, 270);
+        
+        if(count === 0) return alert("画像がありません");
+        saveBlob(await zip.generateAsync({type:"blob"}), `RELEASE_${project.name}.zip`);
+    }
+
     async function exportBackupZip() {
-        const zip = new JSZip();
-        const root = zip.folder(project.name);
+        const zip = new JSZip(); const root = zip.folder(project.name);
         const save = (id, d) => {
             const f = root.folder(id);
             f.file("conf.json", JSON.stringify({delay: d.delay, bg: d.bgSettings}));
             d.buffers.forEach((b, i) => { if(b) f.file(`${i}.raw`, b); });
         };
-        save('main', project.main);
-        save('tab', project.tab);
+        save('main', project.main); save('tab', project.tab);
         for(let id in project.stamps) save(id, project.stamps[id]);
-        
-        const blob = await zip.generateAsync({type:"blob"});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${project.name}_backup.zip`; a.click();
+        saveBlob(await zip.generateAsync({type:"blob"}), `${project.name}_backup.zip`);
     }
 
     async function importBackupZip(input) {
@@ -380,8 +392,11 @@
                 target.buffers[parseInt(file)] = await zip.files[path].async("arraybuffer");
             }
         }
-        initProject();
-        alert("復元が完了しました");
+        initProject(); alert("復元しました");
+    }
+
+    function saveBlob(blob, name) {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
     }
 
     initProject();
