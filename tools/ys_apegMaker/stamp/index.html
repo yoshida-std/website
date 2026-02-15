@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Studio Pro - Full Featured Edition</title>
+    <title>Studio Pro - APNG Fix Edition</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.min.js"></script>
     <style>
@@ -79,7 +79,6 @@
         </div>
     </div>
     <div id="special-area">
-        <div style="font-size:11px; color:#888; margin-bottom:5px;">管理用画像</div>
         <div id="special-grid" class="stamp-grid" style="margin-bottom:15px; border-bottom:1px solid #444; padding-bottom:15px;"></div>
     </div>
     <div id="content-label" style="font-size:11px; color:#888; margin-bottom:5px;">コンテンツ一覧</div>
@@ -104,7 +103,7 @@
             </div>
             <div style="display:flex; gap:4px; justify-content:center;">
                 <button class="btn-blue" onclick="document.getElementById('bulk-upload').click()">一括画像</button>
-                <button class="btn-green" onclick="document.getElementById('apng-import').click()">APNG読込</button>
+                <button class="btn-green" onclick="document.getElementById('apng-import-trigger').click()">APNG読込</button>
                 <button class="btn-orange" onclick="smartFill()">充填</button>
             </div>
         </div>
@@ -115,7 +114,7 @@
         </div>
 
         <input type="file" id="bulk-upload" multiple accept="image/*" style="display:none" onchange="handleBulkUpload(this)">
-        <input type="file" id="apng-import" accept="image/png" style="display:none" onchange="handleApngImport(this)">
+        <input type="file" id="apng-import-trigger" accept="image/png" style="display:none" onchange="handleApngImport(this)">
     </div>
     <div id="frames-list" style="margin-top:10px;"></div>
 </div>
@@ -168,8 +167,7 @@
     }
 
     function renderCard(container, id, label) {
-        const card = document.createElement('div');
-        card.className = 'stamp-card';
+        const card = document.createElement('div'); card.className = 'stamp-card';
         card.onclick = () => openEditor(id);
         const buf = project.stamps[id].buffers[0];
         const thumbSrc = buf ? arrayBufferToDataURL(buf, getDim(id)) : '';
@@ -183,10 +181,8 @@
         return { w: PROFILES[project.profile].stampW, h: PROFILES[project.profile].stampH };
     }
 
-    // --- Editor Logic ---
     function openEditor(id) {
-        currentId = id;
-        const dim = getDim(id);
+        currentId = id; const dim = getDim(id);
         mainCanvas.width = dim.w; mainCanvas.height = dim.h;
         const scale = id === 'tab' ? 2 : (dim.w > 300 ? 0.7 : 1.2);
         mainCanvas.style.width = (dim.w * scale) + 'px';
@@ -212,8 +208,7 @@
         sData.buffers.forEach((buf, i) => {
             const thumbSrc = buf ? arrayBufferToDataURL(buf, getDim(currentId)) : '';
             const dbg = sData.debugBgs[i] || 'debug-none';
-            const div = document.createElement('div');
-            div.className = 'frame-item';
+            const div = document.createElement('div'); div.className = 'frame-item';
             div.innerHTML = `
                 <div style="font-weight:bold; color:var(--primary); width:18px; font-size:12px;">${i+1}</div>
                 <div class="list-thumb transparent-bg ${dbg}" onclick="document.getElementById('file-${i}').click()">
@@ -256,7 +251,7 @@
         } else { clearInterval(previewTimer); }
     }
 
-    // --- Core Funcs ---
+    // --- Core Logic ---
     async function loadSingle(i, input) { if (!input.files[0]) return; project.stamps[currentId].buffers[i] = await processImage(input.files[0], getDim(currentId)); renderEditorLists(); updateStaticPreview(i); }
     function setDebugBg(i, c) { project.stamps[currentId].debugBgs[i] = c; renderEditorLists(); updateStaticPreview(currentIdx); }
     function setDelay(ms) { project.stamps[currentId].delay = ms; updateDelayUI(); }
@@ -276,12 +271,42 @@
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
-                const img = UPNG.decode(e.target.result); const frames = UPNG.toRGBA8(img); const sData = project.stamps[currentId]; const dim = getDim(currentId);
-                for (let i = 0; i < frames.length && i < 20; i++) sData.buffers[i] = await resizeRgba(new Uint8ClampedArray(frames[i]), img.width, img.height, dim.w, dim.h);
+                const img = UPNG.decode(e.target.result);
+                const frames = UPNG.toRGBA8(img); // これが ArrayBuffer[] を返す
+                const sData = project.stamps[currentId];
+                const dim = getDim(currentId);
+
+                // インポート前に一度リセット
+                sData.buffers = new Array(20).fill(null);
+
+                for (let i = 0; i < frames.length && i < 20; i++) {
+                    const rgbaData = new Uint8ClampedArray(frames[i]);
+                    sData.buffers[i] = await resizeRgba(rgbaData, img.width, img.height, dim.w, dim.h);
+                }
                 renderEditorLists(); updateStaticPreview(0);
-            } catch (err) { alert("APNG解析失敗"); }
+                alert(`${frames.length}フレーム読み込みました。`);
+            } catch (err) {
+                console.error("APNG Import Error:", err);
+                alert("APNG解析失敗: ファイルが壊れているか、非対応の形式です。");
+            }
         };
         reader.readAsArrayBuffer(file);
+    }
+
+    function resizeRgba(rgbaClamped, sw, sh, dw, dh) {
+        return new Promise(resolve => {
+            const offscreen = document.createElement('canvas');
+            offscreen.width = sw; offscreen.height = sh;
+            const oCtx = offscreen.getContext('2d');
+            oCtx.putImageData(new ImageData(rgbaClamped, sw, sh), 0, 0);
+
+            const target = document.createElement('canvas');
+            target.width = dw; target.height = dh;
+            const tCtx = target.getContext('2d');
+            const s = Math.min(dw/sw, dh/sh);
+            tCtx.drawImage(offscreen, (dw-sw*s)/2, (dh-sh*s)/2, sw*s, sh*s);
+            resolve(tCtx.getImageData(0,0,dw,dh).data.buffer);
+        });
     }
 
     function processImage(file, dim) {
@@ -299,16 +324,6 @@
                 img.src = e.target.result;
             };
             reader.readAsDataURL(file);
-        });
-    }
-
-    function resizeRgba(rgba, sw, sh, dw, dh) {
-        return new Promise(resolve => {
-            const c1 = document.createElement('canvas'); c1.width = sw; c1.height = sh; c1.getContext('2d').putImageData(new ImageData(rgba, sw, sh), 0, 0);
-            const c2 = document.createElement('canvas'); c2.width = dw; c2.height = dh;
-            const ctx = c2.getContext('2d'); const s = Math.min(dw/sw, dh/sh);
-            ctx.drawImage(c1, (dw-sw*s)/2, (dh-sh*s)/2, sw*s, sh*s);
-            resolve(ctx.getImageData(0,0,dw,dh).data.buffer);
         });
     }
 
@@ -332,19 +347,16 @@
         for (let id in data.stamps) data.stamps[id].buffers = data.stamps[id].buffers.map(b => b ? new Uint8Array(b).buffer : null);
         project = data; startApp();
     }
-
     async function exportSingleAPNG() {
         const active = project.stamps[currentId].buffers.filter(b=>b!==null); if(active.length===0) return;
         const dim = getDim(currentId);
         const out = (currentId === 'tab') ? active[0] : UPNG.encode(active, dim.w, dim.h, 256, new Array(active.length).fill(project.stamps[currentId].delay));
         const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([out])); a.download = `${currentId}.png`; a.click();
     }
-
     async function buildReleaseZip() {
         const zip = new JSZip();
         for (let id in project.stamps) {
-            const active = project.stamps[id].buffers.filter(b => b !== null);
-            if (active.length === 0) continue;
+            const active = project.stamps[id].buffers.filter(b => b !== null); if (active.length === 0) continue;
             const dim = getDim(id);
             const out = (id === 'tab') ? active[0] : UPNG.encode(active, dim.w, dim.h, 256, new Array(active.length).fill(project.stamps[id].delay));
             zip.file(`${id}.png`, out);
