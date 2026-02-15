@@ -3,111 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Studio Pro - Ultimate Fixed Edition</title>
+    <title>Studio Pro - Compact Edition</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.min.js"></script>
     <style>
         :root { --primary: #00B900; --accent: #ff5252; --bg: #121212; --card: #1e1e1e; --text: #eee; --checker: #333; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow-x: hidden; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow: hidden; }
         
-        /* ダッシュボード */
-        .screen { display: none; padding: 15px; max-width: 800px; margin: 0 auto; }
-        .active { display: block; }
-        .project-header { background: var(--card); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
-        .section-label { color: #888; font-size: 12px; font-weight: bold; margin: 20px 0 10px 0; border-bottom: 1px solid #333; padding-bottom: 5px; }
-        
-        .stamp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 12px; }
-        .stamp-card { background: var(--card); border-radius: 10px; padding: 10px; border: 1px solid #333; text-align: center; cursor: pointer; position: relative; }
-        .stamp-card .thumb { width: 70px; height: 70px; margin: 0 auto 8px; border-radius: 4px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
-        .stamp-card .thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        
-        .badge { position: absolute; top: 5px; right: 5px; color: white; font-size: 9px; padding: 2px 5px; border-radius: 4px; font-weight: bold; z-index: 5; }
-        .badge-main { background: var(--accent); }
-        .badge-tab { background: #2196F3; }
-
-        /* エディタ */
-        .editor-container { display: flex; flex-direction: column; height: 100vh; max-width: 500px; margin: 0 auto; background: var(--bg); position: relative; }
-        .editor-top { position: sticky; top: 0; background: var(--bg); z-index: 100; padding-bottom: 5px; border-bottom: 2px solid #333; }
-        
-        .preview-wrapper { width: 100%; display: flex; justify-content: center; padding: 10px 0; }
-        #preview-area { position: relative; border: 2px solid #444; overflow: hidden; }
-        canvas { display: block; width: 100%; height: 100%; position: relative; z-index: 2; }
-        
-        .canvas-bg-layer { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 1; }
-        .checker-base { background-image: linear-gradient(45deg, var(--checker) 25%, transparent 25%), linear-gradient(-45deg, var(--checker) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--checker) 75%), linear-gradient(-45deg, transparent 75%, var(--checker) 75%); background-size: 10px 10px; background-color: #222; }
-        .bg-red-fill { background-color: #ff0000; }
-        .bg-yellow-fill { background-color: #ffff00; }
-
-        .editor-scroll { flex: 1; overflow-y: auto; padding: 10px; padding-bottom: 120px; }
-        .frame-row { display: flex; align-items: center; background: var(--card); margin-bottom: 10px; padding: 10px; border-radius: 8px; border: 1px solid #333; gap: 10px; }
-        .active-row { border-color: var(--primary) !important; background: #1a2a1a !important; }
-        
-        .frame-thumb-wrapper { width: 60px; height: 60px; background: #000; border-radius: 4px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; border: 1px solid #444; }
-        .frame-thumb-wrapper img { max-width: 100%; max-height: 100%; z-index: 2; position: relative; }
-
-        .bg-opt { width: 24px; height: 24px; border-radius: 4px; border: 1px solid #666; cursor: pointer; }
-        .opt-none { background: #444; position: relative; }
-        .opt-none::after { content: ""; position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: red; transform: rotate(45deg); }
-        .opt-red { background: #ff0000; }
-        .opt-yellow { background: #ffff00; }
-        .bg-opt.selected { border: 2px solid white; outline: 1px solid var(--primary); }
-
-        .editor-footer { position: fixed; bottom: 0; left: 0; right: 0; background: #222; padding: 10px; display: flex; gap: 10px; border-top: 1px solid #444; z-index: 200; max-width: 500px; margin: 0 auto; }
-        
-        button { padding: 10px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; }
+        button { padding: 8px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; font-size: 13px; }
         .btn-blue { background: #2196F3; }
         .btn-green { background: var(--primary); }
         .btn-red { background: var(--accent); }
         .btn-gray { background: #444; }
-        .btn-orange { background: #FF9800; }
+
+        /* ダッシュボード */
+        .screen { display: none; height: 100vh; overflow-y: auto; padding: 15px; box-sizing: border-box; }
+        .active { display: block; }
+        .project-header { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
+        .stamp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
+        .stamp-card { background: var(--card); border-radius: 8px; padding: 8px; border: 1px solid #333; text-align: center; }
+        .stamp-card .thumb { width: 60px; height: 60px; margin: 0 auto 5px; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .stamp-card .thumb img { max-width: 100%; max-height: 100%; }
+
+        /* エディタ：コンパクトレイアウト */
+        .editor-container { display: flex; flex-direction: column; height: 100vh; max-width: 500px; margin: 0 auto; background: var(--bg); }
+        
+        .editor-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #1a1a1a; border-bottom: 1px solid #333; }
+        
+        /* プレビューエリアを小さく調整 */
+        .preview-section { background: #000; padding: 10px 0; display: flex; flex-direction: column; align-items: center; border-bottom: 1px solid #333; }
+        #preview-area { position: relative; border: 1px solid #444; width: 160px; height: 135px; background: #000; transform-origin: center; }
+        #main-canvas { width: 100%; height: 100%; position: relative; z-index: 2; }
+        
+        .canvas-bg-layer { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 1; }
+        .checker-base { background-image: linear-gradient(45deg, var(--checker) 25%, transparent 25%), linear-gradient(-45deg, var(--checker) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--checker) 75%), linear-gradient(-45deg, transparent 75%, var(--checker) 75%); background-size: 8px 8px; background-color: #222; }
+        .bg-red-fill { background-color: #ff0000; }
+        .bg-yellow-fill { background-color: #ffff00; }
+
+        /* リスト部分：高さをサムネイルに合わせる */
+        .editor-scroll { flex: 1; overflow-y: auto; padding: 5px 10px; background: #121212; }
+        .frame-row { display: flex; align-items: center; background: var(--card); margin-bottom: 4px; padding: 2px 8px; border-radius: 6px; border: 1px solid #333; height: 64px; gap: 8px; box-sizing: border-box; }
+        .active-row { border-color: var(--primary) !important; background: #1a2a1a !important; }
+        
+        .frame-thumb-wrapper { width: 56px; height: 56px; background: #000; border-radius: 4px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; border: 1px solid #444; }
+        .frame-thumb-wrapper img { max-width: 100%; max-height: 100%; z-index: 2; }
+
+        .frame-controls { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+        .bg-selector { display: flex; gap: 6px; }
+        .bg-opt { width: 20px; height: 20px; border-radius: 3px; border: 1px solid #555; }
+        .opt-none { background: #444; position: relative; }
+        .opt-none::after { content: ""; position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: red; transform: rotate(45deg); }
+        .opt-red { background: #f00; }
+        .opt-yellow { background: #ff0; }
+        .bg-opt.selected { border: 2px solid white; box-shadow: 0 0 4px var(--primary); }
+
+        .row-btns { display: flex; gap: 4px; }
+        .btn-mini { padding: 2px 6px; font-size: 10px; background: #555; }
+
+        .editor-footer { padding: 10px; background: #1a1a1a; display: flex; gap: 10px; border-top: 1px solid #333; }
     </style>
 </head>
 <body>
 
 <div id="project-screen" class="screen active">
-    <h2 style="text-align:center; color: var(--primary);">Studio Pro</h2>
+    <h3 style="text-align:center; color:var(--primary); margin:10px 0;">Studio Pro</h3>
     <div class="project-header">
-        <input type="text" id="project-name" value="my_stickers" style="background:#333; color:white; border:1px solid #444; padding:10px; border-radius:4px; width:94%; margin-bottom:15px;">
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
-            <button class="btn-gray" onclick="exportBackupZip()">バックアップZIP</button>
+        <input type="text" id="project-name" value="my_stickers" style="background:#333; color:white; border:1px solid #444; padding:8px; border-radius:4px; width:100%; box-sizing:border-box; margin-bottom:10px;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
+            <button class="btn-gray" onclick="exportBackupZip()">バックアップ</button>
             <button class="btn-blue" onclick="document.getElementById('load-zip').click()">復元</button>
-            <button class="btn-green" style="grid-column: span 2;" onclick="buildReleaseZip()">リリース用ZIP作成 (APNG)</button>
+            <button class="btn-green" style="grid-column: span 2;" onclick="buildReleaseZip()">リリース用ZIP作成</button>
         </div>
         <input type="file" id="load-zip" style="display:none" onchange="importBackupZip(this)">
     </div>
-    
-    <div class="section-label">メイン・タブ (Special)</div>
     <div id="special-grid" class="stamp-grid"></div>
-
-    <div class="section-label">アニメーションスタンプ (24枚)</div>
+    <div style="color:#888; font-size:12px; margin:15px 0 5px;">アニメーションスタンプ</div>
     <div id="stamp-grid" class="stamp-grid"></div>
 </div>
 
-<div id="editor-screen" class="screen" style="padding:0;">
+<div id="editor-screen" class="screen" style="padding:0; overflow:hidden;">
     <div class="editor-container">
-        <div class="editor-top">
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px;">
-                <button class="btn-gray" onclick="showDashboard()">戻る</button>
-                <div id="title-label" style="font-weight:bold;">Stamp 01</div>
-                <button class="btn-blue" id="bulk-btn" onclick="document.getElementById('bulk-upload').click()">一括↑</button>
+        <div class="editor-header">
+            <button class="btn-gray" onclick="showDashboard()">戻る</button>
+            <span id="title-label" style="font-size:14px; font-weight:bold;">Stamp 01</span>
+            <button class="btn-blue" id="bulk-btn" onclick="document.getElementById('bulk-upload').click()">一括↑</button>
+        </div>
+
+        <div class="preview-section">
+            <div id="preview-area" onclick="togglePreview()">
+                <div id="preview-bg-layer" class="canvas-bg-layer checker-base"></div>
+                <canvas id="main-canvas"></canvas>
             </div>
-            <div class="preview-wrapper">
-                <div id="preview-area" onclick="togglePreview()">
-                    <div id="preview-bg-layer" class="canvas-bg-layer checker-base"></div>
-                    <canvas id="main-canvas"></canvas>
-                </div>
-            </div>
-            <div style="text-align:center; font-weight:bold; color:var(--primary); margin-bottom:5px;">
-                Frame: <span id="current-frame-num">1</span> / <span id="max-frame-num">20</span>
-            </div>
-            <div id="speed-ctrl" style="display:flex; justify-content:center; gap:25px; padding:8px; background:rgba(255,255,255,0.05);">
-                <label><input type="radio" name="speed" value="100" checked onchange="setSpeed(100)"> 0.1秒</label>
-                <label><input type="radio" name="speed" value="200" onchange="setSpeed(200)"> 0.2秒</label>
+            <div style="font-size:11px; margin-top:5px; color:#aaa;">
+                Frame: <span id="current-frame-num">1</span> / <span id="max-frame-num">20</span> | 
+                <label><input type="radio" name="speed" value="100" checked onchange="setSpeed(100)"> 0.1s</label>
+                <label><input type="radio" name="speed" value="200" onchange="setSpeed(200)"> 0.2s</label>
             </div>
         </div>
+
         <div id="frame-list-scroll" class="editor-scroll"></div>
+
         <div class="editor-footer">
-            <button class="btn-green" style="flex:2;" onclick="exportSingleImage()">APNGを生成して保存</button>
+            <button class="btn-green" style="flex:2;" onclick="exportSingleImage()">APNG保存</button>
             <button class="btn-red" style="flex:1;" onclick="clearAllFrames()">全消去</button>
         </div>
     </div>
@@ -115,16 +112,15 @@
 </div>
 
 <script>
-    // --- Data Management ---
     const CONFIG = { stamp: { w: 320, h: 270, maxF: 20 }, main: { w: 240, h: 240, maxF: 20 }, tab: { w: 96, h: 74, maxF: 1 } };
-    let project = { 
-        name: "my_stickers", 
-        main: { delay: 100, buffers: new Array(20).fill(null), bgSettings: new Array(20).fill('none') },
-        tab: { delay: 100, buffers: new Array(1).fill(null), bgSettings: new Array(1).fill('none') },
-        stamps: {} 
-    };
+    let project = { name: "my_stickers", main: createData('main'), tab: createData('tab'), stamps: {} };
     let currentId = "01", currentType = "stamp", isPlaying = false, previewTimer = null, currentIdx = 0;
-    const urlCache = new Map(); // サムネイル「？」対策：一度作ったURLを再利用
+    const urlCache = new Map();
+
+    function createData(type) {
+        const max = CONFIG[type].maxF;
+        return { delay: 100, buffers: new Array(max).fill(null), bgSettings: new Array(max).fill('none') };
+    }
 
     function getSafeUrl(buf) {
         if (!buf) return '';
@@ -137,49 +133,37 @@
     const mainCanvas = document.getElementById('main-canvas');
     const mainCtx = mainCanvas.getContext('2d');
 
-    // --- Dashboard logic ---
     function initProject() {
-        // Special
         const sg = document.getElementById('special-grid'); sg.innerHTML = '';
-        renderCard(sg, 'main', project.main, 'Main', 'badge-main');
-        renderCard(sg, 'tab', project.tab, 'Tab', 'badge-tab');
-        // Stamps
+        renderCard(sg, 'main', project.main, 'Main');
+        renderCard(sg, 'tab', project.tab, 'Tab');
+
         const g = document.getElementById('stamp-grid'); g.innerHTML = '';
         for (let i = 1; i <= 24; i++) {
             const id = String(i).padStart(2, '0');
-            if (!project.stamps[id]) project.stamps[id] = { delay: 100, buffers: new Array(20).fill(null), bgSettings: new Array(20).fill('none') };
+            if (!project.stamps[id]) project.stamps[id] = createData('stamp');
             renderCard(g, id, project.stamps[id], `#${id}`);
         }
     }
 
-    function renderCard(container, id, data, label, badgeClass) {
+    function renderCard(container, id, data, label) {
         const card = document.createElement('div');
         card.className = 'stamp-card';
         card.onclick = () => openEditor(id);
         const firstBuf = data.buffers.find(b => b !== null);
-        card.innerHTML = `
-            ${badgeClass ? `<div class="badge ${badgeClass}">${label}</div>` : ''}
-            <div class="thumb">${firstBuf ? `<img src="${getSafeUrl(firstBuf)}">` : ''}</div>
-            <div style="font-size:11px; color:#aaa;">${badgeClass ? 'Special' : label}</div>
-        `;
+        card.innerHTML = `<div class="thumb">${firstBuf ? `<img src="${getSafeUrl(firstBuf)}">` : ''}</div><div style="font-size:10px; color:#aaa;">${label}</div>`;
         container.appendChild(card);
     }
 
-    // --- Editor logic ---
     function openEditor(id) {
         currentId = id;
         currentType = (id === 'main') ? 'main' : (id === 'tab' ? 'tab' : 'stamp');
         const data = (currentType === 'stamp') ? project.stamps[id] : project[currentType];
         const conf = CONFIG[currentType];
 
-        document.getElementById('title-label').innerText = `${currentType.toUpperCase()} ${id}`;
+        document.getElementById('title-label').innerText = id.toUpperCase();
         mainCanvas.width = conf.w; mainCanvas.height = conf.h;
-        document.getElementById('preview-area').style.width = conf.w + "px";
-        document.getElementById('preview-area').style.height = conf.h + "px";
         document.getElementById('max-frame-num').innerText = conf.maxF;
-        
-        document.getElementById('bulk-btn').style.display = (currentType === 'tab') ? 'none' : 'inline-block';
-        document.getElementById('speed-ctrl').style.display = (currentType === 'tab') ? 'none' : 'flex';
         document.getElementsByName('speed').forEach(r => r.checked = (parseInt(r.value) === data.delay));
 
         renderFrameList();
@@ -191,36 +175,33 @@
     function renderFrameList() {
         const list = document.getElementById('frame-list-scroll'); list.innerHTML = '';
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
-        const max = CONFIG[currentType].maxF;
-
-        for (let i = 0; i < max; i++) {
-            const buf = data.buffers[i];
+        
+        data.buffers.forEach((buf, i) => {
             const bg = data.bgSettings[i];
             const row = document.createElement('div');
             row.className = `frame-row ${currentIdx === i ? 'active-row' : ''}`;
             row.id = `row-${i}`;
             row.innerHTML = `
-                <div style="font-size:10px; width:15px; color:#888;">${i+1}</div>
+                <div style="font-size:10px; width:12px; color:#666;">${i+1}</div>
                 <div class="frame-thumb-wrapper" onclick="uploadSingle(${i})">
                     <div class="canvas-bg-layer ${getBgClass(bg)}"></div>
-                    ${buf ? `<img src="${getSafeUrl(buf)}">` : '<span style="z-index:3; color:#444; font-size:18px;">+</span>'}
+                    ${buf ? `<img src="${getSafeUrl(buf)}">` : '<span style="color:#333">+</span>'}
                 </div>
-                <div style="flex-grow:1; display:flex; flex-direction:column; gap:6px;">
+                <div class="frame-controls">
                     <div class="bg-selector">
                         <div class="bg-opt opt-none ${bg==='none'?'selected':''}" onclick="setFrameBg(${i},'none')"></div>
                         <div class="bg-opt opt-red ${bg==='red'?'selected':''}" onclick="setFrameBg(${i},'red')"></div>
                         <div class="bg-opt opt-yellow ${bg==='yellow'?'selected':''}" onclick="setFrameBg(${i},'yellow')"></div>
-                        <span style="font-size:10px; color:#888;">背景色</span>
                     </div>
-                    <div style="display:flex; gap:5px;">
-                        <button class="btn-gray" style="padding:4px 8px; font-size:11px;" onclick="moveFrame(${i},-1)">↑</button>
-                        <button class="btn-gray" style="padding:4px 8px; font-size:11px;" onclick="moveFrame(${i},1)">↓</button>
-                        <button class="btn-red" style="padding:4px 8px; font-size:11px;" onclick="deleteFrame(${i})">削除</button>
+                    <div class="row-btns">
+                        <button class="btn-mini" onclick="moveFrame(${i},-1)">↑</button>
+                        <button class="btn-mini" onclick="moveFrame(${i},1)">↓</button>
+                        <button class="btn-mini" style="background:#844" onclick="deleteFrame(${i})">消</button>
                     </div>
                 </div>
             `;
             list.appendChild(row);
-        }
+        });
     }
 
     function getBgClass(type) {
@@ -233,14 +214,15 @@
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
         data.bgSettings[idx] = color;
         renderFrameList();
-        if(!isPlaying) updatePreview(idx);
+        updatePreview(idx);
     }
 
     async function handleBulkUpload(input) {
         const files = Array.from(input.files).sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
-        const max = CONFIG[currentType].maxF;
-        for (let i = 0; i < Math.min(files.length, max); i++) data.buffers[i] = await processImage(files[i]);
+        for (let i = 0; i < Math.min(files.length, data.buffers.length); i++) {
+            data.buffers[i] = await processImage(files[i]);
+        }
         input.value = ''; renderFrameList(); updatePreview(0);
     }
 
@@ -267,7 +249,9 @@
                     const c = cvs.getContext('2d');
                     const scale = Math.min(conf.w/img.width, conf.h/img.height);
                     c.drawImage(img, (conf.w-img.width*scale)/2, (conf.h-img.height*scale)/2, img.width*scale, img.height*scale);
-                    resolve(c.getImageData(0,0,conf.w,conf.h).data.buffer);
+                    const buf = c.getImageData(0,0,conf.w,conf.h).data.buffer;
+                    getSafeUrl(buf); // 事前にURL化してキャッシュ
+                    resolve(buf);
                 };
                 img.src = e.target.result;
             };
@@ -326,28 +310,18 @@
         
         document.getElementById('current-frame-num').innerText = idx + 1;
         document.querySelectorAll('.frame-row').forEach(el => el.classList.remove('active-row'));
-        const activeRow = document.getElementById(`row-${idx}`);
-        if (activeRow) activeRow.classList.add('active-row');
+        const row = document.getElementById(`row-${idx}`);
+        if(row) row.classList.add('active-row');
     }
 
     async function exportSingleImage() {
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
         const activeBuffers = data.buffers.filter(b => b !== null);
         if (activeBuffers.length === 0) return alert("画像がありません");
-        
         const apng = UPNG.encode(activeBuffers, mainCanvas.width, mainCanvas.height, 256, new Array(activeBuffers.length).fill(data.delay));
-        if (apng.byteLength > 1024 * 1024) alert("警告: 1MBを超えています。");
         saveBlob(new Blob([apng], {type:'image/png'}), `${currentId}.png`);
     }
 
-    function showDashboard() {
-        if(isPlaying) togglePreview();
-        document.getElementById('editor-screen').classList.remove('active');
-        document.getElementById('project-screen').classList.add('active');
-        initProject();
-    }
-
-    // --- ZIP & Backup ---
     async function buildReleaseZip() {
         const zip = new JSZip(); let count = 0;
         const process = (id, d, w, h) => {
@@ -360,7 +334,6 @@
         process('main', project.main, 240, 240);
         process('tab', project.tab, 96, 74);
         for(let id in project.stamps) process(id, project.stamps[id], 320, 270);
-        
         if(count === 0) return alert("画像がありません");
         saveBlob(await zip.generateAsync({type:"blob"}), `RELEASE_${project.name}.zip`);
     }
@@ -393,6 +366,13 @@
             }
         }
         initProject(); alert("復元しました");
+    }
+
+    function showDashboard() {
+        if(isPlaying) togglePreview();
+        document.getElementById('editor-screen').classList.remove('active');
+        document.getElementById('project-screen').classList.add('active');
+        initProject();
     }
 
     function saveBlob(blob, name) {
