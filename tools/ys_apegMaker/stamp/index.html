@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Studio Pro - Final Reliable Edition</title>
+    <title>Studio Pro - Professional Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/1.0.11/pako.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.min.js"></script>
     <style>
@@ -25,7 +26,7 @@
         .stamp-card .thumb { width: 60px; height: 60px; margin: 0 auto 5px; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #444; }
         .stamp-card .thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
-        /* エディタ：上部固定レイアウト */
+        /* エディタ */
         .editor-container { display: flex; flex-direction: column; height: 100vh; max-width: 500px; margin: 0 auto; background: var(--bg); }
         .sticky-top { background: #1a1a1a; border-bottom: 2px solid #333; z-index: 100; flex-shrink: 0; }
         .editor-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; }
@@ -38,30 +39,26 @@
         .bg-red-fill { background-color: #ff0000; }
         .bg-yellow-fill { background-color: #ffff00; }
 
-        .action-bar { display: flex; gap: 8px; padding: 8px 12px; background: #222; justify-content: center; border-bottom: 1px solid #333; }
+        .action-bar { display: flex; gap: 8px; padding: 8px 12px; background: #222; border-bottom: 1px solid #333; }
 
-        /* フレームリスト（修正版） */
         .editor-scroll { flex: 1; overflow-y: auto; padding: 5px 10px; background: #121212; }
         .frame-row { display: flex; align-items: center; background: var(--card); margin-bottom: 4px; padding: 0 10px; border-radius: 6px; border: 1px solid #333; height: 60px; gap: 10px; box-sizing: border-box; }
         .active-row { border-color: var(--primary) !important; background: #1a2a1a !important; }
         
         .frame-num { font-size: 11px; color: #666; width: 15px; font-weight: bold; }
-        .frame-thumb-wrapper { width: 48px; height: 48px; background: #000; border-radius: 4px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; border: 1px solid #444; cursor: pointer; }
+        .frame-thumb-wrapper { width: 48px; height: 48px; background: #000; border-radius: 4px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; border: 1px solid #444; }
         .frame-thumb-wrapper img { max-width: 100%; max-height: 100%; z-index: 2; }
 
-        /* 背景色選択 */
         .bg-selector { display: flex; gap: 4px; }
         .bg-opt { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; cursor: pointer; }
         .opt-none { background: #444; position: relative; }
         .opt-none::after { content: ""; position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: red; transform: rotate(45deg); }
         .opt-red { background: #f00; }
         .opt-yellow { background: #ff0; }
-        .bg-opt.selected { border: 1px solid white; outline: 1px solid var(--primary); }
+        .bg-opt.selected { border: 1px solid white; box-shadow: 0 0 3px var(--primary); }
 
-        /* 右側に配置するボタン群 */
         .row-actions-right { margin-left: auto; display: flex; gap: 4px; }
-        .btn-mini { padding: 4px 8px; font-size: 11px; background: #444; min-width: 30px; }
-        .btn-mini-red { background: #633; color: #f99; }
+        .btn-mini { padding: 4px 8px; font-size: 11px; background: #444; }
     </style>
 </head>
 <body>
@@ -73,12 +70,12 @@
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
             <button class="btn-gray" onclick="exportBackupZip()">バックアップ</button>
             <button class="btn-blue" onclick="document.getElementById('load-zip').click()">復元</button>
-            <button class="btn-green" style="grid-column: span 2;" onclick="buildReleaseZip()">リリース用ZIP作成 (APNG)</button>
+            <button class="btn-green" style="grid-column: span 2;" onclick="buildReleaseZip()">リリース用ZIP（全APNG）生成</button>
         </div>
         <input type="file" id="load-zip" style="display:none" onchange="importBackupZip(this)">
     </div>
     <div id="special-grid" class="stamp-grid"></div>
-    <div style="color:#888; font-size:12px; margin:15px 0 5px;">アニメーションスタンプ (24枚)</div>
+    <div style="color:#888; font-size:12px; margin:15px 0 5px;">アニメーションスタンプ</div>
     <div id="stamp-grid" class="stamp-grid"></div>
 </div>
 
@@ -88,7 +85,7 @@
             <div class="editor-header">
                 <button class="btn-gray" onclick="showDashboard()">戻る</button>
                 <span id="title-label" style="font-size:14px; font-weight:bold;">STAMP</span>
-                <button class="btn-blue" id="bulk-btn" onclick="document.getElementById('bulk-upload').click()">一括↑</button>
+                <button class="btn-blue" onclick="document.getElementById('bulk-upload').click()">一括↑</button>
             </div>
             <div class="preview-section">
                 <div id="preview-area" onclick="togglePreview()">
@@ -97,11 +94,11 @@
                 </div>
             </div>
             <div class="action-bar">
-                <button id="save-apng-btn" class="btn-green" style="flex:2;" onclick="exportSingleImage()">APNGを生成して保存</button>
+                <button class="btn-green" style="flex:2;" onclick="exportSingleAPNG()">このAPNGを生成して保存</button>
                 <button class="btn-red" style="flex:1;" onclick="clearAllFrames()">全消去</button>
             </div>
             <div style="font-size:11px; padding:5px; text-align:center; color:#aaa; background:#111;">
-                Frame: <span id="current-frame-num" style="color:var(--primary); font-weight:bold;">1</span> / <span id="max-frame-num">20</span> | 
+                Frame: <span id="current-frame-num">1</span> / <span id="max-frame-num">20</span> | 
                 <label><input type="radio" name="speed" value="100" checked onchange="setSpeed(100)"> 0.1s</label>
                 <label><input type="radio" name="speed" value="200" onchange="setSpeed(200)"> 0.2s</label>
             </div>
@@ -116,23 +113,20 @@
     let project = { name: "my_stickers", main: createData('main'), tab: createData('tab'), stamps: {} };
     let currentId = "01", currentType = "stamp", isPlaying = false, previewTimer = null, currentIdx = 0;
     
-    // サムネイル「？」対策：Blob URLを維持するマップ
-    const blobUrlMap = new WeakMap(); 
+    // サムネイル表示のための永続URLストア
+    const thumbUrls = new Map();
 
     function createData(type) {
         const max = CONFIG[type].maxF;
         return { delay: 100, buffers: new Array(max).fill(null), bgSettings: new Array(max).fill('none') };
     }
 
-    // 安定してURLを取得する関数
-    function getSafeUrl(buffer) {
-        if (!buffer) return '';
-        // ArrayBufferをキーにしてURLを管理
-        if (!buffer._blobUrl) {
-            const blob = new Blob([buffer], {type:'image/png'});
-            buffer._blobUrl = URL.createObjectURL(blob);
-        }
-        return buffer._blobUrl;
+    function getThumbUrl(buf) {
+        if (!buf) return '';
+        if (thumbUrls.has(buf)) return thumbUrls.get(buf);
+        const url = URL.createObjectURL(new Blob([buf], {type:'image/png'}));
+        thumbUrls.set(buf, url);
+        return url;
     }
 
     const mainCanvas = document.getElementById('main-canvas');
@@ -155,13 +149,13 @@
         card.className = 'stamp-card';
         card.onclick = () => openEditor(id);
         const firstBuf = data.buffers.find(b => b !== null);
-        card.innerHTML = `<div class="thumb">${firstBuf ? `<img src="${getSafeUrl(firstBuf)}">` : ''}</div><div style="font-size:10px; color:#aaa;">${label}</div>`;
+        card.innerHTML = `<div class="thumb">${firstBuf ? `<img src="${getThumbUrl(firstBuf)}">` : ''}</div><div style="font-size:10px; color:#aaa;">${label}</div>`;
         container.appendChild(card);
     }
 
     function openEditor(id) {
         currentId = id;
-        currentType = (id === 'main') ? 'main' : (id === 'tab' ? 'tab' : 'stamp');
+        currentType = (id === 'main' || id === 'tab') ? id : 'stamp';
         const data = (currentType === 'stamp') ? project.stamps[id] : project[currentType];
         
         document.getElementById('title-label').innerText = id.toUpperCase();
@@ -189,7 +183,7 @@
                 <div class="frame-num">${i+1}</div>
                 <div class="frame-thumb-wrapper" onclick="uploadSingle(${i})">
                     <div class="canvas-bg-layer ${getBgClass(bg)}"></div>
-                    ${buf ? `<img src="${getSafeUrl(buf)}">` : '<span style="color:#444; font-size:18px;">+</span>'}
+                    ${buf ? `<img src="${getThumbUrl(buf)}">` : '<span style="color:#444;">+</span>'}
                 </div>
                 <div class="bg-selector">
                     <div class="bg-opt opt-none ${bg==='none'?'selected':''}" onclick="setFrameBg(${i},'none')"></div>
@@ -199,7 +193,7 @@
                 <div class="row-actions-right">
                     <button class="btn-mini" onclick="moveFrame(${i},-1)">↑</button>
                     <button class="btn-mini" onclick="moveFrame(${i},1)">↓</button>
-                    <button class="btn-mini btn-mini-red" onclick="deleteFrame(${i})">削</button>
+                    <button class="btn-mini" style="color:#f77" onclick="deleteFrame(${i})">削</button>
                 </div>
             `;
             list.appendChild(row);
@@ -207,16 +201,13 @@
     }
 
     function getBgClass(type) {
-        if(type === 'red') return 'bg-red-fill';
-        if(type === 'yellow') return 'bg-yellow-fill';
-        return 'checker-base';
+        return type === 'red' ? 'bg-red-fill' : type === 'yellow' ? 'bg-yellow-fill' : 'checker-base';
     }
 
     function setFrameBg(idx, color) {
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
         data.bgSettings[idx] = color;
-        renderFrameList();
-        updatePreview(idx);
+        renderFrameList(); updatePreview(idx);
     }
 
     async function handleBulkUpload(input) {
@@ -274,7 +265,7 @@
     }
 
     function clearAllFrames() {
-        if(!confirm("現在の全フレームを削除しますか？")) return;
+        if(!confirm("削除しますか？")) return;
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
         data.buffers.fill(null); renderFrameList(); updatePreview(0);
     }
@@ -311,26 +302,28 @@
         if(row) row.classList.add('active-row');
     }
 
-    // --- APNG生成（確実に動作するよう修正） ---
-    async function exportSingleImage() {
+    // --- エディタ側：単体APNG生成 ---
+    async function exportSingleAPNG() {
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
-        const activeBuffers = data.buffers.filter(b => b !== null);
-        if (activeBuffers.length === 0) return alert("画像がありません");
-        
+        const bufs = data.buffers.filter(b => b !== null);
+        if (bufs.length === 0) return alert("画像がありません");
         try {
-            const apng = UPNG.encode(activeBuffers, mainCanvas.width, mainCanvas.height, 256, new Array(activeBuffers.length).fill(data.delay));
+            // pakoが読み込まれていることで失敗を回避
+            const apng = UPNG.encode(bufs, mainCanvas.width, mainCanvas.height, 256, new Array(bufs.length).fill(data.delay));
             saveBlob(new Blob([apng], {type:'image/png'}), `${currentId}.png`);
         } catch (e) {
-            alert("APNGの生成に失敗しました: " + e.message);
+            console.error(e);
+            alert("APNG生成失敗: " + e.message);
         }
     }
 
+    // --- ダッシュボード側：一括生成 ---
     async function buildReleaseZip() {
         const zip = new JSZip(); let count = 0;
         const process = (id, d, w, h) => {
             const bufs = d.buffers.filter(b => b);
             if(bufs.length > 0) {
-                const out = (id==='tab')?UPNG.encode(bufs,w,h,256):UPNG.encode(bufs,w,h,256,new Array(bufs.length).fill(d.delay));
+                const out = (id==='tab') ? UPNG.encode(bufs,w,h,256) : UPNG.encode(bufs,w,h,256,new Array(bufs.length).fill(d.delay));
                 zip.file(`${id}.png`, out); count++;
             }
         };
@@ -368,7 +361,7 @@
                 target.buffers[parseInt(file)] = await zip.files[path].async("arraybuffer");
             }
         }
-        initProject(); alert("復元しました");
+        initProject(); alert("復元完了");
     }
 
     function showDashboard() {
