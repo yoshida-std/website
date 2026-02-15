@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Studio Pro - Stable Compression</title>
+    <title>Studio Pro - Stable Final</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/1.0.11/pako.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.min.js"></script>
@@ -18,25 +18,29 @@
 
         .screen { display: none; height: 100vh; overflow-y: auto; padding: 15px; box-sizing: border-box; }
         .active { display: block; }
+
+        /* ダッシュボード */
         .project-header { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
         .stamp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
-        .stamp-card { background: var(--card); border-radius: 8px; padding: 8px; border: 1px solid #333; text-align: center; }
+        .stamp-card { background: var(--card); border-radius: 8px; padding: 8px; border: 1px solid #333; text-align: center; cursor: pointer; }
         .stamp-card .thumb { width: 60px; height: 60px; margin: 0 auto 5px; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #444; }
         .stamp-card img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
+        /* エディタ */
         .editor-container { display: flex; flex-direction: column; height: 100vh; max-width: 500px; margin: 0 auto; }
-        .sticky-top { background: #1a1a1a; border-bottom: 2px solid #333; flex-shrink: 0; z-index: 100; }
+        .sticky-top { background: #1a1a1a; border-bottom: 2px solid #333; flex-shrink: 0; }
         .preview-section { padding: 10px 0; display: flex; flex-direction: column; align-items: center; background: #000; }
         #preview-area { position: relative; width: 140px; height: 118px; border: 1px solid #444; }
         #main-canvas { width: 100%; height: 100%; position: relative; z-index: 2; }
         .canvas-bg-layer { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 1; }
         .checker-base { background-image: linear-gradient(45deg, var(--checker) 25%, transparent 25%), linear-gradient(-45deg, var(--checker) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--checker) 75%), linear-gradient(-45deg, transparent 75%, var(--checker) 75%); background-size: 8px 8px; background-color: #222; }
 
-        .action-bar { display: flex; gap: 8px; padding: 10px; background: #222; }
+        .action-bar { display: flex; gap: 8px; padding: 10px; background: #222; border-bottom: 1px solid #333; }
         .editor-scroll { flex: 1; overflow-y: auto; padding: 5px 10px; background: #121212; }
         
+        /* フレームリスト: ボタンを右側に集約 */
         .frame-row { display: flex; align-items: center; background: var(--card); margin-bottom: 4px; padding: 0 10px; border-radius: 6px; border: 1px solid #333; height: 60px; }
-        .active-row { border-color: var(--primary); background: #1a2a1a; }
+        .active-row { border-color: var(--primary) !important; background: #1a2a1a !important; }
         .row-actions-right { margin-left: auto; display: flex; gap: 5px; }
         .btn-mini { padding: 4px 8px; font-size: 11px; background: #444; }
         .frame-thumb { width: 48px; height: 48px; background: #000; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; border: 1px solid #444; margin: 0 10px; }
@@ -47,16 +51,17 @@
 
 <div id="project-screen" class="screen active">
     <div class="project-header">
-        <input type="text" id="project-name" value="stickers_v3" style="background:#333; color:white; border:1px solid #444; padding:8px; border-radius:4px; width:100%; margin-bottom:10px;">
+        <input type="text" id="project-name" value="my_stamp_project" style="background:#333; color:white; border:1px solid #444; padding:8px; border-radius:4px; width:100%; margin-bottom:10px;">
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
             <button class="btn-gray" onclick="exportBackupZip()">バックアップ</button>
             <button class="btn-blue" onclick="document.getElementById('load-zip').click()">復元</button>
-            <button class="btn-green" style="grid-column: span 2;" onclick="buildReleaseZip()">リリース用ZIP作成 (圧縮あり)</button>
+            <button class="btn-green" style="grid-column: span 2;" onclick="buildReleaseZip()">リリース用ZIP作成 (APNG圧縮)</button>
         </div>
         <input type="file" id="load-zip" style="display:none" onchange="importBackupZip(this)">
     </div>
     <div id="special-grid" class="stamp-grid"></div>
-    <div id="stamp-grid" class="stamp-grid" style="margin-top:15px;"></div>
+    <div style="margin:15px 0 5px; font-size:12px; color:#888; text-align:center;">スタンプリスト</div>
+    <div id="stamp-grid" class="stamp-grid"></div>
 </div>
 
 <div id="editor-screen" class="screen" style="padding:0; overflow:hidden;">
@@ -76,9 +81,6 @@
             <div class="action-bar">
                 <button class="btn-green" style="flex:2;" onclick="exportSingleAPNG()">APNGを生成して保存</button>
                 <button class="btn-red" style="flex:1;" onclick="clearAllFrames()">全消去</button>
-            </div>
-            <div style="font-size:11px; text-align:center; padding:5px; background:#111; color:#aaa;">
-                LINE COMPATIBLE MODE: 256 Colors + Pako Compression
             </div>
         </div>
         <div id="frame-list-scroll" class="editor-scroll"></div>
@@ -194,9 +196,9 @@
         input.click();
     }
 
-    // --- 【重要】圧縮を有効にしたLINE成功バージョンのエンコード ---
+    // --- 安定版の圧縮ロジック ---
     function encodeApng(bufs, w, h, delay) {
-        // 第4引数を「256」に指定することで、パレット圧縮とPakoによるdeflateが有効になります
+        // LINE成功時の設定: 256色パレット + Pako圧縮
         return UPNG.encode(bufs, w, h, 256, new Array(bufs.length).fill(delay));
     }
 
@@ -205,8 +207,7 @@
         const validBufs = data.buffers.filter(b => b);
         if (validBufs.length === 0) return alert("画像なし");
         try {
-            const conf = CONFIG[currentType];
-            const out = (currentType === 'tab') ? UPNG.encode([validBufs[0]], conf.w, conf.h, 256) : encodeApng(validBufs, conf.w, conf.h, data.delay);
+            const out = encodeApng(validBufs, CONFIG[currentType].w, CONFIG[currentType].h, data.delay);
             saveBlob(new Blob([out], {type:'image/png'}), `${currentId}.png`);
         } catch (e) { alert("生成失敗"); }
     }
@@ -215,17 +216,14 @@
         const zip = new JSZip();
         const add = (id, d, w, h) => {
             const b = d.buffers.filter(x => x);
-            if(b.length > 0) {
-                const out = (id === 'tab') ? UPNG.encode([b[0]], w, h, 256) : encodeApng(b, w, h, d.delay);
-                zip.file(`${id}.png`, out);
-            }
+            if(b.length > 0) zip.file(`${id}.png`, encodeApng(b, w, h, d.delay));
         };
         add('main', project.main, 240, 240); add('tab', project.tab, 96, 74);
         for(let id in project.stamps) add(id, project.stamps[id], 320, 270);
-        saveBlob(await zip.generateAsync({type:"blob"}), `RELEASE_COMPRESSED.zip`);
+        saveBlob(await zip.generateAsync({type:"blob"}), `RELEASE_${document.getElementById('project-name').value}.zip`);
     }
 
-    // --- その他UI操作 ---
+    // --- 各種操作 ---
     function moveFrame(i, d) {
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
         const t = i + d; if (t < 0 || t >= data.buffers.length) return;
@@ -238,6 +236,7 @@
         data.buffers[i] = null; data.urls[i] = null; renderFrameList(); updatePreview(i);
     }
     function clearAllFrames() {
+        if(!confirm("消去しますか？")) return;
         const data = (currentType === 'stamp') ? project.stamps[currentId] : project[currentType];
         data.buffers.fill(null); data.urls.fill(null); renderFrameList(); updatePreview(0);
     }
@@ -255,6 +254,8 @@
         isPlaying = true; let s = 0;
         previewTimer = setInterval(() => { updatePreview(v[s]); s = (s + 1) % v.length; }, data.delay);
     }
+
+    // --- バックアップ・復元 ---
     async function exportBackupZip() {
         const zip = new JSZip(); const root = zip.folder(document.getElementById('project-name').value);
         const save = (id, d) => {
@@ -263,7 +264,7 @@
         };
         save('main', project.main); save('tab', project.tab);
         for(let id in project.stamps) save(id, project.stamps[id]);
-        saveBlob(await zip.generateAsync({type:"blob"}), `backup.zip`);
+        saveBlob(await zip.generateAsync({type:"blob"}), `${document.getElementById('project-name').value}_backup.zip`);
     }
     async function importBackupZip(input) {
         if(!input.files[0]) return;
@@ -281,6 +282,7 @@
         }
         initProject(); alert("復元完了");
     }
+
     function showDashboard() {
         if(isPlaying) togglePreview();
         document.getElementById('editor-screen').classList.remove('active');
