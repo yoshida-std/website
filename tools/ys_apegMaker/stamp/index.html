@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Studio Pro - Definitive Edition</title>
+    <title>Studio Pro - Ultimate Stabilized</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.min.js"></script>
     <style>
@@ -50,14 +50,14 @@
 <div id="start-screen" class="screen active">
     <div class="start-card">
         <h1 style="margin:0; color:var(--primary);">Studio Pro</h1>
-        <p style="color:#888; font-size:13px;">新規作成 または プロジェクト読込</p>
+        <p style="color:#888; font-size:13px;">新規作成 または ロード</p>
         <hr style="border:0; border-top:1px solid #333; margin:15px 0;">
         <input type="text" id="new-project-name" class="input-field" placeholder="プロジェクト名">
         <select id="profile-select" class="input-field">
             <option value="stamp">アニメーションスタンプ (320x270)</option>
             <option value="emoji">アニメーション絵文字 (180x180)</option>
         </select>
-        <button class="btn-blue" style="width:100%;" onclick="createNewProject()">新規作成</button>
+        <button class="btn-blue" style="width:100%;" onclick="createNewProject()">新規プロジェクト作成</button>
         <div style="margin:15px 0; color:#555; font-size:12px;">──────── OR ────────</div>
         <button class="btn-gray" style="width:100%;" onclick="document.getElementById('load-zip').click()">バックアップ読込 (.zip)</button>
         <input type="file" id="load-zip" style="display:none" onchange="importProjectZip(this)">
@@ -88,12 +88,11 @@
             </div>
             <div id="frame-info-bar" style="margin-top:5px; font-weight:bold; color:var(--primary); font-size:16px;">FRAME: 1</div>
         </div>
-        
         <div id="anim-controls">
             <div style="display:flex; gap:4px; justify-content:center; margin-bottom:8px;">
                 <button id="delay-100" class="btn-gray" onclick="setDelay(100)">0.1s</button>
                 <button id="delay-200" class="btn-gray" onclick="setDelay(200)">0.2s</button>
-                <button class="btn-orange" onclick="exportSingleAPNG()">個別APNG保存</button>
+                <button class="btn-orange" onclick="exportSingleAPNG()">個別保存</button>
             </div>
             <div style="display:flex; gap:4px; justify-content:center;">
                 <button class="btn-blue" onclick="document.getElementById('bulk-upload').click()">一括画像</button>
@@ -113,14 +112,22 @@
 
 <script>
     const PROFILES = {
-        stamp: { label: "スタンプ", slots: 24, stampW: 320, stampH: 270, hasMain: true },
-        emoji: { label: "絵文字", slots: 40, stampW: 180, stampH: 180, hasMain: false }
+        stamp: { slots: 24, stampW: 320, stampH: 270, hasMain: true },
+        emoji: { slots: 40, stampW: 180, stampH: 180, hasMain: false }
     };
 
     let project = { name: "", profile: "stamp", stamps: {} };
     let currentId = "", isPlaying = false, previewTimer = null, currentIdx = 0;
     const mainCanvas = document.getElementById('main-canvas');
     const mainCtx = mainCanvas.getContext('2d');
+
+    // 解像度を確実に取得するヘルパー
+    function getDim(id) {
+        if (id === 'main') return { w: 240, h: 240 };
+        if (id === 'tab') return { w: 96, h: 74 };
+        const p = PROFILES[project.profile] || PROFILES.stamp;
+        return { w: p.stampW, h: p.stampH };
+    }
 
     function createNewProject() {
         const name = document.getElementById('new-project-name').value.trim() || "my_project";
@@ -162,16 +169,10 @@
         container.appendChild(card);
     }
 
-    function getDim(id) {
-        if (id === 'main') return { w: 240, h: 240 };
-        if (id === 'tab') return { w: 96, h: 74 };
-        return { w: PROFILES[project.profile].stampW, h: PROFILES[project.profile].stampH };
-    }
-
     function openEditor(id) {
         currentId = id; const dim = getDim(id);
         mainCanvas.width = dim.w; mainCanvas.height = dim.h;
-        const scale = id === 'tab' ? 2 : (dim.w > 300 ? 0.7 : 1.2);
+        const scale = id === 'tab' ? 2 : (dim.w > 200 ? 0.8 : 1.2);
         mainCanvas.style.width = (dim.w * scale) + 'px'; mainCanvas.style.height = (dim.h * scale) + 'px';
         document.getElementById('anim-controls').style.display = (id === 'tab') ? 'none' : 'block';
         document.getElementById('tab-controls').style.display = (id === 'tab') ? 'block' : 'none';
@@ -196,7 +197,7 @@
             const dbg = sData.debugBgs[i] || 'debug-none';
             const div = document.createElement('div'); div.className = 'frame-item';
             div.innerHTML = `
-                <div style="font-weight:bold; color:var(--primary); width:18px; font-size:12px;">${i+1}</div>
+                <div style="font-weight:bold; color:var(--primary); width:18px;">${i+1}</div>
                 <div class="list-thumb transparent-bg ${dbg}" onclick="document.getElementById('file-${i}').click()">
                     ${thumbSrc ? `<img src="${thumbSrc}">` : ''}
                 </div>
@@ -237,6 +238,7 @@
         } else { clearInterval(previewTimer); }
     }
 
+    // --- APNG Load & Resize (Core Fix) ---
     async function handleApngImport(input) {
         const file = input.files[0]; if (!file) return;
         const reader = new FileReader();
@@ -247,7 +249,8 @@
                 const dim = getDim(currentId);
                 project.stamps[currentId].buffers = new Array(20).fill(null);
                 for (let i = 0; i < frames.length && i < 20; i++) {
-                    project.stamps[currentId].buffers[i] = await processRawToBuffer(new Uint8Array(frames[i]), img.width, img.height, dim.w, dim.h);
+                    const raw = new Uint8ClampedArray(frames[i]);
+                    project.stamps[currentId].buffers[i] = await processRawToBuffer(raw, img.width, img.height, dim.w, dim.h);
                 }
                 renderEditorLists(); updateStaticPreview(0);
                 alert("APNG読込完了");
@@ -272,14 +275,15 @@
             const activeBuffers = project.stamps[currentId].buffers.filter(b => b !== null);
             if (activeBuffers.length === 0) return;
             const dim = getDim(currentId);
-            const frames = activeBuffers.map(b => new Uint8Array(b));
+            const frames = activeBuffers.map(b => new Uint8Array(b).buffer); // 物理コピーを渡す
             const deltas = new Array(frames.length).fill(project.stamps[currentId].delay);
             const apngData = UPNG.encode(frames, dim.w, dim.h, 0, deltas);
             const blob = new Blob([apngData], { type: "image/png" });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${currentId}.png`; a.click();
-        } catch (e) { alert("保存に失敗しました"); }
+        } catch (e) { alert("保存失敗: フレームデータを確認してください"); }
     }
 
+    // --- Others ---
     async function loadSingle(i, input) { if (!input.files[0]) return; project.stamps[currentId].buffers[i] = await processImage(input.files[0], getDim(currentId)); renderEditorLists(); updateStaticPreview(i); }
     function setDebugBg(i, c) { project.stamps[currentId].debugBgs[i] = c; renderEditorLists(); updateStaticPreview(currentIdx); }
     function setDelay(ms) { project.stamps[currentId].delay = ms; updateDelayUI(); }
@@ -296,7 +300,7 @@
         const zip = new JSZip();
         zip.file("project.json", JSON.stringify(project, (k,v) => v instanceof ArrayBuffer ? Array.from(new Uint8Array(v)) : v));
         const blob = await zip.generateAsync({type:"blob"});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${project.name}_${getTS()}.zip`; a.click();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${project.name}_backup.zip`; a.click();
     }
 
     async function importProjectZip(input) {
@@ -308,9 +312,7 @@
                 data.stamps[id].buffers = data.stamps[id].buffers.map(b => b ? new Uint8Array(b).buffer : null);
             }
             project = data;
-            // プロファイルUIを強制同期
-            const pSel = document.getElementById('profile-select');
-            if(pSel) pSel.value = project.profile;
+            document.getElementById('profile-select').value = project.profile;
             startApp();
             alert("ロード完了");
         } catch (e) { alert("ロード失敗"); }
@@ -322,7 +324,7 @@
             const active = project.stamps[id].buffers.filter(b => b !== null);
             if (active.length === 0) continue;
             const dim = getDim(id);
-            const frames = active.map(b => new Uint8Array(b));
+            const frames = active.map(b => new Uint8Array(b).buffer);
             zip.file(`${id}.png`, UPNG.encode(frames, dim.w, dim.h, 0, new Array(frames.length).fill(project.stamps[id].delay)));
         }
         const blob = await zip.generateAsync({type:"blob"});
