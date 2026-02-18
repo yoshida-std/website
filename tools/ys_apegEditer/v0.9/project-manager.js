@@ -174,6 +174,12 @@ async function importProjectZip(input) {
             if (!idMatch) continue;
             
             const id = idMatch[1].toLowerCase();
+    
+            // 【修正箇所】3桁の数字(001など)を2桁(01)に変換して内部IDと合わせる
+            if (project.profile === 'emoji' && id.length === 3 && !isNaN(id)) {
+                id = id.substring(1); // 先頭の"0"を削る
+            }
+            
             if (!project.stamps[id]) continue;
 
             const buf = await zip.file(fName).async("arraybuffer");
@@ -203,4 +209,5 @@ function showDashboard() {
     document.getElementById('editor-screen').classList.remove('active'); 
     document.getElementById('project-screen').classList.add('active'); 
     initProject(); 
+
 }
