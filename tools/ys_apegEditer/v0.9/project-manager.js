@@ -209,5 +209,4 @@ function showDashboard() {
     document.getElementById('editor-screen').classList.remove('active'); 
     document.getElementById('project-screen').classList.add('active'); 
     initProject(); 
-
 }
