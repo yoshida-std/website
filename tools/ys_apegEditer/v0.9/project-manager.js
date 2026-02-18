@@ -173,7 +173,7 @@ async function importProjectZip(input) {
             const idMatch = fName.match(/^([a-z0-9]+)\.png$/i);
             if (!idMatch) continue;
             
-            const id = idMatch[1].toLowerCase();
+            let id = idMatch[1].toLowerCase();
 
             // 【修正箇所】3桁の数字(001など)を2桁(01)に変換して内部IDと合わせる
             if (project.profile === 'emoji' && id.length === 3 && !isNaN(id)) {
@@ -210,3 +210,4 @@ function showDashboard() {
     document.getElementById('project-screen').classList.add('active'); 
     initProject(); 
 }
+
