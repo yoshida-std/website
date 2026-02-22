@@ -22,7 +22,7 @@ function applyProfile(mode) {
     project.profile = mode;
     // モードによってstampの定義を上書き
     CONFIG.stamp = (mode === 'emoji') 
-        ? { w: 180, h: 180, maxF: 40, label: "Emoji" } 
+        ? { w: 180, h: 180, maxF: 20, label: "Emoji" } 
         : { w: 320, h: 270, maxF: 20, label: "Stamp" };
 
     document.getElementById('setup-screen').style.display = 'none';
@@ -210,4 +210,5 @@ function showDashboard() {
     document.getElementById('project-screen').classList.add('active'); 
     initProject(); 
 }
+
 
