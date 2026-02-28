@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TileCraft</title>
+    <style>
+        :root { --accent: #2dd4bf; --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --blue: #3b82f6; }
+        body { 
+            font-family: 'Inter', -apple-system, sans-serif; background-color: var(--bg); color: var(--text); 
+            display: flex; flex-direction: column; align-items: center; padding: 20px 15px; margin: 0; 
+            touch-action: manipulation;
+        }
+        .header { text-align: center; margin-bottom: 20px; width: 100%; }
+        .header h1 { margin: 0; font-size: 2.2rem; font-weight: 800; background: linear-gradient(to right, var(--accent), var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header p { font-size: 0.7rem; color: #94a3b8; margin-top: 5px; letter-spacing: 0.1em; }
+        
+        .card { background: var(--card); width: 100%; max-width: 400px; border-radius: 20px; border: 1px solid #334155; padding: 20px; margin-bottom: 20px; box-sizing: border-box; }
+        .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-weight: 600; color: #e2e8f0; font-size: 0.9rem; }
+        
+        input[type="file"] { font-size: 0.8rem; color: #94a3b8; width: 100%; padding: 10px; background: #0f172a; border-radius: 8px; border: 1px solid #334155; box-sizing: border-box; }
+        
+        .btn { 
+            background-color: var(--accent); color: #0f172a; border: none; width: 100%; height: 55px; 
+            border-radius: 14px; font-weight: 700; cursor: pointer; transition: 0.2s; font-size: 1rem; margin-top: 10px; 
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn:disabled { background-color: #334155; color: #64748b; cursor: not-allowed; }
+        .btn-save-all { background-color: var(--blue); color: white; display: none; }
+        
+        .grid-container { 
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 20px; 
+            width: 100%; display: none;
+        }
+        .tile-wrapper { 
+            position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #334155;
+            background-image: conic-gradient(#1e293b 0.25turn, #263345 0.25turn 0.5turn, #1e293b 0.5turn 0.75turn, #263345 0.75turn);
+            background-size: 10px 10px; aspect-ratio: 1 / 1;
+        }
+        .tile-wrapper img { width: 100%; height: 100%; display: block; object-fit: contain; cursor: pointer; }
+        .tile-wrapper::after {
+            content: "TAP DL"; position: absolute; bottom: 0; width: 100%; background: rgba(45, 212, 191, 0.8);
+            color: #0f172a; font-size: 0.5rem; font-weight: 800; text-align: center; padding: 2px 0; pointer-events: none;
+        }
+
+        .status-msg { font-size: 0.7rem; color: var(--accent); margin-top: 10px; text-align: center; min-height: 1em; }
+        canvas { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>TileCraft</h1>
+    <p>180PX ALPHA MASTER</p>
+</div>
+
+<div class="card">
+    <div class="section-header"><span>🧩</span> 結合ユニット (540x540)</div>
+    <input type="file" id="joinInput" accept="image/png" multiple>
+    <button id="joinGenBtn" class="btn" disabled>9枚を結合 (540px)</button>
+</div>
+
+<div class="card">
+    <div class="section-header"><span>✂️</span> 分割ユニット (180pxタイル)</div>
+    <input type="file" id="splitInput" accept="image/png">
+    <button id="splitGenBtn" class="btn" disabled>リサイズ分割実行</button>
+    <div id="splitStatus" class="status-msg"></div>
+    
+    <div id="gridPreview" class="grid-container"></div>
+    
+    <button id="splitDownloadBtn" class="btn btn-save-all">全タイルを一括保存</button>
+</div>
+
+<canvas id="mainCanvas"></canvas>
+
+<script>
+    // --- 180px基準に設定変更 ---
+    const TILE = 180, GRID = 3, TARGET_SIZE = TILE * GRID; // 540px
+    const canvas = document.getElementById('mainCanvas'), ctx = canvas.getContext('2d', { alpha: true });
+    
+    function loadImg(f) { return new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = URL.createObjectURL(f); }); }
+
+    // --- 結合処理 ---
+    const jIn = document.getElementById('joinInput'), jBtn = document.getElementById('joinGenBtn');
+    jIn.onchange = () => jBtn.disabled = jIn.files.length < 9;
+    jBtn.onclick = async () => {
+        canvas.width = canvas.height = TARGET_SIZE;
+        ctx.clearRect(0, 0, TARGET_SIZE, TARGET_SIZE);
+        for (let i = 0; i < 9; i++) {
+            const img = await loadImg(jIn.files[i]);
+            // 180pxずつずらして描画
+            ctx.drawImage(img, (i % GRID) * TILE, Math.floor(i / GRID) * TILE, TILE, TILE);
+        }
+        const a = document.createElement('a'); a.download = 'TileCraft_540.png'; a.href = canvas.toDataURL('image/png'); a.click();
+    };
+
+    // --- 分割処理 ---
+    const sIn = document.getElementById('splitInput'), sBtn = document.getElementById('splitGenBtn');
+    const gridPreview = document.getElementById('gridPreview');
+    const splitDownloadBtn = document.getElementById('splitDownloadBtn');
+    let tiles = [];
+
+    sIn.onchange = () => {
+        sBtn.disabled = !sIn.files.length;
+        gridPreview.style.display = 'none';
+        splitDownloadBtn.style.display = 'none';
+    };
+
+    sBtn.onclick = async () => {
+        const originalImg = await loadImg(sIn.files[0]);
+        const status = document.getElementById('splitStatus');
+        
+        // 540x540にリサイズ
+        const resizeCanvas = document.createElement('canvas');
+        resizeCanvas.width = resizeCanvas.height = TARGET_SIZE;
+        const rCtx = resizeCanvas.getContext('2d', { alpha: true });
+        rCtx.clearRect(0, 0, TARGET_SIZE, TARGET_SIZE);
+        rCtx.drawImage(originalImg, 0, 0, TARGET_SIZE, TARGET_SIZE);
+        
+        status.textContent = `リサイズ: 540x540 (各180px)`;
+
+        tiles = [];
+        gridPreview.innerHTML = "";
+        
+        for (let i = 0; i < 9; i++) {
+            const tCanvas = document.createElement('canvas');
+            tCanvas.width = tCanvas.height = TILE; // 180px
+            const tCtx = tCanvas.getContext('2d', { alpha: true });
+            tCtx.clearRect(0, 0, TILE, TILE);
+            tCtx.drawImage(resizeCanvas, (i % GRID) * TILE, Math.floor(i / GRID) * TILE, TILE, TILE, 0, 0, TILE, TILE);
+            
+            const dataUrl = tCanvas.toDataURL('image/png');
+            tiles.push(dataUrl);
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'tile-wrapper';
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.onclick = () => {
+                const a = document.createElement('a');
+                a.download = `tile180_${i+1}.png`;
+                a.href = dataUrl;
+                a.click();
+            };
+            wrapper.appendChild(img);
+            gridPreview.appendChild(wrapper);
+        }
+        
+        gridPreview.style.display = 'grid';
+        splitDownloadBtn.style.display = 'block';
+    };
+
+    splitDownloadBtn.onclick = async () => {
+        for (let i = 0; i < tiles.length; i++) {
+            const a = document.createElement('a'); a.download = `tile180_${i+1}.png`; a.href = tiles[i]; a.click();
+            await new Promise(r => setTimeout(r, 600));
+        }
+    };
+</script>
+</body>
+</html>
