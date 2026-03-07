@@ -9,6 +9,7 @@ export const VIDEO_CONFIG = {
     codec: 'avc1.42E01E' 
 };
 
+// --- 自動縮小関数（変更なし） ---
 function fillSingleLineTextAutoFit(ctx, text, x, y, maxWidth, fontSize) {
     ctx.save();
     let currentSize = fontSize;
@@ -64,10 +65,10 @@ export async function generateStampVideo(params, onProgress) {
         const totalApngMs = frames.reduce((a, b) => a + b.delay, 0) || 1000;
 
         while (stampTime < 1.0) {
-            // エンコーダの状態チェック
+            // 【PCエラー対策】エンコーダーの状態を確認
             if (encoder.state === "closed") break;
 
-            // キューが溜まりすぎないよう待機 (PC/スマホ共通の安定化)
+            // キューが溜まりすぎないよう待機
             while (encoder.encodeQueueSize > 2) await new Promise(r => setTimeout(r, 10));
 
             drawUI(ctx, { 
@@ -76,28 +77,28 @@ export async function generateStampVideo(params, onProgress) {
                 index: i + 1 
             });
 
-            // 【最重要】Canvasの描画確定を待つ（PCの colorSpace エラー対策）
+            // ★【最重要：colorSpace null 回避】
+            // Canvasの描画をブラウザに「確定」させるために1フレーム待機を入れる
             await new Promise(r => requestAnimationFrame(r));
 
-            // タイムスタンプは必ず整数（Math.floor）にする（スマホ対策）
+            // ★【スマホ/PC共通：タイムスタンプの整数化】
             const timestamp = Math.floor((frameCount++ * 1000000) / VIDEO_CONFIG.fps);
-            const vFrame = new VideoFrame(canvas, { 
-                timestamp: timestamp, 
-                duration: Math.floor(1000000 / VIDEO_CONFIG.fps) 
-            });
+            const duration = Math.floor(1000000 / VIDEO_CONFIG.fps);
 
             try {
+                const vFrame = new VideoFrame(canvas, { timestamp, duration });
                 encoder.encode(vFrame);
+                vFrame.close();
             } catch (e) {
-                console.warn("Frame skip:", e);
+                console.warn("Frame capture failed:", e);
             }
-            vFrame.close();
             
             stampTime += 1 / VIDEO_CONFIG.fps;
+            // 元のコードのリズムを維持
             await new Promise(r => setTimeout(r, 1)); 
         }
 
-        // 定期的なフラッシュ (PCのパンク防止)
+        // 定期的にフラッシュ (PCの安定化)
         if (i % 5 === 0 && encoder.state === "configured") {
             await encoder.flush().catch(() => {});
         }
@@ -112,7 +113,7 @@ export async function generateStampVideo(params, onProgress) {
     return new Blob([muxer.target.buffer], { type: 'video/mp4' });
 }
 
-// --- 補助関数 (変更なし) ---
+// --- 以下、補助関数 (元のコードを維持) ---
 
 async function getRenderedFrames(buffer) {
     try {
