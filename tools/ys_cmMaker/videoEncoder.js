@@ -1,32 +1,28 @@
-// videoEncoder.js
 import parseAPNG from 'https://cdn.skypack.dev/apng-js';
 import { Muxer, ArrayBufferTarget } from 'https://unpkg.com/mp4-muxer@latest/build/mp4-muxer.mjs';
 
 export const VIDEO_CONFIG = {
-    width: 544, 
-    height: 960,
+    width: 544, // 16の倍数
+    height: 960, // 32の倍数（PCエンコーダに優しいサイズ）
     fps: 30,
-    bitrate: 1_200_000,
+    bitrate: 1_500_000,
     codec: 'avc1.42E01E' 
 };
 
-// --- 【修正】絶対に改行せず、幅に収まるまで縮小する関数 ---
+// --- 文字描画関数は変更なし ---
 function fillSingleLineTextAutoFit(ctx, text, x, y, maxWidth, fontSize) {
     ctx.save();
     let currentSize = fontSize;
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    
-    // 幅に収まるまでサイズを1pxずつ下げる
     do {
         ctx.font = `bold ${currentSize}px sans-serif`;
         if (ctx.measureText(text).width <= maxWidth || currentSize <= 10) break;
         currentSize -= 1;
     } while (currentSize > 10);
-
     ctx.fillText(text, x, y);
     ctx.restore();
-    return currentSize * 1.3; // 使用した高さを返す
+    return currentSize * 1.3;
 }
 
 export async function generateStampVideo(params, onProgress) {
@@ -38,17 +34,21 @@ export async function generateStampVideo(params, onProgress) {
         fastStart: 'in-memory'
     });
 
+    // エラーハンドリングを強化
     let encoder = new VideoEncoder({
         output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-        error: (e) => { throw new Error("Encoding failed: " + e.message); }
+        error: (e) => { console.error("VideoEncoder Error:", e); }
     });
 
-    encoder.configure({ 
-        codec: VIDEO_CONFIG.codec, width: VIDEO_CONFIG.width, height: VIDEO_CONFIG.height, 
-        bitrate: VIDEO_CONFIG.bitrate, framerate: VIDEO_CONFIG.fps, latencyMode: 'realtime'
+    await encoder.configure({ 
+        codec: VIDEO_CONFIG.codec, 
+        width: VIDEO_CONFIG.width, 
+        height: VIDEO_CONFIG.height, 
+        bitrate: VIDEO_CONFIG.bitrate, 
+        framerate: VIDEO_CONFIG.fps,
+        // PCでの安定性のために 'quality' を優先（または指定しない）
+        latencyMode: 'quality' 
     });
-
-    while (encoder.state !== "configured") await new Promise(r => setTimeout(r, 100));
 
     let frameCount = 0;
 
@@ -65,10 +65,14 @@ export async function generateStampVideo(params, onProgress) {
         if (!frames) continue;
 
         let stampTime = 0;
+        const durationPerStamp = 1.0; // 1枚あたり1秒
         const totalApngMs = frames.reduce((a, b) => a + b.delay, 0) || 1000;
 
-        while (stampTime < 1.0) {
-            while (encoder.encodeQueueSize > 0) await new Promise(r => setTimeout(r, 10));
+        while (stampTime < durationPerStamp) {
+            // キューが溜まりすぎている場合は待機（PCでのクラッシュ防止）
+            while (encoder.encodeQueueSize > 10) {
+                await new Promise(r => setTimeout(r, 10));
+            }
 
             drawUI(ctx, { 
                 title, author, footer, mainImg, bgColor, stampBgColor, textColor, 
@@ -76,23 +80,34 @@ export async function generateStampVideo(params, onProgress) {
                 index: i + 1 
             });
 
+            const timestamp = Math.round((frameCount * 1000000) / VIDEO_CONFIG.fps);
             const vFrame = new VideoFrame(canvas, { 
-                timestamp: (frameCount++ * 1000000) / VIDEO_CONFIG.fps, 
-                duration: 1000000 / VIDEO_CONFIG.fps 
+                timestamp: timestamp,
+                duration: Math.round(1000000 / VIDEO_CONFIG.fps)
             });
+
             encoder.encode(vFrame);
-            vFrame.close();
+            vFrame.close(); // 直ちにクローズ
             
+            frameCount++;
             stampTime += 1 / VIDEO_CONFIG.fps;
-            await new Promise(r => setTimeout(r, 1)); 
         }
-        if (i % 5 === 0) await encoder.flush();
+
+        // スタンプごとに確実にフラッシュして同期をとる（PCでの安定化の鍵）
+        await encoder.flush();
     }
 
+    // 最終処理
     await encoder.flush();
+    if (encoder.state !== "closed") {
+        encoder.close();
+    }
+    
     muxer.finalize();
     return new Blob([muxer.target.buffer], { type: 'video/mp4' });
 }
+
+// --- 以下、補助関数 ---
 
 async function getRenderedFrames(buffer) {
     try {
@@ -101,13 +116,20 @@ async function getRenderedFrames(buffer) {
         await apng.createImages();
         const renderedFrames = [];
         const workCanvas = document.createElement('canvas');
-        workCanvas.width = apng.width; workCanvas.height = apng.height;
+        workCanvas.width = apng.width; 
+        workCanvas.height = apng.height;
         const workCtx = workCanvas.getContext('2d');
+        
         for (const frame of apng.frames) {
-            if (frame.disposeOp === 1 || frame.blendOp === 0) workCtx.clearRect(frame.left, frame.top, frame.width, frame.height);
+            if (frame.disposeOp === 1 || frame.blendOp === 0) {
+                workCtx.clearRect(frame.left, frame.top, frame.width, frame.height);
+            }
             workCtx.drawImage(frame.imageElement, frame.left, frame.top);
+            
+            // オフスクリーンキャンバスでフレームを保存
             const snapshot = document.createElement('canvas');
-            snapshot.width = apng.width; snapshot.height = apng.height;
+            snapshot.width = apng.width; 
+            snapshot.height = apng.height;
             snapshot.getContext('2d').drawImage(workCanvas, 0, 0);
             renderedFrames.push({ img: snapshot, delay: frame.delay });
         }
@@ -125,11 +147,25 @@ function getFrameAtTime(frames, stampTime, totalApngMs) {
     return frames[frames.length - 1];
 }
 
+async function loadImage(url) {
+    return new Promise(res => {
+        const img = new Image();
+        img.crossOrigin = "anonymous"; // クロスドメイン対策
+        img.onload = () => {
+            URL.revokeObjectURL(url); // メモリ解放
+            res(img);
+        };
+        img.onerror = () => res(null);
+        img.src = url;
+    });
+}
+
+// drawUI関数は元のロジックを維持
 function drawUI(ctx, p) {
     const { width: W, height: H } = VIDEO_CONFIG;
-    ctx.fillStyle = p.bgColor; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = p.bgColor; 
+    ctx.fillRect(0, 0, W, H);
 
-    // 1. メイン画像
     let currentY = 80; 
     if (p.mainImg) {
         const size = 110; 
@@ -137,44 +173,44 @@ function drawUI(ctx, p) {
         ctx.save();
         ctx.beginPath(); 
         ctx.roundRect(imgX, currentY, size, size, 20);
-        ctx.fillStyle = p.stampBgColor; ctx.fill(); ctx.clip();
+        ctx.fillStyle = p.stampBgColor; 
+        ctx.fill(); 
+        ctx.clip();
         const r = Math.min((size - 10) / p.mainImg.width, (size - 10) / p.mainImg.height);
         ctx.drawImage(p.mainImg, imgX + (size - p.mainImg.width * r) / 2, currentY + (size - p.mainImg.height * r) / 2, p.mainImg.width * r, p.mainImg.height * r);
         ctx.restore();
         currentY += size + 25; 
     }
 
-    // 2. タイトル (絶対に1行・自動縮小)
     ctx.fillStyle = p.textColor;
     const titleLineHeight = fillSingleLineTextAutoFit(ctx, p.title, W / 2, currentY, 480, 34);
     currentY += titleLineHeight + 5; 
 
-    // 3. 作者名
     ctx.save();
     ctx.font = "20px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    ctx.fillStyle = p.textColor;
-    ctx.fillText(p.author, W / 2, currentY);
+    ctx.fillText(p.author || "", W / 2, currentY);
     ctx.restore();
 
-    // 4. フッター
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
     ctx.font = "bold 32px sans-serif";
     ctx.fillStyle = p.textColor;
-    ctx.fillText(p.footer, W / 2, H - 80);
+    ctx.fillText(p.footer || "", W / 2, H - 80);
     ctx.restore();
 
-    // 5. スタンプ表示エリア
     const cardSize = 420;
     const cardX = (W - cardSize) / 2;
     const cardY = 320; 
     
     ctx.save();
-    ctx.beginPath(); ctx.roundRect(cardX, cardY, cardSize, cardSize, 30);
-    ctx.fillStyle = p.stampBgColor; ctx.fill(); ctx.clip();
+    ctx.beginPath(); 
+    ctx.roundRect(cardX, cardY, cardSize, cardSize, 30);
+    ctx.fillStyle = p.stampBgColor; 
+    ctx.fill(); 
+    ctx.clip();
     if (p.targetFrame && p.targetFrame.img) {
         const img = p.targetFrame.img;
         const r = Math.min((cardSize - 40) / img.width, (cardSize - 40) / img.height);
@@ -182,20 +218,10 @@ function drawUI(ctx, p) {
     }
     ctx.restore();
 
-    // 6. No. X
     ctx.save();
     ctx.textAlign = "center";
     ctx.fillStyle = p.textColor;
     ctx.font = "bold 40px sans-serif";
     ctx.fillText(`No. ${p.index}`, W / 2, cardY + cardSize + 70);
     ctx.restore();
-}
-
-async function loadImage(url) {
-    return new Promise(res => {
-        const img = new Image();
-        img.onload = () => res(img);
-        img.onerror = () => res(null);
-        img.src = url;
-    });
 }
