@@ -1,43 +1,29 @@
 import parseAPNG from 'https://cdn.skypack.dev/apng-js';
 import { Muxer, ArrayBufferTarget } from 'https://unpkg.com/mp4-muxer@latest/build/mp4-muxer.mjs';
 
+// 解像度はPCのハードウェアエンコーダが好む「16の倍数」に固定します
 export const VIDEO_CONFIG = {
-    width: 544, // 16の倍数
-    height: 960, // 32の倍数（PCエンコーダに優しいサイズ）
+    width: 544,  
+    height: 960,
     fps: 30,
     bitrate: 1_500_000,
     codec: 'avc1.42E01E' 
 };
 
-// --- 文字描画関数は変更なし ---
-function fillSingleLineTextAutoFit(ctx, text, x, y, maxWidth, fontSize) {
-    ctx.save();
-    let currentSize = fontSize;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-    do {
-        ctx.font = `bold ${currentSize}px sans-serif`;
-        if (ctx.measureText(text).width <= maxWidth || currentSize <= 10) break;
-        currentSize -= 1;
-    } while (currentSize > 10);
-    ctx.fillText(text, x, y);
-    ctx.restore();
-    return currentSize * 1.3;
-}
-
 export async function generateStampVideo(params, onProgress) {
     const { stampFiles, mainImg, title, author, footer, bgColor, stampBgColor, textColor, canvas, ctx } = params;
     
+    // 1. Muxerの初期化
     let muxer = new Muxer({
         target: new ArrayBufferTarget(),
         video: { codec: 'avc', width: VIDEO_CONFIG.width, height: VIDEO_CONFIG.height },
         fastStart: 'in-memory'
     });
 
-    // エラーハンドリングを強化
+    // 2. VideoEncoderの初期化とエラーハンドリング
     let encoder = new VideoEncoder({
         output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-        error: (e) => { console.error("VideoEncoder Error:", e); }
+        error: (e) => console.error("VideoEncoder Error: ", e)
     });
 
     await encoder.configure({ 
@@ -46,17 +32,19 @@ export async function generateStampVideo(params, onProgress) {
         height: VIDEO_CONFIG.height, 
         bitrate: VIDEO_CONFIG.bitrate, 
         framerate: VIDEO_CONFIG.fps,
-        // PCでの安定性のために 'quality' を優先（または指定しない）
-        latencyMode: 'quality' 
+        latencyMode: 'quality' // PCでの安定性のためにquality優先
     });
 
     let frameCount = 0;
 
+    // 3. メインループ（スタンプごとの処理）
     for (let i = 0; i < stampFiles.length; i++) {
         if (onProgress) onProgress(i + 1, stampFiles.length);
 
         const buffer = await stampFiles[i].async("arraybuffer");
         let frames = await getRenderedFrames(buffer);
+        
+        // 静止画PNGの場合のフォールバック
         if (!frames) {
             const blob = await stampFiles[i].async("blob");
             const img = await loadImage(URL.createObjectURL(blob));
@@ -65,55 +53,65 @@ export async function generateStampVideo(params, onProgress) {
         if (!frames) continue;
 
         let stampTime = 0;
-        const durationPerStamp = 1.0; // 1枚あたり1秒
+        const displayDuration = 1.0; // 1枚あたり1秒表示
         const totalApngMs = frames.reduce((a, b) => a + b.delay, 0) || 1000;
 
-        while (stampTime < durationPerStamp) {
-            // キューが溜まりすぎている場合は待機（PCでのクラッシュ防止）
-            while (encoder.encodeQueueSize > 10) {
+        // 1スタンプ分のフレーム生成ループ
+        while (stampTime < displayDuration) {
+            // エンコーダの状態チェック（Closedエラー対策）
+            if (encoder.state !== "configured") break;
+
+            // キューが溜まりすぎている場合は待機（PCのリソース枯渇対策）
+            while (encoder.encodeQueueSize > 5) {
                 await new Promise(r => setTimeout(r, 10));
             }
 
+            // Canvasに描画
             drawUI(ctx, { 
                 title, author, footer, mainImg, bgColor, stampBgColor, textColor, 
                 targetFrame: getFrameAtTime(frames, stampTime, totalApngMs), 
                 index: i + 1 
             });
 
-            const timestamp = Math.round((frameCount * 1000000) / VIDEO_CONFIG.fps);
+            // VideoFrameの作成（タイムスタンプはマイクロ秒単位）
+            const ts = Math.round((frameCount * 1000000) / VIDEO_CONFIG.fps);
             const vFrame = new VideoFrame(canvas, { 
-                timestamp: timestamp,
+                timestamp: ts,
                 duration: Math.round(1000000 / VIDEO_CONFIG.fps)
             });
 
-            encoder.encode(vFrame);
-            vFrame.close(); // 直ちにクローズ
+            try {
+                encoder.encode(vFrame);
+            } catch (e) {
+                console.warn("Encode skipped for a frame:", e);
+            }
             
+            vFrame.close(); // ★重要: 即座にメモリを解放
             frameCount++;
             stampTime += 1 / VIDEO_CONFIG.fps;
         }
 
-        // スタンプごとに確実にフラッシュして同期をとる（PCでの安定化の鍵）
+        // ★最重要: スタンプ1枚ごとにエンコードの完了を待つ
+        // これにより、PCブラウザの処理速度が速すぎてエンコーダがパンクするのを防ぎます
         await encoder.flush();
     }
 
-    // 最終処理
+    // 4. 終了処理
     await encoder.flush();
-    if (encoder.state !== "closed") {
-        encoder.close();
-    }
+    if (encoder.state !== "closed") encoder.close();
     
     muxer.finalize();
     return new Blob([muxer.target.buffer], { type: 'video/mp4' });
 }
 
-// --- 以下、補助関数 ---
+// --- ヘルパー関数群 ---
 
 async function getRenderedFrames(buffer) {
     try {
         const apng = parseAPNG(buffer);
         if (apng instanceof Error) return null;
         await apng.createImages();
+        
         const renderedFrames = [];
         const workCanvas = document.createElement('canvas');
         workCanvas.width = apng.width; 
@@ -126,7 +124,6 @@ async function getRenderedFrames(buffer) {
             }
             workCtx.drawImage(frame.imageElement, frame.left, frame.top);
             
-            // オフスクリーンキャンバスでフレームを保存
             const snapshot = document.createElement('canvas');
             snapshot.width = apng.width; 
             snapshot.height = apng.height;
@@ -150,9 +147,8 @@ function getFrameAtTime(frames, stampTime, totalApngMs) {
 async function loadImage(url) {
     return new Promise(res => {
         const img = new Image();
-        img.crossOrigin = "anonymous"; // クロスドメイン対策
         img.onload = () => {
-            URL.revokeObjectURL(url); // メモリ解放
+            URL.revokeObjectURL(url); // メモリ管理
             res(img);
         };
         img.onerror = () => res(null);
@@ -160,12 +156,14 @@ async function loadImage(url) {
     });
 }
 
-// drawUI関数は元のロジックを維持
 function drawUI(ctx, p) {
     const { width: W, height: H } = VIDEO_CONFIG;
+    
+    // 背景
     ctx.fillStyle = p.bgColor; 
     ctx.fillRect(0, 0, W, H);
 
+    // メインアイコン
     let currentY = 80; 
     if (p.mainImg) {
         const size = 110; 
@@ -182,46 +180,53 @@ function drawUI(ctx, p) {
         currentY += size + 25; 
     }
 
+    // テキスト描画 (自動サイズ調整)
     ctx.fillStyle = p.textColor;
     const titleLineHeight = fillSingleLineTextAutoFit(ctx, p.title, W / 2, currentY, 480, 34);
     currentY += titleLineHeight + 5; 
 
-    ctx.save();
+    // 作者名
     ctx.font = "20px sans-serif";
     ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-    ctx.fillText(p.author || "", W / 2, currentY);
-    ctx.restore();
+    ctx.fillText(p.author || "", W / 2, currentY + 20);
 
-    ctx.save();
-    ctx.textAlign = "center";
-    ctx.textBaseline = "alphabetic";
-    ctx.font = "bold 32px sans-serif";
-    ctx.fillStyle = p.textColor;
-    ctx.fillText(p.footer || "", W / 2, H - 80);
-    ctx.restore();
-
+    // スタンプカード
     const cardSize = 420;
     const cardX = (W - cardSize) / 2;
     const cardY = 320; 
-    
     ctx.save();
     ctx.beginPath(); 
     ctx.roundRect(cardX, cardY, cardSize, cardSize, 30);
     ctx.fillStyle = p.stampBgColor; 
     ctx.fill(); 
     ctx.clip();
-    if (p.targetFrame && p.targetFrame.img) {
+    if (p.targetFrame?.img) {
         const img = p.targetFrame.img;
         const r = Math.min((cardSize - 40) / img.width, (cardSize - 40) / img.height);
         ctx.drawImage(img, cardX + (cardSize - img.width * r) / 2, cardY + (cardSize - img.height * r) / 2, img.width * r, img.height * r);
     }
     ctx.restore();
 
-    ctx.save();
-    ctx.textAlign = "center";
-    ctx.fillStyle = p.textColor;
+    // 番号
     ctx.font = "bold 40px sans-serif";
     ctx.fillText(`No. ${p.index}`, W / 2, cardY + cardSize + 70);
+
+    // フッター
+    ctx.font = "bold 32px sans-serif";
+    ctx.fillText(p.footer || "", W / 2, H - 80);
+}
+
+function fillSingleLineTextAutoFit(ctx, text, x, y, maxWidth, fontSize) {
+    ctx.save();
+    let currentSize = fontSize;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    do {
+        ctx.font = `bold ${currentSize}px sans-serif`;
+        if (ctx.measureText(text).width <= maxWidth || currentSize <= 10) break;
+        currentSize -= 1;
+    } while (currentSize > 10);
+    ctx.fillText(text, x, y);
     ctx.restore();
+    return currentSize * 1.3;
 }
