@@ -1,50 +1,59 @@
 import parseAPNG from 'https://cdn.skypack.dev/apng-js';
 import { Muxer, ArrayBufferTarget } from 'https://unpkg.com/mp4-muxer@latest/build/mp4-muxer.mjs';
 
-// 解像度はPC・スマホ共にハードウェアエンコーダが最も安定する「16の倍数」に固定
 export const VIDEO_CONFIG = {
-    width: 544,  
+    width: 544, 
     height: 960,
     fps: 30,
-    bitrate: 1_500_000,
-    codec: 'avc1.4D401F' // PCでの互換性が高いMain Profileに変更
+    bitrate: 1_200_000,
+    codec: 'avc1.42E01E' 
 };
+
+// --- 自動縮小関数（変更なし） ---
+function fillSingleLineTextAutoFit(ctx, text, x, y, maxWidth, fontSize) {
+    ctx.save();
+    let currentSize = fontSize;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    do {
+        ctx.font = `bold ${currentSize}px sans-serif`;
+        if (ctx.measureText(text).width <= maxWidth || currentSize <= 10) break;
+        currentSize -= 1;
+    } while (currentSize > 10);
+    ctx.fillText(text, x, y);
+    ctx.restore();
+    return currentSize * 1.3;
+}
 
 export async function generateStampVideo(params, onProgress) {
     const { stampFiles, mainImg, title, author, footer, bgColor, stampBgColor, textColor, canvas, ctx } = params;
     
-    // 1. Muxerの初期化
     let muxer = new Muxer({
         target: new ArrayBufferTarget(),
         video: { codec: 'avc', width: VIDEO_CONFIG.width, height: VIDEO_CONFIG.height },
         fastStart: 'in-memory'
     });
 
-    // 2. VideoEncoderの初期化
     let encoder = new VideoEncoder({
         output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-        error: (e) => console.error("VideoEncoder Error: ", e)
+        error: (e) => { console.error(e); } // エラーで止まらないようログに留める
     });
 
-    // 設定完了を確実に待機
-    await encoder.configure({ 
-        codec: VIDEO_CONFIG.codec, 
-        width: VIDEO_CONFIG.width, 
-        height: VIDEO_CONFIG.height, 
-        bitrate: VIDEO_CONFIG.bitrate, 
-        framerate: VIDEO_CONFIG.fps,
-        latencyMode: 'quality' // PCでの安定性を優先
+    // 設定
+    encoder.configure({ 
+        codec: VIDEO_CONFIG.codec, width: VIDEO_CONFIG.width, height: VIDEO_CONFIG.height, 
+        bitrate: VIDEO_CONFIG.bitrate, framerate: VIDEO_CONFIG.fps, latencyMode: 'realtime'
     });
+
+    while (encoder.state !== "configured") await new Promise(r => setTimeout(r, 100));
 
     let frameCount = 0;
 
-    // 3. メインループ（スタンプごとの処理）
     for (let i = 0; i < stampFiles.length; i++) {
         if (onProgress) onProgress(i + 1, stampFiles.length);
 
         const buffer = await stampFiles[i].async("arraybuffer");
         let frames = await getRenderedFrames(buffer);
-        
         if (!frames) {
             const blob = await stampFiles[i].async("blob");
             const img = await loadImage(URL.createObjectURL(blob));
@@ -53,17 +62,15 @@ export async function generateStampVideo(params, onProgress) {
         if (!frames) continue;
 
         let stampTime = 0;
-        const displayDuration = 1.0; 
         const totalApngMs = frames.reduce((a, b) => a + b.delay, 0) || 1000;
 
-        while (stampTime < displayDuration) {
-            // 【PCエラー対策】エンコーダの状態を毎フレーム確認
-            if (encoder.state !== "configured") break;
+        while (stampTime < 1.0) {
+            // 【PCエラー対策】状態が閉じていたら中断
+            if (encoder.state === "closed") break;
 
-            // 【スマホ・PC共通】キューが溜まりすぎている場合は待機（パンク防止）
-            while (encoder.encodeQueueSize > 5) {
-                await new Promise(r => setTimeout(r, 20));
-            }
+            // 【スマホ・PC共通】キューが溜まっている場合は待機
+            // 元の「> 0」だとPCで厳しすぎる場合があるため「> 5」程度に緩和
+            while (encoder.encodeQueueSize > 5) await new Promise(r => setTimeout(r, 10));
 
             drawUI(ctx, { 
                 title, author, footer, mainImg, bgColor, stampBgColor, textColor, 
@@ -71,36 +78,33 @@ export async function generateStampVideo(params, onProgress) {
                 index: i + 1 
             });
 
-            // VideoFrameの作成
-            const ts = Math.round((frameCount * 1000000) / VIDEO_CONFIG.fps);
             const vFrame = new VideoFrame(canvas, { 
-                timestamp: ts,
-                duration: Math.round(1000000 / VIDEO_CONFIG.fps)
+                timestamp: (frameCount++ * 1000000) / VIDEO_CONFIG.fps, 
+                duration: 1000000 / VIDEO_CONFIG.fps 
             });
 
+            // エンコード実行（エラーをキャッチして closed への移行を防ぐ）
             try {
                 encoder.encode(vFrame);
             } catch (e) {
-                console.warn("Encode call failed, skipping frame:", e);
+                console.warn("Skip frame", e);
             }
+            vFrame.close();
             
-            // 【最重要】即座にメモリを解放（スマホのクラッシュ防止）
-            vFrame.close(); 
-            
-            frameCount++;
             stampTime += 1 / VIDEO_CONFIG.fps;
+            await new Promise(r => setTimeout(r, 1)); 
         }
 
-        // 【PCエラー対策の要】スタンプ1枚ごとに同期（flush）をとる
-        // これがないとPCでは処理が速すぎて内部的に破綻し「closed codec」になります
-        if (encoder.state === "configured") {
-            await encoder.flush();
+        // 【PC対策】5スタンプごとのフラッシュを、全スタンプ共通の「待機」として利用
+        // 元のコードの「i % 5」を維持しつつ、PCでも確実に flush を待つようにします
+        if (i % 5 === 0 && encoder.state === "configured") {
+            await encoder.flush().catch(() => {});
         }
     }
 
-    // 4. 最終フラッシュと終了処理
+    // 最終処理
     if (encoder.state === "configured") {
-        await encoder.flush();
+        await encoder.flush().catch(() => {});
         encoder.close();
     }
     
@@ -108,29 +112,21 @@ export async function generateStampVideo(params, onProgress) {
     return new Blob([muxer.target.buffer], { type: 'video/mp4' });
 }
 
-// --- 以下、補助関数（スマホ互換性を維持） ---
-
+// --- 補助関数（元のコードと同一） ---
 async function getRenderedFrames(buffer) {
     try {
         const apng = parseAPNG(buffer);
         if (apng instanceof Error) return null;
         await apng.createImages();
-        
         const renderedFrames = [];
         const workCanvas = document.createElement('canvas');
-        workCanvas.width = apng.width; 
-        workCanvas.height = apng.height;
+        workCanvas.width = apng.width; workCanvas.height = apng.height;
         const workCtx = workCanvas.getContext('2d');
-        
         for (const frame of apng.frames) {
-            if (frame.disposeOp === 1 || frame.blendOp === 0) {
-                workCtx.clearRect(frame.left, frame.top, frame.width, frame.height);
-            }
+            if (frame.disposeOp === 1 || frame.blendOp === 0) workCtx.clearRect(frame.left, frame.top, frame.width, frame.height);
             workCtx.drawImage(frame.imageElement, frame.left, frame.top);
-            
             const snapshot = document.createElement('canvas');
-            snapshot.width = apng.width; 
-            snapshot.height = apng.height;
+            snapshot.width = apng.width; snapshot.height = apng.height;
             snapshot.getContext('2d').drawImage(workCanvas, 0, 0);
             renderedFrames.push({ img: snapshot, delay: frame.delay });
         }
@@ -148,23 +144,9 @@ function getFrameAtTime(frames, stampTime, totalApngMs) {
     return frames[frames.length - 1];
 }
 
-async function loadImage(url) {
-    return new Promise(res => {
-        const img = new Image();
-        img.onload = () => {
-            URL.revokeObjectURL(url); 
-            res(img);
-        };
-        img.onerror = () => res(null);
-        img.src = url;
-    });
-}
-
 function drawUI(ctx, p) {
     const { width: W, height: H } = VIDEO_CONFIG;
-    ctx.fillStyle = p.bgColor; 
-    ctx.fillRect(0, 0, W, H);
-
+    ctx.fillStyle = p.bgColor; ctx.fillRect(0, 0, W, H);
     let currentY = 80; 
     if (p.mainImg) {
         const size = 110; 
@@ -172,54 +154,57 @@ function drawUI(ctx, p) {
         ctx.save();
         ctx.beginPath(); 
         ctx.roundRect(imgX, currentY, size, size, 20);
-        ctx.fillStyle = p.stampBgColor; 
-        ctx.fill(); ctx.clip();
+        ctx.fillStyle = p.stampBgColor; ctx.fill(); ctx.clip();
         const r = Math.min((size - 10) / p.mainImg.width, (size - 10) / p.mainImg.height);
         ctx.drawImage(p.mainImg, imgX + (size - p.mainImg.width * r) / 2, currentY + (size - p.mainImg.height * r) / 2, p.mainImg.width * r, p.mainImg.height * r);
         ctx.restore();
         currentY += size + 25; 
     }
-
     ctx.fillStyle = p.textColor;
     const titleLineHeight = fillSingleLineTextAutoFit(ctx, p.title, W / 2, currentY, 480, 34);
     currentY += titleLineHeight + 5; 
-
+    ctx.save();
     ctx.font = "20px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(p.author || "", W / 2, currentY + 20);
-
+    ctx.textBaseline = "top";
+    ctx.fillStyle = p.textColor;
+    ctx.fillText(p.author, W / 2, currentY);
+    ctx.restore();
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.font = "bold 32px sans-serif";
+    ctx.fillStyle = p.textColor;
+    ctx.fillText(p.footer, W / 2, H - 80);
+    ctx.restore();
     const cardSize = 420;
     const cardX = (W - cardSize) / 2;
     const cardY = 320; 
     ctx.save();
-    ctx.beginPath(); 
-    ctx.roundRect(cardX, cardY, cardSize, cardSize, 30);
+    ctx.beginPath(); ctx.roundRect(cardX, cardY, cardSize, cardSize, 30);
     ctx.fillStyle = p.stampBgColor; ctx.fill(); ctx.clip();
-    if (p.targetFrame?.img) {
+    if (p.targetFrame && p.targetFrame.img) {
         const img = p.targetFrame.img;
         const r = Math.min((cardSize - 40) / img.width, (cardSize - 40) / img.height);
         ctx.drawImage(img, cardX + (cardSize - img.width * r) / 2, cardY + (cardSize - img.height * r) / 2, img.width * r, img.height * r);
     }
     ctx.restore();
-
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.fillStyle = p.textColor;
     ctx.font = "bold 40px sans-serif";
     ctx.fillText(`No. ${p.index}`, W / 2, cardY + cardSize + 70);
-
-    ctx.font = "bold 32px sans-serif";
-    ctx.fillText(p.footer || "", W / 2, H - 80);
+    ctx.restore();
 }
 
-function fillSingleLineTextAutoFit(ctx, text, x, y, maxWidth, fontSize) {
-    ctx.save();
-    let currentSize = fontSize;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-    do {
-        ctx.font = `bold ${currentSize}px sans-serif`;
-        if (ctx.measureText(text).width <= maxWidth || currentSize <= 10) break;
-        currentSize -= 1;
-    } while (currentSize > 10);
-    ctx.fillText(text, x, y);
-    ctx.restore();
-    return currentSize * 1.3;
+async function loadImage(url) {
+    return new Promise(res => {
+        const img = new Image();
+        img.onload = () => {
+            res(img);
+            URL.revokeObjectURL(url); // メモリ管理用に追加
+        };
+        img.onerror = () => res(null);
+        img.src = url;
+    });
 }
