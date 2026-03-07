@@ -9,7 +9,7 @@ export const VIDEO_CONFIG = {
     codec: 'avc1.42E01E' 
 };
 
-// --- 自動縮小関数（変更なし） ---
+// --- 文字描画関数（変更なし） ---
 function fillSingleLineTextAutoFit(ctx, text, x, y, maxWidth, fontSize) {
     ctx.save();
     let currentSize = fontSize;
@@ -36,16 +36,29 @@ export async function generateStampVideo(params, onProgress) {
 
     let encoder = new VideoEncoder({
         output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-        error: (e) => { console.error(e); } // エラーで止まらないようログに留める
+        error: (e) => { console.error("Encoder Error:", e); }
     });
 
-    // 設定
+    // 【重要】設定を反映
     encoder.configure({ 
         codec: VIDEO_CONFIG.codec, width: VIDEO_CONFIG.width, height: VIDEO_CONFIG.height, 
         bitrate: VIDEO_CONFIG.bitrate, framerate: VIDEO_CONFIG.fps, latencyMode: 'realtime'
     });
 
-    while (encoder.state !== "configured") await new Promise(r => setTimeout(r, 100));
+    // 【スマホ対策】configured になるまで「最大3秒」待機するガードを追加
+    let waitCount = 0;
+    while (encoder.state !== "configured" && waitCount < 30) {
+        await new Promise(r => setTimeout(r, 100));
+        waitCount++;
+    }
+
+    // それでも準備ができていなければ再設定を試みる（一部のスマホOS対策）
+    if (encoder.state !== "configured") {
+        await encoder.configure({ 
+            codec: VIDEO_CONFIG.codec, width: VIDEO_CONFIG.width, height: VIDEO_CONFIG.height, 
+            bitrate: VIDEO_CONFIG.bitrate, framerate: VIDEO_CONFIG.fps
+        });
+    }
 
     let frameCount = 0;
 
@@ -65,11 +78,16 @@ export async function generateStampVideo(params, onProgress) {
         const totalApngMs = frames.reduce((a, b) => a + b.delay, 0) || 1000;
 
         while (stampTime < 1.0) {
-            // 【PCエラー対策】状態が閉じていたら中断
+            // 【PCエラー対策】
             if (encoder.state === "closed") break;
+            
+            // 【スマホ・PC共通】準備ができるまでループ内で微待機
+            if (encoder.state !== "configured") {
+                await new Promise(r => setTimeout(r, 50));
+                continue;
+            }
 
-            // 【スマホ・PC共通】キューが溜まっている場合は待機
-            // 元の「> 0」だとPCで厳しすぎる場合があるため「> 5」程度に緩和
+            // キュー管理
             while (encoder.encodeQueueSize > 5) await new Promise(r => setTimeout(r, 10));
 
             drawUI(ctx, { 
@@ -79,15 +97,14 @@ export async function generateStampVideo(params, onProgress) {
             });
 
             const vFrame = new VideoFrame(canvas, { 
-                timestamp: (frameCount++ * 1000000) / VIDEO_CONFIG.fps, 
-                duration: 1000000 / VIDEO_CONFIG.fps 
+                timestamp: Math.floor((frameCount++ * 1000000) / VIDEO_CONFIG.fps), 
+                duration: Math.floor(1000000 / VIDEO_CONFIG.fps) 
             });
 
-            // エンコード実行（エラーをキャッチして closed への移行を防ぐ）
             try {
                 encoder.encode(vFrame);
             } catch (e) {
-                console.warn("Skip frame", e);
+                console.warn("Frame encoding failed", e);
             }
             vFrame.close();
             
@@ -95,16 +112,15 @@ export async function generateStampVideo(params, onProgress) {
             await new Promise(r => setTimeout(r, 1)); 
         }
 
-        // 【PC対策】5スタンプごとのフラッシュを、全スタンプ共通の「待機」として利用
-        // 元のコードの「i % 5」を維持しつつ、PCでも確実に flush を待つようにします
+        // スタンプごとの同期
         if (i % 5 === 0 && encoder.state === "configured") {
-            await encoder.flush().catch(() => {});
+            try { await encoder.flush(); } catch(e) {}
         }
     }
 
     // 最終処理
     if (encoder.state === "configured") {
-        await encoder.flush().catch(() => {});
+        try { await encoder.flush(); } catch(e) {}
         encoder.close();
     }
     
@@ -112,7 +128,7 @@ export async function generateStampVideo(params, onProgress) {
     return new Blob([muxer.target.buffer], { type: 'video/mp4' });
 }
 
-// --- 補助関数（元のコードと同一） ---
+// --- 補助関数 (変更なし) ---
 async function getRenderedFrames(buffer) {
     try {
         const apng = parseAPNG(buffer);
@@ -152,8 +168,7 @@ function drawUI(ctx, p) {
         const size = 110; 
         const imgX = (W - size) / 2;
         ctx.save();
-        ctx.beginPath(); 
-        ctx.roundRect(imgX, currentY, size, size, 20);
+        ctx.beginPath(); ctx.roundRect(imgX, currentY, size, size, 20);
         ctx.fillStyle = p.stampBgColor; ctx.fill(); ctx.clip();
         const r = Math.min((size - 10) / p.mainImg.width, (size - 10) / p.mainImg.height);
         ctx.drawImage(p.mainImg, imgX + (size - p.mainImg.width * r) / 2, currentY + (size - p.mainImg.height * r) / 2, p.mainImg.width * r, p.mainImg.height * r);
@@ -163,23 +178,11 @@ function drawUI(ctx, p) {
     ctx.fillStyle = p.textColor;
     const titleLineHeight = fillSingleLineTextAutoFit(ctx, p.title, W / 2, currentY, 480, 34);
     currentY += titleLineHeight + 5; 
-    ctx.save();
-    ctx.font = "20px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-    ctx.fillStyle = p.textColor;
+    ctx.font = "20px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
     ctx.fillText(p.author, W / 2, currentY);
-    ctx.restore();
-    ctx.save();
-    ctx.textAlign = "center";
-    ctx.textBaseline = "alphabetic";
-    ctx.font = "bold 32px sans-serif";
-    ctx.fillStyle = p.textColor;
+    ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.font = "bold 32px sans-serif";
     ctx.fillText(p.footer, W / 2, H - 80);
-    ctx.restore();
-    const cardSize = 420;
-    const cardX = (W - cardSize) / 2;
-    const cardY = 320; 
+    const cardSize = 420; const cardX = (W - cardSize) / 2; const cardY = 320; 
     ctx.save();
     ctx.beginPath(); ctx.roundRect(cardX, cardY, cardSize, cardSize, 30);
     ctx.fillStyle = p.stampBgColor; ctx.fill(); ctx.clip();
@@ -189,21 +192,14 @@ function drawUI(ctx, p) {
         ctx.drawImage(img, cardX + (cardSize - img.width * r) / 2, cardY + (cardSize - img.height * r) / 2, img.width * r, img.height * r);
     }
     ctx.restore();
-    ctx.save();
-    ctx.textAlign = "center";
-    ctx.fillStyle = p.textColor;
-    ctx.font = "bold 40px sans-serif";
+    ctx.textAlign = "center"; ctx.font = "bold 40px sans-serif";
     ctx.fillText(`No. ${p.index}`, W / 2, cardY + cardSize + 70);
-    ctx.restore();
 }
 
 async function loadImage(url) {
     return new Promise(res => {
         const img = new Image();
-        img.onload = () => {
-            res(img);
-            URL.revokeObjectURL(url); // メモリ管理用に追加
-        };
+        img.onload = () => { res(img); URL.revokeObjectURL(url); };
         img.onerror = () => res(null);
         img.src = url;
     });
