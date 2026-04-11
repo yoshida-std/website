@@ -10,21 +10,13 @@
         body { font-family: sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; padding-bottom: 50px; }
         .container { background: var(--card); padding: 25px; border-radius: 12px; width: 640px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         h2 { text-align:center; color:var(--primary); margin-top: 0; }
-        
-        /* アップロードエリア */
         .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
         .input-card { background: #333; padding: 15px; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
         .file-input { width: 100%; margin-top: 10px; color: #ccc; }
-        
-        /* プレビューサムネイル（入力欄の下） */
         .preview-thumb { width: 100%; height: 120px; background: #222; margin-top: 10px; border-radius: 4px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px dashed #555; }
         .preview-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
-
-        /* 設定エリア */
         .config-card { background: #3d3d3d; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 20px; border: 1px solid #555; }
         select { padding: 8px 12px; border-radius: 4px; border: none; background: #fff; font-weight: bold; cursor: pointer; }
-
-        /* メインキャンバス領域（プレビュー） */
         .canvas-area { text-align: center; border-top: 1px solid var(--border); padding-top: 20px; }
         .canvas-wrapper { 
             display: inline-block; 
@@ -32,33 +24,25 @@
             margin-bottom: 15px; 
             border: 4px solid #000; 
             border-radius: 4px;
-            /* 透過確認用の市松模様背景 */
             background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%);
             background-size: 16px 16px;
             background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
-            background-color: #fff; /* 市松模様の白い部分 */
+            background-color: #fff;
         }
-        canvas { display: block; max-width: 100%; height: auto; /* サイズはJSで動的に設定 */ }
+        canvas { display: block; max-width: 100%; height: auto; }
         #size-info { font-size: 12px; color: #aaa; margin-top: -10px; margin-bottom: 10px; }
-
-        /* ボタン */
         .btn-group { display: flex; gap: 10px; justify-content: center; }
         button { padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; font-size: 14px; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-play { background: #333; color: white; border: 1px solid #555; }
-        .btn-play:hover:not(:disabled) { background: #444; }
         .btn-save { background: var(--primary); color: white; }
-        .btn-save:hover:not(:disabled) { background: #00da00; }
-        
-        /* ステータス */
-        #status { margin-top: 15px; font-size: 14px; color: #aaa; min-height: 1.2em; }
+        #status { margin-top: 15px; font-size: 14px; color: #aaa; min-height: 1.2em; white-space: pre-wrap; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>LINE APNG Studio</h2>
-    
     <div class="upload-grid">
         <div class="input-card">
             <strong style="color:#ffb3b3;">① Before (1.5秒表示)</strong>
@@ -71,7 +55,6 @@
             <div class="preview-thumb"><img id="thumbA"></div>
         </div>
     </div>
-
     <div class="config-card">
         <strong>スワイプ方向:</strong>
         <select id="direction">
@@ -79,13 +62,9 @@
             <option value="vertical">下から上へ ⬆</option>
         </select>
     </div>
-
     <div class="canvas-area">
-        <div class="canvas-wrapper">
-            <canvas id="mainCanvas"></canvas>
-        </div>
+        <div class="canvas-wrapper"><canvas id="mainCanvas"></canvas></div>
         <div id="size-info">画像を選択してください</div>
-        
         <div class="btn-group">
             <button id="btnPlay" class="btn-play">▶ プレビュー再生</button>
             <button id="btnSave" class="btn-save">💾 APNGを生成・保存</button>
@@ -96,7 +75,6 @@
 
 <script>
     const canvas = document.getElementById('mainCanvas');
-    // willReadFrequently: true でCanvasからのピクセルデータ読み出しを高速化
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const status = document.getElementById('status');
     const sizeInfo = document.getElementById('size-info');
@@ -106,87 +84,60 @@
 
     let imgA = null, imgB = null;
     let isPlaying = false;
-    let currentW = 0, currentH = 0; // 現在の画像サイズを保持
+    let currentW = 0, currentH = 0;
 
-    // 画像ロード用共通関数
     async function loadImg(file, tid) {
         if(!file) return null;
-        if(file.type !== 'image/png') {
-            alert('PNG画像を選択してください。');
-            return null;
-        }
         return new Promise((resolve) => {
-            const url = URL.createObjectURL(file);
-            document.getElementById(tid).src = url;
-            const img = new Image();
-            img.onload = () => {
-                // ロード完了後にURLを解放（メモリ対策）
-                URL.revokeObjectURL(url);
-                resolve(img);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = async () => {
+                    document.getElementById(tid).src = e.target.result;
+                    if (img.decode) await img.decode();
+                    resolve(img);
+                };
+                img.src = e.target.result;
             };
-            img.onerror = () => {
-                alert('画像の読み込みに失敗しました。');
-                resolve(null);
-            };
-            img.src = url;
+            reader.readAsDataURL(file);
         });
     }
 
-    // Before画像が選択されたらCanvasサイズを決定する
     document.getElementById('inputB').onchange = async (e) => {
         const file = e.target.files[0];
         if(!file) return;
-        
         imgB = await loadImg(file, 'thumbB');
-        
         if(imgB) {
-            // **汎用サイズ対応の肝**: Canvasのサイズを読み込んだ画像に合わせる
             currentW = canvas.width = imgB.width;
             currentH = canvas.height = imgB.height;
             sizeInfo.innerText = `サイズ: ${currentW} x ${currentH} px`;
             sizeInfo.style.color = '#fff';
-            
-            // 後から読み込んだAのサイズが違っていたら警告するためのチェック
-            if(imgA && (imgA.width !== currentW || imgA.height !== currentH)) {
-                sizeInfo.innerText += ` (⚠ After画像とサイズが異なります)`;
-                sizeInfo.style.color = 'red';
-            }
-            
-            draw('B'); // Beforeを表示
+            draw('B');
+            status.innerText = "Before画像を読み込みました";
         }
     };
 
-    // After画像が選択された時の処理
     document.getElementById('inputA').onchange = async (e) => {
         const file = e.target.files[0];
         if(!file) return;
-
-        imgA = await loadImg(file, 'thumbA');
-        
-        if(imgA && imgB) {
-            // サイズチェック（LINEリジェクト対策）
-            if(imgA.width !== currentW || imgA.height !== currentH) {
-                alert(`エラー: Before画像とサイズが異なります。\nBefore: ${currentW}x${currentH}\nAfter: ${imgA.width}x${imgA.height}\n\nサイズを統一してください。`);
-                imgA = null;
-                document.getElementById('thumbA').src = '';
-                e.target.value = ''; // 入力をクリア
+        const loaded = await loadImg(file, 'thumbA');
+        if(loaded) {
+            if(imgB && (loaded.width !== currentW || loaded.height !== currentH)) {
+                alert(`サイズ不一致！\nBefore: ${currentW}x${currentH}\nAfter: ${loaded.width}x${loaded.height}`);
+                e.target.value = '';
                 return;
             }
+            imgA = loaded;
             sizeInfo.innerText = `サイズ: ${currentW} x ${currentH} px (OK)`;
-            sizeInfo.style.color = var(--primary);
-            draw('A'); // Afterを表示
+            sizeInfo.style.color = "var(--primary)";
+            draw('A');
+            status.innerText = "After画像を読み込みました";
         }
     };
 
-    /**
-     * 描画関数
-     * @param {string} mode - 'A': After単独, 'B': Before単独, 'S': スワイプ中
-     * @param {number} p - スワイプの進捗 (0.0 ～ 1.0)
-     */
     function draw(mode, p = 0) {
-        // **透過対応の肝**: 毎フレーム描画前にCanvas全体を透明にクリアする
+        if(!currentW || !currentH) return;
         ctx.clearRect(0, 0, currentW, currentH);
-        
         if(mode === 'B' && imgB) {
             ctx.drawImage(imgB, 0, 0);
         } else if(mode === 'A' && imgA) {
@@ -194,58 +145,38 @@
         } else if(mode === 'S' && imgA && imgB) {
             const dir = dirSelect.value;
             if(dir === 'horizontal') {
-                // 左から右へのスワイプ
-                // Beforeを右へ追い出す
                 ctx.drawImage(imgB, currentW * p, 0);
-                // Afterを左から入れる
                 ctx.drawImage(imgA, -currentW + (currentW * p), 0);
             } else {
-                // 下から上へのスワイプ
-                // Beforeを上へ追い出す
                 ctx.drawImage(imgB, 0, -currentH * p);
-                // Afterを下から入れる
                 ctx.drawImage(imgA, 0, currentH - (currentH * p));
             }
         }
     }
 
-    // プレビュー再生
     btnPlay.onclick = async () => {
         if(!imgA || !imgB || isPlaying) return;
         isPlaying = true;
         btnPlay.disabled = true;
-        btnSave.disabled = true;
         status.innerText = "プレビュー再生中...";
-
-        // シークエンス開始
-        draw('A'); await new Promise(r => setTimeout(r, 10));   // フレーム1 (After 10ms)
-        draw('B'); await new Promise(r => setTimeout(r, 1500)); // フレーム2 (Before 1.5s)
-        
-        // スワイプアニメーション (約100ms)
-        const swipeDuration = 100;
+        draw('A'); await new Promise(r => setTimeout(r, 10));
+        draw('B'); await new Promise(r => setTimeout(r, 1500));
         const start = performance.now();
         while(true) {
-            const now = performance.now();
-            const elapsed = now - start;
-            if(elapsed >= swipeDuration) break;
-            
-            draw('S', elapsed / swipeDuration); // 進捗を渡す
+            const elapsed = performance.now() - start;
+            if(elapsed >= 100) break;
+            draw('S', elapsed / 100);
             await new Promise(r => requestAnimationFrame(r));
         }
-        
-        draw('A'); // 最終フレーム (Afterに戻る)
-        
+        draw('A');
         status.innerText = "プレビュー完了";
         isPlaying = false;
         btnPlay.disabled = false;
-        btnSave.disabled = false;
     };
 
-    // --- LINE仕様(ループ1回)にするためのバイナリこねこね関数 ---
     function finalizeApng(buffer) {
         const view = new DataView(buffer);
         let offset = 8;
-        // CRCテーブルの準備
         const crcTable = new Uint32Array(256);
         for (let i = 0; i < 256; i++) {
             let c = i;
@@ -257,14 +188,13 @@
             for (let i = 0; i < data.length; i++) crc = crcTable[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
             return crc ^ 0xFFFFFFFF;
         }
-        // acTLチャンクを探してループ回数を1に書き換える
         while (offset < buffer.byteLength) {
             const length = view.getUint32(offset);
             const type = view.getUint32(offset + 4);
-            if (type === 0x6163544C) { // 'acTL'
-                view.setUint32(offset + 12, 1); // ループ回数を1に設定
+            if (type === 0x6163544C) {
+                view.setUint32(offset + 12, 1);
                 const chunkData = new Uint8Array(buffer, offset + 4, length + 4);
-                view.setUint32(offset + 8 + length, calculateCrc(chunkData)); // CRC再計算
+                view.setUint32(offset + 8 + length, calculateCrc(chunkData));
                 break;
             }
             offset += 12 + length;
@@ -272,92 +202,40 @@
         return buffer;
     }
 
-    // APNG生成・保存
     btnSave.onclick = async () => {
         if(!imgA || !imgB) return;
-        status.innerText = "APNG生成中... (しばらくお待ちください)";
-        status.style.color = "#ccc";
-        btnPlay.disabled = true;
+        status.innerText = "生成中...";
         btnSave.disabled = true;
-
-        // UPNGjs用のデータ配列
         const frames = [], delays = [];
-
-        // 全フレームを描画してピクセルデータを取得
-        // 1. After (10ms)
         draw('A');
-        const dataA = ctx.getImageData(0,0,currentW,currentH).data.buffer;
-        frames.push(dataA); delays.push(10);
-
-        // 2. Before (1500ms)
+        frames.push(ctx.getImageData(0,0,currentW,currentH).data.buffer); delays.push(10);
         draw('B');
-        const dataB = ctx.getImageData(0,0,currentW,currentH).data.buffer;
-        frames.push(dataB); delays.push(1500);
-
-        // 3. スワイプ遷移 (5フレーム, 各20ms = 計100ms)
+        frames.push(ctx.getImageData(0,0,currentW,currentH).data.buffer); delays.push(1500);
         for(let i=1; i<=5; i++) {
             draw('S', i/5);
-            frames.push(ctx.getImageData(0,0,currentW,currentH).data.buffer);
-            delays.push(20);
+            frames.push(ctx.getImageData(0,0,currentW,currentH).data.buffer); delays.push(20);
         }
-
-        // 4. After (2390ms) - ループ前の最後の静止
-        frames.push(dataA); delays.push(2390);
-
-        // エンコード実行 (非同期でフリーズを防ぐ)
-        await new Promise(r => setTimeout(r, 50));
+        draw('A');
+        frames.push(ctx.getImageData(0,0,currentW,currentH).data.buffer); delays.push(2390);
 
         try {
-            // 汎用サイズ (currentW, currentH) でエンコード
-            // 第4引数 '0' はロスレス圧縮を意味するが、UPNGはサイズが大きいと自動減色する場合がある
-            let apngBlobArrayBuffer = UPNG.encode(frames, currentW, currentH, 0, delays);
-            
-            // LINE仕様(ループ1回)へバイナリ修正
-            apngBlobArrayBuffer = finalizeApng(apngBlobArrayBuffer);
-
-            const sizeKB = apngBlobArrayBuffer.byteLength / 1024;
-            
-            // 容量制限チェック (LINEスタンプは1MB = 1024KB)
-            if(sizeKB > 1000) {
-                status.innerText = `サイズ超過: ${Math.round(sizeKB)}KB / 制限1000KB\n画質を落として再生成を試みます...`;
-                status.style.color = "orange";
-                await new Promise(r => setTimeout(r, 1000));
-
-                // 減色エンコード（第4引数に色数（例:256）を指定すると減色される。リクエストがあればここを調整）
-                apngBlobArrayBuffer = UPNG.encode(frames, currentW, currentH, 256, delays); 
-                apngBlobArrayBuffer = finalizeApng(apngBlobArrayBuffer);
-                const newSizeKB = apngBlobArrayBuffer.byteLength / 1024;
-                
-                if(newSizeKB > 1000) {
-                    status.innerText = `エラー: 減色しても制限を超えました (${Math.round(newSizeKB)}KB)。\n画像の複雑さを減らしてください。`;
-                    status.style.color = "red";
-                    cleanup();
-                    return;
-                }
+            let apng = UPNG.encode(frames, currentW, currentH, 0, delays);
+            apng = finalizeApng(apng);
+            const size = apng.byteLength / 1024;
+            if(size > 1000) {
+                apng = UPNG.encode(frames, currentW, currentH, 256, delays);
+                apng = finalizeApng(apng);
             }
-
-            // ダウンロード処理
-            const blob = new Blob([apngBlobArrayBuffer], {type: "image/png"});
+            const blob = new Blob([apng], {type: "image/png"});
             const a = document.createElement('a');
-            const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
             a.href = URL.createObjectURL(blob);
-            // ファイル名にサイズを含める
-            a.download = `swipe_${dirSelect.value}_${currentW}x${currentH}_${dateStr}.png`;
+            a.download = `swipe_${currentW}x${currentH}.png`;
             a.click();
-            
-            status.innerText = `成功！ 保存しました。(${Math.round(apngBlobArrayBuffer.byteLength/1024)}KB)`;
-            status.style.color = var(--primary);
-
+            status.innerText = `成功！ (${Math.round(apng.byteLength/1024)}KB)`;
+            status.style.color = "var(--primary)";
         } catch(e) {
-            console.error(e);
-            status.innerText = "エラーが発生しました。";
-            status.style.color = "red";
+            status.innerText = "エラーが発生しました";
         } finally {
-            cleanup();
-        }
-
-        function cleanup() {
-            btnPlay.disabled = false;
             btnSave.disabled = false;
         }
     };
