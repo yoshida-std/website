@@ -3,122 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Survival Battle - Landscape Perfect</title>
+    <title>Survival Battle - Central Pad Edition</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        /* 画面全体の固定 */
-        body { 
-            margin: 0; 
-            background: #111; 
-            color: white; 
-            font-family: sans-serif; 
-            overflow: hidden; 
-            position: fixed; 
-            width: 100%; 
-            height: 100%; 
-            touch-action: none; 
-            -webkit-user-select: none; 
-        }
-
-        /* 接続・リザルト画面 */
-        .overlay { 
-            position: absolute; 
-            inset: 0; 
-            background: rgba(0,0,0,0.9); 
-            z-index: 200; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            backdrop-filter: blur(5px); 
-        }
-
-        /* PC用キャンバス表示 */
+        body { margin: 0; background: #1a1a1a; color: white; font-family: sans-serif; overflow: hidden; position: fixed; width: 100vw; height: 100vh; touch-action: none; -webkit-user-select: none; }
+        .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+        
+        /* PC画面 */
         #pc-view { display: none; text-align: center; width: 100vw; height: 100vh; }
-        canvas { background: #000; border: 2px solid #333; max-width: 95vw; max-height: 75vh; }
+        canvas { background: #111; border: 4px solid #333; max-width: 95vw; max-height: 70vh; margin-top: 10px; }
+        .hp-bar { display: flex; justify-content: space-around; font-size: 24px; font-weight: bold; padding: 10px; }
 
-        /* スマホ用コントローラー（横画面特化） */
-        #mobile-view { 
-            display: none; 
-            width: 100vw; 
-            height: 100vh; 
-            position: relative; 
-            background: #1a1a1a; 
-        }
-
-        /* 左側：移動ボタン（画面左下に固定） */
+        /* スマホ・コントローラー（中央配置） */
+        #mobile-view { display: none; width: 100vw; height: 100vh; background: #111; position: relative; }
+        
+        /* 左：移動（垂直方向中央） */
         .left-pad {
             position: absolute;
-            bottom: 8vh; /* 画面下から8%の位置 */
-            left: 5vw;   /* 画面左から5%の位置 */
+            top: 55%; 
+            left: 8vw;
+            transform: translateY(-50%);
             display: flex;
-            gap: 4vw;
+            gap: 20px;
         }
 
-        /* 右側：アクションボタン（画面右下に固定） */
+        /* 右：アクション（垂直方向中央・十字） */
         .right-pad {
             position: absolute;
-            bottom: 5vh;
-            right: 5vw;
-            width: 42vh; /* 高さを基準にサイズを決定 */
-            height: 42vh;
+            top: 55%;
+            right: 8vw;
+            transform: translateY(-50%);
+            width: 40vh;
+            height: 40vh;
         }
 
-        /* 共通ボタンデザイン */
         .btn {
             background: rgba(255,255,255,0.1);
             color: white;
-            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            box-shadow: 0 4px rgba(0,0,0,0.5);
+            border: 2px solid rgba(255,255,255,0.3);
+            backdrop-filter: blur(5px);
             touch-action: none;
         }
-        .btn:active { background: rgba(255,255,255,0.4); transform: scale(0.9); box-shadow: none; }
-
-        .btn-move { width: 16vh; height: 16vh; border-radius: 20%; font-size: 6vh; }
-
-        /* 十字配置の絶対位置 */
-        .btn-action { position: absolute; width: 14vh; height: 14vh; border-radius: 50%; font-size: 2.5vh; }
-        .pos-top    { top: 0; left: 14vh; background: rgba(46, 145, 255, 0.4); }
-        .pos-left   { top: 14vh; left: 0; background: rgba(142, 68, 173, 0.4); }
-        .pos-right  { top: 14vh; right: 0; background: rgba(255, 71, 87, 0.4); }
-
-        .status-bar { position: absolute; top: 5px; width: 100%; text-align: center; color: #666; font-size: 10px; }
+        .btn:active { background: rgba(255,255,255,0.4); transform: scale(0.9); }
+        .btn-move { width: 15vh; height: 15vh; font-size: 5vh; border-radius: 20%; }
+        
+        .btn-action { position: absolute; width: 13vh; height: 13vh; font-size: 2.5vh; }
+        .pos-top    { top: 0; left: 13.5vh; background: rgba(46, 145, 255, 0.4); border-color: #2e91ff; }
+        .pos-left   { top: 13.5vh; left: 0; background: rgba(142, 68, 173, 0.4); border-color: #8e44ad; }
+        .pos-right  { top: 13.5vh; right: 0; background: rgba(255, 71, 87, 0.4); border-color: #ff4757; }
     </style>
 </head>
 <body>
 
 <div id="setup-screen" class="overlay">
+    <h1 id="main-title" style="color:gold;">SURVIVAL ONLINE</h1>
     <div id="host-setup">
-        <h2 style="margin:0; color:gold;">SERVER ID</h2>
-        <div style="font-size:50px; font-weight:bold;" id="my-id-display">----</div>
-        <p id="conn-count">接続済み: 0台</p>
-        <button onclick="startGame()" style="padding:15px 40px; background:#2ecc71; color:white; border:none; border-radius:8px; font-size:20px;">GAME START</button>
+        <div style="font-size:50px; font-weight:bold; margin:10px;" id="my-id-display">----</div>
+        <p id="conn-count">接続待ち...</p>
+        <button onclick="startGame()" style="padding:15px 50px; background:#2ecc71; color:white; border:none; border-radius:10px; font-size:24px; font-weight:bold;">GAME START</button>
     </div>
-    <div style="margin-top: 20px;">
-        <input type="number" id="peer-id-input" placeholder="ID" style="padding:10px; width:80px; font-size:18px;">
-        <button onclick="connectToPC()" style="padding:10px 20px; background:#2e91ff; color:white; border:none; border-radius:8px;">CONNECT</button>
+    <div style="margin-top:30px;">
+        <input type="number" id="peer-id-input" placeholder="ID" style="padding:15px; width:100px; font-size:20px; border-radius:10px;">
+        <button onclick="connectToPC()" style="padding:15px 30px; background:#2e91ff; color:white; border:none; border-radius:10px; font-size:20px;">CONNECT</button>
     </div>
 </div>
 
 <div id="finish-ui" class="overlay" style="display:none;">
-    <div id="winner-text" style="font-size:50px; color:gold; margin-bottom:20px;">WINNER!</div>
-    <button onclick="rematch()" style="padding:15px 50px; background:#2ecc71; color:white; border:none; border-radius:8px; font-size:22px;">REMATCH</button>
+    <div id="winner-text" style="font-size:60px; color:gold; margin-bottom:20px;">WINNER!</div>
+    <button onclick="rematch()" style="padding:20px 60px; background:#2ecc71; color:white; border:none; border-radius:10px; font-size:28px; font-weight:bold;">REMATCH</button>
 </div>
 
 <div id="pc-view">
-    <div style="padding:10px; font-size:24px; font-weight:bold;">
-        <span style="color:#ff4757">P1: <span id="p1hp">100</span></span> | 
+    <div class="hp-bar">
+        <span style="color:#ff4757">P1: <span id="p1hp">100</span></span>
         <span style="color:#2e91ff">P2: <span id="p2hp">100</span></span>
     </div>
     <canvas id="gameCanvas"></canvas>
 </div>
 
 <div id="mobile-view">
-    <div class="status-bar">CONTROLLER CONNECTED - LANDSCAPE MODE</div>
     <div class="left-pad">
         <div class="btn btn-move" id="btn-left">◀</div>
         <div class="btn btn-move" id="btn-right">▶</div>
@@ -139,10 +107,9 @@ const shortId = Math.floor(1000 + Math.random() * 9000).toString();
 const peer = new Peer(shortId);
 let connections = [];
 let gameActive = false;
-let players = [];
+let platforms = [], walls = [], healZone = null, players = [];
 
 peer.on('open', id => document.getElementById('my-id-display').innerText = id);
-
 peer.on('connection', conn => {
     connections.push(conn);
     document.getElementById('conn-count').innerText = `接続済み: ${connections.length}台`;
@@ -177,19 +144,51 @@ function connectToPC() {
     });
 }
 
-// --- ゲームロジック ---
+// --- ゲームエンジン ---
 function Player(color, x) {
     this.x = x; this.y = 400; this.w = 40; this.h = 60; this.color = color;
-    this.vx = 0; this.vy = 0; this.hp = 100; this.side = 1; this.bullets = [];
+    this.vx = 0; this.vy = 0; this.hp = 100; this.side = 1; this.isJumping = false;
+    this.bullets = [];
     this.update = function() {
-        this.vy += 0.8; this.x += this.vx; this.y += this.vy;
+        this.vy += 0.8; // 重力
+        this.x += this.vx; this.y += this.vy;
+
+        // 床
         if (this.y + this.h > 580) { this.y = 580 - this.h; this.vy = 0; this.isJumping = false; }
-        this.bullets.forEach((b, i) => { b.x += b.vx; if (b.x < 0 || b.x > 1000) this.bullets.splice(i, 1); });
+        
+        // 足場判定
+        platforms.forEach(p => {
+            if (this.vy > 0 && this.x + this.w > p.x && this.x < p.x + p.w && this.y + this.h > p.y && this.y + this.h < p.y + p.h + this.vy) {
+                this.y = p.y - this.h; this.vy = 0; this.isJumping = false;
+            }
+        });
+
+        // 壁判定
+        walls.forEach(w => {
+            if (this.x + this.w > w.x && this.x < w.x + w.w && this.y + this.h > w.y && this.y < w.y + w.h) {
+                if (this.vx > 0 && this.x < w.x) this.x = w.x - this.w;
+                else if (this.vx < 0 && this.x + this.w > w.x + w.w) this.x = w.x + w.w;
+            }
+        });
+
+        // 回復
+        if (healZone && this.x + this.w > healZone.x && this.x < healZone.x + healZone.w && this.y + this.h > healZone.y && this.y < healZone.y + healZone.h) {
+            if (Date.now() % 1000 < 30) this.hp = Math.min(100, this.hp + 1);
+        }
+
+        this.bullets.forEach((b, i) => {
+            b.x += b.vx;
+            if (b.x < 0 || b.x > 1000) this.bullets.splice(i, 1);
+        });
     };
 }
 
 function initStage() {
     players = [new Player("#ff4757", 100), new Player("#2e91ff", 860)];
+    platforms = []; walls = [];
+    for (let i = 0; i < 5; i++) platforms.push({x: 100+Math.random()*600, y: 200+Math.random()*250, w: 200, h: 15});
+    for (let i = 0; i < 2; i++) walls.push({x: 300+Math.random()*400, y: 150+Math.random()*300, w: 40, h: 120});
+    healZone = {x: 400, y: 100, w: 200, h: 15};
 }
 
 function handleInput(pIdx, data) {
@@ -198,11 +197,11 @@ function handleInput(pIdx, data) {
     if (data.left) { p.vx = -speed; p.side = -1; }
     else if (data.right) { p.vx = speed; p.side = 1; }
     else { p.vx *= 0.8; }
-    if (data.jump && !p.isJumping) { p.vy = -17; p.isJumping = true; }
+    if (data.jump && !p.isJumping) { p.vy = -18; p.isJumping = true; }
     if (data.fire) p.bullets.push({x: p.x + (p.side === 1 ? p.w : 0), y: p.y + 25, vx: p.side * 18});
 }
 
-// --- 操作入力 ---
+// --- コントローラー入力 ---
 let currentInput = { left: false, right: false, dash: false, jump: false };
 let fireTrigger = false;
 const bind = (id, key) => {
@@ -210,10 +209,10 @@ const bind = (id, key) => {
     if(!el) return;
     el.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        if(key === 'fire') { fireTrigger = true; if(navigator.vibrate) navigator.vibrate(20); }
+        if(key === 'fire') { fireTrigger = true; if(navigator.vibrate) navigator.vibrate(25); }
         else currentInput[key] = true;
     });
-    el.addEventListener('touchend', (e) => { e.preventDefault(); currentInput[key] = false; });
+    el.addEventListener('touchend', (e) => { e.preventDefault(); if(key !== 'fire') currentInput[key] = false; });
 };
 bind('btn-left', 'left'); bind('btn-right', 'right');
 bind('btn-jump', 'jump'); bind('btn-dash', 'dash'); bind('btn-fire', 'fire');
@@ -221,6 +220,11 @@ bind('btn-jump', 'jump'); bind('btn-dash', 'dash'); bind('btn-fire', 'fire');
 function loop() {
     if(!gameActive) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 背景・ステージ
+    ctx.fillStyle = "#444"; platforms.forEach(p => ctx.fillRect(p.x, p.y, p.w, p.h));
+    ctx.fillStyle = "#222"; walls.forEach(w => { ctx.fillRect(w.x, w.y, w.w, w.h); ctx.strokeStyle="#555"; ctx.strokeRect(w.x, w.y, w.w, w.h); });
+    ctx.fillStyle = "rgba(46, 204, 113, 0.4)"; ctx.fillRect(healZone.x, healZone.y, healZone.w, healZone.h);
     ctx.fillStyle = "#333"; ctx.fillRect(0, 580, 1000, 20);
     
     players.forEach((p, idx) => {
@@ -231,7 +235,9 @@ function loop() {
                 enemy.hp -= 10; p.bullets.splice(bi, 1);
             }
         });
+        
         ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.w, p.h);
+        ctx.fillStyle = "white"; ctx.fillRect(p.side === 1 ? p.x + p.w - 12 : p.x, p.y + 10, 12, 12);
         ctx.fillStyle = "yellow"; p.bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI*2); ctx.fill(); });
 
         if (p.hp <= 0 && gameActive) {
@@ -240,8 +246,9 @@ function loop() {
             document.getElementById('finish-ui').style.display = 'flex';
         }
     });
-    document.getElementById('p1hp').innerText = players[0].hp;
-    document.getElementById('p2hp').innerText = players[1].hp;
+    
+    document.getElementById('p1hp').innerText = Math.max(0, players[0].hp);
+    document.getElementById('p2hp').innerText = Math.max(0, players[1].hp);
     requestAnimationFrame(loop);
 }
 initStage();
