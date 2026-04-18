@@ -2,8 +2,8 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Survival Battle - Seamless Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Survival Battle - Landscape Pro</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { margin: 0; background: #1a1a1a; color: white; font-family: sans-serif; overflow: hidden; touch-action: none; -webkit-user-select: none; }
@@ -12,24 +12,47 @@
         
         /* PCビュー */
         #pc-view { display: none; text-align: center; width: 100vw; height: 100vh; }
-        canvas { background: #111; border: 4px solid #333; margin-top: 10px; }
-        .hp-bar { display: flex; justify-content: space-around; font-size: 30px; font-weight: bold; padding: 15px; }
+        canvas { background: #111; border: 4px solid #333; max-width: 90vw; max-height: 80vh; }
 
-        /* スマホコントローラー */
-        #mobile-view { display: none; height: 100vh; background: #222; position: relative; }
-        .ctrl-area { position: absolute; bottom: 40px; width: 100%; height: 260px; display: flex; justify-content: space-between; padding: 0 30px; box-sizing: border-box; }
+        /* スマホ・横画面コントローラー */
+        #mobile-view { display: none; height: 100vh; width: 100vw; background: #111; position: relative; }
+        .pad-container { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-end; 
+            height: 100%; 
+            padding: 20px 40px; 
+            box-sizing: border-box; 
+        }
         
-        .btn { background: #444; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 6px #222; border: 2px solid #555; }
-        .btn:active { transform: translateY(4px); box-shadow: 0 2px #222; background: #666; }
+        /* 共通ボタン設定 */
+        .btn { 
+            background: rgba(255,255,255,0.1); 
+            color: white; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: bold; 
+            border: 2px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(4px);
+            touch-action: none;
+        }
+        .btn:active { background: rgba(255,255,255,0.3); transform: scale(0.9); }
         
-        .btn-move { width: 90px; height: 90px; font-size: 30px; border-radius: 15px; }
-        .action-group { position: relative; width: 220px; height: 220px; }
-        .pos-top    { position: absolute; top: 0;   left: 70px;  width: 80px; height: 80px; background: #2e91ff; }
-        .pos-left   { position: absolute; top: 70px; left: 0;    width: 80px; height: 80px; background: #8e44ad; }
-        .pos-right  { position: absolute; top: 70px; right: 0;   width: 80px; height: 80px; background: #ff4757; }
+        /* 左側：移動ボタン */
+        .move-group { display: flex; gap: 20px; }
+        .btn-move { width: 18vh; height: 18vh; font-size: 5vh; border-radius: 20%; }
 
-        .win-msg { font-size: 80px; color: gold; text-shadow: 0 0 20px gold; margin-bottom: 20px; }
-        button { cursor: pointer; }
+        /* 右側：十字アクション */
+        .action-group { position: relative; width: 45vh; height: 45vh; }
+        .btn-action { position: absolute; width: 16vh; height: 16vh; font-size: 3vh; border-radius: 50%; }
+        
+        .pos-top    { top: 0; left: 14.5vh; background: rgba(46, 145, 255, 0.4); border-color: #2e91ff; }
+        .pos-left   { top: 14.5vh; left: 0; background: rgba(142, 68, 173, 0.4); border-color: #8e44ad; }
+        .pos-right  { top: 14.5vh; right: 0; background: rgba(255, 71, 87, 0.4); border-color: #ff4757; }
+
+        .status-text { position: absolute; top: 10px; width: 100%; text-align: center; color: #555; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -38,25 +61,25 @@
     <div id="host-setup">
         <h1>SERVER ID</h1>
         <div class="id-display" id="my-id-display">----</div>
-        <p id="conn-count" style="color:#2ecc71; font-weight:bold;">接続済み: 0台</p>
-        <button onclick="startGame()" style="padding:15px 40px; background:#2ecc71; color:white; border:none; border-radius:10px; font-size:24px; font-weight:bold;">GAME START</button>
-        <button onclick="initStage()" style="padding:10px 20px; background:#444; color:white; border:none; border-radius:10px; margin-left:10px;">SHUFFLE</button>
+        <p id="conn-count" style="color:#2ecc71; text-align:center;">接続済み: 0台</p>
+        <div style="display:flex; gap:10px;">
+            <button onclick="startGame()" style="padding:15px 40px; background:#2ecc71; color:white; border:none; border-radius:10px; font-size:24px; font-weight:bold;">START</button>
+            <button onclick="initStage()" style="padding:15px; background:#444; color:white; border:none; border-radius:10px;">SHUFFLE</button>
+        </div>
     </div>
-    <div id="client-setup" style="margin-top: 40px; text-align: center;">
-        <input type="number" id="peer-id-input" placeholder="4桁IDを入力" style="padding:15px; font-size:24px; width:180px; border-radius:10px; border:none;">
-        <br><br>
-        <button onclick="connectToPC()" style="padding:15px 30px; background:#2e91ff; color:white; border:none; border-radius:10px; font-size:20px;">CONNECT</button>
+    <div id="client-setup" style="margin-top: 30px; text-align: center;">
+        <input type="number" id="peer-id-input" placeholder="4桁ID" style="padding:12px; font-size:20px; width:120px; border-radius:8px;">
+        <button onclick="connectToPC()" style="padding:12px 24px; background:#2e91ff; color:white; border:none; border-radius:8px; font-size:18px; margin-left:10px;">CONNECT</button>
     </div>
 </div>
 
 <div id="finish-ui" class="overlay" style="display:none;">
-    <div class="win-msg" id="winner-text">P1 WIN!</div>
-    <button onclick="rematch()" style="padding:20px 60px; background:#2ecc71; color:white; border:none; border-radius:10px; font-size:28px; font-weight:bold; box-shadow: 0 5px #27ae60;">REMATCH</button>
-    <button onclick="initStage()" style="margin-top:20px; background:none; border:none; color:#888; text-decoration:underline;">ステージを再生成</button>
+    <div style="font-size:60px; color:gold; margin-bottom:20px;" id="winner-text">P1 WIN!</div>
+    <button onclick="rematch()" style="padding:20px 60px; background:#2ecc71; color:white; border:none; border-radius:10px; font-size:24px; font-weight:bold;">REMATCH</button>
 </div>
 
 <div id="pc-view">
-    <div class="hp-bar">
+    <div style="display:flex; justify-content:space-around; font-size:24px; padding:10px;">
         <span style="color:#ff4757">P1: <span id="p1hp">100</span></span>
         <span style="color:#2e91ff">P2: <span id="p2hp">100</span></span>
     </div>
@@ -64,16 +87,16 @@
 </div>
 
 <div id="mobile-view">
-    <div style="padding: 20px; color: #888; text-align: center;">CONNECTED AS CONTROLLER</div>
-    <div class="ctrl-area">
-        <div style="display:flex; gap:15px; align-items:flex-end;">
+    <div class="status-text">CONTROLLER MODE (LANDSCAPE)</div>
+    <div class="pad-container">
+        <div class="move-group">
             <div class="btn btn-move" id="btn-left">◀</div>
             <div class="btn btn-move" id="btn-right">▶</div>
         </div>
         <div class="action-group">
-            <div class="btn pos-top" id="btn-jump">JUMP</div>
-            <div class="btn pos-left" id="btn-dash">DASH</div>
-            <div class="btn pos-right" id="btn-fire">FIRE</div>
+            <div class="btn btn-action pos-top" id="btn-jump">JUMP</div>
+            <div class="btn btn-action pos-left" id="btn-dash">DASH</div>
+            <div class="btn btn-action pos-right" id="btn-fire">FIRE</div>
         </div>
     </div>
 </div>
@@ -86,18 +109,15 @@ canvas.width = 1000; canvas.height = 600;
 const shortId = Math.floor(1000 + Math.random() * 9000).toString();
 const peer = new Peer(shortId);
 let connections = [];
-let role = "";
 let gameActive = false;
 
 peer.on('open', id => document.getElementById('my-id-display').innerText = id);
 
-// --- ホスト(PC) ---
 peer.on('connection', conn => {
-    if (connections.length >= 2) return; // 2台まで
+    if (connections.length >= 2) return;
     connections.push(conn);
     document.getElementById('conn-count').innerText = `接続済み: ${connections.length}台`;
-    const pIdx = connections.length - 1;
-    conn.on('data', data => { if(data.type === 'input') handleInput(pIdx, data); });
+    conn.on('data', data => { if(data.type === 'input') handleInput(connections.indexOf(conn), data); });
 });
 
 function startGame() {
@@ -113,15 +133,12 @@ function rematch() {
     document.getElementById('finish-ui').style.display = 'none';
     gameActive = true;
     initStage();
-    // loopは既に動いているので呼ぶ必要なし
 }
 
-// --- クライアント(スマホ) ---
 function connectToPC() {
     const targetId = document.getElementById('peer-id-input').value;
     const myConn = peer.connect(targetId);
     myConn.on('open', () => {
-        role = "client";
         document.getElementById('setup-screen').style.display = 'none';
         document.getElementById('mobile-view').style.display = 'block';
         setInterval(() => {
@@ -133,8 +150,7 @@ function connectToPC() {
 
 // --- ゲームロジック ---
 const gravity = 0.8;
-let platforms = [], walls = [], healZone = null;
-const players = [];
+let platforms = [], players = [];
 
 function Player(color, x) {
     this.x = x; this.y = 400; this.w = 40; this.h = 60; this.color = color;
@@ -156,24 +172,22 @@ function Player(color, x) {
 }
 
 function initStage() {
-    players[0] = new Player("#ff4757", 100);
-    players[1] = new Player("#2e91ff", 860);
+    players = [new Player("#ff4757", 100), new Player("#2e91ff", 860)];
     platforms = [];
     for (let i = 0; i < 5; i++) platforms.push({x: 100+Math.random()*600, y: 200+Math.random()*250, w: 200, h: 15});
-    healZone = {x: 400, y: 100, w: 200, h: 15};
 }
 
 function handleInput(pIdx, data) {
     const p = players[pIdx]; if(!p || !gameActive) return;
-    const speed = data.dash ? 11 : 6;
+    const speed = data.dash ? 12 : 7;
     if (data.left) { p.vx = -speed; p.side = -1; }
     else if (data.right) { p.vx = speed; p.side = 1; }
     else { p.vx *= 0.8; }
     if (data.jump && !p.isJumping) { p.vy = -17; p.isJumping = true; }
-    if (data.fire) p.bullets.push({x: p.x + (p.side === 1 ? p.w : 0), y: p.y + 25, vx: p.side * 16});
+    if (data.fire) p.bullets.push({x: p.x + (p.side === 1 ? p.w : 0), y: p.y + 25, vx: p.side * 18});
 }
 
-// --- スマホ操作 ---
+// --- 操作入力 ---
 let currentInput = { left: false, right: false, dash: false, jump: false };
 let fireTrigger = false;
 const bind = (id, key) => {
@@ -181,7 +195,7 @@ const bind = (id, key) => {
     if(!el) return;
     el.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        if(key === 'fire') { fireTrigger = true; if(navigator.vibrate) navigator.vibrate(20); }
+        if(key === 'fire') { fireTrigger = true; if(navigator.vibrate) navigator.vibrate(25); }
         else currentInput[key] = true;
     });
     el.addEventListener('touchend', (e) => { e.preventDefault(); if(key !== 'fire') currentInput[key] = false; });
@@ -192,8 +206,6 @@ bind('btn-jump', 'jump'); bind('btn-dash', 'dash'); bind('btn-fire', 'fire');
 function loop() {
     if(!gameActive) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // 背景描画
     ctx.fillStyle = "#444"; platforms.forEach(p => ctx.fillRect(p.x, p.y, p.w, p.h));
     ctx.fillStyle = "#333"; ctx.fillRect(0, 580, 1000, 20);
     
@@ -205,7 +217,6 @@ function loop() {
                 enemy.hp -= 10; p.bullets.splice(bi, 1);
             }
         });
-        
         ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.w, p.h);
         ctx.fillStyle = "white"; ctx.fillRect(p.side === 1 ? p.x + p.w - 12 : p.x, p.y + 10, 12, 12);
         ctx.fillStyle = "yellow"; p.bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI*2); ctx.fill(); });
@@ -216,7 +227,6 @@ function loop() {
             document.getElementById('finish-ui').style.display = 'flex';
         }
     });
-    
     document.getElementById('p1hp').innerText = players[0].hp;
     document.getElementById('p2hp').innerText = players[1].hp;
     requestAnimationFrame(loop);
