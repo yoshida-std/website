@@ -3,27 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Survival Battle - Full Power Edition</title>
+    <title>Survival Battle - Anti-Zoom Edition</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background: #1a1a1a; color: white; font-family: sans-serif; overflow: hidden; position: fixed; width: 100vw; height: 100vh; touch-action: none; -webkit-user-select: none; }
+        /* 画面全体のズームとスクロールを物理的に禁止 */
+        body { 
+            margin: 0; 
+            background: #1a1a1a; 
+            color: white; 
+            font-family: sans-serif; 
+            overflow: hidden; 
+            position: fixed; 
+            width: 100vw; 
+            height: 100vh; 
+            /* ダブルタップズームを無効化する魔法のプロパティ */
+            touch-action: none; 
+            -webkit-user-select: none; 
+            -webkit-text-size-adjust: none;
+        }
+
         .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
-        
-        /* 共通ボタン・UI */
-        .btn-ui { padding: 15px 40px; background: #2ecc71; color: white; border: none; border-radius: 12px; font-size: 24px; font-weight: bold; cursor: pointer; box-shadow: 0 5px #27ae60; }
-        .btn-ui:active { transform: translateY(3px); box-shadow: none; }
+        .btn-ui { padding: 15px 40px; background: #2ecc71; color: white; border: none; border-radius: 12px; font-size: 24px; font-weight: bold; cursor: pointer; box-shadow: 0 5px #27ae60; touch-action: manipulation; }
         .conn-badge { background: #34495e; padding: 5px 15px; border-radius: 20px; font-size: 16px; margin-top: 10px; color: #2ecc71; }
 
-        /* PCビュー */
         #pc-view { display: none; text-align: center; width: 100vw; height: 100vh; }
         canvas { background: #111; border: 4px solid #333; max-width: 95vw; max-height: 70vh; margin-top: 10px; }
 
-        /* スマホ・巨大コントローラー */
+        /* スマホコントローラー */
         #mobile-view { display: none; width: 100vw; height: 100vh; background: #111; position: relative; }
         .left-pad { position: absolute; top: 55%; left: 5vw; transform: translateY(-50%); display: flex; gap: 20px; }
         .right-pad { position: absolute; top: 55%; right: 5vw; transform: translateY(-50%); width: 52vh; height: 52vh; }
         
-        .btn-ctrl { background: rgba(255,255,255,0.1); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid rgba(255,255,255,0.3); backdrop-filter: blur(5px); touch-action: none; }
+        /* ボタン単体にも touch-action: none を指定 */
+        .btn-ctrl { 
+            background: rgba(255,255,255,0.1); 
+            color: white; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: bold; 
+            border: 3px solid rgba(255,255,255,0.3); 
+            backdrop-filter: blur(5px); 
+            touch-action: none; /* ここが重要 */
+        }
         .btn-ctrl:active { background: rgba(255,255,255,0.4); transform: scale(0.9); }
         .btn-move { width: 18vh; height: 18vh; font-size: 6vh; border-radius: 20%; }
         .btn-action { position: absolute; width: 16vh; height: 16vh; font-size: 3vh; }
@@ -35,9 +58,7 @@
         #mobile-finish-ui { display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.85); z-index: 300; flex-direction: column; align-items: center; justify-content: center; }
     </style>
 </head>
-<body>
-
-<div id="setup-screen" class="overlay">
+<body oncontextmenu="return false;"> <div id="setup-screen" class="overlay">
     <h1 style="color:gold; margin:0;">SURVIVAL ONLINE</h1>
     <div id="host-setup" style="text-align:center;">
         <div style="font-size:60px; font-weight:bold; margin:10px;" id="my-id-display">----</div>
@@ -86,6 +107,19 @@
 </div>
 
 <script>
+// --- ズーム防止のJavaScript補強 ---
+document.addEventListener('touchstart', (e) => {
+    if (e.touches.length > 1) e.preventDefault(); // 多本指ズーム禁止
+}, { passive: false });
+
+let lastTouchEnd = 0;
+document.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) e.preventDefault(); // ダブルタップズーム禁止
+    lastTouchEnd = now;
+}, false);
+
+// --- ゲームロジック (演出・接続・物理すべて統合) ---
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 canvas.width = 1000; canvas.height = 600;
@@ -97,7 +131,6 @@ let platforms = [], walls = [], healZone = null, players = [], particles = [];
 let role = "host";
 
 peer.on('open', id => document.getElementById('my-id-display').innerText = id);
-
 peer.on('connection', conn => {
     connections.push(conn);
     updateConnDisplay();
@@ -158,36 +191,30 @@ function connectToPC() {
     });
 }
 
-// --- エフェクト ---
 function createFireworks(x, y, color) {
-    for(let i=0; i<10; i++) {
+    for(let i=0; i<12; i++) {
         particles.push({
             x, y, color,
-            vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10,
+            vx: (Math.random()-0.5)*12, vy: (Math.random()-0.5)*12,
             life: 1.0
         });
     }
 }
 
-// --- 物理エンジン ---
 function Player(color, x) {
     this.x = x; this.y = 400; this.w = 40; this.h = 60; this.color = color;
     this.vx = 0; this.vy = 0; this.hp = 100; this.side = 1; this.isJumping = false;
     this.bullets = [];
     this.update = function() {
-        this.vy += 0.8; 
-        this.x += this.vx;
-        
+        this.vy += 0.8; this.x += this.vx;
         walls.forEach(w => {
             if (this.x + this.w > w.x && this.x < w.x + w.w && this.y + this.h > w.y && this.y < w.y + w.h) {
                 if (this.vx > 0 && this.x < w.x) this.x = w.x - this.w;
                 else if (this.vx < 0 && this.x + this.w > w.x + w.w) this.x = w.x + w.w;
             }
         });
-
         this.y += this.vy;
         if (this.y + this.h > 580) { this.y = 580 - this.h; this.vy = 0; this.isJumping = false; }
-        
         [...platforms, healZone].forEach(p => {
             if (this.vy > 0 && this.x + this.w > p.x && this.x < p.x + p.w && 
                 this.y + this.h >= p.y && this.y + this.h <= p.y + p.h + this.vy) {
@@ -195,14 +222,12 @@ function Player(color, x) {
                 if(p === healZone && Math.random() < 0.1) this.hp = Math.min(100, this.hp + 1);
             }
         });
-
         this.bullets.forEach((b, i) => {
             b.x += b.vx;
             players.forEach(enemy => {
                 if(enemy.color !== this.color && b.x > enemy.x && b.x < enemy.x + enemy.w && b.y > enemy.y && b.y < enemy.y + enemy.h) {
-                    enemy.hp -= 10;
-                    enemy.vx = (b.vx > 0) ? 15 : -15; // ノックバック
-                    createFireworks(b.x, b.y, "orange"); // 花火
+                    enemy.hp -= 10; enemy.vx = (b.vx > 0) ? 15 : -15;
+                    createFireworks(b.x, b.y, "orange");
                     this.bullets.splice(i, 1);
                 }
             });
@@ -229,7 +254,6 @@ function handleInput(pIdx, data) {
     if (data.fire) p.bullets.push({x: p.x + (p.side === 1 ? p.w : 0), y: p.y + 25, vx: p.side * 20});
 }
 
-// --- コントローラー ---
 let currentInput = { left: false, right: false, dash: false, jump: false }, fireTrigger = false;
 const bind = (id, key) => {
     const el = document.getElementById(id);
@@ -239,7 +263,10 @@ const bind = (id, key) => {
         if(key === 'fire') { fireTrigger = true; if(navigator.vibrate) navigator.vibrate(30); }
         else currentInput[key] = true;
     }, {passive: false});
-    el.addEventListener('touchend', (e) => { e.preventDefault(); if(key !== 'fire') currentInput[key] = false; }, {passive: false});
+    el.addEventListener('touchend', (e) => { 
+        e.preventDefault(); 
+        if(key !== 'fire') currentInput[key] = false; 
+    }, {passive: false});
 };
 bind('btn-left', 'left'); bind('btn-right', 'right');
 bind('btn-jump', 'jump'); bind('btn-dash', 'dash'); bind('btn-fire', 'fire');
@@ -247,14 +274,11 @@ bind('btn-jump', 'jump'); bind('btn-dash', 'dash'); bind('btn-fire', 'fire');
 function loop() {
     if(!gameActive) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // ステージ描画
     ctx.fillStyle = "#444"; platforms.forEach(p => ctx.fillRect(p.x, p.y, p.w, p.h));
     ctx.fillStyle = "#222"; walls.forEach(w => ctx.fillRect(w.x, w.y, w.w, w.h));
     ctx.fillStyle = "#2ecc71"; ctx.fillRect(healZone.x, healZone.y, healZone.w, healZone.h);
     ctx.fillStyle = "#333"; ctx.fillRect(0, 580, 1000, 20);
     
-    // パーティクル更新
     particles.forEach((p, i) => {
         p.x += p.vx; p.y += p.vy; p.life -= 0.05;
         if(p.life <= 0) particles.splice(i, 1);
