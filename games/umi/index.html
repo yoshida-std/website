@@ -3,62 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Survival Battle - Pro Connect</title>
+    <title>Survival Battle - Final Physics</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { margin: 0; background: #1a1a1a; color: white; font-family: sans-serif; overflow: hidden; position: fixed; width: 100vw; height: 100vh; touch-action: none; -webkit-user-select: none; }
         .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
-        
-        /* PC画面 */
         #pc-view { display: none; text-align: center; width: 100vw; height: 100vh; }
-        canvas { background: #111; border: 4px solid #333; max-width: 95vw; max-height: 70vh; margin-top: 10px; box-shadow: 0 0 30px #000; }
+        canvas { background: #111; border: 4px solid #333; max-width: 95vw; max-height: 70vh; margin-top: 10px; }
         .hp-bar { display: flex; justify-content: space-around; font-size: 28px; font-weight: bold; padding: 10px; }
-
+        
         /* スマホ・コントローラー */
         #mobile-view { display: none; width: 100vw; height: 100vh; background: #111; position: relative; }
         .left-pad { position: absolute; top: 55%; left: 5vw; transform: translateY(-50%); display: flex; gap: 25px; }
         .right-pad { position: absolute; top: 55%; right: 5vw; transform: translateY(-50%); width: 50vh; height: 50vh; }
-
-        /* ボタンデザイン */
         .btn { background: rgba(255,255,255,0.1); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid rgba(255,255,255,0.3); backdrop-filter: blur(5px); touch-action: none; }
         .btn:active { background: rgba(255,255,255,0.5); transform: scale(0.95); }
         .btn-move { width: 18vh; height: 18vh; font-size: 6vh; border-radius: 20%; }
         .btn-action { position: absolute; width: 16vh; height: 16vh; font-size: 3vh; }
-        
         .pos-top { top: 0; left: 17vh; background: rgba(46, 145, 255, 0.5); border-color: #2e91ff; }
         .pos-left { top: 17vh; left: 0; background: rgba(142, 68, 173, 0.5); border-color: #8e44ad; }
         .pos-right { top: 17vh; right: 0; background: rgba(255, 71, 87, 0.5); border-color: #ff4757; }
-
-        /* スマホ側リマッチボタン */
         #mobile-finish-ui { display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.8); z-index: 300; flex-direction: column; align-items: center; justify-content: center; }
-        .rematch-btn { padding: 20px 60px; background: #2ecc71; color: white; border: none; border-radius: 15px; font-size: 30px; font-weight: bold; box-shadow: 0 6px #27ae60; }
+        .rematch-btn { padding: 20px 60px; background: #2ecc71; color: white; border: none; border-radius: 15px; font-size: 30px; font-weight: bold; box-shadow: 0 6px #1e8449; }
     </style>
 </head>
 <body>
 
 <div id="setup-screen" class="overlay">
-    <h1 style="color:gold;">SURVIVAL ONLINE</h1>
+    <h1 style="color:gold;">SURVIVAL BATTLE</h1>
     <div id="host-setup">
         <div style="font-size:60px; font-weight:bold;" id="my-id-display">----</div>
-        <p id="conn-count">接続待機中...</p>
-        <button onclick="startGame()" style="padding:15px 50px; background:#2ecc71; color:white; border:none; border-radius:10px; font-size:24px; font-weight:bold;">PCから開始</button>
+        <button onclick="startGame()" style="padding:15px 50px; background:#2ecc71; color:white; border:none; border-radius:10px; font-size:24px;">PC START</button>
     </div>
     <div style="margin-top:30px;">
         <input type="number" id="peer-id-input" placeholder="ID" style="padding:15px; width:100px; font-size:20px; border-radius:10px;">
-        <button onclick="connectToPC()" style="padding:15px 30px; background:#2e91ff; color:white; border:none; border-radius:10px; font-size:20px;">接続</button>
+        <button onclick="connectToPC()" style="padding:15px 30px; background:#2e91ff; color:white; border:none; border-radius:10px; font-size:20px;">CONNECT</button>
     </div>
 </div>
 
 <div id="finish-ui" class="overlay" style="display:none;">
-    <div id="winner-text" style="font-size:80px; color:gold; margin-bottom:20px;">WINNER!</div>
+    <div id="winner-text" style="font-size:80px; color:gold; margin-bottom:20px;">P1 WIN!</div>
     <button onclick="requestRematch()" class="rematch-btn">REMATCH</button>
 </div>
 
 <div id="pc-view">
-    <div class="hp-bar">
-        <span style="color:#ff4757">P1: <span id="p1hp">100</span></span>
-        <span style="color:#2e91ff">P2: <span id="p2hp">100</span></span>
-    </div>
+    <div class="hp-bar"><span style="color:#ff4757">P1: <span id="p1hp">100</span></span><span style="color:#2e91ff">P2: <span id="p2hp">100</span></span></div>
     <canvas id="gameCanvas"></canvas>
 </div>
 
@@ -85,25 +74,19 @@ canvas.width = 1000; canvas.height = 600;
 
 const shortId = Math.floor(1000 + Math.random() * 9000).toString();
 const peer = new Peer(shortId);
-let connections = [];
-let gameActive = false;
-let animationId = null;
-let platforms = [], walls = [], healZone = null, players = [];
-let role = "host";
+let connections = [], gameActive = false, animationId = null;
+let platforms = [], walls = [], healZone = null, players = [], role = "host";
 
 peer.on('open', id => document.getElementById('my-id-display').innerText = id);
-
 peer.on('connection', conn => {
     connections.push(conn);
-    document.getElementById('conn-count').innerText = `接続済み: ${connections.length}台`;
     conn.on('data', data => {
         if(data.type === 'input') handleInput(connections.indexOf(conn), data);
-        if(data.type === 'rematch_request') rematch(); // スマホからの再戦要求
+        if(data.type === 'rematch_request') rematch();
     });
 });
 
 function startGame() {
-    if (connections.length === 0) return;
     document.getElementById('setup-screen').style.display = 'none';
     document.getElementById('pc-view').style.display = 'block';
     rematch();
@@ -142,50 +125,48 @@ function connectToPC() {
             document.getElementById('mobile-finish-ui').style.display = 'flex';
             document.getElementById('mobile-result-text').innerText = data.winner + " WIN!";
         }
-        if(data.type === 'game_start') {
-            document.getElementById('mobile-finish-ui').style.display = 'none';
-        }
+        if(data.type === 'game_start') document.getElementById('mobile-finish-ui').style.display = 'none';
     });
 }
 
-// --- 物理・ゲームロジック ---
 function Player(color, x) {
     this.x = x; this.y = 400; this.w = 40; this.h = 60; this.color = color;
     this.vx = 0; this.vy = 0; this.hp = 100; this.side = 1; this.isJumping = false;
     this.bullets = [];
     this.update = function() {
-        this.vy += 0.8; // 重力
+        this.vy += 0.8;
         this.x += this.vx;
         
-        // 横壁の判定
         walls.forEach(w => {
             if (this.x + this.w > w.x && this.x < w.x + w.w && this.y + this.h > w.y && this.y < w.y + w.h) {
-                if (this.vx > 0) this.x = w.x - this.w;
-                if (this.vx < 0) this.x = w.x + w.w;
+                if (this.vx > 0 && this.x < w.x) this.x = w.x - this.w;
+                else if (this.vx < 0 && this.x + this.w > w.x + w.w) this.x = w.x + w.w;
             }
         });
 
         this.y += this.vy;
 
-        // 床判定
+        // 床・足場判定
         if (this.y + this.h > 580) { this.y = 580 - this.h; this.vy = 0; this.isJumping = false; }
         
-        // 足場判定（上から着地）
-        platforms.forEach(p => {
+        const solids = [...platforms, healZone];
+        solids.forEach(p => {
             if (this.vy > 0 && this.x + this.w > p.x && this.x < p.x + p.w && 
                 this.y + this.h >= p.y && this.y + this.h <= p.y + p.h + this.vy) {
                 this.y = p.y - this.h; this.vy = 0; this.isJumping = false;
+                if(p === healZone && Math.random() < 0.1) this.hp = Math.min(100, this.hp + 1);
             }
         });
 
-        // 回復床の判定 (緑のエリアに足元が触れているか)
-        if (healZone && this.x + this.w > healZone.x && this.x < healZone.x + healZone.w && 
-            this.y + this.h >= healZone.y && this.y + this.h <= healZone.y + healZone.h + 10) {
-            if (Math.random() < 0.05) this.hp = Math.min(100, this.hp + 1);
-        }
-
         this.bullets.forEach((b, i) => {
             b.x += b.vx;
+            // 敵への当たり判定
+            players.forEach(enemy => {
+                if(enemy.color !== this.color && b.x > enemy.x && b.x < enemy.x + enemy.w && b.y > enemy.y && b.y < enemy.y + enemy.h) {
+                    enemy.hp -= 10;
+                    this.bullets.splice(i, 1);
+                }
+            });
             if (b.x < 0 || b.x > 1000) this.bullets.splice(i, 1);
         });
     };
@@ -194,10 +175,9 @@ function Player(color, x) {
 function initStage() {
     players = [new Player("#ff4757", 100), new Player("#2e91ff", 860)];
     platforms = []; walls = [];
-    // ランダム生成
     for (let i = 0; i < 5; i++) platforms.push({x: 100+Math.random()*600, y: 250+Math.random()*200, w: 200, h: 15});
     for (let i = 0; i < 2; i++) walls.push({x: 250+Math.random()*500, y: 200, w: 40, h: 200});
-    healZone = {x: 400, y: 120, w: 200, h: 15};
+    healZone = {x: 400, y: 120, w: 200, h: 20};
 }
 
 function handleInput(pIdx, data) {
@@ -210,9 +190,7 @@ function handleInput(pIdx, data) {
     if (data.fire) p.bullets.push({x: p.x + (p.side === 1 ? p.w : 0), y: p.y + 25, vx: p.side * 20});
 }
 
-// --- コントローラーバインド ---
-let currentInput = { left: false, right: false, dash: false, jump: false };
-let fireTrigger = false;
+let currentInput = { left: false, right: false, dash: false, jump: false }, fireTrigger = false;
 const bind = (id, key) => {
     const el = document.getElementById(id);
     if(!el) return;
@@ -229,22 +207,13 @@ bind('btn-jump', 'jump'); bind('btn-dash', 'dash'); bind('btn-fire', 'fire');
 function loop() {
     if(!gameActive) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // 背景・ステージ
     ctx.fillStyle = "#444"; platforms.forEach(p => ctx.fillRect(p.x, p.y, p.w, p.h));
     ctx.fillStyle = "#222"; walls.forEach(w => ctx.fillRect(w.x, w.y, w.w, w.h));
-    ctx.fillStyle = "#2ecc71"; ctx.globalAlpha = 0.6; ctx.fillRect(healZone.x, healZone.y, healZone.w, healZone.h); ctx.globalAlpha = 1.0;
+    ctx.fillStyle = "#2ecc71"; ctx.fillRect(healZone.x, healZone.y, healZone.w, healZone.h);
     ctx.fillStyle = "#333"; ctx.fillRect(0, 580, 1000, 20);
     
     players.forEach((p, idx) => {
         p.update();
-        const enemy = players[idx === 0 ? 1 : 0];
-        p.bullets.forEach((b, bi) => {
-            if (b.x > enemy.x && b.x < enemy.x + enemy.w && b.y > enemy.y && b.y < enemy.y + enemy.h) {
-                enemy.hp -= 10; p.bullets.splice(bi, 1);
-            }
-        });
-        
         ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.w, p.h);
         ctx.fillStyle = "white"; ctx.fillRect(p.side === 1 ? p.x + p.w - 12 : p.x, p.y + 10, 12, 12);
         ctx.fillStyle = "yellow"; p.bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI*2); ctx.fill(); });
@@ -257,7 +226,6 @@ function loop() {
             connections.forEach(c => c.send({type: 'game_over', winner: winnerName}));
         }
     });
-    
     document.getElementById('p1hp').innerText = Math.max(0, players[0].hp);
     document.getElementById('p2hp').innerText = Math.max(0, players[1].hp);
     animationId = requestAnimationFrame(loop);
