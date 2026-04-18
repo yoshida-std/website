@@ -3,44 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Survival Online - Easy Connect</title>
+    <title>Multi-Device Survival Battle</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background: #1a1a1a; color: white; font-family: sans-serif; overflow: hidden; touch-action: none; -webkit-user-select: none; }
+        body { margin: 0; background: #1a1a1a; color: white; font-family: sans-serif; overflow: hidden; touch-action: none; }
         
-        /* セットアップ画面 */
-        #setup-screen { position: absolute; inset: 0; background: rgba(0,0,0,0.95); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
-        .id-box { font-size: 40px; color: gold; font-weight: bold; margin: 10px 0; background: #333; padding: 10px 20px; border-radius: 10px; border: 2px dashed #666; }
-        input { padding: 15px; font-size: 24px; width: 200px; text-align: center; margin-bottom: 20px; border-radius: 10px; border: none; background: #eee; }
+        /* 接続画面 */
+        #setup-screen { position: absolute; inset: 0; background: rgba(0,0,0,0.95); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .id-display { font-size: 60px; color: gold; font-weight: bold; margin: 20px; }
+        input { padding: 15px; font-size: 24px; width: 200px; text-align: center; border-radius: 10px; border: none; }
         
-        /* キャンバス */
-        canvas { background: #111; display: block; width: 100vw; height: 50vh; border-bottom: 2px solid #444; }
+        /* PC用レイアウト */
+        #pc-view { display: none; text-align: center; }
+        canvas { background: #111; border: 4px solid #333; max-width: 95vw; max-height: 80vh; }
         
         /* スマホ用コントローラー */
-        .controls { height: 50vh; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: 8px; padding: 10px; background: #222; }
-        .btn { background: #444; color: white; border-radius: 15px; font-size: 22px; font-weight: bold; display: flex; align-items: center; justify-content: center; active-background: #666; touch-action: none; }
-        .btn:active { background: #777; transform: scale(0.95); }
-        .btn-fire { background: #ff4757; }
-        .btn-jump { background: #2e91ff; }
-        .btn-dash { background: #8e44ad; }
+        #mobile-view { display: none; height: 100vh; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 10px; padding: 10px; background: #222; }
+        .btn { background: #444; color: white; border-radius: 15px; font-size: 24px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+        .btn:active { background: #888; transform: scale(0.9); }
+        .btn-fire { background: #ff4757; } .btn-jump { background: #2e91ff; } .btn-dash { background: #8e44ad; }
     </style>
 </head>
 <body>
 
 <div id="setup-screen">
-    <h2 style="margin:0;">YOUR ID (相手に教えて)</h2>
-    <div class="id-box" id="my-id-display">取得中...</div>
-    
-    <div style="margin-top: 30px;">
-        <input type="number" id="peer-id-input" placeholder="相手の4桁ID">
-        <br>
-        <button id="connect-btn" style="padding:15px 40px; font-size:22px; background:#2ecc71; color:white; border:none; border-radius:10px; font-weight:bold;">CONNECT</button>
+    <div id="host-ui">
+        <h2>PCをホストにする (IDをスマホへ)</h2>
+        <div class="id-display" id="my-id-display">----</div>
+        <p id="conn-status">スマホの接続を待っています...</p>
+    </div>
+    <hr style="width:80%; border:0.5px solid #444;">
+    <div id="client-ui">
+        <h2>スマホを接続する</h2>
+        <input type="number" id="peer-id-input" placeholder="PCの4桁ID">
+        <button id="connect-btn" style="padding:15px 30px; font-size:20px; background:#2ecc71; border:none; border-radius:10px; color:white; margin-top:10px;">CONNECT</button>
     </div>
 </div>
 
-<canvas id="gameCanvas"></canvas>
+<div id="pc-view">
+    <div style="font-size:24px; margin:10px;">
+        <span style="color:#ff4757">P1: <span id="p1hp">100</span></span> | 
+        <span style="color:#2e91ff">P2: <span id="p2hp">100</span></span>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+</div>
 
-<div class="controls">
+<div id="mobile-view">
     <div class="btn" id="btn-left">◀ LEFT</div>
     <div class="btn" id="btn-right">RIGHT ▶</div>
     <div class="btn btn-jump" id="btn-jump">JUMP</div>
@@ -53,163 +61,123 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 canvas.width = 1000; canvas.height = 600;
 
-// --- 4桁の短いIDを生成してPeerJSを初期化 ---
+// 通信設定
 const shortId = Math.floor(1000 + Math.random() * 9000).toString();
-const peer = new Peer(shortId); // 指定したIDで作成を試みる
+const peer = new Peer(shortId);
+let connections = []; // PCが保持するスマホへの接続リスト
+let myConn = null;    // スマホが保持するPCへの接続
+let role = "";        // "host" or "client"
 
-let conn = null;
-let isHost = false;
-let myPlayerNum = 0; // 0=P1, 1=P2
+peer.on('open', id => document.getElementById('my-id-display').innerText = id);
 
-peer.on('open', (id) => {
-    document.getElementById('my-id-display').innerText = id;
+// --- ホスト(PC)の処理 ---
+peer.on('connection', conn => {
+    role = "host";
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('pc-view').style.display = 'block';
+    
+    const pIndex = connections.length; // 0ならP1, 1ならP2
+    connections.push(conn);
+    
+    conn.on('data', data => {
+        if(data.type === 'input') handleInput(pIndex, data);
+    });
+    
+    if(connections.length === 1) initStage(); // 最初の接続でステージ生成
 });
 
-// エラー（ID重複など）が発生した場合
-peer.on('error', (err) => {
-    if (err.type === 'unavailable-id') {
-        location.reload(); // IDが被ったらリロードして再取得
-    }
-});
-
-// ホスト側の待受
-peer.on('connection', (c) => {
-    conn = c;
-    isHost = true;
-    myPlayerNum = 0;
-    initStage();
-    setupConnection();
-});
-
-// ゲスト側の接続ボタン
-document.getElementById('connect-btn').ontouchstart = (e) => {
-    e.preventDefault();
-    connectToPeer();
-};
-document.getElementById('connect-btn').onclick = () => connectToPeer(); // PC用
-
-function connectToPeer() {
+// --- クライアント(スマホ)の処理 ---
+document.getElementById('connect-btn').onclick = () => {
     const targetId = document.getElementById('peer-id-input').value;
-    if(!targetId) return;
-    conn = peer.connect(targetId);
-    isHost = false;
-    myPlayerNum = 1;
-    setupConnection();
-}
-
-function setupConnection() {
-    conn.on('open', () => {
+    myConn = peer.connect(targetId);
+    myConn.on('open', () => {
+        role = "client";
         document.getElementById('setup-screen').style.display = 'none';
-        if (isHost) {
-            setTimeout(() => {
-                conn.send({ type: 'stage', platforms, walls, healZone });
-            }, 500);
-        }
-        loop();
+        document.getElementById('mobile-view').style.display = 'grid';
     });
+};
 
-    conn.on('data', (data) => {
-        if (data.type === 'stage') {
-            platforms = data.platforms;
-            walls = data.walls;
-            healZone = data.healZone;
-        } else if (data.type === 'update') {
-            const other = allPlayers[data.pNum];
-            other.x = data.x; other.y = data.y;
-            other.side = data.side;
-            if (data.shoot) other.shoot();
-        }
-    });
-}
-
-// --- ゲーム本体 ---
+// --- ゲームロジック ---
 const gravity = 0.8;
-let platforms = [], walls = [], healZone = null;
-const allPlayers = [];
+let platforms = [], healZone = null;
+const players = [new Player("#ff4757", 150), new Player("#2e91ff", 800)];
 
-class Player {
-    constructor(color, x) {
-        this.x = x; this.y = 400; this.w = 45; this.h = 65;
-        this.color = color; this.vx = 0; this.vy = 0;
-        this.side = 1; this.isJumping = false; this.bullets = [];
-    }
-    update() {
+function Player(color, x) {
+    this.x = x; this.y = 400; this.w = 45; this.h = 65; this.color = color;
+    this.vx = 0; this.vy = 0; this.hp = 100; this.side = 1; this.isJumping = false;
+    this.bullets = [];
+    this.update = function() {
         this.vy += gravity; this.x += this.vx; this.y += this.vy;
         if (this.y + this.h > 580) { this.y = 580 - this.h; this.vy = 0; this.isJumping = false; }
-        
-        [...platforms, healZone].forEach(obj => {
-            if (this.vy > 0 && this.x + this.w > obj.x && this.x < obj.x + obj.w && this.y + this.h > obj.y && this.y + this.h < obj.y + obj.h + this.vy) {
-                this.y = obj.y - this.h; this.vy = 0; this.isJumping = false;
+        platforms.forEach(p => {
+            if (this.vy > 0 && this.x + this.w > p.x && this.x < p.x + p.w && this.y + this.h > p.y && this.y + this.h < p.y + p.h + this.vy) {
+                this.y = p.y - this.h; this.vy = 0; this.isJumping = false;
             }
         });
-        
         this.bullets.forEach((b, i) => {
             b.x += b.vx;
             if (b.x < 0 || b.x > 1000) this.bullets.splice(i, 1);
         });
-    }
-    shoot() { this.bullets.push({x: this.x + (this.side === 1 ? this.w : 0), y: this.y + 25, vx: this.side * 15}); }
-    draw() {
-        ctx.fillStyle = this.color; ctx.fillRect(this.x, this.y, this.w, this.h);
-        ctx.fillStyle = "white"; ctx.fillRect(this.side === 1 ? this.x + this.w - 12 : this.x, this.y + 10, 12, 12);
-        ctx.fillStyle = "yellow"; this.bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI*2); ctx.fill(); });
-    }
+    };
+    this.shoot = function() { this.bullets.push({x: this.x + (this.side === 1 ? this.w : 0), y: this.y + 25, vx: this.side * 15}); };
 }
-
-allPlayers.push(new Player("#ff4757", 100), new Player("#2e91ff", 850));
 
 function initStage() {
-    platforms = []; walls = [];
+    platforms = [];
     for (let i = 0; i < 5; i++) platforms.push({x: 100+Math.random()*600, y: 200+Math.random()*250, w: 200, h: 15});
-    healZone = {x: 400, y: 120, w: 200, h: 20};
+    requestAnimationFrame(loop);
 }
 
-// --- スマホ操作用イベント ---
-const input = { left: false, right: false, dash: false };
-const bindTouch = (id, key) => {
+function handleInput(pIdx, data) {
+    const p = players[pIdx];
+    if(!p) return;
+    const speed = data.dash ? 10 : 6;
+    if (data.left) { p.vx = -speed; p.side = -1; }
+    else if (data.right) { p.vx = speed; p.side = 1; }
+    else { p.vx *= 0.8; }
+    if (data.jump && !p.isJumping) { p.vy = -17; p.isJumping = true; }
+    if (data.fire) p.shoot();
+}
+
+// --- スマホ操作送信 ---
+const currentInput = { left: false, right: false, jump: false, dash: false, fire: false };
+const sendInput = () => { if(myConn) myConn.send({ type: 'input', ...currentInput, fire: false }); };
+
+const bind = (id, key) => {
     const el = document.getElementById(id);
-    el.addEventListener('touchstart', (e) => { e.preventDefault(); input[key] = true; });
-    el.addEventListener('touchend', (e) => { e.preventDefault(); input[key] = false; });
+    el.ontouchstart = (e) => { 
+        e.preventDefault(); 
+        if(key === 'fire') { if(myConn) myConn.send({ type: 'input', ...currentInput, fire: true }); }
+        else if(key === 'jump') { if(myConn) myConn.send({ type: 'input', ...currentInput, jump: true }); }
+        else { currentInput[key] = true; }
+    };
+    el.ontouchend = (e) => { e.preventDefault(); currentInput[key] = false; };
 };
-bindTouch('btn-left', 'left');
-bindTouch('btn-right', 'right');
-bindTouch('btn-dash', 'dash');
+bind('btn-left', 'left'); bind('btn-right', 'right'); bind('btn-jump', 'jump'); bind('btn-dash', 'dash'); bind('btn-fire', 'fire');
 
-document.getElementById('btn-jump').addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    const me = allPlayers[myPlayerNum];
-    if (!me.isJumping) { me.vy = -17; me.isJumping = true; }
-});
-
-document.getElementById('btn-fire').addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    const me = allPlayers[myPlayerNum];
-    me.shoot();
-    conn.send({ type: 'update', pNum: myPlayerNum, x: me.x, y: me.y, side: me.side, shoot: true });
-});
+setInterval(() => { if(role === "client") sendInput(); }, 30);
 
 function loop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // ステージ描画
     ctx.fillStyle = "#444"; platforms.forEach(p => ctx.fillRect(p.x, p.y, p.w, p.h));
-    ctx.fillStyle = "rgba(46, 204, 113, 0.5)"; ctx.fillRect(healZone.x, healZone.y, healZone.w, healZone.h);
     ctx.fillStyle = "#333"; ctx.fillRect(0, 580, 1000, 20);
-
-    const me = allPlayers[myPlayerNum];
-    let speed = input.dash ? 10 : 6;
-    if (input.left) { me.vx = -speed; me.side = -1; }
-    else if (input.right) { me.vx = speed; me.side = 1; }
-    else { me.vx *= 0.8; }
     
-    allPlayers.forEach(p => p.update());
-    allPlayers.forEach(p => p.draw());
-
-    // 自分の状態を送信
-    if (conn && conn.open) {
-        conn.send({ type: 'update', pNum: myPlayerNum, x: me.x, y: me.y, side: me.side, shoot: false });
-    }
-
+    players.forEach((p, idx) => {
+        p.update();
+        const enemy = players[idx === 0 ? 1 : 0];
+        p.bullets.forEach((b, bi) => {
+            if (b.x > enemy.x && b.x < enemy.x + enemy.w && b.y > enemy.y && b.y < enemy.y + enemy.h) {
+                enemy.hp -= 10; p.bullets.splice(bi, 1);
+            }
+        });
+        
+        ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.w, p.h);
+        ctx.fillStyle = "white"; ctx.fillRect(p.side === 1 ? p.x + p.w - 12 : p.x, p.y + 10, 12, 12);
+        ctx.fillStyle = "yellow"; p.bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI*2); ctx.fill(); });
+    });
+    
+    document.getElementById('p1hp').innerText = players[0].hp;
+    document.getElementById('p2hp').innerText = players[1].hp;
     requestAnimationFrame(loop);
 }
 </script>
