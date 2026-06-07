@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Animation Stamp Recorder - Complete with Preview</title>
+    <title>Animation Stamp Recorder - Complete Final</title>
     <style>
         body { background: #333; display: flex; flex-direction: column; align-items: center; color: white; margin: 0; font-family: sans-serif; }
         #canvas-wrapper { position: relative; border: 4px solid #fff; background: #fff; width: 1000px; height: 270px; margin-top: 20px; }
@@ -55,7 +55,6 @@
         const recCanvas = document.createElement('canvas');
         recCanvas.width = 320; recCanvas.height = 270;
         const recCtx = recCanvas.getContext('2d');
-        
         let mediaRecorder, recordedChunks = [], videoBlob = null;
 
         const state = {
@@ -103,14 +102,7 @@
             }
         }
 
-        function downloadVideo() {
-            if (!videoBlob) return;
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(videoBlob);
-            a.download = 'animation.webm';
-            a.click();
-        }
-
+        function downloadVideo() { if (!videoBlob) return; const a = document.createElement('a'); a.href = URL.createObjectURL(videoBlob); a.download = 'animation.webm'; a.click(); }
         function selectStamp(i) { state.char.currentStamp = state.stamps[i]; document.querySelectorAll('.stamp-box').forEach((b, idx) => b.classList.toggle('active', idx === i)); }
         function resetStamp(i) { state.stamps[i] = null; document.getElementById(`img-${i}`).src = ''; if(state.char.currentStamp === state.stamps[i]) state.char.currentStamp = null; }
 
@@ -163,6 +155,9 @@
             }
             ctx.restore();
             if (state.fgImg) ctx.drawImage(state.fgImg, 340, 0, 320, 270);
+            
+            // 残像対策のクリア処理
+            recCtx.clearRect(0, 0, 320, 270);
             recCtx.drawImage(canvas, 340, 0, 320, 270, 0, 0, 320, 270);
         }
         function loop() { update(); draw(); requestAnimationFrame(loop); }
