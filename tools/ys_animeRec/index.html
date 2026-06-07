@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Animation Stamp Recorder - Full Logic</title>
+    <style>
+        body { background: #333; display: flex; flex-direction: column; align-items: center; color: white; margin: 0; font-family: sans-serif; }
+        #canvas-wrapper { position: relative; border: 4px solid #fff; background: #fff; width: 1000px; height: 270px; margin-top: 20px; }
+        .overlay { position: absolute; top: 0; left: 0; width: 1000px; height: 270px; pointer-events: none; }
+        .mask-left { position: absolute; left: 0; top: 0; width: 340px; height: 270px; background: rgba(0,0,0,0.3); }
+        .mask-right { position: absolute; left: 660px; top: 0; width: 340px; height: 270px; background: rgba(0,0,0,0.3); }
+        #info-panel { margin: 10px; font-size: 18px; font-weight: bold; }
+        #layer-panel { margin-top: 5px; display: flex; gap: 20px; }
+        .layer-box { border: 1px solid #fff; padding: 5px; font-size: 12px; }
+        #ui-controls { display: flex; gap: 15px; margin-top: 10px; align-items: center; }
+        .btn-group { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        button { padding: 10px 20px; cursor: pointer; font-weight: bold; }
+        .key-label { font-size: 12px; color: #ccc; }
+        #stamp-panel { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; background: #555; padding: 10px; border-radius: 8px; }
+        .stamp-box { width: 80px; height: 110px; border: 2px solid #fff; background: #222; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; }
+        .stamp-box.active { border-color: yellow; }
+        .stamp-box img { width: 50px; height: 50px; object-fit: contain; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="info-panel">Scale: <span id="scaleVal">1.0</span>x | Speed: <span id="speedVal">4</span></div>
+    <div id="layer-panel">
+        <div class="layer-box">背景: <input type="file" id="bg-file" accept="image/*"></div>
+        <div class="layer-box">前景: <input type="file" id="fg-file" accept="image/*"></div>
+    </div>
+    <div id="canvas-wrapper">
+        <canvas id="stage" width="1000" height="270"></canvas>
+        <div class="overlay"><div class="mask-left"></div><div class="mask-right"></div></div>
+    </div>
+    <div id="ui-controls">
+        <button id="rec-btn" onclick="toggleRecording()" style="background: red; color: white;">● Record</button>
+        <div class="btn-group"><button onmousedown="state.inputs.left=true" onmouseup="state.inputs.left=false">←</button><span class="key-label">Left</span></div>
+        <div class="btn-group"><button onmousedown="state.inputs.right=true" onmouseup="state.inputs.right=false">→</button><span class="key-label">Right</span></div>
+        <div class="btn-group"><button onclick="state.inputs.jump=true">Jump</button><span class="key-label">Space</span></div>
+        <div class="btn-group"><button onclick="state.inputs.throw=true">Throw</button><span class="key-label">F</span></div>
+    </div>
+    <div id="stamp-panel"></div>
+
+    <script>
+        const canvas = document.getElementById('stage');
+        const ctx = canvas.getContext('2d');
+        const panel = document.getElementById('stamp-panel');
+        const recCanvas = document.createElement('canvas');
+        recCanvas.width = 320; recCanvas.height = 270;
+        const recCtx = recCanvas.getContext('2d');
+        let mediaRecorder, recordedChunks = [];
+
+        const state = {
+            char: { x: 150, y: 0, vy: 0, baseSize: 90, scale: 1.0, speed: 4, yOffset: 0, facing: 'right', action: 'idle', frame: 0, currentStamp: null },
+            bubble: { visible: false, position: 'right', size: 90, offsetX: -10 },
+            inputs: { left: false, right: false, jump: false, throw: false },
+            stamps: Array(10).fill(null), bgImg: null, fgImg: null
+        };
+
+        const sprites = { idle: new Image(), walk0: new Image(), walk1: new Image(), jump: new Image(), throw: new Image() };
+        sprites.idle.src = 'idle.png'; sprites.walk0.src = 'walk_0.png'; sprites.walk1.src = 'walk_1.png';
+        sprites.jump.src = 'jump.png'; sprites.throw.src = 'throw.png';
+        const bubbleImg = new Image(); bubbleImg.src = 'bubble.png';
+
+        document.getElementById('bg-file').onchange = e => { const r = new FileReader(); r.onload = ev => { state.bgImg = new Image(); state.bgImg.src = ev.target.result; }; r.readAsDataURL(e.target.files[0]); };
+        document.getElementById('fg-file').onchange = e => { const r = new FileReader(); r.onload = ev => { const fg = new Image(); fg.src = ev.target.result; state.fgImg = fg; }; r.readAsDataURL(e.target.files[0]); };
+
+        for (let i = 0; i < 10; i++) {
+            const box = document.createElement('div');
+            box.className = 'stamp-box';
+            box.innerHTML = `<div>${i}</div><img id="img-${i}"><div onclick="event.stopPropagation(); document.getElementById('file-${i}').click()">Load</div><div onclick="event.stopPropagation(); resetStamp(${i})">Reset</div><input type="file" id="file-${i}" style="display:none" accept="image/*">`;
+            box.onclick = () => selectStamp(i);
+            panel.appendChild(box);
+            document.getElementById(`file-${i}`).onchange = e => { const r = new FileReader(); r.onload = ev => { const img = new Image(); img.src = ev.target.result; state.stamps[i] = img; document.getElementById(`img-${i}`).src = img.src; }; r.readAsDataURL(e.target.files[0]); };
+        }
+
+        function toggleRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') { mediaRecorder.stop(); document.getElementById('rec-btn').innerText = '● Record'; }
+            else {
+                const stream = recCanvas.captureStream(30);
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                recordedChunks = [];
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+                mediaRecorder.onstop = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(recordedChunks, { type: 'video/webm' })); a.download = 'animation.webm'; a.click(); };
+                mediaRecorder.start(); document.getElementById('rec-btn').innerText = '■ Stop';
+            }
+        }
+
+        function selectStamp(i) { state.char.currentStamp = state.stamps[i]; document.querySelectorAll('.stamp-box').forEach((b, idx) => b.classList.toggle('active', idx === i)); }
+        function resetStamp(i) { state.stamps[i] = null; document.getElementById(`img-${i}`).src = ''; if(state.char.currentStamp === state.stamps[i]) state.char.currentStamp = null; }
+
+        window.addEventListener('keydown', e => {
+            if (e.key === 'ArrowLeft') { state.inputs.left = true; state.char.currentStamp = null; }
+            if (e.key === 'ArrowRight') { state.inputs.right = true; state.char.currentStamp = null; }
+            if (e.key === ' ') { state.inputs.jump = true; state.char.currentStamp = null; }
+            if (e.key === 'f') { state.inputs.throw = true; state.char.currentStamp = null; }
+            if (e.key === 's') state.bubble.visible = !state.bubble.visible;
+            if (e.key === 'a') state.bubble.position = 'left';
+            if (e.key === 'd') state.bubble.position = 'right';
+            if (e.key === 'ArrowUp') state.char.yOffset -= 5;
+            if (e.key === 'ArrowDown') state.char.yOffset += 5;
+            if (e.key === 'w') state.char.scale = Math.min(state.char.scale + 0.1, 2.0);
+            if (e.key === 'x') state.char.scale = Math.max(state.char.scale - 0.1, 0.5);
+            if (e.key === 'q') state.char.speed = Math.min(state.char.speed + 1, 10);
+            if (e.key === 'z') state.char.speed = Math.max(state.char.speed - 1, 1);
+            if (e.key >= '0' && e.key <= '9') selectStamp(parseInt(e.key));
+            document.getElementById('scaleVal').innerText = state.char.scale.toFixed(1);
+            document.getElementById('speedVal').innerText = state.char.speed;
+        });
+
+        window.addEventListener('keyup', e => {
+            if (e.key === 'ArrowLeft') state.inputs.left = false; if (e.key === 'ArrowRight') state.inputs.right = false;
+            if (e.key === ' ') state.inputs.jump = false; if (e.key === 'f') state.inputs.throw = false;
+        });
+
+        function update() {
+            if (state.inputs.jump && state.char.y === 0) { state.char.vy = 15; state.char.action = 'jump'; state.inputs.jump = false; }
+            if (state.inputs.left) { state.char.x -= state.char.speed; state.char.facing = 'left'; if(state.char.y===0) state.char.action='walk'; }
+            if (state.inputs.right) { state.char.x += state.char.speed; state.char.facing = 'right'; if(state.char.y===0) state.char.action='walk'; }
+            if (state.char.y > 0 || state.char.vy > 0) { state.char.vy -= 1; state.char.y = Math.max(0, state.char.y + state.char.vy); if (state.char.y === 0) state.char.action = 'idle'; }
+            else if (!state.inputs.left && !state.inputs.right) state.char.action = 'idle';
+            if (state.char.action === 'walk') state.char.frame = (Math.floor(Date.now() / 150) % 2);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, 1000, 270);
+            if (state.bgImg) ctx.drawImage(state.bgImg, 340, 0, 320, 270);
+            const size = state.char.baseSize * state.char.scale;
+            const drawY = 270 - size - state.char.y + state.char.yOffset;
+            let img = state.char.currentStamp || ((state.char.action === 'walk') ? (state.char.frame === 0 ? sprites.walk0 : sprites.walk1) : (sprites[state.char.action] || sprites.idle));
+            ctx.save();
+            if (state.char.facing === 'left') {
+                ctx.scale(-1, 1); ctx.drawImage(img, -state.char.x - size, drawY, size, size);
+                if (state.bubble.visible) ctx.drawImage(bubbleImg, (state.bubble.position === 'right') ? -state.char.x - size + state.bubble.offsetX : -state.char.x - state.bubble.offsetX - state.bubble.size, drawY - 30, state.bubble.size, state.bubble.size);
+            } else {
+                ctx.drawImage(img, state.char.x, drawY, size, size);
+                if (state.bubble.visible) ctx.drawImage(bubbleImg, (state.bubble.position === 'right') ? state.char.x + size + state.bubble.offsetX : state.char.x - state.bubble.size - state.bubble.offsetX, drawY - 30, state.bubble.size, state.bubble.size);
+            }
+            ctx.restore();
+            if (state.fgImg) ctx.drawImage(state.fgImg, 340, 0, 320, 270);
+            recCtx.drawImage(canvas, 340, 0, 320, 270, 0, 0, 320, 270);
+        }
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
+        loop();
+    </script>
+</body>
+</html>
