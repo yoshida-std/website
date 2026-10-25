@@ -1,0 +1,122 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>音声テスト</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<style>
+/* Layout: 縦に並ぶ5つの大きなボタンと、状態ログ。録画しながら順に押す診断用の道具。 */
+:root {
+  --bg: #f3f5f9;
+  --fg: #16203a;
+  --muted: #5a6784;
+  --card: #ffffff;
+  --line: #cfd7e6;
+  --accent: #b8741a;
+  --accent-fg: #fff7e0;
+  --font: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0e1628; --fg: #eef3ff; --muted: #9db0d6; --card: #17233f; --line: #2c3f6b; --accent: #e0a043; --accent-fg: #2a1d00; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #0e1628; --fg: #eef3ff; --muted: #9db0d6; --card: #17233f; --line: #2c3f6b; --accent: #e0a043; --accent-fg: #2a1d00; color-scheme: dark; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.6;
+  padding-block: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+main { max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+h1 { margin: 0; font-size: 20px; }
+p { margin: 0; color: var(--muted); }
+.row { display: flex; flex-direction: column; gap: 10px; }
+button {
+  font: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 56px;
+  padding: 10px 14px;
+  color: var(--fg);
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+button b { font-size: 16px; }
+button small { color: var(--muted); font-size: 12px; }
+button:active, button.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+button.on small, button:active small { color: var(--accent-fg); }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+#log { margin: 0; padding: 10px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; font-size: 12px; line-height: 1.7; white-space: pre-wrap; min-height: 5em; }
+</style>
+
+<main>
+  <h1>音声テスト（3回目）</h1>
+  <p>iPhoneには、アプリが音を出すときの「モード」を切り替える仕組みがあります。ボタン1〜5は、モードを変えてから、audio タグで約1.5秒の「ピー」を鳴らします。<strong>このページを開き直してから</strong>画面収録をはじめ、1 から 5 まで、2秒くらいあけて順に押してください。</p>
+  <div class="row">
+    <button id="m1" type="button"><b>1　ambient</b><small>他の音と混ぜて鳴らす</small></button>
+    <button id="m2" type="button"><b>2　auto</b><small>おまかせ</small></button>
+    <button id="m3" type="button"><b>3　transient</b><small>一時的な音として鳴らす</small></button>
+    <button id="m4" type="button"><b>4　playback</b><small>メディア再生として鳴らす（いまのゲームの設定）</small></button>
+    <button id="m5" type="button"><b>5　play-and-record</b><small>通話のように鳴らす</small></button>
+  </div>
+  <p>5を押して2秒待ってから録画をやめ、録画ファイルをこのチャットに送ってください。あわせて、<strong>1〜5 のうち、その場で音が聞こえたもの</strong>を教えてください。</p>
+  <pre id="log" aria-live="polite">まだ押されていません</pre>
+</main>
+
+<script>
+(function () {
+  var logEl = document.getElementById('log');
+  var lines = [];
+  function log(s) { lines.push(s); if (lines.length > 12) lines.shift(); logEl.textContent = lines.join('\n'); }
+  log(navigator.audioSession ? 'audioSession: 使えます（いまの種類 ' + navigator.audioSession.type + '）' : 'audioSession: この端末では使えません');
+
+  function flash(id) {
+    var el = document.getElementById(id);
+    el.classList.add('on');
+    setTimeout(function () { el.classList.remove('on'); }, 1500);
+  }
+  function wavUrl(freq, sec) {
+    var sr = 44100, n = Math.floor(sr * sec), buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    function str(o, s) { for (var i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); }
+    str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVE'); str(12, 'fmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    str(36, 'data'); v.setUint32(40, n * 2, true);
+    var f = sr * 0.05;
+    for (var i = 0; i < n; i++) {
+      var env = Math.min(1, i / f, (n - i) / f);
+      v.setInt16(44 + i * 2, Math.sin(2 * Math.PI * freq * i / sr) * 0.4 * env * 32767, true);
+    }
+    return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+  }
+  function setup(id, type, freq) {
+    var url = null;
+    document.getElementById(id).addEventListener('click', function () {
+      flash(id);
+      try {
+        if (navigator.audioSession) { navigator.audioSession.type = type; }
+      } catch (e) { log(type + ': 設定できません ' + e.message); }
+      if (!url) url = wavUrl(freq, 1.5);
+      var a = new Audio(url); a.setAttribute('playsinline', '');
+      var p = a.play();
+      if (p && p.catch) p.catch(function (e) { log(type + ': 再生できません ' + e.message); });
+      log(type + ' → 現在 ' + (navigator.audioSession ? navigator.audioSession.type : '-'));
+    });
+  }
+  setup('m1', 'ambient', 440);
+  setup('m2', 'auto', 550);
+  setup('m3', 'transient', 660);
+  setup('m4', 'playback', 770);
+  setup('m5', 'play-and-record', 880);
+})();
+</script>
+
+</body></html>
