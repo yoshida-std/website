@@ -115,7 +115,32 @@ function initAudio(){
     master=ac.createGain();master.gain.value=muted?0:0.5;master.connect(ac.destination);
     noiseBuf=ac.createBuffer(1,ac.sampleRate,ac.sampleRate);
     const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+    bgmGain=ac.createGain();bgmGain.gain.value=0.45;bgmGain.connect(master);
+    for(const k in MUSIC)loadMusic(k);
   }catch(e){ac=null;}
+}
+// BGM・ME（WAVから変換したMP3。タイトル画面は無音）
+const MUSIC={bgm:'sound/bgm095.mp3',over:'sound/me003_gameover.mp3',clear:'sound/me007_allclear.mp3'};
+const BGM_LEN=36.0; // 元のWAVの長さ。MP3の末尾の無音をループに含めない
+const buf={};let bgmGain=null,bgmSrc=null,bgmAt=0,bgmOff=0,wantBgm=false,meSrc=null;
+function loadMusic(k){
+  fetch(MUSIC[k]).then(r=>r.arrayBuffer()).then(a=>new Promise((ok,ng)=>ac.decodeAudioData(a,ok,ng)))
+    .then(b=>{buf[k]=b;if(k==='bgm'&&wantBgm&&!bgmSrc)startBgm();}).catch(()=>{});
+}
+function startBgm(){
+  wantBgm=true;
+  if(!ac||!buf.bgm||bgmSrc)return;
+  const s=ac.createBufferSource();s.buffer=buf.bgm;s.loop=true;s.loopStart=0;s.loopEnd=Math.min(BGM_LEN,buf.bgm.duration);
+  s.connect(bgmGain);s.start(0,bgmOff%s.loopEnd);bgmAt=ac.currentTime-bgmOff;bgmSrc=s;
+}
+function pauseBgm(){ // 位置を覚えて止める
+  if(bgmSrc){bgmOff=(ac.currentTime-bgmAt)%bgmSrc.loopEnd;try{bgmSrc.stop();}catch(e){}bgmSrc=null;}
+}
+function stopBgm(){pauseBgm();bgmOff=0;wantBgm=false;}
+function stopMe(){if(meSrc){try{meSrc.stop();}catch(e){}meSrc=null;}}
+function playMe(k){
+  stopMe();if(!ac||!buf[k])return;
+  const s=ac.createBufferSource();s.buffer=buf[k];s.connect(master);s.start();meSrc=s;
 }
 function tone(f,d,type='square',v=0.2,f2=null,delay=0){
   if(!ac)return;const t=ac.currentTime+delay;
@@ -139,12 +164,12 @@ const SFX={
   flick(){noise(0.25,0.4,500,4200,0.8);tone(260,0.22,'sawtooth',0.09,1000);},
   boing(){tone(200,0.2,'sine',0.25,460);},
   jump(){tone(320,0.14,'square',0.07,760);},
-  warn(){tone(990,0.05,'square',0.05);},
+  peek(){tone(1250,0.04,'sine',0.05);},
+  dash(){noise(0.3,0.25,900,300,0.7);tone(700,0.25,'square',0.06,250);},
   esc(){tone(520,0.45,'sawtooth',0.14,110);},
   boom(){noise(0.55,0.7,1400,70,0.6);tone(95,0.45,'sine',0.4,38);},
   miss(){tone(240,0.1,'triangle',0.06,200);},
   clear(){[523,659,784,1047].forEach((f,i)=>tone(f,0.2,'square',0.11,null,i*0.11));},
-  over(){[392,330,262,196].forEach((f,i)=>tone(f,0.3,'triangle',0.18,null,i*0.2));},
 };
 
 /* ---------- レイアウト ---------- */
@@ -266,8 +291,8 @@ function cfg(n){
     up:1.25-0.68*k,                    // 顔を出している時間
     rise:0.13-0.05*k,
     esc:0.07+0.26*k,                   // 飛び出して逃げる確率
-    warn:0.65-0.33*k,                  // 飛び出す前の予告時間
-    run:1.0+0.13*(n-1),                // 逃げる速さ(マス/秒)
+    look:1.5-0.8*k,                    // 地上でキョロキョロしている時間（フリックできる時間）
+    run:1.6+0.18*(n-1),                // キョロキョロのあと走り去る速さ(マス/秒)
     zig:n>=6?(n-5)*0.17:0,             // ジグザグの強さ
     helmet:n>=3?0.1+0.02*(n-3):0,
     bomb:n>=5?0.08+0.015*(n-5):0,
@@ -290,13 +315,14 @@ const mult=()=>1+Math.min(4,Math.floor(G.combo/5))*0.5;
 function newGame(){
   initAudio();
   Object.assign(G,{stage:1,score:0,esc:0,combo:0,maxCombo:0,taught:false});
+  stopMe();stopBgm();
   startStage();
 }
 function startStage(){
   G.moles=[];for(const h of holes)h.busy=null;
   P.length=0;T.length=0;
   Object.assign(G,{mode:'play',paused:false,spawned:0,spawnT:1.9,banner:1.8,bannerSub:INTRO[G.stage]||'',st:{hit:0,flick:0,esc:0}});
-  hideOverlay();
+  hideOverlay();startBgm();
 }
 function nextStage(){G.stage++;startStage();}
 
@@ -323,11 +349,10 @@ function startJump(m){
   let dir=Math.atan2(h.cy-H*0.55,h.cx-W/2);
   if(Math.abs(h.cx-W/2)<L.cw*0.6&&Math.abs(h.cy-H*0.55)<L.ch*0.6)dir=rand(0,Math.PI*2);
   dir+=rand(-0.7,0.7);
-  Object.assign(m,{state:'jump',t:0,jt:0.42,sx:h.cx,sy:h.cy+L.ry*0.5,dir,
-    lx:Math.max(L.mw,Math.min(W-L.mw,h.cx+Math.cos(dir)*L.cw*0.6)),
-    ly:Math.max(L.mh,Math.min(H-8,h.cy+L.ry+Math.sin(dir)*L.ch*0.45)),
-    sp:c.run*L.cw*rand(0.9,1.15),zig:c.zig});
-  if(!G.taught){m.tutor=true;}
+  Object.assign(m,{state:'jump',t:0,jt:0.38,sx:h.cx,sy:h.cy+L.ry*0.5,dir,
+    lx:h.cx+rand(-0.12,0.12)*L.cw,ly:Math.min(H-6,h.cy+L.ch*0.4),
+    lookT:c.look*rand(0.9,1.1),sp:c.run*L.cw*rand(0.9,1.15),zig:c.zig});
+  if(!G.taught){m.tutor=true;m.lookT*=2.5;}
   SFX.jump();
 }
 
@@ -345,12 +370,10 @@ function bonk(m){
     SFX.clank();floatText(hx,hy-L.mh*0.4,'カン！','#ffd23f',18);
     return;
   }
-  const wasWarn=m.state==='warn';
   m.state='hit';m.t=0;
   G.combo++;G.maxCombo=Math.max(G.maxCombo,G.combo);G.st.hit++;
   let base=m.type==='gold'?500:m.type==='helmet'?150:100,label='',col='#cf8a74';
   if(m.type==='gold'){label='ゴールド！';col='#e3a43c';}
-  if(wasWarn){base+=100;label='セーフ！';col='#5fb8b5';}
   addScore(base,hx,hy-L.mh*0.45,label,col);
   burst(hx,hy-L.mh*0.2,m.type==='gold'?16:10,m.type==='gold'?['#e3a43c','#fff']:['#5fb8b5','#fff','#ee7f98'],260,3.5,'star');
   ring(hx,hy-L.mh*0.2,'#5fb8b5',L.mw*0.8);
@@ -430,18 +453,22 @@ function updMole(m,dt,c){
   m.sq=Math.max(0,m.sq-dt);m.knock=Math.max(0,m.knock-dt);
   const sdt=m.tutor?dt*0.45:dt;
   switch(m.state){
-    case 'rise':m.p+=dt/m.rise;if(m.p>=1){m.p=1;m.t=0;m.state=m.escaper?'warn':'up';}break;
+    case 'rise':m.p+=dt/m.rise;if(m.p>=1){m.p=1;m.t=0;if(m.escaper)startJump(m);else m.state='up';}break;
     case 'up':m.t+=dt;if(m.t>=m.up)m.state='hide';break;
-    case 'warn':{const before=m.t;m.t+=dt;if(Math.floor(before*8)!==Math.floor(m.t*8))SFX.warn();
-      if(m.t>=c.warn)startJump(m);break;}
     case 'hide':m.p-=dt/m.rise;if(m.p<=0){m.p=0;finish(m);missed(m);}break;
     case 'hit':m.t+=dt;if(m.t>0.2)m.p-=dt/0.22;if(m.p<=0)finish(m);break;
     case 'jump':
       m.t=Math.min(1,m.t+sdt/m.jt);
       m.gx=lerp(m.sx,m.lx,m.t);m.gy=lerp(m.sy,m.ly,m.t);
       m.x=m.gx;m.y=m.gy-Math.sin(Math.PI*m.t)*L.ch*0.75;
-      if(m.t>=1){m.state='run';m.t=0;}
+      if(m.t>=1){m.state='look';m.t=0;m.x=m.gx=m.lx;m.y=m.gy=m.ly;}
       break;
+    case 'look':{ // キョロキョロ。この間だけフリックできる
+      const before=m.t;m.t+=dt;
+      m.look=Math.sin(m.t*9)>0?1:-1;
+      if(Math.floor(before*9/Math.PI)!==Math.floor(m.t*9/Math.PI))SFX.peek();
+      if(m.t>=m.lookT){m.state='run';m.t=0;SFX.dash();}
+      break;}
     case 'run':{
       m.t+=sdt;
       const a=m.dir+Math.sin(m.t*7+m.ph)*m.zig;
@@ -551,7 +578,8 @@ function drawStar(x,y,s,c,rot){
 }
 function faceOf(m){
   if(m.state==='hit'||m.state==='flicked')return'dizzy';
-  if(m.state==='warn'||m.state==='jump'||m.state==='run')return m.sq>0?'smug':'angry';
+  if(m.state==='jump'||m.state==='look')return m.sq>0?'smug':'normal';
+  if(m.state==='run')return'smug';
   if(m.knock>0)return'worried';
   return'normal';
 }
@@ -560,14 +588,10 @@ function drawInHole(m){
   ctx.save();
   ctx.beginPath();ctx.rect(h.cx-L.cw,h.cy-L.ch*1.5,L.cw*2,L.ch*1.5);ctx.ellipse(h.cx,h.cy,L.rx,L.ry,0,0,Math.PI*2);ctx.clip();
   const p=m.state==='rise'?easeOutBack(Math.max(0,m.p)):m.p;
-  const shx=m.state==='warn'?Math.sin(m.t*55)*L.mw*0.06:m.knock>0?Math.sin(m.knock*60)*3:0;
+  const shx=m.knock>0?Math.sin(m.knock*60)*3:0;
   const by=h.cy+L.ry+2+(1-p)*(L.mh+L.ry);
   drawMole(h.cx+shx,by,L.mw,L.mh,{type:m.type,face:faceOf(m),hp:m.hp,pawY:by-L.ry*1.3-2});
   ctx.restore();
-  if(m.state==='warn'){
-    const k=(Math.sin(m.t*30)+1)/2;
-    txt('!',h.cx+L.mw*0.62,by-L.mh*0.95,22+k*6,'#ff2d55');
-  }
   if(m.state==='hit'){
     for(let i=0;i<3;i++){const a=m.t*9+i*2.1;drawStar(h.cx+Math.cos(a)*L.mw*0.5,by-L.mh-4+Math.sin(a)*5,5,'#e3a43c',a);}
   }
@@ -588,7 +612,7 @@ function drawOut(m){
   }
   const run=m.state==='run',bob=run?Math.abs(Math.sin(m.t*16))*h*0.08:0;
   const cx=m.x,cy=m.y-h*0.5-bob;
-  if(m.state!=='flicked'){
+  if(m.state==='jump'||m.state==='look'){
     const ag=ctx.createRadialGradient(cx,cy,w*0.2,cx,cy,w*1.05);
     ag.addColorStop(0,'rgba(255,140,165,.45)');ag.addColorStop(1,'rgba(255,140,165,0)');
     ctx.fillStyle=ag;ctx.beginPath();ctx.arc(cx,cy,w*1.05,0,Math.PI*2);ctx.fill();
@@ -601,7 +625,13 @@ function drawOut(m){
   }
   drawMole(0,h*0.5,w,h,{type:'normal',face:faceOf(m),full:true,look:m.look,pawY:-h*0.02});
   ctx.restore();
-  if(m.tutor&&m.state!=='flicked'){
+  if(m.state==='look'){ // キョロキョロの「？」と残り時間
+    txt('?',cx+m.look*w*0.75,cy-h*0.55,16,'#7a5a48');
+    const k=Math.max(0,1-m.t/m.lookT);
+    ctx.strokeStyle='rgba(255,250,241,.9)';ctx.lineWidth=4;ctx.lineCap='round';
+    ctx.beginPath();ctx.arc(cx,cy-h*0.62,6,-Math.PI/2,-Math.PI/2+Math.PI*2*k);ctx.stroke();
+  }
+  if(m.tutor&&(m.state==='jump'||m.state==='look')){
     const k=(Math.sin(now*8)+1)/2;
     ctx.strokeStyle=`rgba(255,255,255,${0.6+k*0.4})`;ctx.lineWidth=3.5;
     ctx.beginPath();ctx.arc(cx,cy,w*(0.85+k*0.2),0,Math.PI*2);ctx.stroke();
@@ -623,7 +653,7 @@ function draw(){
     if(m&&m.h===h&&m.state!=='done')drawInHole(m);
     drawHoleFront(h);
   }
-  const outs=G.moles.filter(m=>m.state==='jump'||m.state==='run'||m.state==='flicked').sort((a,b)=>a.gy-b.gy);
+  const outs=G.moles.filter(m=>m.state==='jump'||m.state==='look'||m.state==='run'||m.state==='flicked').sort((a,b)=>a.gy-b.gy);
   for(const m of outs)drawOut(m);
   for(const p of P){
     const a=1-p.life/p.max;ctx.globalAlpha=Math.max(0,a);
@@ -652,10 +682,10 @@ function draw(){
   if(G.mode==='play'||G.mode==='dying'){
     if(G.combo>=3){txt(`${G.combo} COMBO`,W/2,22,18,'#e3a43c');
       if(mult()>1)txt(`×${mult().toFixed(1)}`,W/2,44,13,'#cf8a74');}
-    if(G.moles.some(m=>m.tutor&&m.state!=='flicked')){
-      ctx.fillStyle='rgba(251,243,228,.92)';rr(ctx,12,H-62,W-24,48,14);ctx.fill();ctx.strokeStyle='#e8cfb3';ctx.lineWidth=2;ctx.stroke();
-      txt('飛び出したモグラは タップ無効！',W/2,H-48,14,'#7a5a48');
-      txt('フリックで なぎとばせ！',W/2,H-28,16,'#5fb8b5');
+    if(G.moles.some(m=>m.tutor&&(m.state==='jump'||m.state==='look'))){
+      ctx.fillStyle='rgba(251,243,228,.92)';rr(ctx,12,60,W-24,48,14);ctx.fill();ctx.strokeStyle='#e8cfb3';ctx.lineWidth=2;ctx.stroke();
+      txt('キョロキョロしている間に',W/2,74,14,'#7a5a48');
+      txt('フリックで なぎとばせ！',W/2,94,16,'#5fb8b5');
     }
     if(G.banner>0){
       const k=G.banner,a=Math.min(1,k/0.3,(1.8-k)/0.2),s=k>1.6?1.4-(1.8-k)/0.2*0.4:1;
@@ -694,12 +724,12 @@ function tap(x,y){
   // 穴から顔を出しているモグラ（手前の列から判定）
   for(let i=holes.length-1;i>=0;i--){
     const h=holes[i],m=h.busy;
-    if(!m||m.h!==h||m.p<0.25||!['rise','up','warn','hide'].includes(m.state))continue;
+    if(!m||m.h!==h||m.p<0.25||!['rise','up','hide'].includes(m.state))continue;
     if(Math.abs(x-h.cx)<L.mw*0.68&&y>h.cy-L.mh*m.p-L.mw*0.3&&y<h.cy+L.ry*1.6){bonk(m);ring(x,y,'#fffaf1',18);return;}
   }
   // 外に出たモグラはタップでは倒せない
   for(const m of G.moles){
-    if(m.state!=='run'&&m.state!=='jump')continue;
+    if(m.state!=='run'&&m.state!=='jump'&&m.state!=='look')continue;
     if(Math.hypot(x-m.x,y-(m.y-L.mh*0.45))<L.mw*0.8+8){
       m.sq=0.3;SFX.boing();
       if(G.tapHintCD<=0){floatText(m.x,m.y-L.mh-10,'フリック！','#5fb8b5',16);G.tapHintCD=1.2;}
@@ -728,7 +758,7 @@ cv.addEventListener('pointermove',e=>{
     if(dist>14&&dist/dt>0.4){
       const prev=rec.pts[rec.pts.length-2];
       for(const m of G.moles){
-        if(m.state!=='run'&&m.state!=='jump')continue;
+        if(m.state!=='jump'&&m.state!=='look')continue;
         if(segDist(m.x,m.y-L.mh*0.45,prev.x,prev.y,x,y)<L.mw*0.75+12)flick(m,dx/dt,dy/dt);
       }
     }
@@ -752,14 +782,14 @@ function updHud(){
 function saveBest(){if(G.score>best){best=G.score;try{localStorage.setItem(BEST_KEY,best);}catch(e){}return true;}return false;}
 function overlay(html){const o=$('overlay');o.innerHTML=`<div class="card scrollable">${html}</div>`;o.hidden=false;}
 function hideOverlay(){$('overlay').hidden=true;}
-const COPY='<p class="copy">©YoshidaStudio</p>';
+const COPY='<p class="copy"><b>©YoshidaStudio, ©PANICPUMPKIN</b></p>';
 function showTitle(){
   G.mode='title';G.paused=false;G.moles=[];for(const h of holes)h.busy=null;
+  stopBgm();stopMe();
   overlay(`<h1>モグラッシュ！</h1><p class="tag">NEXT-GEN WHACK-A-MOLE</p>
   <div class="rules">
     <div><span>👆</span><span>顔を出したモグラは <em>タップ</em> でたたく</span></div>
-    <div><span>💨</span><span>穴から <em class="p">飛び出したモグラ</em> はタップ無効！ <em>フリック</em> でなぎとばせ</span></div>
-    <div><span>⚠️</span><span>目が赤く光ったら 飛び出す合図。その前にたたけば <em>セーフ</em></span></div>
+    <div><span>💨</span><span>ときどき <em class="p">いきなり飛び出す</em> モグラも。穴の前で <em>キョロキョロ</em> している間に <em>フリック</em> でなぎとばせ（タップは無効）</span></div>
     <div><span>💔</span><span><em class="p">5回</em> にげられたら ゲームオーバー</span></div>
     <div><span>⛑️</span><span>ヘルメットは2回、<em class="g">ゴールド</em>は高得点、<em class="p">ボム</em>はたたくと減点</span></div>
     <div><span>🏁</span><span>全10ステージ。にげられずにクリアすると 1回分回復</span></div>
@@ -771,8 +801,9 @@ function stageClear(){
   G.mode='clear';
   const perfect=G.st.esc===0;let bonus=G.stage*200,heal=false;
   if(perfect){bonus+=1000;if(G.esc>0){G.esc--;heal=true;}}
-  G.score+=bonus;saveBest();SFX.clear();
+  G.score+=bonus;saveBest();
   const last=G.stage>=STAGES;
+  if(last){stopBgm();playMe('clear');}else SFX.clear();
   overlay(`<h2>${last?'ALL CLEAR!':`STAGE ${G.stage} CLEAR`}</h2>
   <div class="stats">
     <span>たたいた</span><span>${G.st.hit}</span>
@@ -787,7 +818,7 @@ function stageClear(){
   :`<p>SCORE ${G.score.toLocaleString()}</p><button class="menuBtn" data-act="next">STAGE ${G.stage+1} へ</button>`}${COPY}`);
 }
 function gameOver(){
-  G.mode='over';const nb=saveBest();SFX.over();
+  G.mode='over';const nb=saveBest();stopBgm();playMe('over');
   overlay(`<h2>GAME OVER</h2><p>STAGE ${G.stage} で 5回 にげられた…</p>
   <div class="big">${G.score.toLocaleString()}</div>
   <p>${nb?'<b style="color:#e3a43c">NEW BEST！</b>':`BEST ${best.toLocaleString()}`} ／ 最大 ${G.maxCombo} COMBO</p>
@@ -795,14 +826,14 @@ function gameOver(){
 }
 function pause(){
   if(!(G.mode==='play'||G.mode==='dying')||G.paused)return;
-  G.paused=true;
+  G.paused=true;pauseBgm();
   for(const[id,rec]of ptrs){rec.tr.alive=false;ptrs.delete(id);}
   overlay(`<h2>PAUSE</h2><button class="menuBtn" data-act="resume">つづける</button>
   <button class="menuBtn sub" data-act="mute">音 ${muted?'OFF':'ON'}</button>
   <button class="menuBtn sub" data-act="start">最初から</button>
   <button class="menuBtn sub" data-act="title">タイトルへ</button>${COPY}`);
 }
-function resume(){G.paused=false;hideOverlay();}
+function resume(){G.paused=false;hideOverlay();if(wantBgm)startBgm();}
 function toggleMute(){muted=!muted;if(master)master.gain.value=muted?0:0.5;G.paused=false;pause();}
 const ACT={start:newGame,next:nextStage,resume,title:showTitle,mute:toggleMute};
 $('overlay').addEventListener('click',e=>{const b=e.target.closest('button[data-act]');if(!b)return;initAudio();ACT[b.dataset.act]();});
