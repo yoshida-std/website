@@ -3,6 +3,8 @@
 スマホ縦画面向けの次世代モグラ叩き。公開URL: `https://yoshida-std.github.io/website/games/Mogurush/`
 リポジトリ全体の作業ルール（ブランチ・PR・確認方法・コピーライト表記）はルートの `CLAUDE.md` を参照。
 
+プッシュ前の確認用 Artifact: `https://claude.ai/artifact/AeGGRoNwxPkYRNhBYXurxk`（変更のたびにこの URL を更新する。`index.html` と `sound/*.mp3` を同じパスで載せる）
+
 ## 概要と操作
 
 - 4列×4行の穴からモグラが顔を出して隠れる。顔を出したモグラを **タップ** でたたく
