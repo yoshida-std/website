@@ -3,7 +3,7 @@
 GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 公開URL: `https://yoshida-std.github.io/website/`
 
-- `games/` … ブラウザゲーム（Aitsu-bom, Taijiros-yan, umi, Mogurush, judge2）
+- `games/` … ブラウザゲーム（Aitsu-bom, Taijiros-yan, umi, Mogurush, judge2, Susume-Yusha）
 - `tools/` … 制作ツール（ys_*）
 - `common/line-promo/` … ゲームから LINE スタンプ／絵文字へ誘導する共通部品（下の「LINEスタンプ誘導」）
 - ビルドなし。各作品は基本的に `index.html` 1枚で完結する
@@ -46,3 +46,4 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 
 - `games/Mogurush/CLAUDE.md` … モグラッシュ！
 - `games/judge2/CLAUDE.md` … 天使と悪魔のジャッジ2
+- `games/Susume-Yusha/CLAUDE.md` … すすめ！ゆうしゃ
