@@ -346,9 +346,9 @@ function finish(m){freeHole(m);m.state='done';}
 function startJump(m){
   const c=cfg(G.stage),h=m.h;
   freeHole(m);
-  let dir=Math.atan2(h.cy-H*0.55,h.cx-W/2);
-  if(Math.abs(h.cx-W/2)<L.cw*0.6&&Math.abs(h.cy-H*0.55)<L.ch*0.6)dir=rand(0,Math.PI*2);
-  dir+=rand(-0.7,0.7);
+  // 逃げる方向は左右か下だけ（上だと空へ逃げるように見えるため）。下の列ほど下へ逃げやすい
+  const side=h.cx<W/2?Math.PI:0;
+  const dir=Math.random()<0.25+0.15*h.r?Math.PI/2+rand(-0.6,0.6):side+(side?-1:1)*rand(0,0.4);
   Object.assign(m,{state:'jump',t:0,jt:0.38,sx:h.cx,sy:h.cy+L.ry*0.5,dir,
     lx:h.cx+rand(-0.12,0.12)*L.cw,ly:Math.min(H-6,h.cy+L.ch*0.4),
     lookT:c.look*rand(0.9,1.1),sp:c.run*L.cw*rand(0.9,1.15),zig:c.zig});
@@ -472,7 +472,7 @@ function updMole(m,dt,c){
     case 'run':{
       m.t+=sdt;
       const a=m.dir+Math.sin(m.t*7+m.ph)*m.zig;
-      m.x+=Math.cos(a)*m.sp*sdt;m.y+=Math.sin(a)*m.sp*sdt;m.gx=m.x;m.gy=m.y;m.look=Math.cos(a);
+      m.x+=Math.cos(a)*m.sp*sdt;m.y+=Math.max(0,Math.sin(a))*m.sp*sdt;m.gx=m.x;m.gy=m.y;m.look=Math.cos(a); // ジグザグでも上には進まない
       if(m.x<-L.mw*0.3||m.x>W+L.mw*0.3||m.y<-2||m.y-L.mh>H)escape(m);
       break;}
     case 'flicked':
