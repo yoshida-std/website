@@ -49,6 +49,7 @@ canvas{touch-action:none;display:block}
 #stickZone{position:relative;flex:1;min-height:0;touch-action:none}
 #panelBg{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
 #party,#stickZone{position:relative;z-index:1}
+#panel{touch-action:none}
 #stick{position:absolute;left:50%;bottom:7%;width:min(210px,80%,52vh);aspect-ratio:1;transform:translateX(-50%);pointer-events:none}
 #shieldCv,#knobCv{display:block;width:100%;height:100%}
 #knob{position:absolute;left:50%;top:50%;width:30%;height:30%;transform:translate(-50%,-50%);z-index:1}
@@ -581,19 +582,41 @@ function stickMove(e){
   if(m<.2){input.sx=input.sy=0}else{const k=Math.min(1,(m-.2)/.6)/m;input.sx=dx/R*k;input.sy=dy/R*k}
 }
 function jumpTap(){input.jumpBuf=.15;knob.classList.add('tap');setTimeout(()=>knob.classList.remove('tap'),150)}
-function stickEnd(e){
-  if(e.pointerId!==stickId)return;stickId=null;input.sx=input.sy=0;knob.style.transform='';
-  if(e.type==='pointerup'&&stickCenter&&performance.now()-stickT0<260&&stickMoved<16)jumpTap();   // 中央のつまみを短くタップ → ジャンプ（矢印の上を短く押しても移動になる）
+function stickRelease(tap){
+  stickId=null;input.sx=input.sy=0;knob.style.transform='';
+  if(tap&&stickCenter&&performance.now()-stickT0<260&&stickMoved<16)jumpTap();   // 中央のつまみを短くタップ → ジャンプ（矢印の上を短く押しても移動になる）
 }
-zone.addEventListener('pointerdown',e=>{
+// 円盤の操作として受けるのは、操作エリアの下側か円盤の円の中で始めたタッチ（円盤が上にはみ出しても受ける）
+function onStick(x,y){
+  const z=zone.getBoundingClientRect(),r=stick.getBoundingClientRect();
+  return (y>=z.top&&x>=z.left&&x<=z.right)||Math.hypot(x-r.left-r.width/2,y-r.top-r.height/2)<r.width/2;
+}
+function stickStart(id,x,y){
   initAudio();
   if(stickId!==null){jumpTap();return}   // 動かしながら別の指で円盤をタップ → ジャンプ
-  stickId=e.pointerId;stickT0=performance.now();stickX0=e.clientX;stickY0=e.clientY;stickMoved=0;
-  {const r=stick.getBoundingClientRect();stickCenter=Math.hypot(e.clientX-r.left-r.width/2,e.clientY-r.top-r.height/2)<r.width*.2}
-  try{zone.setPointerCapture(e.pointerId)}catch(_){}stickMove(e);
+  stickId=id;stickT0=performance.now();stickX0=x;stickY0=y;stickMoved=0;
+  const r=stick.getBoundingClientRect();stickCenter=Math.hypot(x-r.left-r.width/2,y-r.top-r.height/2)<r.width*.2;
+  stickMove({clientX:x,clientY:y});
+}
+// スマホはタッチイベントで受ける（iOS や Artifact の中でもスクロールに取られにくい）。マウスはポインターイベント
+const panelEl=$('#panel');
+panelEl.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  for(const t of e.changedTouches)if(onStick(t.clientX,t.clientY))stickStart('t'+t.identifier,t.clientX,t.clientY);
+},{passive:false});
+panelEl.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  for(const t of e.changedTouches)if('t'+t.identifier===stickId)stickMove(t);
+},{passive:false});
+const touchEnd=e=>{for(const t of e.changedTouches)if('t'+t.identifier===stickId)stickRelease(e.type==='touchend')};
+panelEl.addEventListener('touchend',touchEnd);panelEl.addEventListener('touchcancel',touchEnd);
+panelEl.addEventListener('pointerdown',e=>{
+  if(e.pointerType==='touch'||!onStick(e.clientX,e.clientY))return;
+  try{panelEl.setPointerCapture(e.pointerId)}catch(_){}stickStart('p'+e.pointerId,e.clientX,e.clientY);
 });
-zone.addEventListener('pointermove',e=>{if(e.pointerId===stickId)stickMove(e)});
-zone.addEventListener('pointerup',stickEnd);zone.addEventListener('pointercancel',stickEnd);
+panelEl.addEventListener('pointermove',e=>{if('p'+e.pointerId===stickId)stickMove(e)});
+const ptrEnd=e=>{if('p'+e.pointerId===stickId)stickRelease(e.type==='pointerup')};
+panelEl.addEventListener('pointerup',ptrEnd);panelEl.addEventListener('pointercancel',ptrEnd);
 const KEYS={ArrowLeft:'l',KeyA:'l',ArrowRight:'r',KeyD:'r',ArrowUp:'u',KeyW:'u',ArrowDown:'d',KeyS:'d'};
 addEventListener('keydown',e=>{
   if(KEYS[e.code]){input.keys[KEYS[e.code]]=true;e.preventDefault()}
@@ -794,7 +817,7 @@ function updHero(dt){
   if(!p.onG&&p.air&&Math.abs(ix)+Math.abs(iy)<.2){ix=p.air.x;iy=p.air.y}
   if(Math.abs(ix)>.25&&p.swing<=0)p.face=ix>0?1:-1;
   // 方向を入れていないときは、強制スクロールに合わせて前へ歩く（ボス戦でカメラが止まったら止まる）
-  const auto=!G.locked&&Math.abs(ix)+Math.abs(iy)<.2;
+  const auto=!G.locked&&Math.abs(ix)<.25;   // 左右を入れていないとき（上下だけのときも）
   if(auto&&p.swing<=0)p.face=1;
   const vx=(auto?SCROLL:ix*130)+p.kx,vz=iy*90;
   moveBody(p,vx*dt,vz*dt);
