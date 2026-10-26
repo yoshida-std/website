@@ -233,7 +233,32 @@ function initAudio(){
     AC=new (window.AudioContext||window.webkitAudioContext)();
     const comp=AC.createDynamicsCompressor();comp.threshold.value=-10;comp.ratio.value=6;
     master=AC.createGain();master.gain.value=muted?0:.8;master.connect(comp);comp.connect(AC.destination);
+    bgmGain=AC.createGain();bgmGain.gain.value=BGM_VOL;bgmGain.connect(master);
+    fetch(BGM_URL).then(r=>r.arrayBuffer()).then(a=>new Promise((ok,ng)=>AC.decodeAudioData(a,ok,ng)))
+      .then(b=>{bgmBuf=b;if(wantBgm&&!bgmSrc)startBgm()}).catch(()=>{});
   }catch(e){AC=null}
+}
+// BGM（試合の最初から勝負が決まるまで流す。数字が出ている間は小さくする）
+const BGM_URL='sound/bgm086.mp3';
+const BGM_LEN=33.488; // 元のWAVの長さ。MP3の末尾の無音をループに含めない
+const BGM_VOL=.42,BGM_LOW=.12;
+let bgmBuf=null,bgmGain=null,bgmSrc=null,wantBgm=false;
+function startBgm(){
+  wantBgm=true;
+  if(!AC||!bgmBuf||bgmSrc)return;
+  const s=AC.createBufferSource(),g=AC.createGain();
+  s.buffer=bgmBuf;s.loop=true;s.loopStart=0;s.loopEnd=Math.min(BGM_LEN,bgmBuf.duration);
+  s.connect(g);g.connect(bgmGain);s.start();bgmSrc={s,g};
+}
+function stopBgm(fade=.05){
+  wantBgm=false;if(!bgmSrc)return;
+  const {s,g}=bgmSrc,t=AC.currentTime;bgmSrc=null;
+  g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+fade);
+  try{s.stop(t+fade+.02)}catch(e){}
+}
+function duckBgm(on){
+  if(!bgmGain)return;const t=AC.currentTime;
+  bgmGain.gain.cancelScheduledValues(t);bgmGain.gain.setTargetAtTime(on?BGM_LOW:BGM_VOL,t,.06);
 }
 let noiseBuf=null;
 function tone(f,dur,{type='sine',vol=.3,to=null,delay=0,attack=.005}={}){
@@ -524,6 +549,7 @@ function pickHammer(){
   if(G.dmg>1)SFX.hammer();
 }
 function abortAll(){
+  stopBgm();duckBgm(false);
   G.seq++;tweens=[];hitstop=0;timeScale=1;koFx=0;impactT=-1;P=[];SFXs=[];
   Object.assign(camS,{z:1,cx:W/2,cy:H/2,sh:0});
   C.slice(1).forEach(resetChar);
@@ -551,6 +577,7 @@ async function startMatch(){
   abortAll();const s=G.seq;
   $('title').hidden=true;$('result').hidden=true;$('result').classList.remove('show');
   G.life=[0,6,6];lifeUI(1);lifeUI(2);G.state='INTRO';
+  startBgm();
   for(const c of C.slice(1)){c.x=-c.dir*W*.6;c.bob=false}
   tw(C[1],{x:0},600,E.out3);await tw(C[2],{x:0},600,E.out3);if(s!==G.seq)return;
   C[1].bob=C[2].bob=true;
@@ -567,7 +594,7 @@ function startRound(){
   tweens=tweens.filter(t=>t.o!==C[1]&&t.o!==C[2]&&t.o!==camS);
   for(const c of C.slice(1))Object.assign(c,{x:0,y:0,r:0,sx:1,sy:1,jit:0,hon:false,trail:false,bob:true});
   Object.assign(camS,{z:1,cx:W/2,cy:H/2});timeScale=1;koFx=0;
-  cards(false);pickHammer();
+  cards(false);pickHammer();duckBgm(false);
   const wait=1000+Math.random()*1500;
   later(wait,()=>{if(G.state==='WAIT'&&G.round===r)reveal(r)});
   if(G.mode==='CPU'&&Math.random()<LV[G.lv].early){
@@ -577,7 +604,7 @@ function startRound(){
 function reveal(r){
   G.state='REVEAL';
   G.num[1]=Math.floor(Math.random()*100);G.num[2]=Math.floor(Math.random()*100);
-  cards(true);SFX.reveal();
+  cards(true);SFX.reveal();duckBgm(true);
   if(G.mode==='CPU'){
     const L=LV[G.lv];const win=G.num[2]>=G.num[1];
     let act=win?'HIT':'DODGE';if(Math.random()<L.err)act=act==='HIT'?'DODGE':'HIT';
@@ -742,7 +769,7 @@ async function downAndSet(c){
   gameSet(3-c.id);
 }
 async function gameSet(winner){
-  const s=G.seq;G.state='OVER';cards(false);
+  const s=G.seq;G.state='OVER';cards(false);stopBgm(.4);
   banner('GAME SET','set');SFX.set();
   await sleep(1800);if(s!==G.seq)return;
   showResult(winner);

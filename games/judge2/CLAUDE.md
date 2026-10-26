@@ -4,7 +4,7 @@
 公開URL: `https://yoshida-std.github.io/website/games/judge2/`
 リポジトリ全体の作業ルール（ブランチ・PR・確認方法・コピーライト表記）はルートの `CLAUDE.md` を参照。
 
-プッシュ前の確認用 Artifact: `https://claude.ai/artifact/T7NEiNKBu6RVnbtYoi7CQT`（変更のたびにこの URL を更新する。`index.html` と画像・`manifest.json` を同じパスで載せる）
+プッシュ前の確認用 Artifact: `https://claude.ai/artifact/T7NEiNKBu6RVnbtYoi7CQT`（変更のたびにこの URL を更新する。`index.html` と画像・`manifest.json`・`sound/bgm086.mp3` を同じパスで載せる）
 
 ## 概要と操作
 
@@ -39,7 +39,11 @@
 
 **ライフ表示**: ハートは SVG で描く（文字の ❤ は iPhone で絵文字になり、色を変えられず減ったように見えなかった）。操作ボタンの文字は横書き
 
-**音**: すべて WebAudio の合成音（`SFX`）。BGM はなし。`AudioContext` は最初のボタン操作で作る
+**音**
+- BGM は BGM086。試合の最初（キャラが出てくるところ）から「GAME SET」まで流しっぱなしでループ。「GAME SET」で 0.4 秒かけて消す。タイトル・結果画面は無音
+- 数字の札が出てからそのラウンドが終わるまで（次のラウンドが始まるまで）は BGM を小さくする（通常 `BGM_VOL`=0.42 → `BGM_LOW`=0.12）
+- MP3 の末尾の無音をループに含めないよう、元の WAV の長さ `BGM_LEN=33.488` を `loopEnd` にしている
+- 効果音は WebAudio の合成音（`SFX`）。`AudioContext` は最初のボタン操作で作る
 
 ## ファイル構成と役割
 
@@ -49,6 +53,7 @@ games/judge2/
 ├── index.html         … ゲーム本体（HTML / CSS / JS をすべて含む）
 ├── manifest.json      … ホーム画面に追加したとき横向き・全画面にする
 ├── icon-192.png       … ホーム画面のアイコン
+├── sound/bgm086.mp3  … ゲーム中BGM（元: BGM086-100610-aozorashakarikisawagi.wav, 33.5秒。元の WAV はリポジトリに入れない）
 ├── cloud_bg.jpg       … 背景（judge1 の cloud_bg.png を JPEG にしたもの）
 ├── player1.svg / player2.svg / player1_win.svg / player2_win.svg
 ├── hammer1.svg / hammer2.svg / hammer3.svg   … ダメージ ×1 / ×2 / ×3
@@ -68,6 +73,7 @@ games/judge2/
 - 演出中に画面サイズが変わると、ふっとび中のキャラの位置が少しずれる
 - 「キャラが画面の外に出てしまった」という報告あり（実機、どの場面かは未確認）。対策として、毎フレーム画面の大きさを確かめて変わっていたら `layout()` し直す、ラウンドの始めに2人を定位置に戻す、を入れた
 - 音の ON/OFF は保存していない
+- BGM のループのつなぎ目は実機で未確認（Safari で小さな切れ目が出るかも）
 
 ## やらないと決めたこと
 
