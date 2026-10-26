@@ -54,10 +54,12 @@ canvas{touch-action:none;display:block}
 #shieldCv,#knobCv{display:block;width:100%;height:100%}
 #knob{position:absolute;left:50%;top:50%;width:30%;height:30%;transform:translate(-50%,-50%);z-index:1}
 #knob.tap{filter:sepia(1) saturate(5) hue-rotate(-12deg) brightness(1.15)}
-#knob.charge{filter:sepia(1) saturate(4) hue-rotate(170deg) brightness(1.25);animation:glow .3s steps(2) infinite}
-#knob.full{filter:sepia(1) saturate(6) hue-rotate(-12deg) brightness(1.35);animation:glow .15s steps(2) infinite}
+#knob.c0{filter:brightness(1.15);animation:glow .4s steps(2) infinite}
+#knob.c1{filter:sepia(1) saturate(4) hue-rotate(160deg) brightness(1.3);animation:glow .3s steps(2) infinite}
+#knob.c2{filter:sepia(1) saturate(6) hue-rotate(-12deg) brightness(1.35);animation:glow .2s steps(2) infinite}
+#knob.c3{filter:sepia(1) saturate(8) hue-rotate(-40deg) brightness(1.2);animation:glow .12s steps(2) infinite}
 @keyframes glow{0%,100%{transform:translate(-50%,-50%)}50%{transform:translate(-50%,-50%) scale(1.08)}}
-@media (prefers-reduced-motion:reduce){#knob.charge,#knob.full{animation:none}}
+@media (prefers-reduced-motion:reduce){#knob.c0,#knob.c1,#knob.c2,#knob.c3{animation:none}}
 #stickLabel{position:absolute;left:0;right:0;top:2px;text-align:center;font-size:11px;color:var(--dim);line-height:1.5;text-shadow:1px 1px 0 #000,0 0 4px #000}
 #rotate{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
   text-align:center;font-size:18px;line-height:1.6;padding:0 max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
@@ -877,13 +879,23 @@ function autoJump(p,vx,vz){
   p.vh=245;p.onG=false;p.airV={vx:vx*k,vz:vz*k};sfx('jump');
   G.allies.forEach((a,i)=>{a.jd=.07*(i+1)});
 }
-// 飛ぶ斬撃: 剣を振って三日月の斬撃を飛ばす。ためた斬撃は大きく、敵をつらぬく
-const FULL=.7;
-function castSlash(p,big){
-  if(p.slashCD>0&&!big)return;p.slashCD=.35;
+// 飛ぶ斬撃: 剣を振って三日月の斬撃を飛ばす。長押しで3段階ため。ためた斬撃（1段以上）は大きく、敵をつらぬき、敵の弾を消す
+const LV_T=[.5,1,1.6];   // 1・2・3段目がたまるまでの秒数
+const WAVE=[   // 段ごとの 大きさ・ダメージ・速さ・射程(秒)・色（外側・内側）
+  {r:10,dmg:12,spd:235,life:.75,c1:'#3c9cf0',c2:'#a8ecff'},
+  {r:14,dmg:24,spd:255,life:1,c1:'#30d8e8',c2:'#c8fcff'},
+  {r:18,dmg:42,spd:270,life:1.2,c1:'#ffb820',c2:'#ffe878'},
+  {r:25,dmg:72,spd:285,life:1.4,c1:'#ff5020',c2:'#ffc080'},
+];
+const chargeLv=t=>t>=LV_T[2]?3:t>=LV_T[1]?2:t>=LV_T[0]?1:0;
+function castSlash(p,lv){
+  if(p.slashCD>0&&!lv)return;p.slashCD=.35;
   p.swing=.2;p.swCD=Math.max(p.swCD,.22);
-  G.shots.push({kind:'wave',x:p.x+p.face*18,z:p.z,h:p.h+17,vx:p.face*(big?270:235),vz:0,dmg:big?36:12,life:big?1.2:.75,friend:true,big,pierce:big,hitSet:new Set()});
-  sfx('swing');if(big){noise(.25,.3);tone(220,.3,'sawtooth',.15,600)}
+  const w=WAVE[lv];
+  G.shots.push({kind:'wave',x:p.x+p.face*18,z:p.z,h:p.h+17,vx:p.face*w.spd,vz:0,dmg:w.dmg,life:w.life,friend:true,lv,big:lv>0,pierce:lv>0,hitSet:new Set()});
+  sfx('swing');
+  if(lv){noise(.2+lv*.1,.25+lv*.05);tone(260-lv*40,.3,'sawtooth',.15,600)}
+  if(lv===3)G.shake=Math.max(G.shake,.2);
 }
 function updHero(dt){
   const p=G.hero;updMember(p,dt);
@@ -915,10 +927,14 @@ function updHero(dt){
   }
   moveBody(p,vx*dt,vz*dt);
   p.x=clamp(p.x,G.camX+16,G.camX+W-16);p.z=clamp(p.z,2,DEPTH-2);   // 左端に押されたら障害物もすり抜けて押し出される
-  if(input.charging){p.charge=Math.min(1.2,(p.charge||0)+dt);if(p.charge>=FULL&&!p.full){p.full=true;tone(1760,.15,'square',.1);tone(2640,.2,'triangle',.08,0,.06)}}
-  if(input.release){input.release=false;castSlash(p,(p.charge||0)>=FULL);p.charge=0;p.full=false}
-  else if(!input.charging){p.charge=0;p.full=false}
-  knob.classList.toggle('charge',input.charging&&!p.full);knob.classList.toggle('full',input.charging&&!!p.full);
+  if(input.charging){
+    p.charge=Math.min(LV_T[2]+.2,(p.charge||0)+dt);const lv=chargeLv(p.charge);
+    if(lv>(p.lv||0)){p.lv=lv;const n=[0,76,79,84][lv];tone(midi(n+12),.12,'square',.1);tone(midi(n+19),.18,'triangle',.08,0,.06)}   // 段が上がるたびに音
+  }
+  if(input.release){input.release=false;castSlash(p,chargeLv(p.charge||0));p.charge=0;p.lv=0}
+  else if(!input.charging){p.charge=0;p.lv=0}
+  const kc=input.charging&&p.charge>.12?'c'+chargeLv(p.charge):'';
+  if(knob.dataset.c!==kc){['c0','c1','c2','c3'].forEach(c=>knob.classList.toggle(c,c===kc));knob.dataset.c=kc}
   p.vh-=620*dt;p.h+=p.vh*dt;
   const g=groundAt(p.x,p.z,p.h);
   if(g>-100&&p.h<=g){p.h=g;p.vh=0;p.onG=true;p.airV=null}else p.onG=false;
@@ -974,7 +990,9 @@ function updShots(dt){
     if(s.z<-6||s.z>DEPTH+6||s.x<G.camX-10||s.x>G.camX+W+20)s.life=0;
     if(s.life<=0)continue;
     if(s.friend){
-      const zr=s.big?17:s.kind==='wave'?12:9,hr=s.big?32:s.kind==='wave'?24:20,xr=s.big?10:s.kind==='wave'?6:3;
+      const lv=s.lv||0,zr=s.kind==='wave'?12+lv*5:9,hr=s.kind==='wave'?24+lv*8:20,xr=s.kind==='wave'?6+lv*4:3;
+      if(lv)for(const o of G.shots)if(!o.friend&&o.life>0&&Math.abs(o.x-s.x)<WAVE[lv].r*.8+6&&Math.abs(o.z-s.z)<zr&&Math.abs(o.h-s.h)<hr){   // ためた斬撃は敵の弾を消す
+        o.life=0;G.fx.push({k:'spark',x:o.x,z:o.z,h:o.h,life:.2,max:.2,crit:true,vx:0,vh:0});addFx(o.x,o.z,o.h,o.kind==='boss'?'#ff8424':'#f878f8',6,50);tone(1568,.08,'square',.08,-600)}
       for(const e of G.enemies)if(!e.dead&&!e.falling&&!(s.hitSet&&s.hitSet.has(e))&&Math.abs(e.x-s.x)<e.w+xr&&Math.abs(e.z-s.z)<zr&&Math.abs(e.h+e.ht/2-s.h)<hr){
         hitEnemy(e,s.dmg,Math.sign(s.vx),s.kind==='wave');if(s.pierce)s.hitSet.add(e);else{s.life=0;break}}
       const b=G.boss;
@@ -1077,11 +1095,12 @@ function drawMember(m){
     drawImg(img,m.x,m.z,m.h);ctx.restore();return;
   }
   shadow(m.x,m.z,22);
-  if(m===G.hero&&m.charge>.12){   // ため中: 光の粒が集まる。たまったら金色
-    const full=m.charge>=FULL,cx=SX(m.x),cy=Math.round(GY+m.z-m.h-16);
-    for(let i=0;i<10;i++){const a=G.t*6+i*.628,rr=(full?15:22-m.charge/FULL*8)+Math.sin(G.t*20+i)*2;
-      ctx.fillStyle=full?(i%2?'#ffd84a':'#ffffff'):(i%2?'#a8ecff':'#3c9cf0');ctx.fillRect(Math.round(cx+Math.cos(a)*rr),Math.round(cy+Math.sin(a)*rr*1.2),2,2)}
-    if(full&&Math.floor(G.t*16)%2){ctx.fillStyle='rgba(255,216,74,.35)';ctx.beginPath();ctx.arc(cx,cy,14,0,Math.PI*2);ctx.fill()}
+  if(m===G.hero&&m.charge>.12){   // ため中: 光の粒が集まる。段ごとに 青→水色→金→赤 と色と数が変わる
+    const lv=chargeLv(m.charge),w=WAVE[lv],cx=SX(m.x),cy=Math.round(GY+m.z-m.h-16),next=LV_T[lv]||LV_T[2],prev=LV_T[lv-1]||0;
+    const prog=lv===3?1:(m.charge-prev)/(next-prev),n=8+lv*4;
+    for(let i=0;i<n;i++){const a=G.t*(6+lv*2)+i*Math.PI*2/n,rr=(13+lv*3)+(1-prog)*9+Math.sin(G.t*20+i)*2;
+      ctx.fillStyle=i%2?w.c2:w.c1;ctx.fillRect(Math.round(cx+Math.cos(a)*rr),Math.round(cy+Math.sin(a)*rr*1.2),2,2)}
+    if(lv&&Math.floor(G.t*(10+lv*4))%2){ctx.fillStyle=['','rgba(48,216,232,.28)','rgba(255,216,74,.32)','rgba(255,80,32,.36)'][lv];ctx.beginPath();ctx.arc(cx,cy,12+lv*3,0,Math.PI*2);ctx.fill()}
   }
   if(m.cls==='hero'||m.cls==='warrior'){if(m.face<0)drawSword(m);drawImg(img,m.x,m.z,m.h);if(m.face>0)drawSword(m)}
   else{
@@ -1106,13 +1125,13 @@ function drawShot(s){
   const x=SX(s.x),y=Math.round(GY+s.z-s.h);
   ctx.fillStyle='#00000040';ctx.fillRect(x-2,GY+Math.round(s.z),4,1);
   if(s.kind==='wave'){   // 三日月の斬撃（進む向きにふくらむ）
-    const d=Math.sign(s.vx),R0=s.big?16:10,f=Math.floor(G.t*24)%2;
-    for(let k=2;k>=0;k--){const ox=x-d*k*(s.big?7:5),col=k?(s.big?'#ffd84a':'#3c9cf0'):'#ffffff';ctx.globalAlpha=k?.45/k:1;
-      for(let a=-1.25;a<=1.25;a+=.08){const th=Math.cos(a)*(s.big?4:3),px=ox+d*Math.cos(a)*R0-d*R0*.55,py=y+Math.sin(a)*R0*1.15;
+    const lv=s.lv||0,w=WAVE[lv],d=Math.sign(s.vx),R0=w.r,f=Math.floor(G.t*24)%2,thk=3+lv;
+    for(let k=2;k>=0;k--){const ox=x-d*k*(5+lv*2),col=k?w.c1:'#ffffff';ctx.globalAlpha=k?.45/k:1;
+      for(let a=-1.25;a<=1.25;a+=.06){const th=Math.cos(a)*thk,px=ox+d*Math.cos(a)*R0-d*R0*.55,py=y+Math.sin(a)*R0*1.15;
         ctx.fillStyle=col;ctx.fillRect(Math.round(px-d*th),Math.round(py),Math.max(1,Math.round(th)),2);
-        if(!k){ctx.fillStyle=s.big?'#ffd84a':'#a8ecff';ctx.fillRect(Math.round(px-d*th-d),Math.round(py),1,2)}}}
+        if(!k){ctx.fillStyle=w.c2;ctx.fillRect(Math.round(px-d*th-d),Math.round(py),1+(lv>1?1:0),2)}}}
     ctx.globalAlpha=1;
-    if(s.big&&f){ctx.fillStyle='#ffffff';for(let i=0;i<4;i++)ctx.fillRect(x+rnd(-14,6)*d,y+rnd(-16,16),2,2)}}
+    if(lv&&f){ctx.fillStyle=lv===3?'#ffc080':'#ffffff';for(let i=0;i<2+lv*2;i++)ctx.fillRect(x+rnd(-R0,6)*d,y+rnd(-R0,R0),2,2)}}
   else if(s.kind==='fire'){const d=Math.sign(s.vx);ctx.fillStyle='#d82800';ctx.fillRect(x-d*7-1,y-1,3,3);ctx.fillStyle='#fc7400';ctx.fillRect(x-3,y-3,6,6);ctx.fillStyle='#fcd800';ctx.fillRect(x-2,y-2,4,4);ctx.fillStyle='#ffffff';ctx.fillRect(x-1,y-1,2,2)}
   else{const f=Math.floor(G.t*16)%2,r=s.kind==='boss'?7:5;
     ctx.fillStyle=s.kind==='boss'?(f?'#f83800':'#fc7400'):(f?'#f878f8':'#9878f8');ctx.fillRect(x-r,y-r+1,r*2,r*2-2);ctx.fillRect(x-r+1,y-r,r*2-2,r*2);
@@ -1196,7 +1215,7 @@ function showTitle(){
   showOverlay(`<p class="tag">PROTOTYPE</p><h1>すすめ！<br>ゆうしゃ</h1>
   <ul class="rules">
     <li><span>画面は <em>どんどん右へ</em> すすむ。左の <em>円盤</em> で上下左右に動く</span></li>
-    <li><span>円盤の まんなかを <em>タップ</em> で <em>斬撃</em> を とばす。<em>長押し</em> で ためて 大きな 斬撃。穴や岩は 自動で ジャンプ</span></li>
+    <li><span>円盤の まんなかを <em>タップ</em> で <em>斬撃</em> を とばす。<em>長押し</em> で 3だんかい ためて 大きな 斬撃（敵の たまも けせる）。穴や岩は 自動で ジャンプ</span></li>
     <li><span>敵に近づくと <em>剣を振って薙ぎ払う</em>。ただし <em class="m">魔法は はじけない</em> のでよける</span></li>
     <li><span>とちゅうで <em>仲間</em> に出会う（最大4人）。仲間もHPがなくなると いなくなる</span></li>
     <li><span>ゆうしゃのHPがなくなると ゲームオーバー。さいごに まつ ボスを たおせ！</span></li>
