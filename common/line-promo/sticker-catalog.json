@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "title": "LINEで使える、スタンプ&絵文字の紹介！",
+  "button": {
+    "label": "LINEスタンプ",
+    "position": "bottom-right"
+  },
+  "pixelArt": false,
+  "autoShow": true,
+  "items": {}
+}

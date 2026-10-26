@@ -1,0 +1,58 @@
+name: Update sticker catalog
+
+on:
+  schedule:
+    # 毎日 日本時間 10:00（generate_list の巡回 9:00 が終わった後）
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-sticker-catalog
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      # generate_list が公開している line_items_latest.csv の URL（リポジトリの Variables で設定）
+      CSV_URL: ${{ vars.STICKER_CSV_URL }}
+      # CSV が非公開リポジトリにあるときだけ、読み取り用トークンを Secrets に設定する
+      CSV_TOKEN: ${{ secrets.STICKER_CSV_TOKEN }}
+      CATALOG: common/line-promo/sticker-catalog.json
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download CSV
+        run: |
+          if [ -z "$CSV_URL" ]; then
+            echo "Variables に STICKER_CSV_URL が設定されていません" >&2
+            exit 1
+          fi
+          if [ -n "$CSV_TOKEN" ]; then
+            curl -fsSL --retry 3 -H "Authorization: token $CSV_TOKEN" -o "$RUNNER_TEMP/items.csv" "$CSV_URL"
+          else
+            curl -fsSL --retry 3 -o "$RUNNER_TEMP/items.csv" "$CSV_URL"
+          fi
+
+      - name: Convert CSV to catalog
+        run: python .github/scripts/csv_to_catalog.py "$RUNNER_TEMP/items.csv" "$CATALOG"
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- "$CATALOG"; then
+            echo "カタログに変更はありません"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898319+github-actions[bot]@users.noreply.github.com"
+          git add "$CATALOG"
+          git commit -m "Update sticker catalog"
+          git push
