@@ -60,8 +60,11 @@ def clean(text):
     return (text or "").replace("\r", "").replace("\n", "").strip()
 
 
-def parse_author_page(soup, item_type):
-    """作者の一覧ページから (商品ID, アイテム) を取り出す"""
+def parse_author_page(soup):
+    """作者の一覧ページから (商品ID, アイテム) を取り出す。
+
+    スタンプの作者ページにも絵文字が並ぶので、種類は巡回中のページではなく商品ごとに決める。
+    """
     found = []
     for li in soup.select('li[data-test="author-item"]'):
         a_tag = li.select_one("a[href]")
@@ -71,11 +74,15 @@ def parse_author_page(soup, item_type):
         match = PRODUCT_PATTERN.search(href)
         if match:
             item_id = match.group(2)
+            is_emoji = match.group(1) == "emojishop"
         else:
             match = EMOJI_PATTERN.search(href)
             if not match:
                 continue
             item_id = match.group(1)
+            is_emoji = True
+        # スタンプの商品IDは数字だけ、絵文字は英数字24桁
+        item_type = "emoji" if is_emoji or not item_id.isdigit() else "sticker"
 
         # Premium バッジなどのアイコンを除いた本画像
         img_tag = None
@@ -129,11 +136,11 @@ def fetch_author_items(author_id, item_type):
             if page == 1:
                 raise FetchError(f"{url} が見つかりません（作者IDを確認してください）")
             break
-        new = [(k, v) for k, v in parse_author_page(soup, item_type) if k not in items]
+        new = [(k, v) for k, v in parse_author_page(soup) if k not in items]
         if not new:
             break
         items.update(new)
-    print(f"  {item_type} (ID: {author_id}): {len(items)} 件")
+    print(f"  {SHOPS[item_type]} の作者ページ (ID: {author_id}): {len(items)} 件")
     return items
 
 
