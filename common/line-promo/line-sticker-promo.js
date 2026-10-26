@@ -1,5 +1,5 @@
 /*!
- * line-sticker-promo.js  v7
+ * line-sticker-promo.js  v8
  * 複数ゲームで共有する「LINEスタンプ／絵文字」誘導部品。
  * このJSと sticker-catalog.json（全スタンプ・絵文字の定義）を同じ共通パスに置きます。
  * 各ゲームは「キー」を渡すだけです。
@@ -14,7 +14,7 @@
  *
  * 任意の data 属性 / init オプション:
  *   catalog（カタログJSONのURL。省略時はこのJSと同じ場所の sticker-catalog.json）
- *   position（bottom-right など） / label（ボタン文言） / title（一覧の見出し）
+ *   position（bottom-right など） / label（ボタン文言。\n で改行） / title（一覧の見出し）
  *   autoShow（false でボタンを最初は隠す。後から StickerPromo.show()）
  *
  * 表示の切り替え: StickerPromo.show() / hide() / open() / close()
@@ -37,8 +37,8 @@
     var s = document.createElement("style");
     s.id = "sp-style";
     s.textContent =
-      ".sp-btn{position:fixed;z-index:2147483000;display:none;padding:10px 14px;border:0;border-radius:999px;" +
-      "background:#06c755;color:#fff;font:bold 14px/1 sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.35);" +
+      ".sp-btn{position:fixed;z-index:2147483000;display:none;min-width:58px;padding:9px 7px;border:0;border-radius:16px;" +
+      "background:#06c755;color:#fff;font:bold 13px/1.3 sans-serif;white-space:pre-line;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.35);" +
       "touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}" +
       ".sp-btn:active{transform:scale(.96)}" +
       ".sp-modal{position:fixed;inset:0;z-index:2147483001;display:none;align-items:center;justify-content:center;" +
@@ -137,7 +137,7 @@
     root = document.createElement("button");
     root.className = "sp-btn";
     root.type = "button";
-    root.textContent = config.label || btn.label || "LINEスタンプ";
+    root.textContent = config.label || btn.label || "LINE\nスタンプ";
     place(root, config.position || btn.position);
     root.addEventListener("click", open);
     shield(root);

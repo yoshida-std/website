@@ -2,7 +2,7 @@
   "version": 1,
   "title": "LINEで使える、スタンプ&絵文字の紹介！",
   "button": {
-    "label": "LINEスタンプ",
+    "label": "LINE\nスタンプ",
     "position": "bottom-right"
   },
   "pixelArt": false,
