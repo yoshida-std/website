@@ -549,7 +549,7 @@ function moveBody(e,dx,dz){
 let G=null;
 function member(cls,x,z){const c=CLS[cls];return {cls,x,z,h:0,vh:0,face:1,hp:c.hp,max:c.hp,inv:0,swing:0,swCD:0,atkCD:1,walk:0,flash:0,kx:0,kz:0,onG:true,fall:0,jd:-1}}
 function newGame(){
-  G={state:'play',t:0,camX:0,shake:0,hero:member('hero',40,46),allies:[],enemies:[],shots:[],fx:[],
+  G={state:'play',t:0,camX:0,shake:0,hero:member('hero',-24,46),intro:true,allies:[],enemies:[],shots:[],fx:[],
     npcs:ALLY_SPOTS.map(a=>({...a,joined:false})),nextSpawn:300,spawnT:4,boss:null,locked:false,
     kills:0,wizIntro:false,magicTold:false,overT:0,clearT:0};
   G.hero.safe={x:40,z:46};
@@ -570,7 +570,7 @@ function updMsg(dt){
 /* ---------- 入力 ---------- */
 const input={x:0,y:0,sx:0,sy:0,lx:0,ly:0,lt:0,jumpBuf:0,keys:{}};
 const zone=$('#stickZone'),stick=$('#stick'),knob=$('#knob');
-let stickId=null,stickT0=0,stickX0=0,stickY0=0,stickMoved=0;
+let stickId=null,stickT0=0,stickX0=0,stickY0=0,stickMoved=0,stickCenter=false;
 function stickMove(e){
   const r=stick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,R=r.width*.4;
   let dx=e.clientX-cx,dy=e.clientY-cy;const len=Math.hypot(dx,dy);
@@ -583,12 +583,13 @@ function stickMove(e){
 function jumpTap(){input.jumpBuf=.15;knob.classList.add('tap');setTimeout(()=>knob.classList.remove('tap'),150)}
 function stickEnd(e){
   if(e.pointerId!==stickId)return;stickId=null;input.sx=input.sy=0;knob.style.transform='';
-  if(e.type==='pointerup'&&performance.now()-stickT0<260&&stickMoved<16)jumpTap();   // 円盤を短くタップ → ジャンプ
+  if(e.type==='pointerup'&&stickCenter&&performance.now()-stickT0<260&&stickMoved<16)jumpTap();   // 中央のつまみを短くタップ → ジャンプ（矢印の上を短く押しても移動になる）
 }
 zone.addEventListener('pointerdown',e=>{
   initAudio();
   if(stickId!==null){jumpTap();return}   // 動かしながら別の指で円盤をタップ → ジャンプ
   stickId=e.pointerId;stickT0=performance.now();stickX0=e.clientX;stickY0=e.clientY;stickMoved=0;
+  {const r=stick.getBoundingClientRect();stickCenter=Math.hypot(e.clientX-r.left-r.width/2,e.clientY-r.top-r.height/2)<r.width*.2}
   try{zone.setPointerCapture(e.pointerId)}catch(_){}stickMove(e);
 });
 zone.addEventListener('pointermove',e=>{if(e.pointerId===stickId)stickMove(e)});
@@ -783,6 +784,11 @@ function updHero(dt){
     }
     return;
   }
+  if(G.intro){   // スタート: 左の画面外から歩いて入ってくる（その間は操作・スクロール・敵なし）
+    p.x+=70*dt;p.walk+=dt;p.face=1;
+    if(p.x>=70){p.x=70;G.intro=false;p.safe={x:70,z:p.z}}
+    return;
+  }
   readInput();
   let ix=input.x,iy=input.y;
   if(!p.onG&&p.air&&Math.abs(ix)+Math.abs(iy)<.2){ix=p.air.x;iy=p.air.y}
@@ -790,7 +796,7 @@ function updHero(dt){
   // 方向を入れていないときは、強制スクロールに合わせて前へ歩く（ボス戦でカメラが止まったら止まる）
   const auto=!G.locked&&Math.abs(ix)+Math.abs(iy)<.2;
   if(auto&&p.swing<=0)p.face=1;
-  const vx=(auto?SCROLL:ix*100)+p.kx,vz=iy*72;
+  const vx=(auto?SCROLL:ix*130)+p.kx,vz=iy*90;
   moveBody(p,vx*dt,vz*dt);
   p.x=clamp(p.x,G.camX+16,G.camX+W-16);p.z=clamp(p.z,2,DEPTH-2);   // 左端に押されたら障害物もすり抜けて押し出される
   if(input.jumpBuf>0&&p.onG){input.jumpBuf=0;heroJump()}
@@ -884,8 +890,8 @@ function update(dt){
   if(G.state!=='play')return;
   updHero(dt);
   G.allies.forEach((a,i)=>updAlly(a,i,dt));
-  if(!G.locked){G.camX=Math.min(END-W,G.camX+SCROLL*dt);if(G.camX>=END-W){G.camX=END-W;startBoss()}}
-  spawnLogic(dt);
+  if(!G.locked&&!G.intro){G.camX=Math.min(END-W,G.camX+SCROLL*dt);if(G.camX>=END-W){G.camX=END-W;startBoss()}}
+  if(!G.intro)spawnLogic(dt);
   G.enemies.forEach(e=>updEnemy(e,dt));
   G.enemies=G.enemies.filter(e=>!e.dead);
   if(G.boss)updBoss(dt);
