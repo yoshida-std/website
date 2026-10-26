@@ -134,9 +134,10 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 .copy{position:absolute;bottom:calc(6px + env(safe-area-inset-bottom,0px));left:0;right:0;text-align:center;color:#fff;font-size:11px;
   text-shadow:0 1px 2px rgba(0,0,0,.5)}
 #result{background:rgba(8,9,12,.95);z-index:6000}
+#petals{position:absolute;inset:0;z-index:5;width:100%;height:100%}
 #result .stage{position:relative;width:60%;height:100%;display:flex;justify-content:center}
-#rlogo{position:absolute;top:-20%;width:80%;max-width:440px;opacity:0;transition:.6s cubic-bezier(.175,.885,.32,1.275);z-index:2}
-#rimg{position:absolute;top:20%;height:74%;opacity:0;transform:scale(.8);transition:.6s .2s}
+#rlogo{position:absolute;top:-20%;width:80%;max-width:440px;opacity:0;transition:.6s cubic-bezier(.175,.885,.32,1.275);z-index:1}
+#rimg{position:absolute;top:20%;height:74%;opacity:0;transform:scale(.8);transition:.6s .2s;z-index:2}
 #result.show #rlogo{top:2%;opacity:1}
 #result.show #rimg{opacity:1;transform:none}
 #rname{position:absolute;bottom:calc(6% + env(safe-area-inset-bottom,0px));font-family:var(--display);font-size:22px;z-index:3;
@@ -197,6 +198,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 </div>
 
 <div class="screen" id="result" hidden>
+  <canvas id="petals"></canvas>
   <div class="stage"><img id="rlogo" src="win.svg" alt="WIN!"><img id="rimg" src="player1_win.svg" alt=""><div id="rname"></div></div>
   <div class="acts">
     <button class="mbtn" id="bagain">もういちど</button>
@@ -236,6 +238,8 @@ function initAudio(){
     bgmGain=AC.createGain();bgmGain.gain.value=BGM_VOL;bgmGain.connect(master);
     fetch(BGM_URL).then(r=>r.arrayBuffer()).then(a=>new Promise((ok,ng)=>AC.decodeAudioData(a,ok,ng)))
       .then(b=>{bgmBuf=b;if(wantBgm&&!bgmSrc)startBgm()}).catch(()=>{});
+    fetch(ME_URL).then(r=>r.arrayBuffer()).then(a=>new Promise((ok,ng)=>AC.decodeAudioData(a,ok,ng)))
+      .then(b=>{meBuf=b}).catch(()=>{});
   }catch(e){AC=null}
 }
 // BGM（試合の最初から勝負が決まるまで流す。数字が出ている間は小さくする）
@@ -256,6 +260,14 @@ function stopBgm(fade=.05){
   g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+fade);
   try{s.stop(t+fade+.02)}catch(e){}
 }
+// 勝負がついたときの ME（結果画面が出るときに1回）
+const ME_URL='sound/me046_win.mp3';
+let meBuf=null,meSrc=null;
+function playMe(){
+  stopMe();if(!AC||!meBuf)return;
+  const s=AC.createBufferSource();s.buffer=meBuf;s.connect(master);s.start();meSrc=s;
+}
+function stopMe(){if(meSrc){try{meSrc.stop()}catch(e){}meSrc=null}}
 function duckBgm(on){
   if(!bgmGain)return;const t=AC.currentTime;
   bgmGain.gain.cancelScheduledValues(t);bgmGain.gain.setTargetAtTime(on?BGM_LOW:BGM_VOL,t,.06);
@@ -549,7 +561,7 @@ function pickHammer(){
   if(G.dmg>1)SFX.hammer();
 }
 function abortAll(){
-  stopBgm();duckBgm(false);
+  stopBgm();duckBgm(false);stopMe();stopPetals();
   G.seq++;tweens=[];hitstop=0;timeScale=1;koFx=0;impactT=-1;P=[];SFXs=[];
   Object.assign(camS,{z:1,cx:W/2,cy:H/2,sh:0});
   C.slice(1).forEach(resetChar);
@@ -780,6 +792,51 @@ function showResult(w){
   const nm=$('rname');nm.textContent=w===2&&G.mode==='CPU'?'CPU の かち':`PLAYER ${w} の かち`;nm.style.color=w===1?'#ff7fa8':'#43b7e8';
   const r=$('result');r.hidden=false;r.classList.remove('show');
   setTimeout(()=>r.classList.add('show'),60);
+  playMe();startPetals();
+}
+
+/* ---------- 花吹雪（結果画面） ---------- */
+const PCV=$('petals'),PX=PCV.getContext('2d');
+const PETAL_COLORS=['#ffb7cf','#ffc9da','#ff9fbf','#ffe3ec','#fff4f8','#ffd6e5'];
+let petals=[],petalRaf=0,petalLast=0,petalT=0;
+function newPetal(x,y,vx,vy){
+  return{x,y,vx,vy,size:rnd(7,13),rot:rnd(0,Math.PI*2),vr:rnd(-.004,.004),flip:rnd(0,Math.PI*2),vf:rnd(.004,.009),
+    sway:rnd(0,Math.PI*2),color:PETAL_COLORS[Math.floor(Math.random()*PETAL_COLORS.length)]};
+}
+function startPetals(){
+  stopPetals();
+  const w=PCV.clientWidth,h=PCV.clientHeight,d=Math.min(2,window.devicePixelRatio||1);
+  PCV.width=w*d;PCV.height=h*d;PX.setTransform(d,0,0,d,0,0);
+  // 最初に左右の下からパッと吹き上げる
+  for(let i=0;i<70;i++){
+    const left=i%2===0,k=h/400;
+    petals.push(newPetal(left?w*.02:w*.98,h*1.02,(left?1:-1)*rnd(.12,.5)*k,-rnd(.6,1.1)*k));
+  }
+  petalT=0;petalLast=performance.now();petalRaf=requestAnimationFrame(petalFrame);
+}
+function stopPetals(){cancelAnimationFrame(petalRaf);petalRaf=0;petals=[];PX.clearRect(0,0,PCV.width,PCV.height)}
+function petalFrame(now){
+  const dt=Math.min(50,now-petalLast);petalLast=now;petalT+=dt;
+  const w=PCV.clientWidth,h=PCV.clientHeight;
+  // そのあとは上から舞い落ち続ける
+  if(petals.length<110&&Math.random()<dt*.012)petals.push(newPetal(rnd(-.1,1.05)*w,-20,rnd(.01,.06),rnd(.04,.09)));
+  PX.clearRect(0,0,w,h);
+  for(const p of petals){
+    p.vy=Math.min(p.vy+.00025*dt,.11);p.vx*=Math.pow(.998,dt);
+    p.sway+=dt*.002;p.x+=(p.vx+Math.sin(p.sway)*.04)*dt;p.y+=p.vy*dt;
+    p.rot+=p.vr*dt;p.flip+=p.vf*dt;
+    PX.save();PX.translate(p.x,p.y);PX.rotate(p.rot);PX.scale(1,Math.cos(p.flip));
+    PX.fillStyle=p.color;PX.beginPath();
+    const r=p.size;
+    // 先が少し割れた桜の花びら
+    PX.moveTo(0,r);
+    PX.bezierCurveTo(r*.9,r*.5,r*.7,-r*.7,r*.22,-r);
+    PX.lineTo(0,-r*.72);PX.lineTo(-r*.22,-r);
+    PX.bezierCurveTo(-r*.7,-r*.7,-r*.9,r*.5,0,r);
+    PX.fill();PX.restore();
+  }
+  petals=petals.filter(p=>p.y<h+30&&p.x>-60&&p.x<w+60);
+  petalRaf=requestAnimationFrame(petalFrame);
 }
 
 /* ---------- 入力 ---------- */

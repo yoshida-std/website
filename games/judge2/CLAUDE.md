@@ -4,7 +4,7 @@
 公開URL: `https://yoshida-std.github.io/website/games/judge2/`
 リポジトリ全体の作業ルール（ブランチ・PR・確認方法・コピーライト表記）はルートの `CLAUDE.md` を参照。
 
-プッシュ前の確認用 Artifact: `https://claude.ai/artifact/T7NEiNKBu6RVnbtYoi7CQT`（変更のたびにこの URL を更新する。`index.html` と画像・`manifest.json`・`sound/bgm086.mp3` を同じパスで載せる）
+プッシュ前の確認用 Artifact: `https://claude.ai/artifact/T7NEiNKBu6RVnbtYoi7CQT`（変更のたびにこの URL を更新する。`index.html` と画像・`manifest.json`・`sound/*.mp3` を同じパスで載せる）
 
 ## 概要と操作
 
@@ -39,6 +39,8 @@
 
 **ライフ表示**: ハートは SVG で描く（文字の ❤ は iPhone で絵文字になり、色を変えられず減ったように見えなかった）。操作ボタンの文字は横書き
 
+**結果画面**: 勝ったキャラの絵を手前、「WIN!」の文字を後ろに重ねる（`#rimg` の z-index を `#rlogo` より上にする）。出るときに ME046 を1回鳴らし、桜の花吹雪（canvas `#petals`）を出す。花吹雪は最初に左右の下から吹き上げ、そのあとは上から舞い落ち続ける。画面を出るときに止める
+
 **音**
 - BGM は BGM086。試合の最初（キャラが出てくるところ）から「GAME SET」まで流しっぱなしでループ。「GAME SET」で 0.4 秒かけて消す。タイトル・結果画面は無音
 - 数字の札が出てからそのラウンドが終わるまで（次のラウンドが始まるまで）は BGM を小さくする（通常 `BGM_VOL`=0.42 → `BGM_LOW`=0.12）
@@ -54,6 +56,7 @@ games/judge2/
 ├── manifest.json      … ホーム画面に追加したとき横向き・全画面にする
 ├── icon-192.png       … ホーム画面のアイコン
 ├── sound/bgm086.mp3  … ゲーム中BGM（元: BGM086-100610-aozorashakarikisawagi.wav, 33.5秒。元の WAV はリポジトリに入れない）
+├── sound/me046_win.mp3 … 勝負がついたときの ME（元: ME046-151031-get05.wav, 1.7秒）
 ├── cloud_bg.jpg       … 背景（judge1 の cloud_bg.png を JPEG にしたもの）
 ├── player1.svg / player2.svg / player1_win.svg / player2_win.svg
 ├── hammer1.svg / hammer2.svg / hammer3.svg   … ダメージ ×1 / ×2 / ×3
