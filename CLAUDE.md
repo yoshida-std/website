@@ -3,7 +3,7 @@
 GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 公開URL: `https://yoshida-std.github.io/website/`
 
-- `games/` … ブラウザゲーム（Aitsu-bom, Taijiros-yan, umi, Mogurush）
+- `games/` … ブラウザゲーム（Aitsu-bom, Taijiros-yan, umi, Mogurush, judge2）
 - `tools/` … 制作ツール（ys_*）
 - ビルドなし。各作品は基本的に `index.html` 1枚で完結する
 - ルート・`games/`・`tools/` に一覧ページはない（URL直打ちでアクセス）
@@ -33,3 +33,4 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 各作品の仕様・ファイル構成・既知のバグなどは、その作品のフォルダの `CLAUDE.md` に書く（そのフォルダで作業するときに読み込まれる）。
 
 - `games/Mogurush/CLAUDE.md` … モグラッシュ！
+- `games/judge2/CLAUDE.md` … 天使と悪魔のジャッジ2
