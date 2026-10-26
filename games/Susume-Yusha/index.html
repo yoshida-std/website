@@ -263,9 +263,6 @@ const SP={
   wiz:[spr([".....kkkk.......","....kPPPPk......","...kPPPPPPk.....","...kPkkkkPk..y..","...kPkrkrPk.kyk.","...kPkkkkPk..k..",
             "..kPPPPPPPPk.n..","..kPPPPPPPPksn..","..kPPyPPPPPk.n..","..kPPyPPPPPk.n..","..kPPPPPPPPk.n..",".kPPPPPPPPPPkn..",
             ".kPPPPPPPPPPkn..","kPPPPPPPPPPPPk..","kkkkkkkkkkkkkk.."])],
-  boss:spr(mirror(["....kk......","...kyk......","...kyyk.....","....kyyk..kk",".....kyykkRR","......kkRRRR",".....kRRRRRR",
-    "....kRRwwkRR","....kRRwykRR","....kRRRRRRR","...kRRRRkkkk","...kRRRkwkwk","...kRRRRkkkk","..kVkRRRRRRR",".kVVVkRRRRRR",
-    "kVVVVVkkRRRR","kVVVVkRRRRoo","kVVVkRRRRooo","kVVk.kRRRRoo","kVk..kRRRRRR","kk...kRRkRRR",".....kRRkkRR","....kRRRk.kR","....kkkkk..k"])),
 };
 /* ---------- スーファミ風の絵（起動時に一度だけ描いておく） ---------- */
 function rng(seed){return ()=>{seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -431,6 +428,74 @@ function makeSlime(sq){
   for(let x=16;x<=20;x++)b.set(x,ey+7+(x===16||x===20?-1:0),ink);
   return sprC(b.outline(hex('#0e3478')).canvas());
 }
+// ボス: 炎のドラゴン（左向き、108x98）。f は羽ばたきと炎のコマ
+function makeDragon(f){
+  const b=new Buf(108,98),n=makeNoise(50+f),r=rng(90+f);
+  const SKIN=pals(['#ffd890','#ffac48','#f47a2c','#dc5020','#b03418','#802012','#56140a']);
+  const BELLY=pals(['#fff4b0','#ffd868','#f4aa40','#d88030','#a85a1c']);
+  const WING=pals(['#e85a34','#bc3424','#901f1a','#681414','#420c0e']);
+  const HORN=pals(['#fffbe8','#f2e0b8','#cfb080','#98784e']);
+  const FIRE=pals(['#ffffe8','#fff27a','#ffc436','#ff8424','#e44c18','#ac2412']);
+  const sh=(x,y,nx,ny,nz,pal,bias=0)=>b.set(x,y,pick(pal,clamp(.5-(-nx*.5-ny*.7+nz*.45)*.55+bias+(n(x,y,3,999)-.5)*.18,0,.99),x,y));
+  const ell=(cx,cy,rx,ry,pal,bias=0)=>{for(let y=Math.floor(cy-ry);y<=cy+ry;y++)for(let x=Math.floor(cx-rx);x<=cx+rx;x++){
+    const dx=(x+.5-cx)/rx,dy=(y+.5-cy)/ry,e=dx*dx+dy*dy;if(e<1)sh(x,y,dx,dy,Math.sqrt(1-e),pal,bias)}};
+  const cap=(ax,ay,bx,by,rad,pal,bias=0)=>{const L=Math.hypot(bx-ax,by-ay)||1;
+    for(let y=Math.floor(Math.min(ay,by)-rad);y<=Math.max(ay,by)+rad;y++)for(let x=Math.floor(Math.min(ax,bx)-rad);x<=Math.max(ax,bx)+rad;x++){
+      const t=clamp(((x-ax)*(bx-ax)+(y-ay)*(by-ay))/(L*L),0,1),qx=ax+(bx-ax)*t,qy=ay+(by-ay)*t,dx=(x+.5-qx)/rad,dy=(y+.5-qy)/rad,e=dx*dx+dy*dy;
+      if(e<1)sh(x,y,dx,dy,Math.sqrt(1-e),pal,bias)}};
+  const inPoly=(pts,x,y)=>{let c=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const [xi,yi]=pts[i],[xj,yj]=pts[j];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)c=!c}return c};
+  const poly=(pts,fn)=>{const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
+    for(let y=Math.floor(Math.min(...ys));y<=Math.max(...ys);y++)for(let x=Math.floor(Math.min(...xs));x<=Math.max(...xs);x++)if(inPoly(pts,x+.5,y+.5))fn(x,y)};
+  const tri=(ax,ay,bx,by,cx,cy,pal)=>poly([[ax,ay],[bx,by],[cx,cy]],(x,y)=>b.set(x,y,pick(pal,clamp((y-Math.min(ay,by,cy))/12+.1,0,.99),x,y)));
+  const line=(ax,ay,bx,by,c,w=1)=>{const L=Math.ceil(Math.hypot(bx-ax,by-ay));for(let i=0;i<=L;i++){const x=ax+(bx-ax)*i/L,y=ay+(by-ay)*i/L;for(let k=0;k<w;k++)b.set(x+k*.0,y+k,c)}};
+  const wing=(A,pts,bones)=>{
+    poly([A,...pts],(x,y)=>{const d=Math.hypot(x-A[0],y-A[1])/60;b.set(x,y,pick(WING,clamp(.25+d*.5+(n(x*.7,y*1.4,4,999)-.5)*.45,0,.99),x,y))});
+    for(const T of bones){line(A[0],A[1],T[0],T[1],hex('#e8784a'),2);line(A[0]+1,A[1]+1,T[0]+1,T[1]+1,hex('#7a1814'))}
+  };
+  const flame=(fx,fy,hgt,wd)=>{for(let y=Math.floor(fy-hgt);y<=fy+2;y++)for(let x=Math.floor(fx-wd-2);x<=fx+wd+2;x++){
+    const t=clamp((fy-y)/hgt,0,1),w2=wd*Math.pow(1-t,.75)*(.75+.5*n(x,y*1.5+f*7,3,999)),dx=Math.abs(x+.5-fx-Math.sin(t*4+f*2)*2);
+    if(dx<w2&&y<=fy+2)b.set(x,y,FIRE[clamp(Math.floor((dx/w2)*3+t*3+bay(x,y)),0,5)])}};
+  const fl=f?5:0;
+  // 翼（奥・手前）
+  wing([60,40],[[66,10+fl],[96,2+fl],[92,20+fl],[106,26+fl],[94,37+fl],[100,50+fl/2],[84,46],[74,56]],[[96,2+fl],[106,26+fl],[100,50+fl/2]]);
+  wing([46,42],[[40,12+fl],[14,1+fl],[17,16+fl],[2,20+fl],[14,31+fl],[6,42+fl/2],[22,40],[34,50]],[[14,1+fl],[2,20+fl],[6,42+fl/2]]);
+  // しっぽ
+  const tp=[[70,84],[82,90],[94,90],[102,82],[103,72]];
+  for(let i=0;i<tp.length-1;i++)cap(tp[i][0],tp[i][1],tp[i+1][0],tp[i+1][1],7-i*1.4,SKIN,.08);
+  tri(100,70,104,62,106,72,HORN);tri(90,86,94,80,97,88,HORN);
+  // 奥の足と腕
+  ell(70,84,10,9,SKIN,.18);ell(73,94,8,3.5,SKIN,.25);
+  cap(72,56,84,68,4,SKIN,.15);ell(86,70,5,4,SKIN,.12);flame(88,66,14+f*3,5);
+  // 胴とおなか
+  ell(58,64,21,24,SKIN);
+  ell(52,68,12,18,BELLY);
+  for(let y=54;y<84;y+=5)for(let x=42;x<63;x++)if(((x+.5-52)/12)**2+((y+.5-68)/18)**2<.92)b.set(x,y,hex('#c87a2c'));
+  tri(68,44,74,36,74,48,HORN);tri(74,50,82,44,80,56,HORN);tri(78,58,86,54,82,64,HORN);
+  // 手前の足
+  ell(46,84,11,9,SKIN,.02);ell(42,94,9,3.5,SKIN,.1);
+  for(const cx of [33,37,41])tri(cx,93,cx+3,93,cx-1,97,HORN);
+  // 首と頭
+  cap(50,48,38,34,9,SKIN,.02);
+  ell(34,28,13,10,SKIN,-.02);
+  ell(20,32,11,6,SKIN,-.05);
+  ell(22,42,10,4,SKIN,.12);
+  for(let x=11;x<31;x++)for(let y=36;y<40;y++)if(x>11+(39-y)*.3)b.set(x,y,hex(y>=38?'#c02c3c':'#3c0608'));
+  for(const tx of [12,16,20,24,28])tri(tx,36,tx+2.5,36,tx+1,39,HORN);
+  for(const tx of [14,18,22,26])tri(tx,40,tx+2.5,40,tx+1,37.5,HORN);
+  b.set(10,30,hex('#3c0608'));b.set(11,30,hex('#3c0608'));
+  line(24,22,37,19,hex('#5a1408'),2);
+  for(let i=0;i<5;i++){b.set(28+i,24-i*.3,hex(i===2?'#1a0400':'#fff27a'));b.set(28+i,25-i*.3,hex('#ffc436'))}
+  tri(45,26,52,24,46,32,HORN);tri(45,33,51,34,45,38,HORN);
+  // 角
+  const horn=(pts,r0)=>{for(let i=0;i<pts.length-1;i++)cap(pts[i][0],pts[i][1],pts[i+1][0],pts[i+1][1],r0*(1-i/(pts.length-1))+.8,HORN,-.05)};
+  horn([[30,19],[29,11],[33,4],[38,1]],3);
+  horn([[38,20],[44,12],[50,7],[57,6]],3.6);
+  // 手前の腕と炎
+  cap(44,54,32,68,5,SKIN,-.02);ell(29,70,5.5,4,SKIN);
+  for(const cx of [24,27,30])tri(cx,72,cx+2.5,72,cx-1,76,HORN);
+  flame(26,66,18+f*3,6);
+  return sprC(b.outline(hex('#2a0806')).canvas());
+}
 const ART={};
 function buildArt(){
   ART.sky=makeSky('#2c68c2','#c4e6f6');ART.skyDark=makeSky('#12062a','#5a2c6c');
@@ -438,7 +503,7 @@ function buildArt(){
   ART.far=makeRange(768,86,3,{n:5,hmin:52,hmax:84,slope:.95,rough:6,pal:['#8cc6a2','#6caa86','#548e70','#40765e','#305f4e'],haze:'#a9d4e2',hazeAmt:.35});
   ART.mid=makeRange(640,50,8,{n:7,hmin:20,hmax:46,slope:.8,rough:5,pal:['#d6bc90','#b89a72','#977a5a','#775e46','#584434'],grass:['#86b45a','#679845','#4c7c36','#3a6430'],haze:'#bcd8c8',hazeAmt:.15});
   ART.forest=makeForest();ART.ground=makeGround();
-  SP.tree=makeTree();SP.rock=makeRock(4,20,13);SP.crate=makeCrate();SP.slime=[makeSlime(0),makeSlime(1)];
+  SP.tree=makeTree();SP.rock=makeRock(4,20,13);SP.crate=makeCrate();SP.slime=[makeSlime(0),makeSlime(1)];SP.dragon=[makeDragon(0),makeDragon(1)];
 }
 buildArt();
 
@@ -656,7 +721,7 @@ function updEnemy(e,dt){
 function startBoss(){
   G.locked=true;
   G.boss={x:END+70,z:46,h:0,hp:46,max:46,w:34,ht:88,state:'enter',t:0,inv:0,flash:0,next:0,atk:0,home:END-64,cd:0};
-  say('やみの まじんが あらわれた！');sfx('boss');playBgm('boss');
+  say('ほのおの ドラゴンが あらわれた！');sfx('boss');playBgm('boss');
 }
 function updBoss(dt){
   const b=G.boss,p=G.hero;
@@ -666,7 +731,7 @@ function updBoss(dt){
   if(b.state==='die'){
     if(Math.random()<dt*14){addFx(b.x+rnd(-36,36),b.z,rnd(0,88),Math.random()<.5?'#fcd800':'#f83800',8,70);sfx('boom')}
     G.shake=.1;
-    if(b.t>2.2){G.boss=null;G.state='won';G.clearT=0;say('やみの まじんを たおした！');SFX.join()}
+    if(b.t>2.2){G.boss=null;G.state='won';G.clearT=0;say('ほのおの ドラゴンを たおした！');SFX.join()}
     return;
   }
   b.h=6+Math.sin(b.t*2.2)*4;
@@ -676,7 +741,7 @@ function updBoss(dt){
   }else if(b.state==='fire'){
     if(b.t>.55){
       const n=rage?5:3,a0=Math.atan2(p.z-b.z,p.x-b.x);
-      for(let i=0;i<n;i++){const a=a0+(i-(n-1)/2)*.22;G.shots.push({kind:'boss',x:b.x-34,z:b.z,h:50,fallTo:16,vx:Math.cos(a)*90,vz:Math.sin(a)*90*.8,dmg:14,life:4,friend:false})}
+      for(let i=0;i<n;i++){const a=a0+(i-(n-1)/2)*.22;G.shots.push({kind:'boss',x:b.x-40,z:b.z,h:58,fallTo:16,vx:Math.cos(a)*90,vz:Math.sin(a)*90*.8,dmg:14,life:4,friend:false})}
       sfx('magic');b.state='idle';b.t=0;
     }
   }else if(b.state==='charge'){
@@ -919,10 +984,10 @@ function drawShot(s){
 function drawBoss(b){
   if(b.state==='die'&&Math.floor(b.t*16)%2)return;
   shadow(b.x,b.z,64);
-  const s=SP.boss;let img=b.flash>0?s.wr:s.r;
+  const s=SP.dragon[Math.floor(G.t*3)%2];let img=b.flash>0?s.wr:s.r;
   const shake=(b.state==='charge'&&b.t<.6)||(b.state==='fire'&&b.t<.55)?(Math.floor(G.t*30)%2?2:-2):0;
-  drawImg(img,b.x+shake,b.z,b.h,2);
-  if(b.state==='fire'&&b.t<.55&&Math.floor(G.t*12)%2){ctx.fillStyle='#fc7400';ctx.fillRect(SX(b.x)-8,Math.round(GY+b.z-b.h-50),16,8)}
+  drawImg(img,b.x+shake,b.z,b.h);
+  if(b.state==='fire'&&b.t<.55&&Math.floor(G.t*12)%2){ctx.fillStyle='#fc7400';ctx.fillRect(SX(b.x)-46,Math.round(GY+b.z-b.h-62),12,6)}
 }
 function draw(){
   CAM=Math.round(G.camX);
@@ -991,7 +1056,7 @@ function showOver(){
 }
 function showClear(){
   const t=Math.floor(G.t);
-  showOverlay(`<h2>ステージ クリア！</h2><p>やみの まじんを たおした！</p>
+  showOverlay(`<h2>ステージ クリア！</h2><p>ほのおの ドラゴンを たおした！</p>
   <div class="stats"><span>タイム</span><span>${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}</span><span>たおした てき</span><span>${G.kills}</span><span>のこった なかま</span><span>${G.allies.length} / 3</span></div>
   <button class="menuBtn" data-act="start">もういちど</button><button class="menuBtn sub" data-act="title">タイトルへ</button>${COPY}`);
 }
