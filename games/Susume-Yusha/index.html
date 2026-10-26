@@ -123,7 +123,7 @@ const rnd=(a,b)=>a+Math.random()*(b-a);
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 
 /* ---------- 定数 ---------- */
-let W=320;const H=224,GY=124,DEPTH=92,END=3000,SCROLL=30;   // W は画面の比率で決まる。GY: 地面の奥の端の画面y、DEPTH: 奥行き、SCROLL: 強制スクロールの速さ(px/秒)
+let W=320;const H=224,GY=124,DEPTH=92,END=3000,SCROLL=40;   // W は画面の比率で決まる。GY: 地面の奥の端の画面y、DEPTH: 奥行き、SCROLL: 強制スクロールの速さ(px/秒)
 const cv=$('#cv'),ctx=cv.getContext('2d');
 
 /* ---------- 音（WebAudio の矩形波） ---------- */
@@ -767,7 +767,7 @@ function findSafe(x,z){
   return {x,z};
 }
 function heroJump(){
-  const p=G.hero;p.vh=205;p.onG=false;sfx('jump');
+  const p=G.hero;p.vh=245;p.onG=false;sfx('jump');
   const recent=performance.now()-input.lt<400;   // タップで指を離した直前の向きを引き継ぐ
   p.air=Math.abs(input.x)+Math.abs(input.y)>.2?{x:input.x,y:input.y}:recent?{x:input.lx,y:input.ly}:{x:0,y:0};
   G.allies.forEach((a,i)=>{a.jd=.07*(i+1)});
@@ -787,7 +787,10 @@ function updHero(dt){
   let ix=input.x,iy=input.y;
   if(!p.onG&&p.air&&Math.abs(ix)+Math.abs(iy)<.2){ix=p.air.x;iy=p.air.y}
   if(Math.abs(ix)>.25&&p.swing<=0)p.face=ix>0?1:-1;
-  const vx=ix*72+p.kx,vz=iy*54;
+  // 方向を入れていないときは、強制スクロールに合わせて前へ歩く（ボス戦でカメラが止まったら止まる）
+  const auto=!G.locked&&Math.abs(ix)+Math.abs(iy)<.2;
+  if(auto&&p.swing<=0)p.face=1;
+  const vx=(auto?SCROLL:ix*100)+p.kx,vz=iy*72;
   moveBody(p,vx*dt,vz*dt);
   p.x=clamp(p.x,G.camX+16,G.camX+W-16);p.z=clamp(p.z,2,DEPTH-2);   // 左端に押されたら障害物もすり抜けて押し出される
   if(input.jumpBuf>0&&p.onG){input.jumpBuf=0;heroJump()}
@@ -796,7 +799,7 @@ function updHero(dt){
   if(g>-100&&p.h<=g){p.h=g;p.vh=0;p.onG=true}else p.onG=false;
   if(g<-100&&p.h<-3){p.fall=.001;p.onG=false;sfx('fall');return}
   if(p.onG&&p.h===0&&!inHole(p.x,p.z,-10))p.safe={x:p.x,z:p.z};
-  if(Math.abs(input.x)+Math.abs(input.y)>.2)p.walk+=dt;
+  if(auto||Math.abs(ix)+Math.abs(iy)>.2)p.walk+=dt;
   trySwing(p,40,1);
   // 仲間と出会う
   for(const n of G.npcs){
@@ -820,7 +823,7 @@ function updAlly(a,i,dt){
   const ox=a.x;a.x+=(tx-a.x)*k+a.kx*dt;a.z+=(tz-a.z)*k;
   a.x=clamp(a.x,G.camX+14,G.camX+W-14);
   if(Math.abs(a.x-ox)>.15)a.walk+=dt;
-  if(a.jd>0){a.jd-=dt;if(a.jd<=0){a.vh=190;a.jd=-1}}
+  if(a.jd>0){a.jd-=dt;if(a.jd<=0){a.vh=230;a.jd=-1}}
   a.vh-=620*dt;a.h+=a.vh*dt;
   if(a.h<=0){a.h=0;a.vh=0;if(inHole(a.x,a.z))a.vh=120}  // 穴の上はぴょんと跳ねてわたる
   if(a.swing<=0)a.face=p.face;
