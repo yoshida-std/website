@@ -44,7 +44,7 @@ canvas{touch-action:none;display:block;pointer-events:none}
   padding:10px 6px calc(10px + env(safe-area-inset-bottom,0px)) calc(6px + env(safe-area-inset-left,0px))}
 .side.r{width:calc(var(--side) + env(safe-area-inset-right,0px));padding-left:6px;padding-right:calc(6px + env(safe-area-inset-right,0px))}
 .pad{flex:1;border-radius:14px;font-size:20px;color:#fff;display:flex;align-items:center;justify-content:center;
-  writing-mode:vertical-rl;text-orientation:upright;letter-spacing:.1em;cursor:pointer;touch-action:none;
+  letter-spacing:.05em;white-space:nowrap;cursor:pointer;touch-action:none;
   box-shadow:0 5px 0 rgba(0,0,0,.6),inset 0 2px 0 rgba(255,255,255,.25);transition:transform .06s,box-shadow .06s}
 .pad.hit{background:var(--hit)} .pad.dodge{background:var(--dodge)}
 .pad.down{transform:translateY(4px);box-shadow:none}
@@ -52,8 +52,9 @@ canvas{touch-action:none;display:block;pointer-events:none}
   border-block:1px solid var(--line)}
 .who{font-family:var(--display);font-size:12px;letter-spacing:.08em}
 .side.l .who{color:var(--p1)} .side.r .who{color:var(--p2)}
-.life{display:grid;grid-template-columns:repeat(3,1fr);gap:0 2px;font-size:21px;line-height:1.05;color:#ff4d5e}
-.life b.off{color:#3a3f4b}
+.life{display:grid;grid-template-columns:repeat(3,22px);gap:3px 4px}
+.life svg{width:22px;height:20px;display:block;fill:#ff4d5e;transition:fill .2s}
+.life svg.off{fill:#3a3f4b}
 .life.shake{animation:lshake .35s}
 @keyframes lshake{0%,100%{transform:none}20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
 .side.cpu .pad{opacity:.35;pointer-events:none}
@@ -510,7 +511,7 @@ const LV=[ // CPU の強さ
 function later(ms,fn){const s=G.seq;sleep(ms).then(()=>{if(s===G.seq)fn()})}
 function lifeUI(pid,shk){
   const el=$('life'+pid);el.innerHTML='';
-  for(let i=0;i<6;i++){const b=document.createElement('b');b.textContent='❤';if(i>=G.life[pid])b.className='off';el.appendChild(b)}
+  for(let i=0;i<6;i++)el.insertAdjacentHTML('beforeend',`<svg viewBox="0 0 24 22"${i>=G.life[pid]?' class="off"':''}><path d="M12 21.5 2.6 12.4A5.9 5.9 0 0 1 12 4.1a5.9 5.9 0 0 1 9.4 8.3Z"/></svg>`)
   if(shk){el.classList.remove('shake');void el.offsetWidth;el.classList.add('shake')}
 }
 function pickHammer(){
