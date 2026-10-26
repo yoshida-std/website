@@ -8,10 +8,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap">
 <style>
-/* Layout: パーティ窓（HUD） / ゲーム画面 256x192 / 操作パネル（左下に円盤、真ん中にジャンプ）。ファミコンRPGの黒窓＋白枠 */
+/* Layout: 横画面いっぱいのゲーム画面（高さ192ドット、幅は画面の比率に合わせる）。左上にパーティ窓、右上に一時停止、左下に円盤。ファミコンRPGの黒窓＋白枠 */
 :root{
   --bg:#000; --win:#000; --fg:#fcfcfc; --dim:#7c7c7c;
-  --hp:#3cbcfc; --low:#f83800; --gold:#fcd800; --red:#d82800; --redd:#880000; --blue:#0058f8;
+  --hp:#3cbcfc; --low:#f83800; --gold:#fcd800; --red:#d82800; --blue:#0058f8;
   --font:"DotGothic16","Hiragino Kaku Gothic ProN","Noto Sans JP",monospace;
   color-scheme:dark;
 }
@@ -22,53 +22,49 @@ body{background:var(--bg);color:var(--fg);font-family:var(--font)}
 button{touch-action:manipulation;font-family:var(--font);cursor:pointer}
 canvas{touch-action:none;display:block}
 [hidden]{display:none!important}
-#app{height:100%;display:flex;flex-direction:column;align-items:center;gap:6px;max-width:600px;margin:0 auto;box-sizing:border-box;
-  padding:max(6px,env(safe-area-inset-top,0px)) max(6px,env(safe-area-inset-right,0px))
-          max(6px,env(safe-area-inset-bottom,0px)) max(6px,env(safe-area-inset-left,0px))}
+#app{height:100%;display:flex;align-items:center;justify-content:center;box-sizing:border-box;
+  padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
 .win{background:var(--win);border:3px solid var(--fg);border-radius:8px;box-shadow:0 0 0 2px var(--bg)}
-#hud{display:flex;gap:6px;width:100%}
-#party{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;padding:5px 9px;font-size:12px;min-width:0}
-.mem{display:flex;align-items:center;gap:6px;min-width:0;line-height:1.2}
+#screen{position:relative;overflow:hidden}
+#cv{width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+#hud{position:absolute;left:6px;right:6px;top:6px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none}
+#party{width:min(330px,48%);padding:4px 8px 5px;font-size:11px;box-sizing:border-box;opacity:.92}
+#members{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px}
+.mem{display:flex;align-items:center;gap:5px;min-width:0;line-height:1.25}
 .mem .nm{flex:0 0 5.4em;white-space:nowrap;overflow:hidden}
-.mem .bar{flex:1;height:7px;border:1px solid var(--fg);position:relative;min-width:20px}
+.mem .bar{flex:1;height:6px;border:1px solid var(--fg);position:relative;min-width:16px}
 .mem .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--hp)}
 .mem.low .bar i{background:var(--low)}
 .mem.empty{color:var(--dim)}
 .mem.empty .bar{border-color:var(--dim)}
-#pauseBtn{flex:0 0 46px;color:var(--fg);font-size:13px;padding:0}
-#screen{position:relative;overflow:hidden;border-radius:4px;box-shadow:0 0 0 2px #fcfcfc33}
-#cv{width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
-#msg{position:absolute;left:4%;right:4%;bottom:4%;padding:6px 10px;font-size:clamp(11px,3.4vw,15px);line-height:1.4;pointer-events:none}
-#pad{position:relative;flex:1;width:100%;min-height:150px}
-#stickZone{position:absolute;left:0;top:0;bottom:0;width:calc(50% - 50px);touch-action:none}
-#stick{position:absolute;left:12px;bottom:12px;width:min(124px,calc(50vw - 66px));aspect-ratio:1;border-radius:50%;box-sizing:border-box;
-  background:radial-gradient(circle at 50% 50%,#202020 0,#101010 62%,#000 100%);border:3px solid var(--fg);pointer-events:none}
+#prog{position:relative;height:2px;background:var(--fg);margin:6px 3px 2px}
+#prog i{position:absolute;top:-2px;width:6px;height:6px;margin-left:-3px;background:var(--hp)}
+#prog b{position:absolute;right:-3px;top:-2px;width:6px;height:6px;background:var(--red)}
+#pauseBtn{pointer-events:auto;width:42px;height:34px;color:var(--fg);font-size:12px;padding:0;opacity:.92}
+#msg{position:absolute;left:max(150px,26%);right:4%;bottom:5%;padding:6px 12px;font-size:clamp(12px,3.6vh,16px);line-height:1.4;pointer-events:none}
+#stickZone{position:absolute;left:0;bottom:0;width:38%;height:72%;touch-action:none}
+#stick{position:absolute;left:12px;bottom:12px;width:min(120px,30vh);aspect-ratio:1;border-radius:50%;box-sizing:border-box;
+  background:radial-gradient(circle at 50% 50%,#20202099 0,#10101099 62%,#00000099 100%);border:3px solid #fcfcfcb0;pointer-events:none}
 #stick::before,#stick::after{content:"";position:absolute;left:50%;top:50%;background:#fcfcfc22}
 #stick::before{width:70%;height:4px;margin:-2px 0 0 -35%}
 #stick::after{height:70%;width:4px;margin:-35% 0 0 -2px}
-#knob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;box-sizing:border-box;
-  background:var(--hp);border:3px solid var(--fg);box-shadow:inset -5px -5px 0 var(--blue);z-index:1}
-#jumpBtn{position:absolute;left:50%;top:50%;width:min(88px,24vw);height:min(88px,24vw);transform:translate(-50%,-50%);border-radius:50%;box-sizing:border-box;
-  background:var(--red);border:3px solid var(--fg);box-shadow:inset -6px -6px 0 var(--redd);display:flex;align-items:center;justify-content:center;
-  font-size:15px;touch-action:none;cursor:pointer}
-#jumpBtn.on{transform:translate(-50%,-50%) scale(.92);box-shadow:inset 3px 3px 0 var(--redd)}
-#padHint{position:absolute;right:10px;bottom:8px;font-size:10px;color:var(--dim);text-align:right;line-height:1.5}
-/* 横向き: 操作は画面に重ねる */
-body.land #pad{position:fixed;inset:0;pointer-events:none;min-height:0;z-index:5}
-body.land #stickZone{pointer-events:auto;width:40%}
-body.land #stick{left:max(14px,env(safe-area-inset-left,0px));bottom:max(14px,env(safe-area-inset-bottom,0px));opacity:.75}
-body.land #stick{width:124px}
-body.land #jumpBtn{pointer-events:auto;top:auto;bottom:max(14px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:80px;height:80px;opacity:.8}
-body.land #jumpBtn.on{transform:translateX(-50%) scale(.92)}
-body.land #padHint{display:none}
+#knob{position:absolute;left:50%;top:50%;width:44%;height:44%;transform:translate(-50%,-50%);border-radius:50%;box-sizing:border-box;
+  background:#3cbcfcc0;border:3px solid var(--fg);box-shadow:inset -4px -4px 0 #0058f8c0;z-index:1}
+#knob.tap{background:var(--gold);box-shadow:inset -4px -4px 0 #ac7c00}
+#rotate{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  text-align:center;font-size:18px;line-height:1.6;padding:0 max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
+#rotate .ph{width:46px;height:80px;border:4px solid var(--fg);border-radius:8px;animation:turn 2s steps(4) infinite}
+@keyframes turn{0%,40%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
+@media (prefers-reduced-motion:reduce){#rotate .ph{animation:none;transform:rotate(-90deg)}}
 #overlay{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:#000000c8;
-  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));box-sizing:border-box}
-.card{width:100%;max-width:360px;max-height:100%;overflow-y:auto;touch-action:pan-y;box-sizing:border-box;padding:14px 16px 16px;text-align:center}
+  padding:max(10px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(10px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));box-sizing:border-box}
+.pc{font-size:11px!important;color:var(--dim)}
+.card{width:100%;max-width:520px;max-height:100%;overflow-y:auto;touch-action:pan-y;box-sizing:border-box;padding:14px 16px 16px;text-align:center}
 .card h1{font-size:clamp(30px,10vw,40px);font-weight:400;margin:4px 0 0;line-height:1.15;color:var(--gold);text-shadow:3px 3px 0 var(--red);text-wrap:balance}
 .card h2{font-size:24px;font-weight:400;margin:4px 0 8px;color:var(--gold)}
 .card .tag{margin:4px 0 0;font-size:11px;letter-spacing:.3em;color:var(--hp)}
 .card p{margin:6px 0;font-size:13px;line-height:1.7}
-.rules{text-align:left;font-size:12.5px;line-height:1.75;margin:12px 0 4px;padding:0;list-style:none}
+.rules{text-align:left;font-size:12.5px;line-height:1.65;margin:10px 0 4px;padding:0;list-style:none}
 .rules li{display:grid;grid-template-columns:16px 1fr;gap:4px}
 .rules li::before{content:"▶";font-size:9px;line-height:2.2;color:var(--gold)}
 .rules em{font-style:normal;color:var(--gold)}
@@ -87,20 +83,17 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 </head>
 <body>
 <div id="app">
-  <div id="hud">
-    <div id="party" class="win"></div>
-    <button id="pauseBtn" class="win" aria-label="一時停止">❚❚</button>
-  </div>
   <div id="screen">
-    <canvas id="cv" width="256" height="192"></canvas>
+    <canvas id="cv" width="400" height="192"></canvas>
+    <div id="hud">
+      <div id="party" class="win"><div id="members"></div><div id="prog"><i id="progHero"></i><b></b></div></div>
+      <button id="pauseBtn" class="win" aria-label="一時停止">❚❚</button>
+    </div>
     <div id="msg" class="win" hidden></div>
-  </div>
-  <div id="pad">
     <div id="stickZone"><div id="stick"><div id="knob"></div></div></div>
-    <div id="jumpBtn" role="button" aria-label="ジャンプ">ジャンプ</div>
-    <div id="padHint">PC: 矢印/WASD<br>ジャンプ: スペース</div>
   </div>
 </div>
+<div id="rotate" hidden><div class="ph"></div><div>スマホを よこむきに してね</div></div>
 <div id="overlay"></div>
 
 <script>
@@ -126,7 +119,7 @@ const rnd=(a,b)=>a+Math.random()*(b-a);
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 
 /* ---------- 定数 ---------- */
-const W=256,H=192,GY=94,DEPTH=90,END=3000;   // GY: 地面の奥の端の画面y、DEPTH: 奥行き
+let W=400;const H=192,GY=94,DEPTH=90,END=3000,SCROLL=30;   // W は画面の比率で決まる。GY: 地面の奥の端の画面y、DEPTH: 奥行き、SCROLL: 強制スクロールの速さ(px/秒)
 const cv=$('#cv'),ctx=cv.getContext('2d');
 
 /* ---------- 音（WebAudio の矩形波） ---------- */
@@ -265,8 +258,10 @@ function digits(n,x,y,col){
 
 /* ---------- ステージ ---------- */
 // 穴: x0,x1 と奥行き z0,z1（-10〜110 は奥から手前まで全部）
-const HOLES=[[380,410,-10,110],[820,858,36,110],[1050,1080,-10,110],[1390,1440,-10,46],[1480,1520,50,110],
-  [1700,1730,-10,110],[1880,1930,-10,40],[2150,2181,-10,110],[2400,2445,30,110],[2560,2590,-10,110]];
+// どの穴も、ジャンプしなくても通れる道（幅24以上）を残す
+const HOLES=[[380,410,-10,30],[380,410,54,110],[820,858,36,110],[1050,1080,-10,58],[1050,1080,82,110],[1390,1440,-10,46],[1480,1520,50,110],
+  [1700,1730,-10,14],[1700,1730,38,110],[1880,1930,-10,40],[2150,2181,-10,44],[2150,2181,68,110],[2400,2445,30,110],
+  [2560,2590,-10,24],[2560,2590,48,110]];
 // 障害物: 種類, x, z  （岩・箱は飛びこえられる。木はこえられない）
 const OB_DEF={rock:{w:8,d:5,ht:10},crate:{w:8,d:6,ht:14},tree:{w:6,d:4,ht:99}};
 const OBS=[['rock',250,30],['tree',300,8],['tree',470,14],['rock',540,72],['rock',700,22],['crate',900,52],['rock',960,80],
@@ -312,23 +307,31 @@ function updMsg(dt){
 }
 
 /* ---------- 入力 ---------- */
-const input={x:0,y:0,sx:0,sy:0,jumpBuf:0,keys:{}};
-const zone=$('#stickZone'),stick=$('#stick'),knob=$('#knob'),jumpBtn=$('#jumpBtn');
-let stickId=null;
+const input={x:0,y:0,sx:0,sy:0,lx:0,ly:0,lt:0,jumpBuf:0,keys:{}};
+const zone=$('#stickZone'),stick=$('#stick'),knob=$('#knob');
+let stickId=null,stickT0=0,stickX0=0,stickY0=0,stickMoved=0;
 function stickMove(e){
   const r=stick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,R=r.width*.4;
   let dx=e.clientX-cx,dy=e.clientY-cy;const len=Math.hypot(dx,dy);
   if(len>R){dx=dx/len*R;dy=dy/len*R}
-  knob.style.transform=`translate(${dx}px,${dy}px)`;
+  knob.style.transform=`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))`;
+  stickMoved=Math.max(stickMoved,Math.hypot(e.clientX-stickX0,e.clientY-stickY0));
   const m=Math.min(1,len/R);
   if(m<.2){input.sx=input.sy=0}else{const k=Math.min(1,(m-.2)/.6)/m;input.sx=dx/R*k;input.sy=dy/R*k}
 }
-function stickEnd(e){if(e.pointerId!==stickId)return;stickId=null;input.sx=input.sy=0;knob.style.transform=''}
-zone.addEventListener('pointerdown',e=>{initAudio();stickId=e.pointerId;try{zone.setPointerCapture(e.pointerId)}catch(_){}stickMove(e)});
+function jumpTap(){input.jumpBuf=.15;knob.classList.add('tap');setTimeout(()=>knob.classList.remove('tap'),150)}
+function stickEnd(e){
+  if(e.pointerId!==stickId)return;stickId=null;input.sx=input.sy=0;knob.style.transform='';
+  if(e.type==='pointerup'&&performance.now()-stickT0<260&&stickMoved<16)jumpTap();   // 円盤を短くタップ → ジャンプ
+}
+zone.addEventListener('pointerdown',e=>{
+  initAudio();
+  if(stickId!==null){jumpTap();return}   // 動かしながら別の指で円盤をタップ → ジャンプ
+  stickId=e.pointerId;stickT0=performance.now();stickX0=e.clientX;stickY0=e.clientY;stickMoved=0;
+  try{zone.setPointerCapture(e.pointerId)}catch(_){}stickMove(e);
+});
 zone.addEventListener('pointermove',e=>{if(e.pointerId===stickId)stickMove(e)});
 zone.addEventListener('pointerup',stickEnd);zone.addEventListener('pointercancel',stickEnd);
-jumpBtn.addEventListener('pointerdown',e=>{initAudio();input.jumpBuf=.15;jumpBtn.classList.add('on')});
-['pointerup','pointercancel','pointerleave'].forEach(t=>jumpBtn.addEventListener(t,()=>jumpBtn.classList.remove('on')));
 const KEYS={ArrowLeft:'l',KeyA:'l',ArrowRight:'r',KeyD:'r',ArrowUp:'u',KeyW:'u',ArrowDown:'d',KeyS:'d'};
 addEventListener('keydown',e=>{
   if(KEYS[e.code]){input.keys[KEYS[e.code]]=true;e.preventDefault()}
@@ -339,6 +342,7 @@ addEventListener('keyup',e=>{if(KEYS[e.code])input.keys[KEYS[e.code]]=false});
 function readInput(){
   const k=input.keys,kx=(k.r?1:0)-(k.l?1:0),ky=(k.d?1:0)-(k.u?1:0);
   if(kx||ky){const l=Math.hypot(kx,ky);input.x=kx/l;input.y=ky/l}else{input.x=input.sx;input.y=input.sy}
+  if(Math.abs(input.x)+Math.abs(input.y)>.2){input.lx=input.x;input.ly=input.y;input.lt=performance.now()}
 }
 
 /* ---------- 戦闘 ---------- */
@@ -495,8 +499,16 @@ function updMember(m,dt){
   m.inv-=dt;m.flash-=dt;m.swing-=dt;m.swCD-=dt;m.atkCD-=dt;
   m.kx-=m.kx*Math.min(1,dt*8);
 }
+function findSafe(x,z){
+  for(let dx=0;dx<160;dx+=8)for(const zz of [z,46,24,68,10,82]){
+    const xx=x+dx;if(!inHole(xx,zz,-10)&&!obAt(xx,zz,0))return {x:xx,z:zz};
+  }
+  return {x,z};
+}
 function heroJump(){
   const p=G.hero;p.vh=205;p.onG=false;sfx('jump');
+  const recent=performance.now()-input.lt<400;   // タップで指を離した直前の向きを引き継ぐ
+  p.air=Math.abs(input.x)+Math.abs(input.y)>.2?{x:input.x,y:input.y}:recent?{x:input.lx,y:input.ly}:{x:0,y:0};
   G.allies.forEach((a,i)=>{a.jd=.07*(i+1)});
 }
 function updHero(dt){
@@ -505,16 +517,18 @@ function updHero(dt){
   if(p.fall){
     p.fall+=dt;p.h-=150*dt;
     if(p.fall>.8){
-      p.fall=0;p.h=0;p.vh=0;p.x=Math.max(p.safe.x,G.camX+12);p.z=p.safe.z;p.inv=0;
+      p.fall=0;p.h=0;p.vh=0;const sp=findSafe(Math.max(p.safe.x,G.camX+30),p.safe.z);p.x=sp.x;p.z=sp.z;p.inv=0;
       damage(p,20,0);p.kx=0;p.inv=1.6;
     }
     return;
   }
   readInput();
-  if(Math.abs(input.x)>.25&&p.swing<=0)p.face=input.x>0?1:-1;
-  const vx=input.x*72+p.kx,vz=input.y*54;
+  let ix=input.x,iy=input.y;
+  if(!p.onG&&p.air&&Math.abs(ix)+Math.abs(iy)<.2){ix=p.air.x;iy=p.air.y}
+  if(Math.abs(ix)>.25&&p.swing<=0)p.face=ix>0?1:-1;
+  const vx=ix*72+p.kx,vz=iy*54;
   moveBody(p,vx*dt,vz*dt);
-  p.x=clamp(p.x,G.camX+8,G.locked?END-8:G.camX+W-8);p.z=clamp(p.z,2,DEPTH-2);
+  p.x=clamp(p.x,G.camX+8,G.camX+W-8);p.z=clamp(p.z,2,DEPTH-2);   // 左端に押されたら障害物もすり抜けて押し出される
   if(input.jumpBuf>0&&p.onG){input.jumpBuf=0;heroJump()}
   p.vh-=620*dt;p.h+=p.vh*dt;
   const g=groundAt(p.x,p.z,p.h);
@@ -605,7 +619,7 @@ function update(dt){
   if(G.state!=='play')return;
   updHero(dt);
   G.allies.forEach((a,i)=>updAlly(a,i,dt));
-  if(!G.locked){G.camX=Math.max(G.camX,Math.min(END-W,G.hero.x-104));if(G.camX>=END-W){G.camX=END-W;startBoss()}}
+  if(!G.locked){G.camX=Math.min(END-W,G.camX+SCROLL*dt);if(G.camX>=END-W){G.camX=END-W;startBoss()}}
   spawnLogic(dt);
   G.enemies.forEach(e=>updEnemy(e,dt));
   G.enemies=G.enemies.filter(e=>!e.dead);
@@ -616,6 +630,7 @@ function update(dt){
 /* ---------- 描画 ---------- */
 let CAM=0;
 const SX=x=>Math.round(x-CAM);
+ctx.imageSmoothingEnabled=false;
 function drawImg(img,x,z,h,scale=1){
   const w=img.width*scale,hh=img.height*scale;
   ctx.drawImage(img,Math.round(x-CAM-w/2),Math.round(GY+z-h-hh),w,hh);
@@ -737,22 +752,17 @@ function draw(){
     else{ctx.fillStyle=f.col;ctx.fillRect(SX(f.x),Math.round(GY+f.z-f.h),2,2)}
   }
   ctx.restore();
-  // 進み具合
-  ctx.fillStyle='#000000a0';ctx.fillRect(6,4,W-12,6);
-  ctx.fillStyle='#fcfcfc';ctx.fillRect(8,6,W-16,2);
-  const px=8+Math.round((W-20)*Math.min(1,G.hero.x/END));
-  ctx.fillStyle='#3cbcfc';ctx.fillRect(px,5,4,4);
-  ctx.fillStyle='#d82800';ctx.fillRect(W-12,5,4,4);
   // ボスのHP
   const b=G.boss;
-  if(b&&b.state!=='enter'){ctx.fillStyle='#000';ctx.fillRect(W/2-52,13,104,7);ctx.fillStyle='#fcfcfc';ctx.fillRect(W/2-51,14,102,5);
-    ctx.fillStyle='#000';ctx.fillRect(W/2-50,15,100,3);ctx.fillStyle='#d82800';ctx.fillRect(W/2-50,15,Math.round(100*b.hp/b.max),3)}
+  if(b&&b.state!=='enter'){const x=W-138;ctx.fillStyle='#000';ctx.fillRect(x,7,104,7);ctx.fillStyle='#fcfcfc';ctx.fillRect(x+1,8,102,5);
+    ctx.fillStyle='#000';ctx.fillRect(x+2,9,100,3);ctx.fillStyle='#d82800';ctx.fillRect(x+2,9,Math.round(100*b.hp/b.max),3)}
 }
 
 /* ---------- パーティ窓 ---------- */
 let hudKey='';
 function updHud(){
   const list=party(),key=list.map(m=>m.cls+':'+Math.ceil(m.hp)).join(',');
+  $('#progHero').style.left=Math.min(100,G.camX/(END-W)*100)+'%';
   if(key===hudKey)return;hudKey=key;
   let h='';
   for(let i=0;i<4;i++){
@@ -760,7 +770,7 @@ function updHud(){
     if(m){const r=Math.max(0,m.hp/m.max);h+=`<div class="mem${r<.3?' low':''}"><span class="nm">${CLS[m.cls].name}</span><span class="bar"><i style="width:${r*100}%"></i></span></div>`}
     else h+='<div class="mem empty"><span class="nm">？？？</span><span class="bar"></span></div>';
   }
-  $('#party').innerHTML=h;
+  $('#members').innerHTML=h;
 }
 
 /* ---------- 画面 ---------- */
@@ -773,12 +783,13 @@ const COPY='<p class="copy">©YoshidaStudio, ©PANICPUMPKIN</p>';
 function showTitle(){
   showOverlay(`<p class="tag">PROTOTYPE</p><h1>すすめ！<br>ゆうしゃ</h1>
   <ul class="rules">
-    <li><span>左下の <em>円盤</em> で上下左右に動く。真ん中の <em>ジャンプ</em> で穴や岩をとびこえる</span></li>
+    <li><span>画面は <em>どんどん右へ</em> すすむ。左下の <em>円盤</em> で上下左右に動く</span></li>
+    <li><span>円盤を <em>タップ</em> するとジャンプ。岩や穴を とびこえる（穴には とおれる道もある）</span></li>
     <li><span>敵に近づくと <em>剣を振って薙ぎ払う</em>。ただし <em class="m">魔法は はじけない</em> のでよける</span></li>
     <li><span>とちゅうで <em>仲間</em> に出会う（最大4人）。仲間もHPがなくなると いなくなる</span></li>
     <li><span>ゆうしゃのHPがなくなると ゲームオーバー。さいごに まつ ボスを たおせ！</span></li>
   </ul>
-  <button class="menuBtn" data-act="start">はじめる</button>${COPY}`);
+  <button class="menuBtn" data-act="start">はじめる</button><p class="pc">PC: 矢印/WASD で移動、スペースで ジャンプ</p>${COPY}`);
 }
 function showOver(){
   showOverlay(`<h2>ゲームオーバー</h2><p>ゆうしゃは しんでしまった！</p>
@@ -814,12 +825,14 @@ function layout(){
   const app=$('#app'),cs=getComputedStyle(app);
   const iw=app.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);
   const ih=app.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom);
-  const land=innerWidth>innerHeight*1.15;
-  document.body.classList.toggle('land',land);
-  const hud=$('#hud').offsetHeight+6;
-  let w=land?Math.min(iw,(ih-hud)*4/3):Math.min(iw,(ih-hud-150-6)*4/3);
-  w=Math.max(160,Math.floor(w));
-  const s=$('#screen');s.style.width=w+'px';s.style.height=Math.floor(w*.75)+'px';
+  const portrait=ih>iw;
+  $('#rotate').hidden=!portrait;
+  if(portrait&&G&&G.state==='play')togglePause();
+  const sc=Math.min(ih/H,iw/256);
+  W=clamp(Math.floor(iw/sc),256,440);
+  if(cv.width!==W){cv.width=W;}
+  ctx.imageSmoothingEnabled=false;
+  const s=$('#screen');s.style.width=Math.floor(W*sc)+'px';s.style.height=Math.floor(H*sc)+'px';
 }
 addEventListener('resize',layout);
 
@@ -836,10 +849,10 @@ function drawIdle(t){
   if(!G){G={camX:t*20%(END-W),hero:{x:0},enemies:[],shots:[],fx:[],allies:[],npcs:[],boss:null,locked:false,t};CAM=G.camX;
     drawBg();for(const o of OBS)if(o.x>CAM-20&&o.x<CAM+W+20)drawImg(SP[o.t].r,o.x,o.z+o.d-1,0);
     const hs=CLS.hero.spr[Math.floor(t*8)%2].r;drawImg(hs,CAM+70,50,0);G=null;}
-  $('#party').innerHTML||updHudEmpty();
+  $('#members').innerHTML||updHudEmpty();
 }
 function updHudEmpty(){let h='<div class="mem"><span class="nm">ゆうしゃ</span><span class="bar"><i style="width:100%"></i></span></div>';
-  for(let i=0;i<3;i++)h+='<div class="mem empty"><span class="nm">？？？</span><span class="bar"></span></div>';$('#party').innerHTML=h}
+  for(let i=0;i<3;i++)h+='<div class="mem empty"><span class="nm">？？？</span><span class="bar"></span></div>';$('#members').innerHTML=h}
 layout();showTitle();requestAnimationFrame(frame);
 </script>
 </body>
