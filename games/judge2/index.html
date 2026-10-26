@@ -463,6 +463,8 @@ function drawScreenFx(){
 let lastT=performance.now();
 function frame(now){
   const dt=Math.min(50,now-lastT);lastT=now;realNow=now;
+  // 回転や Safari のバーの出入りで resize が来ない・早すぎることがあるので、毎フレーム大きさを確かめる
+  if(world.clientWidth!==W||world.clientHeight!==H)layout();
   let gdt=dt*timeScale;
   if(hitstop>0){hitstop-=dt;gdt=0}
   if(impactT>=0){impactT+=dt;if(impactT>2000)impactT=-1}
@@ -561,6 +563,10 @@ async function startMatch(){
 function startRound(){
   if(G.state==='TITLE'||G.state==='OVER')return;
   G.state='WAIT';G.round=(G.round||0)+1;const r=G.round;
+  // 毎ラウンド、2人を定位置に戻す（演出が途中で止まっても画面の外に残らないように）
+  tweens=tweens.filter(t=>t.o!==C[1]&&t.o!==C[2]&&t.o!==camS);
+  for(const c of C.slice(1))Object.assign(c,{x:0,y:0,r:0,sx:1,sy:1,jit:0,hon:false,trail:false,bob:true});
+  Object.assign(camS,{z:1,cx:W/2,cy:H/2});timeScale=1;koFx=0;
   cards(false);pickHammer();
   const wait=1000+Math.random()*1500;
   later(wait,()=>{if(G.state==='WAIT'&&G.round===r)reveal(r)});
