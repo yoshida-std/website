@@ -2,8 +2,8 @@ name: Update sticker catalog
 
 on:
   schedule:
-    # 毎日 日本時間 10:00（generate_list の巡回 9:00 が終わった後）
-    - cron: '0 1 * * *'
+    # 毎日 日本時間 9:00
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 permissions:
@@ -16,11 +16,8 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     env:
-      # generate_list が公開している line_items_latest.csv の URL（リポジトリの Variables で設定）
-      CSV_URL: ${{ vars.STICKER_CSV_URL }}
-      # CSV が非公開リポジトリにあるときだけ、読み取り用トークンを Secrets に設定する
-      CSV_TOKEN: ${{ secrets.STICKER_CSV_TOKEN }}
       CATALOG: common/line-promo/sticker-catalog.json
 
     steps:
@@ -30,20 +27,11 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Download CSV
-        run: |
-          if [ -z "$CSV_URL" ]; then
-            echo "Variables に STICKER_CSV_URL が設定されていません" >&2
-            exit 1
-          fi
-          if [ -n "$CSV_TOKEN" ]; then
-            curl -fsSL --retry 3 -H "Authorization: token $CSV_TOKEN" -o "$RUNNER_TEMP/items.csv" "$CSV_URL"
-          else
-            curl -fsSL --retry 3 -o "$RUNNER_TEMP/items.csv" "$CSV_URL"
-          fi
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
 
-      - name: Convert CSV to catalog
-        run: python .github/scripts/csv_to_catalog.py "$RUNNER_TEMP/items.csv" "$CATALOG"
+      - name: Build catalog from LINE STORE
+        run: python .github/scripts/build_sticker_catalog.py .github/scripts/authors.json "$CATALOG"
 
       - name: Commit if changed
         run: |

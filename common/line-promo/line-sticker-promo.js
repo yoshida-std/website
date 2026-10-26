@@ -4,7 +4,7 @@
  * このJSと sticker-catalog.json（全スタンプ・絵文字の定義）を同じ共通パスに置きます。
  * 各ゲームは「キー」を渡すだけです。
  * キーは LINE STORE の商品ID（スタンプは数字、絵文字は英数字24桁）。
- * sticker-catalog.json は GitHub Actions が generate_list の CSV から毎日作り直します。
+ * sticker-catalog.json は GitHub Actions が LINE STORE を巡回して毎日作り直します。
  *
  * 【アイテムキーを指定】（カンマ区切り。並べた順に表示）
  *   <script src="../../common/line-promo/line-sticker-promo.js" data-keys="12345678,5ac1bfd5040ab15980c9b435"></script>
