@@ -1,5 +1,5 @@
 /*!
- * line-sticker-promo.js  v5
+ * line-sticker-promo.js  v7
  * 複数ゲームで共有する「LINEスタンプ／絵文字」誘導部品。
  * このJSと sticker-catalog.json（全スタンプ・絵文字の定義）を同じ共通パスに置きます。
  * 各ゲームは「キー」を渡すだけです。
@@ -18,6 +18,7 @@
  *   autoShow（false でボタンを最初は隠す。後から StickerPromo.show()）
  *
  * 表示の切り替え: StickerPromo.show() / hide() / open() / close()
+ * （カタログの読み込み前に show()/hide() を呼んでもよい。読み込み後に最後の指示どおりになる）
  * レイアウトは縦画面=行、横画面=タイルで自動切り替え。
  * ※ カタログ内の image は絶対URL（LINEの画像サーバー）か、カタログJSONの場所が基準の相対パス。url は https のみ有効。
  * ※ ゲームと共有先のドメインが違う場合、共有先がJSONにCORS許可（Access-Control-Allow-Origin）を返すこと。
@@ -27,6 +28,8 @@
 
   var SCRIPT = document.currentScript;
   var root, modal, config, baseUrl = location.href;
+  // カタログの読み込み前に show()/hide() が呼ばれたときのため、最後の指示を覚えておく（null は指示なし）
+  var wanted = null;
   var TYPES = { sticker: "スタンプ", emoji: "絵文字" };
 
   function injectCss() {
@@ -40,7 +43,7 @@
       ".sp-btn:active{transform:scale(.96)}" +
       ".sp-modal{position:fixed;inset:0;z-index:2147483001;display:none;align-items:center;justify-content:center;" +
       "background:rgba(0,0,0,.6);touch-action:manipulation;-webkit-user-select:none;user-select:none}" +
-      ".sp-card{box-sizing:border-box;width:min(90vw,380px);max-height:88vh;overflow:auto;-webkit-overflow-scrolling:touch;" +
+      ".sp-card{box-sizing:border-box;overscroll-behavior:contain;width:min(90vw,380px);max-height:88vh;overflow:auto;-webkit-overflow-scrolling:touch;" +
       "background:#eef0f6;color:#1b2540;border-radius:18px;padding:14px 14px 0;text-align:center;font:14px/1.4 sans-serif}" +
       ".sp-card h2{margin:0 0 6px;font-size:16px;line-height:1.4}" +
       ".sp-card h3{margin:10px 0 6px;font-size:13px;color:#2f8a57;text-align:left}" +
@@ -113,6 +116,18 @@
     return a;
   }
 
+  // ゲーム側は document でタッチを打ち消している（ダブルタップ拡大・スクロールの抑止）ことが多い。
+  // そのままだとリンクのタップや一覧のスクロールまで止まるので、部品内のタッチはゲームに渡さない。
+  // 部品内でも2本指のピンチ拡大だけは止める。
+  function shield(el) {
+    ["touchstart", "touchmove", "touchend"].forEach(function (type) {
+      el.addEventListener(type, function (e) {
+        if (e.touches && e.touches.length > 1) e.preventDefault();
+        e.stopPropagation();
+      }, { passive: false });
+    });
+  }
+
   function build() {
     injectCss();
     var items = (config.items || []).filter(function (it) { return it && safeHttps(it.url); });
@@ -125,6 +140,7 @@
     root.textContent = config.label || btn.label || "LINEスタンプ";
     place(root, config.position || btn.position);
     root.addEventListener("click", open);
+    shield(root);
     document.body.appendChild(root);
 
     modal = document.createElement("div");
@@ -159,13 +175,14 @@
 
     modal.appendChild(card);
     modal.addEventListener("click", function (e) { if (e.target === modal) closeModal(); });
+    shield(modal);
     document.body.appendChild(modal);
 
-    if (config.autoShow !== false) show();
+    if (wanted === true || (wanted === null && config.autoShow !== false)) show();
   }
 
-  function show() { if (root) root.style.display = "block"; }
-  function hide() { if (root) root.style.display = "none"; closeModal(); }
+  function show() { wanted = true; if (root) root.style.display = "block"; }
+  function hide() { wanted = false; if (root) root.style.display = "none"; closeModal(); }
   function open() { if (modal) modal.style.display = "flex"; }
   function closeModal() { if (modal) modal.style.display = "none"; }
 

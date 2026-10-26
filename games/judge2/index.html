@@ -573,8 +573,10 @@ function cards(on){
   for(const i of [1,2]){const k=$('k'+i);k.classList.toggle('on',on);k.classList.remove('win');if(on)k.textContent=G.num[i]}
 }
 
+// LINEスタンプの紹介ボタン（common/line-promo）はタイトル画面だけで出す
+function promo(on){const P=window.StickerPromo;if(P)on?P.show():P.hide()}
 function showTitle(){
-  abortAll();G.state='TITLE';
+  abortAll();G.state='TITLE';promo(true);
   $('result').hidden=true;$('result').classList.remove('show');
   $('title').hidden=false;$('menuMode').hidden=false;$('menuLv').hidden=true;
 }
@@ -586,7 +588,7 @@ function startGame(mode,lv){
   startMatch();
 }
 async function startMatch(){
-  abortAll();const s=G.seq;
+  abortAll();const s=G.seq;promo(false);
   $('title').hidden=true;$('result').hidden=true;$('result').classList.remove('show');
   G.life=[0,6,6];lifeUI(1);lifeUI(2);G.state='INTRO';
   startBgm();
@@ -869,5 +871,6 @@ window.addEventListener('resize',()=>layout());
 layout();lifeUI(1);lifeUI(2);showTitle();
 requestAnimationFrame(frame);
 </script>
+<script src="../../common/line-promo/line-sticker-promo.js" data-keys="32379708,32386459,31889899,697afa0614bcdb346ea25301"></script>
 </body>
 </html>

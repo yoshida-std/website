@@ -122,7 +122,7 @@ def parse_author_page(soup):
 def product_url(item_type, item_id):
     if item_type == "sticker":
         return f"https://line.me/S/sticker/{item_id}"
-    return f"https://store.line.me/emojishop/product/{item_id}/ja"
+    return f"https://line.me/S/emoji/?id={item_id}"
 
 
 def fetch_author_items(author_id, item_type):
