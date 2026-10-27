@@ -54,6 +54,12 @@ canvas{touch-action:none;display:block}
 #shieldCv,#knobCv{display:block;width:100%;height:100%}
 #knob{position:absolute;left:50%;top:50%;width:30%;height:30%;transform:translate(-50%,-50%);z-index:1}
 #knob.tap{filter:sepia(1) saturate(5) hue-rotate(-12deg) brightness(1.15)}
+#knob.c0{filter:brightness(1.15);animation:glow .4s steps(2) infinite}
+#knob.c1{filter:sepia(1) saturate(4) hue-rotate(160deg) brightness(1.3);animation:glow .3s steps(2) infinite}
+#knob.c2{filter:sepia(1) saturate(6) hue-rotate(-12deg) brightness(1.35);animation:glow .2s steps(2) infinite}
+#knob.c3{filter:sepia(1) saturate(8) hue-rotate(-40deg) brightness(1.2);animation:glow .12s steps(2) infinite}
+@keyframes glow{0%,100%{transform:translate(-50%,-50%)}50%{transform:translate(-50%,-50%) scale(1.08)}}
+@media (prefers-reduced-motion:reduce){#knob.c0,#knob.c1,#knob.c2,#knob.c3{animation:none}}
 #stickLabel{position:absolute;left:0;right:0;top:2px;text-align:center;font-size:11px;color:var(--dim);line-height:1.5;text-shadow:1px 1px 0 #000,0 0 4px #000}
 #rotate{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
   text-align:center;font-size:18px;line-height:1.6;padding:0 max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
@@ -242,6 +248,15 @@ const HEADS={
 const BODY=["...kCAAAAk......","..kCCAAAAAsk....","..kCAaaaaAsk....","..kCAAAAAkk.....","...kkAAAAk......"];
 const LEGS=[["....kLkkLk......","....kLk.kLk.....","...kLLk.kLLk....","...kkkk.kkkk...."],
             ["....kLkLk.......","....kLkLk.......","....kLLLLk......","....kkkkkk......"]];
+// 正面の決めポーズ用（16x22）。頭（6〜13行目）・かかげた腕と持ち物（0〜12行目）・体（14〜21行目）を重ねる
+const POSE_HEAD={
+  helm:["..k..kkkk..k....","..khkHHHHkhk....","...kHHhhHHk.....","..kHkkkkkkHk....","..kkssssssk.....","...kskssksk.....","...kssssssk.....","....kkkkkk......"],
+  hat:[".....kk.........","....kHHk........","...kHHHHk.......",".kkHHhhHHkk.....","..kkssssskk.....","...kskssksk.....","...kssssssk.....","....kkkkkk......"],
+  mitre:["....kkkkk.......","...kHHhHHk......","...kHhhhHk......","..kkHHhHHkk.....","..kkssssskk.....","...kskssksk.....","...kssssssk.....","....kkkkkk......"],
+};
+const POSE_SWORD=["............w...","...........kwk..","...........kwk..","...........kgk..","...........kgk..","..........kyyyk.","...........kyk..","...........ksk..","..........kkAk..","..........kAAk..","..........kAk...","..........AAk...","..........kk...."];
+const POSE_STAFF=["................","..........kkk...",".........kyyyk..",".........kyyyk..","..........kkk...","...........knk..","...........knk..","...........ksk..","..........kkAk..","..........kAAk..","..........kAk...","..........AAk...","..........kk...."];
+const POSE_BODY=["..kCkAAAAkCk....",".kCkAAaaAAkCk...",".kCksAAAAskCk...",".kCkkAAAAkkCk...","..kkkLLkLLkk....","....kLLkLLk.....","...kLLLkLLLk....","...kkkkkkkkk...."];
 const CLS={
   hero:{name:'ゆうしゃ',hp:100,head:'helm',c:{H:'b',h:'y',A:'B',a:'y',C:'r',L:'N'}},
   warrior:{name:'せんし',hp:80,head:'helm',c:{H:'G',h:'g',A:'o',a:'N',C:'R',L:'G'}},
@@ -251,6 +266,9 @@ const CLS={
 for(const k in CLS){
   const c=CLS[k],pal={...PAL};for(const ch in c.c)pal[ch]=PAL[c.c[ch]];
   c.spr=LEGS.map(l=>spr([...HEADS[c.head],...BODY,...l],pal));
+  // 決めポーズ（正面を向いて、剣か杖を高くかかげる）
+  const item=c.head==='helm'?POSE_SWORD:POSE_STAFF,head=[...Array(6).fill('................'),...POSE_HEAD[c.head]];
+  c.pose=spr([...head.map((r,i)=>[...r].map((ch,j)=>item[i]&&item[i][j]!=='.'?item[i][j]:ch).join('')),...POSE_BODY],pal);
 }
 const SP={
   bat:[spr(mirror(["k.......","kk......","kvk....k","kvvk..kv",".kvvkkvv",".kvvvvvv","..kvvvwk","...kvvvv","....kkvv",".......k"])),
@@ -520,7 +538,7 @@ function digits(n,x,y,col,k=2){
 
 /* ---------- ステージ ---------- */
 // 穴: x0,x1 と奥行き z0,z1（-10〜110 は奥から手前まで全部）
-// どの穴も、ジャンプしなくても通れる道（幅24以上）を残す
+// どの穴も、跳ばなくても通れる道（幅24以上）を残す
 const HOLES=[[380,410,-10,30],[380,410,54,110],[820,858,36,110],[1050,1080,-10,58],[1050,1080,82,110],[1390,1440,-10,46],[1480,1520,50,110],
   [1700,1730,-10,14],[1700,1730,38,110],[1880,1930,-10,40],[2150,2181,-10,44],[2150,2181,68,110],[2400,2445,30,110],
   [2560,2590,-10,24],[2560,2590,48,110]];
@@ -551,7 +569,7 @@ let G=null;
 function member(cls,x,z){const c=CLS[cls];return {cls,x,z,h:0,vh:0,face:1,hp:c.hp,max:c.hp,inv:0,swing:0,swCD:0,atkCD:1,walk:0,flash:0,kx:0,kz:0,onG:true,fall:0,jd:-1}}
 function newGame(){
   G={state:'play',t:0,camX:0,shake:0,hero:member('hero',-24,46),intro:true,allies:[],enemies:[],shots:[],fx:[],
-    npcs:ALLY_SPOTS.map(a=>({...a,state:'wait',guards:[],hurt:0})),hitstop:0,nextSpawn:300,spawnT:4,boss:null,locked:false,
+    npcs:ALLY_SPOTS.map(a=>({...a,state:'wait',guards:[],hurt:0})),hitstop:0,flyers:[],nextSpawn:300,spawnT:4,boss:null,locked:false,
     kills:0,wizIntro:false,magicTold:false,overT:0,clearT:0};
   G.hero.safe={x:40,z:46};
   msgQ.length=0;msgT=0;$('#msg').hidden=true;
@@ -569,7 +587,7 @@ function updMsg(dt){
 }
 
 /* ---------- 入力 ---------- */
-const input={x:0,y:0,sx:0,sy:0,lx:0,ly:0,lt:0,jumpBuf:0,keys:{}};
+const input={x:0,y:0,sx:0,sy:0,charging:false,release:false,keys:{}};
 const zone=$('#stickZone'),stick=$('#stick'),knob=$('#knob');
 let stickId=null,stickT0=0,stickX0=0,stickY0=0,stickMoved=0,stickCenter=false;
 function stickMove(e){
@@ -581,10 +599,11 @@ function stickMove(e){
   const m=Math.min(1,len/R);
   if(m<.2){input.sx=input.sy=0}else{const k=Math.min(1,(m-.2)/.6)/m;input.sx=dx/R*k;input.sy=dy/R*k}
 }
-function jumpTap(){input.jumpBuf=.15;knob.classList.add('tap');setTimeout(()=>knob.classList.remove('tap'),150)}
+function slashTap(){input.release=true;knob.classList.add('tap');setTimeout(()=>knob.classList.remove('tap'),150)}
 function stickRelease(tap){
   stickId=null;input.sx=input.sy=0;knob.style.transform='';
-  if(tap&&stickCenter&&performance.now()-stickT0<260&&stickMoved<16)jumpTap();   // 中央のつまみを短くタップ → ジャンプ（矢印の上を短く押しても移動になる）
+  input.charging=false;
+  if(tap&&stickCenter)slashTap();   // 中央のつまみから始めたタッチは、放すと斬撃（ためていたら、ためた斬撃）。そのまま指を動かせば、ためながら移動できる。矢印の上から始めたときは移動だけ
 }
 // 円盤の操作として受けるのは、操作エリアの下側か円盤の円の中で始めたタッチ（円盤が上にはみ出しても受ける）
 function onStick(x,y){
@@ -593,9 +612,10 @@ function onStick(x,y){
 }
 function stickStart(id,x,y){
   initAudio();
-  if(stickId!==null){jumpTap();return}   // 動かしながら別の指で円盤をタップ → ジャンプ
+  if(stickId!==null){slashTap();return}   // 動かしながら別の指で円盤をタップ → 斬撃
   stickId=id;stickT0=performance.now();stickX0=x;stickY0=y;stickMoved=0;
   const r=stick.getBoundingClientRect();stickCenter=Math.hypot(x-r.left-r.width/2,y-r.top-r.height/2)<r.width*.2;
+  input.charging=stickCenter;
   stickMove({clientX:x,clientY:y});
 }
 // スマホはタッチイベントで受ける（iOS や Artifact の中でもスクロールに取られにくい）。マウスはポインターイベント
@@ -620,14 +640,13 @@ panelEl.addEventListener('pointerup',ptrEnd);panelEl.addEventListener('pointerca
 const KEYS={ArrowLeft:'l',KeyA:'l',ArrowRight:'r',KeyD:'r',ArrowUp:'u',KeyW:'u',ArrowDown:'d',KeyS:'d'};
 addEventListener('keydown',e=>{
   if(KEYS[e.code]){input.keys[KEYS[e.code]]=true;e.preventDefault()}
-  if((e.code==='Space'||e.code==='KeyZ'||e.code==='KeyK')&&!e.repeat){initAudio();input.jumpBuf=.15;e.preventDefault()}
+  if((e.code==='Space'||e.code==='KeyZ'||e.code==='KeyK')&&!e.repeat){initAudio();input.charging=true;e.preventDefault()}
   if(e.code==='Escape'||e.code==='KeyP')togglePause();
 });
-addEventListener('keyup',e=>{if(KEYS[e.code])input.keys[KEYS[e.code]]=false});
+addEventListener('keyup',e=>{if(KEYS[e.code])input.keys[KEYS[e.code]]=false;if((e.code==='Space'||e.code==='KeyZ'||e.code==='KeyK')&&input.charging){input.charging=false;input.release=true}});
 function readInput(){
   const k=input.keys,kx=(k.r?1:0)-(k.l?1:0),ky=(k.d?1:0)-(k.u?1:0);
   if(kx||ky){const l=Math.hypot(kx,ky);input.x=kx/l;input.y=ky/l}else{input.x=input.sx;input.y=input.sy}
-  if(Math.abs(input.x)+Math.abs(input.y)>.2){input.lx=input.x;input.ly=input.y;input.lt=performance.now()}
 }
 
 /* ---------- 戦闘 ---------- */
@@ -644,6 +663,22 @@ function damage(m,amt,dir){
     else{G.allies.splice(G.allies.indexOf(m),1);addFx(m.x,m.z,m.h+16,'#fcfcfc',14,70);say(`${CLS[m.cls].name}は ちからつきた…`);sfx('down')}
   }
 }
+// たおした敵: くるくる回りながら画面の外へ飛んでいき、出た所でキラッと光る
+function launch(e,dir){
+  const set=SP[e.type],fr=set[0];
+  G.flyers.push({img:e.face<0?fr.l:fr.r,x:e.x,z:e.z,h:e.h,vx:dir*rnd(280,360),vh:rnd(170,240),rot:0,vr:dir*rnd(14,20)});
+}
+function updFlyers(dt){
+  for(const f of G.flyers){
+    f.x+=f.vx*dt;f.h+=f.vh*dt;f.vh-=160*dt;f.rot+=f.vr*dt;
+    const y=GY+f.z-f.h;
+    if(f.x<G.camX-30||f.x>G.camX+W+30||y<-30){
+      f.gone=true;const tx=clamp(f.x,G.camX+8,G.camX+W-8),ty=clamp(y,8,H-8);
+      G.fx.push({k:'twinkle',x:tx,z:f.z,h:GY+f.z-ty,life:.35,max:.35,vx:0,vh:0});tone(2093,.08,'square',.06);tone(3136,.12,'triangle',.05,0,.05);
+    }
+  }
+  G.flyers=G.flyers.filter(f=>!f.gone);
+}
 // ダメージ: 基本値の ±15%。8% で会心（2倍、黄色の大きな数字）
 function roll(base){const crit=Math.random()<.08;let d=Math.max(1,Math.round(base*rnd(.85,1.15)));if(crit)d*=2;return [d,crit]}
 // 命中演出: 火花・斬撃の線・数字。剣のときは一瞬止める（ヒットストップ）
@@ -659,7 +694,7 @@ function hitEnemy(e,base,dir,slash=false){
   const [d,crit]=roll(base);
   e.hp-=d;e.flash=.14;e.kx=dir*(e.type==='skel'?80:130);
   hitFx(e.x,e.z,e.h+e.ht*.55,dir,d,crit,slash);
-  if(e.hp<=0){e.dead=true;G.kills++;G.fx.push({k:'poof',x:e.x,z:e.z,h:e.h+e.ht*.45,life:.4,max:.4,vx:0,vh:0});addFx(e.x,e.z,e.h+e.ht/2,e.col,10,60);sfx('kill')}else sfx('hit');
+  if(e.hp<=0){e.dead=true;G.kills++;launch(e,dir||1);addFx(e.x,e.z,e.h+e.ht/2,e.col,8,60);sfx('kill')}else sfx('hit');
 }
 function hitBoss(base,dir=-1,slash=false){
   const b=G.boss;if(!b||b.hp<=0||b.inv>0||b.state==='enter')return;
@@ -716,7 +751,7 @@ function updNpcs(){
     }else if(n.state==='captive'){
       if(n.guards.every(e=>e.dead)){
         n.state='joined';const a=member(n.cls,n.x,n.z);a.face=1;G.allies.push(a);
-        say(`${CLS[n.cls].name}を たすけた！ なかまに くわわった！`);sfx('join');addFx(n.x,n.z,20,'#fcd800',14,60);
+        say(`${CLS[n.cls].name}を たすけた！ なかまに くわわった！`);say(`ためぎりが ${maxLv()}だんかい まで できるように なった！`);sfx('join');addFx(n.x,n.z,20,'#fcd800',14,60);
       }else if(n.x<G.camX-14){
         n.state='lost';n.guards.forEach(e=>{e.guard=null});
         say(`${CLS[n.cls].name}を たすけられなかった…`);sfx('down');
@@ -803,7 +838,7 @@ function updBoss(dt){
   if(b.state==='die'){
     if(Math.random()<dt*14){addFx(b.x+rnd(-36,36),b.z,rnd(0,88),Math.random()<.5?'#fcd800':'#f83800',8,70);sfx('boom')}
     G.shake=.1;
-    if(b.t>2.2){G.boss=null;G.state='won';G.clearT=0;say('ほのおの ドラゴンを たおした！');SFX.join()}
+    if(b.t>2.2){G.boss=null;G.state='won';G.clearT=0;G.shots=[];input.charging=false;party().forEach(m=>{m.inv=0;m.flash=0;m.swing=0;m.charge=0});say('ほのおの ドラゴンを たおした！');SFX.join()}
     return;
   }
   b.h=6+Math.sin(b.t*2.2)*4;
@@ -838,15 +873,45 @@ function findSafe(x,z){
   }
   return {x,z};
 }
-function heroJump(){
-  const p=G.hero;p.vh=245;p.onG=false;sfx('jump');
-  const recent=performance.now()-input.lt<400;   // タップで指を離した直前の向きを引き継ぐ
-  p.air=Math.abs(input.x)+Math.abs(input.y)>.2?{x:input.x,y:input.y}:recent?{x:input.lx,y:input.ly}:{x:0,y:0};
+// 自動ジャンプ: 進む先に穴か、こえられる障害物（岩・箱）があると跳ぶ。向こう側まで届く速さで飛ぶ
+const AIR_T=2*245/620;
+function blocker(x,z,h){if(inHole(x,z,2))return true;const o=obAt(x,z,h);return !!(o&&o.ht<99)}
+function autoJump(p,vx,vz){
+  const sp=Math.hypot(vx,vz);if(sp<8)return;
+  const ux=vx/sp,uz=vz/sp;
+  let hit=0;for(const d of [10,16])if(blocker(p.x+ux*d,p.z+uz*d,p.h)){hit=d;break}
+  if(!hit)return;
+  let d=hit;   // 見つけた所から向こう側を探す
+  const bad=d=>{const z=p.z+uz*d;return z<2||z>DEPTH-2||blocker(p.x+ux*d,z,0)||obAt(p.x+ux*d,z,0)};
+  while(d<120&&bad(d))d+=2;
+  if(d>=120)return 'wall';   // 向こう側がない（木・地面の端まで続く穴）ときは跳ばない
+  if(p.x+ux*(d+10)>G.camX+W-16||p.x+ux*(d+10)<G.camX+16)return 'wall';   // 着地点が画面の外になるときは、手前で待つ
+  const need=Math.min(200,(d+10)/AIR_T*1.05),k=Math.max(sp,need)/sp;
+  p.vh=245;p.onG=false;p.airV={vx:vx*k,vz:vz*k};sfx('jump');
   G.allies.forEach((a,i)=>{a.jd=.07*(i+1)});
+}
+// 飛ぶ斬撃: 剣を振って三日月の斬撃を飛ばす。長押しで3段階ため。ためた斬撃（1段以上）は大きく、敵をつらぬき、敵の弾を消す
+const LV_T=[.5,1,1.6];   // 1・2・3段目がたまるまでの秒数
+const WAVE=[   // 段ごとの 大きさ・ダメージ・速さ・射程(秒)・色（外側・内側）
+  {r:10,dmg:12,spd:235,life:.75,c1:'#3c9cf0',c2:'#a8ecff'},
+  {r:14,dmg:24,spd:255,life:1,c1:'#30d8e8',c2:'#c8fcff'},
+  {r:18,dmg:42,spd:270,life:1.2,c1:'#ffb820',c2:'#ffe878'},
+  {r:25,dmg:72,spd:285,life:1.4,c1:'#ff5020',c2:'#ffc080'},
+];
+const chargeLv=t=>Math.min(t>=LV_T[2]?3:t>=LV_T[1]?2:t>=LV_T[0]?1:0,maxLv());
+const maxLv=()=>Math.min(3,G.allies.length);   // ためられる段の上限 = 仲間の数
+function castSlash(p,lv){
+  if(p.slashCD>0&&!lv)return;p.slashCD=.35;
+  p.swing=.2;p.swCD=Math.max(p.swCD,.22);
+  const w=WAVE[lv];
+  G.shots.push({kind:'wave',x:p.x+p.face*18,z:p.z,h:p.h+17,vx:p.face*w.spd,vz:0,dmg:w.dmg,life:w.life,friend:true,lv,big:lv>0,pierce:lv>0,hitSet:new Set()});
+  sfx('swing');
+  if(lv){noise(.2+lv*.1,.25+lv*.05);tone(260-lv*40,.3,'sawtooth',.15,600)}
+  if(lv===3)G.shake=Math.max(G.shake,.2);
 }
 function updHero(dt){
   const p=G.hero;updMember(p,dt);
-  input.jumpBuf-=dt;
+  p.slashCD=(p.slashCD||0)-dt;
   if(p.fall){
     p.fall+=dt;p.h-=150*dt;
     if(p.fall>.8){
@@ -862,18 +927,29 @@ function updHero(dt){
   }
   readInput();
   let ix=input.x,iy=input.y;
-  if(!p.onG&&p.air&&Math.abs(ix)+Math.abs(iy)<.2){ix=p.air.x;iy=p.air.y}
   if(Math.abs(ix)>.25&&p.swing<=0)p.face=ix>0?1:-1;
   // 方向を入れていないときは、強制スクロールに合わせて前へ歩く（ボス戦でカメラが止まったら止まる）
   const auto=!G.locked&&Math.abs(ix)<.25;   // 左右を入れていないとき（上下だけのときも）
   if(auto&&p.swing<=0)p.face=1;
-  const vx=(auto?SCROLL:ix*130)+p.kx,vz=iy*90;
+  let vx=(auto?SCROLL:ix*130)+p.kx,vz=iy*90;
+  if(!p.onG&&p.airV){vx=p.airV.vx+p.kx;vz=p.airV.vz}   // 跳んでいる間は踏み切ったときの速さで進む
+  if(p.onG&&autoJump(p,vx-p.kx,vz)==='wall'){   // 跳べないときは穴に入らないよう、入る向きの動きを止める
+    if(inHole(p.x+vx*dt,p.z,0))vx=0;
+    if(inHole(p.x,p.z+vz*dt,0))vz=0;
+  }
   moveBody(p,vx*dt,vz*dt);
   p.x=clamp(p.x,G.camX+16,G.camX+W-16);p.z=clamp(p.z,2,DEPTH-2);   // 左端に押されたら障害物もすり抜けて押し出される
-  if(input.jumpBuf>0&&p.onG){input.jumpBuf=0;heroJump()}
+  if(input.charging){
+    p.charge=Math.min((LV_T[maxLv()-1]||0)+.2,(p.charge||0)+dt);const lv=chargeLv(p.charge);
+    if(lv>(p.lv||0)){p.lv=lv;const n=[0,76,79,84][lv];tone(midi(n+12),.12,'square',.1);tone(midi(n+19),.18,'triangle',.08,0,.06)}   // 段が上がるたびに音
+  }
+  if(input.release){input.release=false;castSlash(p,chargeLv(p.charge||0));p.charge=0;p.lv=0}
+  else if(!input.charging){p.charge=0;p.lv=0}
+  const kc=input.charging&&p.charge>.12?'c'+chargeLv(p.charge):'';
+  if(knob.dataset.c!==kc){['c0','c1','c2','c3'].forEach(c=>knob.classList.toggle(c,c===kc));knob.dataset.c=kc}
   p.vh-=620*dt;p.h+=p.vh*dt;
   const g=groundAt(p.x,p.z,p.h);
-  if(g>-100&&p.h<=g){p.h=g;p.vh=0;p.onG=true}else p.onG=false;
+  if(g>-100&&p.h<=g){p.h=g;p.vh=0;p.onG=true;p.airV=null}else p.onG=false;
   if(g<-100&&p.h<-3){p.fall=.001;p.onG=false;sfx('fall');return}
   if(p.onG&&p.h===0&&!inHole(p.x,p.z,-10))p.safe={x:p.x,z:p.z};
   if(auto||Math.abs(ix)+Math.abs(iy)>.2)p.walk+=dt;
@@ -926,15 +1002,19 @@ function updShots(dt){
     if(s.z<-6||s.z>DEPTH+6||s.x<G.camX-10||s.x>G.camX+W+20)s.life=0;
     if(s.life<=0)continue;
     if(s.friend){
-      for(const e of G.enemies)if(!e.dead&&!e.falling&&Math.abs(e.x-s.x)<e.w+3&&Math.abs(e.z-s.z)<9&&Math.abs(e.h+e.ht/2-s.h)<20){hitEnemy(e,s.dmg,Math.sign(s.vx));s.life=0;break}
+      const lv=s.lv||0,zr=s.kind==='wave'?12+lv*5:9,hr=s.kind==='wave'?24+lv*8:20,xr=s.kind==='wave'?6+lv*4:3;
+      if(lv)for(const o of G.shots)if(!o.friend&&o.life>0&&Math.abs(o.x-s.x)<WAVE[lv].r*.8+6&&Math.abs(o.z-s.z)<zr&&Math.abs(o.h-s.h)<hr){   // ためた斬撃は敵の弾を消す
+        o.life=0;G.fx.push({k:'spark',x:o.x,z:o.z,h:o.h,life:.2,max:.2,crit:true,vx:0,vh:0});addFx(o.x,o.z,o.h,o.kind==='boss'?'#ff8424':'#f878f8',6,50);tone(1568,.08,'square',.08,-600)}
+      for(const e of G.enemies)if(!e.dead&&!e.falling&&!(s.hitSet&&s.hitSet.has(e))&&Math.abs(e.x-s.x)<e.w+xr&&Math.abs(e.z-s.z)<zr&&Math.abs(e.h+e.ht/2-s.h)<hr){
+        hitEnemy(e,s.dmg,Math.sign(s.vx),s.kind==='wave');if(s.pierce)s.hitSet.add(e);else{s.life=0;break}}
       const b=G.boss;
-      if(s.life>0&&b&&b.hp>0&&Math.abs(b.x-s.x)<b.w&&Math.abs(b.z-s.z)<20){hitBoss(s.dmg,Math.sign(s.vx));s.life=0}
+      if(s.life>0&&b&&b.hp>0&&!(s.hitSet&&s.hitSet.has(b))&&Math.abs(b.x-s.x)<b.w&&Math.abs(b.z-s.z)<20){b.inv=0;hitBoss(s.dmg,Math.sign(s.vx),s.kind==='wave');if(s.pierce)s.hitSet.add(b);else s.life=0}
     }else{
       // 魔法は剣で薙ぎ払えない。ジャンプか移動でよける
       for(const m of party()){
         if(Math.abs(m.x-s.x)<11&&Math.abs(m.z-s.z)<8&&Math.abs(m.h+16-s.h)<13&&m.inv<=0){
           damage(m,s.dmg,Math.sign(s.vx));s.life=0;addFx(s.x,s.z,s.h,'#f878f8',6,40);
-          if(m===G.hero&&!G.magicTold){G.magicTold=true;say('まほうは けんでは はじけない！ ジャンプで かわせ！')}
+          if(m===G.hero&&!G.magicTold){G.magicTold=true;say('まほうは けんでは はじけない！ うごいて かわせ！')}
           break;
         }
       }
@@ -950,7 +1030,13 @@ function update(dt){
   for(const f of G.fx){f.life-=dt;f.x+=f.vx*dt;f.h+=f.vh*dt;if(f.num!=null)f.vh*=Math.pow(.02,dt);else if(!f.k)f.vh-=200*dt}
   G.fx=G.fx.filter(f=>f.life>0);
   if(G.state==='over'){G.overT+=dt;if(G.overT>1.6&&!overlayShown)showOver();return}
-  if(G.state==='won'){G.clearT+=dt;if(G.clearT>1.8&&!overlayShown)showClear();return}
+  if(G.state==='won'){   // 勝利: みんなで小さく跳んで、正面を向いて決めポーズ
+    G.clearT+=dt;
+    const lx=clamp(G.hero.x,G.camX+70,G.camX+W-70),lz=clamp(G.hero.z,20,DEPTH-20),OFF=[0,-34,34,-68];   // 勇者を真ん中に横一列に並ぶ
+    party().forEach((m,i)=>{const k=Math.min(1,dt*5);m.x+=(lx+OFF[i]-m.x)*k;m.z+=(lz-m.z)*k;m.walk+=dt});
+    party().forEach((m,i)=>{const t=G.clearT-.15*i;m.h=t>0&&t<.45?Math.sin(t/.45*Math.PI)*22:0;
+      if(Math.random()<dt*3)G.fx.push({k:'twinkle',x:m.x+rnd(-16,16),z:m.z,h:rnd(20,48),life:.35,max:.35,vx:0,vh:0})});
+    if(G.clearT>3.2&&!overlayShown)showClear();return}
   if(G.state!=='play')return;
   updHero(dt);
   G.allies.forEach((a,i)=>updAlly(a,i,dt));
@@ -958,6 +1044,7 @@ function update(dt){
   if(!G.intro){spawnLogic(dt);updNpcs()}
   G.enemies.forEach(e=>updEnemy(e,dt));
   G.enemies=G.enemies.filter(e=>!e.dead);
+  updFlyers(dt);
   if(G.boss)updBoss(dt);
   updShots(dt);
 }
@@ -1020,12 +1107,21 @@ function drawSword(m){
 }
 function drawMember(m){
   if(m.inv>0&&Math.floor(m.inv*20)%2)return;
-  const c=CLS[m.cls],fr=c.spr[Math.floor(m.walk*8)%2],img=m.flash>0?(m.face<0?fr.wl:fr.wr):(m.face<0?fr.l:fr.r);
+  const c=CLS[m.cls];
+  if(G.state==='won'&&G.clearT>.12*party().indexOf(m)){shadow(m.x,m.z,22);drawImg(c.pose.r,m.x,m.z,m.h);return}
+  const fr=c.spr[Math.floor(m.walk*8)%2],img=m.flash>0?(m.face<0?fr.wl:fr.wr):(m.face<0?fr.l:fr.r);
   if(m.fall){
     const h=inHole(m.x,m.z,0)||HOLES[0];ctx.save();ctx.beginPath();ctx.rect(SX(h[0]),GY+Math.max(0,h[2])-40,h[1]-h[0],Math.min(H-GY,h[3])-Math.max(0,h[2])+40);ctx.clip();
     drawImg(img,m.x,m.z,m.h);ctx.restore();return;
   }
   shadow(m.x,m.z,22);
+  if(m===G.hero&&m.charge>.12){   // ため中: 光の粒が集まる。段ごとに 青→水色→金→赤 と色と数が変わる
+    const lv=chargeLv(m.charge),w=WAVE[lv],cx=SX(m.x),cy=Math.round(GY+m.z-m.h-16),next=LV_T[lv]||LV_T[2],prev=LV_T[lv-1]||0;
+    const prog=lv===maxLv()?1:(m.charge-prev)/(next-prev),n=8+lv*4;
+    for(let i=0;i<n;i++){const a=G.t*(6+lv*2)+i*Math.PI*2/n,rr=(13+lv*3)+(1-prog)*9+Math.sin(G.t*20+i)*2;
+      ctx.fillStyle=i%2?w.c2:w.c1;ctx.fillRect(Math.round(cx+Math.cos(a)*rr),Math.round(cy+Math.sin(a)*rr*1.2),2,2)}
+    if(lv&&Math.floor(G.t*(10+lv*4))%2){ctx.fillStyle=['','rgba(48,216,232,.28)','rgba(255,216,74,.32)','rgba(255,80,32,.36)'][lv];ctx.beginPath();ctx.arc(cx,cy,12+lv*3,0,Math.PI*2);ctx.fill()}
+  }
   if(m.cls==='hero'||m.cls==='warrior'){if(m.face<0)drawSword(m);drawImg(img,m.x,m.z,m.h);if(m.face>0)drawSword(m)}
   else{
     drawImg(img,m.x,m.z,m.h);
@@ -1048,7 +1144,15 @@ function drawEnemy(e){
 function drawShot(s){
   const x=SX(s.x),y=Math.round(GY+s.z-s.h);
   ctx.fillStyle='#00000040';ctx.fillRect(x-2,GY+Math.round(s.z),4,1);
-  if(s.kind==='fire'){const d=Math.sign(s.vx);ctx.fillStyle='#d82800';ctx.fillRect(x-d*7-1,y-1,3,3);ctx.fillStyle='#fc7400';ctx.fillRect(x-3,y-3,6,6);ctx.fillStyle='#fcd800';ctx.fillRect(x-2,y-2,4,4);ctx.fillStyle='#ffffff';ctx.fillRect(x-1,y-1,2,2)}
+  if(s.kind==='wave'){   // 三日月の斬撃（進む向きにふくらむ）
+    const lv=s.lv||0,w=WAVE[lv],d=Math.sign(s.vx),R0=w.r,f=Math.floor(G.t*24)%2,thk=3+lv;
+    for(let k=2;k>=0;k--){const ox=x-d*k*(5+lv*2),col=k?w.c1:'#ffffff';ctx.globalAlpha=k?.45/k:1;
+      for(let a=-1.25;a<=1.25;a+=.06){const th=Math.cos(a)*thk,px=ox+d*Math.cos(a)*R0-d*R0*.55,py=y+Math.sin(a)*R0*1.15;
+        ctx.fillStyle=col;ctx.fillRect(Math.round(px-d*th),Math.round(py),Math.max(1,Math.round(th)),2);
+        if(!k){ctx.fillStyle=w.c2;ctx.fillRect(Math.round(px-d*th-d),Math.round(py),1+(lv>1?1:0),2)}}}
+    ctx.globalAlpha=1;
+    if(lv&&f){ctx.fillStyle=lv===3?'#ffc080':'#ffffff';for(let i=0;i<2+lv*2;i++)ctx.fillRect(x+rnd(-R0,6)*d,y+rnd(-R0,R0),2,2)}}
+  else if(s.kind==='fire'){const d=Math.sign(s.vx);ctx.fillStyle='#d82800';ctx.fillRect(x-d*7-1,y-1,3,3);ctx.fillStyle='#fc7400';ctx.fillRect(x-3,y-3,6,6);ctx.fillStyle='#fcd800';ctx.fillRect(x-2,y-2,4,4);ctx.fillStyle='#ffffff';ctx.fillRect(x-1,y-1,2,2)}
   else{const f=Math.floor(G.t*16)%2,r=s.kind==='boss'?7:5;
     ctx.fillStyle=s.kind==='boss'?(f?'#f83800':'#fc7400'):(f?'#f878f8':'#9878f8');ctx.fillRect(x-r,y-r+1,r*2,r*2-2);ctx.fillRect(x-r+1,y-r,r*2-2,r*2);
     ctx.fillStyle='#fcfcfc';ctx.fillRect(x-1,y-1,2,2);
@@ -1078,6 +1182,7 @@ function draw(){
   G.enemies.forEach(e=>L.push({z:e.z,f:()=>drawEnemy(e)}));
   G.shots.forEach(s=>L.push({z:s.z+.2,f:()=>drawShot(s)}));
   if(G.boss)L.push({z:G.boss.z,f:()=>drawBoss(G.boss)});
+  for(const f of G.flyers)L.push({z:f.z+.3,f:()=>{ctx.save();ctx.translate(SX(f.x),Math.round(GY+f.z-f.h-f.img.height/2));ctx.rotate(f.rot);ctx.drawImage(f.img,-f.img.width/2,-f.img.height/2);ctx.restore()}});
   L.sort((a,b)=>a.z-b.z).forEach(o=>o.f());
   for(const f of G.fx){
     const fx=SX(f.x),fy=Math.round(GY+f.z-f.h);
@@ -1089,6 +1194,9 @@ function draw(){
     else if(f.k==='slash'){const t=1-f.life/f.max,L=26;ctx.globalAlpha=1-t;
       for(let j=-L/2;j<L/2;j++){const x=Math.round(fx+j*f.dir*.8),y=Math.round(fy-8+j*.9);ctx.fillStyle='#a8ecff';ctx.fillRect(x-1,y,4,2);ctx.fillStyle='#ffffff';ctx.fillRect(x,y,2,1)}
       ctx.globalAlpha=1}
+    else if(f.k==='twinkle'){const t=1-f.life/f.max,L=Math.round((t<.4?t/.4:1-(t-.4)/.6)*10)+2;
+      ctx.fillStyle='#ffd84a';ctx.fillRect(fx-L,fy,L*2+1,1);ctx.fillRect(fx,fy-L,1,L*2+1);ctx.fillStyle='#ffffff';ctx.fillRect(fx-2,fy-2,5,5);
+      ctx.fillStyle='#fff8c0';const q=Math.round(L*.5);ctx.fillRect(fx-q,fy-q,1,1);ctx.fillRect(fx+q,fy-q,1,1);ctx.fillRect(fx-q,fy+q,1,1);ctx.fillRect(fx+q,fy+q,1,1)}
     else if(f.k==='poof'){const t=1-f.life/f.max;ctx.globalAlpha=1-t*.8;
       for(let i=0;i<6;i++){const a=i*1.047+.3,d=4+t*14;ctx.fillStyle=i%2?'#e8e8f0':'#b8bcd0';ctx.beginPath();ctx.arc(fx+Math.cos(a)*d,fy+Math.sin(a)*d*.6,(5-t*3),0,Math.PI*2);ctx.fill()}
       ctx.globalAlpha=1}
@@ -1127,12 +1235,12 @@ function showTitle(){
   showOverlay(`<p class="tag">PROTOTYPE</p><h1>すすめ！<br>ゆうしゃ</h1>
   <ul class="rules">
     <li><span>画面は <em>どんどん右へ</em> すすむ。左の <em>円盤</em> で上下左右に動く</span></li>
-    <li><span>円盤を <em>タップ</em> するとジャンプ。岩や穴を とびこえる（穴には とおれる道もある）</span></li>
+    <li><span>円盤の まんなかを <em>タップ</em> で <em>斬撃</em> を とばす。<em>長押し</em> で ためて 大きな 斬撃（敵の たまも けせる）。ためられる だんかいは <em>なかまの かず</em> まで（さいだい3）。穴や岩は 自動で ジャンプ</span></li>
     <li><span>敵に近づくと <em>剣を振って薙ぎ払う</em>。ただし <em class="m">魔法は はじけない</em> のでよける</span></li>
     <li><span>とちゅうで <em>仲間</em> に出会う（最大4人）。仲間もHPがなくなると いなくなる</span></li>
     <li><span>ゆうしゃのHPがなくなると ゲームオーバー。さいごに まつ ボスを たおせ！</span></li>
   </ul>
-  <button class="menuBtn" data-act="start">はじめる</button><p class="pc">PC: 矢印/WASD で移動、スペースで ジャンプ</p>${COPY}`);
+  <button class="menuBtn" data-act="start">はじめる</button><p class="pc">PC: 矢印/WASD で移動、スペースで 斬撃（長押しで ため）</p>${COPY}`);
 }
 function showOver(){
   showOverlay(`<h2>ゲームオーバー</h2><p>ゆうしゃは しんでしまった！</p>
