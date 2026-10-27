@@ -884,7 +884,7 @@ function trySwing(m,range,dmg){
 
 /* ---------- 敵 ---------- */
 const ET={
-  slime:{hp:9,w:12,ht:22,dmg:6,spd:28,col:'#3cbcfc'},
+  slime:{hp:9,w:7,ht:12,dmg:6,spd:28,col:'#3cbcfc'},
   bat:{hp:8,w:12,ht:16,dmg:5,spd:44,col:'#9878f8',fly:true},
   skel:{hp:30,w:11,ht:30,dmg:10,spd:20,col:'#fcfcfc'},
   wiz:{hp:20,w:11,ht:30,dmg:4,spd:26,col:'#6844fc'},
@@ -959,7 +959,7 @@ function updEnemy(e,dt){
     return;
   }
   if(e.type==='slime'){
-    const hop=Math.sin(e.t*7);e.h=Math.max(0,hop)*9;
+    const hop=Math.sin(e.t*7);e.h=Math.max(0,hop)*6;
     if(hop>0){vx=dx/dist*e.spd*1.6;vz=dz/dist*e.spd*1.6}
   }else if(e.type==='bat'){
     e.h=20+Math.sin(e.t*5)*8;vx=dx/dist*e.spd;vz=dz/dist*e.spd+Math.cos(e.t*3)*20;
@@ -1329,7 +1329,7 @@ function drawEnemy(e){
   const img=e.flash>0?(e.face<0?fr.wl:fr.wr):(e.face<0?fr.l:fr.r);
   if(e.falling){const h=inHole(e.x,e.z,0);if(h){ctx.save();ctx.beginPath();ctx.rect(SX(h[0]),GY+Math.max(0,h[2])-40,h[1]-h[0],140);ctx.clip()}
     drawImg(img,e.x,e.z,e.h);if(h)ctx.restore();return}
-  shadow(e.x,e.z,e.type==='bat'?14:22);
+  shadow(e.x,e.z,e.type==='bat'?14:e.type==='slime'?12:22);
   if(e.type==='wiz'&&e.charge&&Math.floor(G.t*20)%2){ctx.fillStyle='#f878f8';ctx.fillRect(SX(e.x+e.face*14)-3,Math.round(GY+e.z-32),6,6)}
   drawImg(img,e.x+(e.flash>0?(Math.floor(G.t*40)%2?2:-2):0),e.z,e.h);
 }
