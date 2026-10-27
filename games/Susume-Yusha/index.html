@@ -177,7 +177,7 @@ function initAudio(){
   try{
     if(!ac){
       ac=new (window.AudioContext||window.webkitAudioContext)();
-      master=ac.createGain();master.gain.value=.22;master.connect(ac.destination);
+      master=ac.createGain();master.gain.value=.32;master.connect(ac.destination);
       noiseBuf=ac.createBuffer(1,ac.sampleRate*.3,ac.sampleRate);
       const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
       decodeBgm();
@@ -225,10 +225,22 @@ const SONGS={
 };
 let bgm=null,bgmWant=null;   // bgm: 合成の BGM の進み具合、bgmWant: 流したい曲の名前
 function playBgm(name){bgm={s:SONGS[name],step:0,next:ac?ac.currentTime+.1:0};if(bgmWant!==name){stopFile(false);bgmFile.offset=0}bgmWant=name;syncBgm()}
-function stopBgm(){bgm=null;bgmWant=null;stopFile(false)}
+function stopBgm(){bgm=null;bgmWant=null;stopFile(false);stopJingle()}
 // BGM の音声ファイル（sound/*.mp3）。読めたらこちらを流し、読めないときは合成の BGM のまま
 //   field: BGM031「力を出しきれ」（道中）、boss: BGM084「燃やしつくすぜ」（ボス）。len はもとの WAV の長さ（くり返す長さ）
-const BGM_FILES={field:{src:'sound/bgm_field.mp3',len:1411200/44100},boss:{src:'sound/bgm_boss.mp3',len:1814398/44100}};
+const BGM_FILES={field:{src:'sound/bgm_field.mp3',len:1411200/44100},boss:{src:'sound/bgm_boss.mp3',len:1814398/44100},
+  clear:{src:'sound/jingle_clear.mp3'}};   // clear: ME044「clear12」（ステージクリアのジングル、7.3秒、1回だけ）
+const BGM_VOL=.24,JINGLE_VOL=.45;   // 効果音（master .32）が聞こえるよう、BGM は小さめ
+// ステージクリアのジングル（くり返さない）。ファイルがないときは合成のファンファーレ
+let jingleSrc=null;
+function playJingle(){
+  stopJingle();
+  if(!ac||muted)return;
+  const b=bgmFile.buf.clear;if(!b){SFX.join();return}
+  const g=ac.createGain();g.gain.value=JINGLE_VOL;g.connect(ac.destination);
+  const src=ac.createBufferSource();src.buffer=b;src.connect(g);src.start();jingleSrc=src;src.onended=()=>{if(jingleSrc===src)jingleSrc=null};
+}
+function stopJingle(){if(jingleSrc){try{jingleSrc.stop()}catch(e){}jingleSrc=null}}
 const bgmFile={raw:{},buf:{},src:null,gain:null,offset:0,startAt:0,ls:0,le:0};
 for(const k in BGM_FILES)fetch(BGM_FILES[k].src).then(r=>r.ok?r.arrayBuffer():null).then(a=>{if(a){bgmFile.raw[k]=a;decodeBgm()}}).catch(()=>{});
 function decodeBgm(){
@@ -244,7 +256,7 @@ function loopPoints(b,len){
 }
 function startFile(){
   const b=bgmFile.buf[bgmWant],[ls,le]=loopPoints(b,BGM_FILES[bgmWant].len);
-  if(!bgmFile.gain){bgmFile.gain=ac.createGain();bgmFile.gain.gain.value=.5;bgmFile.gain.connect(ac.destination)}
+  if(!bgmFile.gain){bgmFile.gain=ac.createGain();bgmFile.gain.gain.value=BGM_VOL;bgmFile.gain.connect(ac.destination)}
   const src=ac.createBufferSource();src.buffer=b;src.loop=true;src.loopStart=ls;src.loopEnd=le;src.connect(bgmFile.gain);
   const off=bgmFile.offset%(le-ls);src.start(0,ls+off);
   Object.assign(bgmFile,{src,ls,le,startAt:ac.currentTime-off});
@@ -267,8 +279,8 @@ setInterval(()=>{
   if(bgm.next<ac.currentTime)bgm.next=ac.currentTime+.05;
   while(bgm.next<ac.currentTime+.25){
     const s=bgm.s,i=bgm.step%s.mel.length,w=bgm.next-ac.currentTime;
-    if(s.mel[i])tone(midi(s.mel[i]),s.dt*.85,'square',.06,0,w);
-    if(i%2===0){const b=s.bass[(i/2)%s.bass.length];if(b)tone(midi(b),s.dt*1.7,'triangle',.2,0,w)}
+    if(s.mel[i])tone(midi(s.mel[i]),s.dt*.85,'square',.035,0,w);
+    if(i%2===0){const b=s.bass[(i/2)%s.bass.length];if(b)tone(midi(b),s.dt*1.7,'triangle',.12,0,w)}
     bgm.next+=s.dt;bgm.step++;
   }
 },50);
@@ -1011,7 +1023,7 @@ function updBoss(dt){
   if(b.state==='die'){
     if(Math.random()<dt*14){addFx(b.x+rnd(-36,36),b.z,rnd(0,88),Math.random()<.5?'#fcd800':'#f83800',8,70);sfx('boom')}
     G.shake=.1;
-    if(b.t>2.2){G.boss=null;G.state='won';G.clearT=0;G.shots=[];input.charging=false;party().forEach(m=>{m.inv=0;m.flash=0;m.swing=0;m.charge=0});say('ほのおの ドラゴンを たおした！');SFX.join()}
+    if(b.t>2.2){G.boss=null;G.state='won';G.clearT=0;G.shots=[];input.charging=false;party().forEach(m=>{m.inv=0;m.flash=0;m.swing=0;m.charge=0});say('ほのおの ドラゴンを たおした！');playJingle()}
     return;
   }
   b.h=6+Math.sin(b.t*2.2)*4;
@@ -1457,7 +1469,7 @@ function overlayAct(target){
   const b=target.closest('button');if(!b)return;initAudio();
   const a=b.dataset.act;
   if(a==='start'){hideOverlay();newGame()}
-  else if(a==='title'){G=null;$('#clearView').hidden=true;showTitle()}
+  else if(a==='title'){G=null;stopBgm();$('#clearView').hidden=true;showTitle()}
   else if(a==='resume')togglePause();
   else if(a==='sound'){muted=!muted;b.textContent=`おと: ${muted?'OFF':'ON'}`}
 }
