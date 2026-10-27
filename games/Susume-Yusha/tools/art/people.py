@@ -200,6 +200,9 @@ def person_front(spec, cellw=48, cellh=60):
     cx = W / 2; base = H - 4
     Y = lambda y: base - (236 - y)
     dress = spec.get('torso') in ('robe', 'dress')
+    hy = Y(78)
+    if spec.get('hairBack'):   # うしろ髪は体よりうしろ（肩の向こうに見える）
+        f.part(union(ell(cx, hy + 2, 31, 30), poly((cx - 31, hy), (cx - 36, hy + 58), (cx - 18, hy + 62), (cx + 18, hy + 62), (cx + 36, hy + 58), (cx + 31, hy))), tone(hx(spec['hair']), -0.06), k=7)
     if spec.get('cape'):
         f.part(poly((cx - 22, Y(110)), (cx + 22, Y(110)), (cx + 34, Y(212)), (cx - 34, Y(212))), tone(hx(spec['cape']), -0.08), k=8)
     if not dress:
@@ -227,14 +230,14 @@ def person_front(spec, cellw=48, cellh=60):
     f.part(union(taper(cx - 22, Y(116), 8, cx - 34, Y(140), 7), taper(cx - 34, Y(140), 7, cx - 20, Y(160), 6)), spec['sleeve'], k=5)
     f.part(ell(cx - 20, Y(160), 6, 6), SKIN, k=3)
     # 頭
-    hy = Y(78)
-    if spec.get('hairBack'):
-        f.part(union(ell(cx, hy + 4, 30, 30), rrect(cx - 30, hy, cx + 30, hy + 52, 10)), spec['hair'], k=7)
     f.part(ell(cx, hy, 26, 26), SKIN, k=6)
     face_front(f, cx, hy, eye=spec.get('eye', '#3b6fb0'), brow=tone(hx(spec.get('hair', '#5a3a20')), -0.15), old=spec.get('old', False))
     if spec.get('beard'):
         f.part(union(poly((cx - 22, hy + 6), (cx + 22, hy + 6), (cx + 16, hy + 40), (cx, hy + 48), (cx - 16, hy + 40))), spec['beard'], k=6)
         f.part(ell(cx, hy + 13, 12, 4), spec['beard'], k=2)
+    if spec.get('hairBack'):
+        for sx in (-1, 1):
+            f.part(poly((cx + sx * 30, hy - 14), (cx + sx * 32, hy + 40), (cx + sx * 24, hy + 46), (cx + sx * 21, hy + 6)), spec['hair'], k=5)
     if spec.get('hairStyle'):
         f.part(union(ell(cx, hy - 20, 29, 13), poly((cx - 29, hy - 16), (cx - 27, hy + 14), (cx - 20, hy - 4)), poly((cx + 29, hy - 16), (cx + 27, hy + 14), (cx + 20, hy - 4)), poly((cx - 14, hy - 22), (cx - 4, hy - 10), (cx + 4, hy - 18), (cx + 14, hy - 10), (cx + 18, hy - 22))), spec['hair'], k=7)
     hat = spec.get('hat'); c1 = spec.get('hatCol', '#8c96a6'); c2 = spec.get('hatCol2', '#c89b4a')
