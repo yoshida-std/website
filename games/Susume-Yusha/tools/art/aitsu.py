@@ -26,10 +26,10 @@ for f in fr:
     rgba=np.zeros((h,w,4),'uint8')
     rgba[...,:3]=np.where((l<200)[...,None],[28,22,26],[252,252,248]);rgba[...,3]=np.where(a>100,255,0)
     c=Image.new('RGBA',(32,32));c.alpha_composite(Image.fromarray(rgba,'RGBA'),((32-w)//2,32-h));res.append(c)
-# 目は縮めるとつぶれるので描きなおす（ねむそうな目: 上半分がまぶた、下に黒目）
-EYE=['.###.','#####','#o#o#','.###.']
+# 目は縮めるとつぶれるので描きなおす（くっついた丸い目2つ、まん中にまぶたの線）。帽子のつばとの間は1ドットあける
+EYE=['.###.###.','#ooo#ooo#','#########','#oo#o#oo#','.###.###.']
 K=(28,22,26,255);Wc=(252,252,248,255)
-edges={0:[(8,23),(8,24),(7,24),(7,25),(7,25)],1:[(7,23),(7,23),(7,24),(7,24),(7,24)]}
+edges={0:[(8,23),(8,24),(7,24),(7,25),(7,25),(7,25)],1:[(7,23),(7,23),(7,24),(7,24),(7,24),(6,24)]}
 for i,im in enumerate(res):
     p=im.load()
     for r,(l,rt) in enumerate(edges[i]):
@@ -37,10 +37,9 @@ for i,im in enumerate(res):
         for x in range(32):p[x,y]=(0,0,0,0)
         for x in range(l,rt+1):p[x,y]=Wc
         p[l,y]=K;p[rt,y]=K
-    for ex in (12,18):
-        for r,row in enumerate(EYE):
-            for c,ch in enumerate(row):
-                if ch=='#':p[ex+c,9+r]=K
+    for r,row in enumerate(EYE):
+        for c,ch in enumerate(row):
+            if ch=='#':p[14+c,10+r]=K
 sheet=Image.open(D+'sprites.png').convert('RGBA');meta=json.load(open(D+'sprites.json'))
 W,H=sheet.size;new=Image.new('RGBA',(W,H+38));new.alpha_composite(sheet,(0,0))
 for i,c in enumerate(res):
