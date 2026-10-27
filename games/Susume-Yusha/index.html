@@ -886,10 +886,10 @@ function trySwing(m,range,dmg){
 
 /* ---------- 敵 ---------- */
 const ET={
-  slime:{hp:15,w:7,ht:12,dmg:6,spd:28,col:'#3cbcfc'},
-  bat:{hp:14,w:12,ht:16,dmg:5,spd:44,col:'#9878f8',fly:true},
-  skel:{hp:30,w:11,ht:30,dmg:10,spd:20,col:'#fcfcfc'},
-  wiz:{hp:20,w:11,ht:30,dmg:4,spd:26,col:'#6844fc'},
+  slime:{hp:15,w:7,ht:12,dmg:9,spd:28,col:'#3cbcfc'},
+  bat:{hp:14,w:12,ht:16,dmg:8,spd:44,col:'#9878f8',fly:true},
+  skel:{hp:30,w:11,ht:30,dmg:15,spd:20,col:'#fcfcfc'},
+  wiz:{hp:20,w:11,ht:30,dmg:6,spd:26,col:'#6844fc'},
 };
 function freeZ(x){for(let i=0;i<8;i++){const z=rnd(6,DEPTH-6);if(!obAt(x,z,0)&&!inHole(x,z,-6))return z}return rnd(6,DEPTH-6)}
 function spawnEnemy(type,x,z,force=false){
@@ -989,7 +989,7 @@ function updEnemy(e,dt){
     if(e.cast<=0&&e.x<G.camX+W-4){
       e.cast=rnd(2.3,3.1);e.charge=0;
       const a=Math.atan2(dz,dx);
-      G.shots.push({kind:'magic',x:e.x+Math.sign(dx)*12,z:e.z,h:16,vx:Math.cos(a)*78,vz:Math.sin(a)*78,dmg:12,life:4,friend:false});
+      G.shots.push({kind:'magic',x:e.x+Math.sign(dx)*12,z:e.z,h:16,vx:Math.cos(a)*78,vz:Math.sin(a)*78,dmg:18,life:4,friend:false});
       sfx('magic');e.target=Math.random()<.35&&G.allies.length?G.allies[Math.random()*G.allies.length|0]:G.hero;
     }
   }
@@ -1059,7 +1059,7 @@ function updBoss(dt){
   }else if(b.state==='fire'){
     if(b.t>.55){
       const n=rage?5:3,a0=Math.atan2(p.z-b.z,p.x-b.x);
-      for(let i=0;i<n;i++){const a=a0+(i-(n-1)/2)*.22;b.roarT=.35;G.shots.push({kind:'boss',x:b.x-38,z:b.z,h:b.h+74,fallTo:16,vx:Math.cos(a)*90,vz:Math.sin(a)*90*.8,dmg:14,life:4,friend:false})}
+      for(let i=0;i<n;i++){const a=a0+(i-(n-1)/2)*.22;b.roarT=.35;G.shots.push({kind:'boss',x:b.x-38,z:b.z,h:b.h+74,fallTo:16,vx:Math.cos(a)*90,vz:Math.sin(a)*90*.8,dmg:20,life:4,friend:false})}
       sfx('magic');b.state='idle';b.t=0;
     }
   }else if(b.state==='charge'){
@@ -1069,7 +1069,7 @@ function updBoss(dt){
   }
   b.z=clamp(b.z,8,DEPTH-8);
   for(const m of party()){
-    if(Math.abs(b.x-m.x)<b.w+6&&Math.abs(b.z-m.z)<16&&m.h<b.h+80)damage(m,b.state==='charge'?18:12,-1);
+    if(Math.abs(b.x-m.x)<b.w+6&&Math.abs(b.z-m.z)<16&&m.h<b.h+80)damage(m,b.state==='charge'?27:18,-1);
   }
 }
 
