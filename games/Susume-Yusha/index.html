@@ -635,6 +635,8 @@ function buildArt(){
   ART.mid=makeRange(640,50,8,{n:7,hmin:20,hmax:46,slope:.8,rough:5,pal:['#d6bc90','#b89a72','#977a5a','#775e46','#584434'],grass:['#86b45a','#679845','#4c7c36','#3a6430'],haze:'#bcd8c8',hazeAmt:.15});
   ART.forest=makeForest();ART.ground=makeGround();
   SP.tree=makeTree();SP.rock=makeRock(4,20,13);SP.crate=makeCrate();SP.slime=[makeSlime(0),makeSlime(1)];SP.dragon=[makeDragon(0),makeDragon(1)];
+  // ボスのポーズ（シートに絵があれば入れかわる）。コードの絵は2コマなので、かまえ・ほえる・つめ は0、はばたき は1
+  SP.dragonPose={stance:SP.dragon[0],roar:SP.dragon[0],claw:SP.dragon[0],flap:SP.dragon[1]};
 }
 buildArt();
 
@@ -673,6 +675,7 @@ async function loadSheet(){
     for(const k in MOB){set(MOB[k].spr,0,`mob.${k}.0`);set(MOB[k].spr,1,`mob.${k}.1`)}
     for(const k of ['slime','bat','skel','wiz'])SP[k].forEach((_,i)=>set(SP[k],i,`enemy.${k}.${i}`));
     SP.dragon.forEach((_,i)=>set(SP.dragon,i,`boss.dragon.${i}`));
+    for(const k in SP.dragonPose)set(SP.dragonPose,k,`boss.dragon.${k}`);   // かまえ・ほえる・つめ・はばたき
     SHEET.weaponIn=new Set(meta.weaponInSprite||[]);   // 絵に武器が入っているキャラは、ゲームが武器を重ねて描かない
     SHEET.loaded=true;
   }catch(e){}
@@ -1012,7 +1015,7 @@ function drawFollower(f){
 }
 function startBoss(){
   G.locked=true;
-  G.boss={x:END+70,z:46,h:0,hp:460,max:460,w:34,ht:88,state:'enter',t:0,inv:0,flash:0,next:0,atk:0,home:END-64,cd:0};
+  G.boss={x:END+70,z:46,h:0,hp:460,max:460,w:34,ht:104,roarT:0,state:'enter',t:0,inv:0,flash:0,next:0,atk:0,home:END-64,cd:0};
   say('ほのおの ドラゴンが あらわれた！');sfx('boss');playBgm('boss');
 }
 function updBoss(dt){
@@ -1026,14 +1029,14 @@ function updBoss(dt){
     if(b.t>2.2){G.boss=null;G.state='won';G.clearT=0;G.shots=[];input.charging=false;party().forEach(m=>{m.inv=0;m.flash=0;m.swing=0;m.charge=0});say('ほのおの ドラゴンを たおした！');playJingle()}
     return;
   }
-  b.h=6+Math.sin(b.t*2.2)*4;
+  b.h=6+Math.sin(b.t*2.2)*4;b.roarT-=dt;
   if(b.state==='idle'){
     b.z+=clamp(p.z-b.z,-1,1)*22*dt;b.x+=clamp(b.home-b.x,-1,1)*30*dt;
     if(b.t>(rage?1.1:1.6)){b.t=0;b.state=['fire','charge','fire'][b.atk++%3];}
   }else if(b.state==='fire'){
     if(b.t>.55){
       const n=rage?5:3,a0=Math.atan2(p.z-b.z,p.x-b.x);
-      for(let i=0;i<n;i++){const a=a0+(i-(n-1)/2)*.22;G.shots.push({kind:'boss',x:b.x-40,z:b.z,h:58,fallTo:16,vx:Math.cos(a)*90,vz:Math.sin(a)*90*.8,dmg:14,life:4,friend:false})}
+      for(let i=0;i<n;i++){const a=a0+(i-(n-1)/2)*.22;b.roarT=.35;G.shots.push({kind:'boss',x:b.x-38,z:b.z,h:b.h+74,fallTo:16,vx:Math.cos(a)*90,vz:Math.sin(a)*90*.8,dmg:14,life:4,friend:false})}
       sfx('magic');b.state='idle';b.t=0;
     }
   }else if(b.state==='charge'){
@@ -1349,10 +1352,12 @@ function drawShot(s){
 function drawBoss(b){
   if(b.state==='die'&&Math.floor(b.t*16)%2)return;
   shadow(b.x,b.z,64);
-  const s=SP.dragon[Math.floor(G.t*3)%2];let img=b.flash>0?s.wr:s.r;
+  // ポーズ: 入ってくる・もどる＝はばたき、火の玉の前（とその直後）・たおれる＝ほえる、突進の前と突進中＝つめ、待つ＝かまえ と はばたき をくり返す
+  const P=SP.dragonPose,pose=b.state==='enter'||b.state==='back'?P.flap:b.state==='die'||b.state==='fire'||b.roarT>0?P.roar:b.state==='charge'?P.claw:(Math.floor(G.t*2.5)%2?P.flap:P.stance);
+  const img=b.flash>0?pose.wr:pose.r;
   const shake=(b.state==='charge'&&b.t<.6)||(b.state==='fire'&&b.t<.55)?(Math.floor(G.t*30)%2?2:-2):0;
   drawImg(img,b.x+shake,b.z,b.h);
-  if(b.state==='fire'&&b.t<.55&&Math.floor(G.t*12)%2){ctx.fillStyle='#fc7400';ctx.fillRect(SX(b.x)-46,Math.round(GY+b.z-b.h-62),12,6)}
+  if(b.state==='fire'&&b.t<.55&&Math.floor(G.t*12)%2){ctx.fillStyle='#fc7400';ctx.fillRect(SX(b.x)-44,Math.round(GY+b.z-b.h-78),12,6)}   // 口が光る
 }
 function draw(){
   CAM=Math.round(G.camX);

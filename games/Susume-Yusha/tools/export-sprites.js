@@ -61,7 +61,7 @@ const fromSheet=process.argv.includes('--from-sheet');
       ['コウモリ',['enemy.bat.0','enemy.bat.1'],SP.bat.map(en)],
       ['ガイコツ',['enemy.skel.0','enemy.skel.1'],SP.skel.map(en)],
       ['まどうし',['enemy.wiz.0'],SP.wiz.map(en)],
-      ['ドラゴン',['boss.dragon.0','boss.dragon.1'],SP.dragon.map(en)],
+      ['ドラゴン',['boss.dragon.stance','boss.dragon.roar','boss.dragon.claw','boss.dragon.flap'],['stance','roar','claw','flap'].map(k=>en(SP.dragonPose[k]))],   // かまえ・ほえる・つめ・はばたき
     ].map(([label,names,src])=>[label,names,src.map((v,i)=>keep.has(names[i])&&sheet&&meta.frames[names[i]]?crop(names[i]):v)]);
     const PAD=6,frames={};let y=PAD,maxW=0;
     const layout=rows.map(([label,names,src])=>{
