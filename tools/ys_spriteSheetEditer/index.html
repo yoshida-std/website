@@ -105,7 +105,7 @@ details summary{cursor:pointer;color:var(--dim);font-size:12.5px;margin-top:6px}
     <div class="box">
       <h2>プレビュー</h2>
       <canvas id="pv" width="160" height="96"></canvas>
-      <p class="note">左が右向き、右が左向き（ゲームと同じ大きさの2倍）。歩きの2コマは交互に動きます。</p>
+      <p class="note">左が右向き、右が左向き。ゲームと同じように縮めた絵を2倍で見せます（キャラは描く大きさの 2/3、敵は 1/2 で表示）。歩きの2コマは交互に動きます。</p>
       <div class="row" style="margin-top:8px"><button id="tryGame" class="main">ゲームで ためす</button></div>
       <p class="note">いま描いているシートで、ゲームを別のタブで開きます（このブラウザの中だけ。保存はされません）。</p>
     </div>
@@ -232,7 +232,7 @@ function draw(){
   ex.strokeStyle='rgba(255,216,74,.55)';ex.setLineDash([4,4]);ex.beginPath();ex.moveTo(w*Z/2+.5,0);ex.lineTo(w*Z/2+.5,h*Z);ex.stroke();ex.setLineDash([]);
   ex.fillStyle='rgba(255,216,74,.55)';ex.fillRect(0,h*Z-2,w*Z,2);
 }
-function info(t){const F=S.frames[S.cur];$('#info').textContent=(t?t+'　':'')+`${S.cur}（${F.f.w}×${F.f.h}）`}
+function info(t){const F=S.frames[S.cur],sc=F.f.s||1;$('#info').textContent=(t?t+'　':'')+`${S.cur}（描く大きさ ${F.f.w}×${F.f.h} → ゲームでは ${Math.round(F.f.w*sc)}×${Math.round(F.f.h*sc)}）`}
 function swatches(){
   const F=S.frames[S.cur],d=F.data.data,count={};
   for(let i=0;i<d.length;i+=4)if(d[i+3]){const h='#'+[d[i],d[i+1],d[i+2]].map(v=>v.toString(16).padStart(2,'0')).join('');count[h]=(count[h]||0)+1}
@@ -308,12 +308,23 @@ addEventListener('paste',e=>{const it=[...(e.clipboardData||{}).items||[]].find(
 
 /* ---------- プレビュー ---------- */
 const pv=$('#pv'),px=pv.getContext('2d');
+// ゲームと同じ縮め方（面積の平均、ふちの半透明はなくす）
+function shrink(src,w,h){
+  const sw=src.width,sh=src.height,s=src.getContext('2d').getImageData(0,0,sw,sh).data,o=canvasOf(w,h),ox=o.getContext('2d'),im=ox.createImageData(w,h),d=im.data,fx=sw/w,fy=sh/h;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    let r=0,g=0,b=0,a=0,t=0;const x0=x*fx,x1=x0+fx,y0=y*fy,y1=y0+fy;
+    for(let yy=Math.floor(y0);yy<Math.ceil(y1);yy++){const wy=Math.min(y1,yy+1)-Math.max(y0,yy);
+      for(let xx=Math.floor(x0);xx<Math.ceil(x1);xx++){const wx=Math.min(x1,xx+1)-Math.max(x0,xx),wgt=wx*wy,i=(yy*sw+xx)*4,al=s[i+3]*wgt;r+=s[i]*al;g+=s[i+1]*al;b+=s[i+2]*al;a+=al;t+=wgt}}
+    const k=(y*w+x)*4;if(a/t>110&&a>0){d[k]=r/a;d[k+1]=g/a;d[k+2]=b/a;d[k+3]=255}
+  }
+  ox.putImageData(im,0,0);return o;
+}
 function frameCanvas(k){const F=S.frames[k];if(!F)return null;const c=canvasOf(F.f.w,F.f.h);c.getContext('2d').putImageData(F.data,0,0);return c}
 function drawPreview(t){
   if(S.cur){
     const base=S.cur.split('.').slice(0,2).join('.'),suf=S.cur.split('.').pop();
     const walk=suf!=='pose'&&S.frames[base+'.1']?base+'.'+(Math.floor(t/125)%2):S.cur;
-    const c=frameCanvas(walk);
+    const sc0=S.frames[walk].f.s||1,c=sc0===1?frameCanvas(walk):shrink(frameCanvas(walk),Math.max(1,Math.round(S.frames[walk].f.w*sc0)),Math.max(1,Math.round(S.frames[walk].f.h*sc0)));   // ゲームと同じに縮める
     const sc=c.width>60?1:2,W2=Math.max(160,c.width*sc*2+40),H2=Math.max(96,c.height*sc+28);
     if(pv.width!==W2||pv.height!==H2){pv.width=W2;pv.height=H2}
     px.imageSmoothingEnabled=false;

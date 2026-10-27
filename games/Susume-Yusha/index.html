@@ -236,7 +236,7 @@ function scale2x(c){
   }
   ox.putImageData(im,0,0);return o;
 }
-function spr(rows,pal=PAL){const r=scale2x(shade(mk(rows,pal))),wr=white(r);return {r,l:flip(r),wr,wl:flip(wr),w:r.width,h:r.height}}
+function spr(rows,pal=PAL){const src=shade(mk(rows,pal)),r=scale2x(src),wr=white(r);return {r,l:flip(r),wr,wl:flip(wr),w:r.width,h:r.height,src}}   // src: 陰をつけた元のドット（シートの書き出しで使う）
 const mirror=rows=>rows.map(r=>r+[...r].reverse().join(''));
 
 // 人型: H かぶと/ぼうし, h 飾り, A 服, a ベルト, C マント, L くつ
@@ -554,7 +554,21 @@ buildArt();
 // sprites.png を描きかえて置くと、ゲームのキャラの絵がその絵になる（どの絵がどこにあるかは sprites.json）。
 // 読めないとき（ファイルがない・?nosheet を付けたとき）は、上のコードで描いた絵のまま。
 // 絵は右向きで描く（左向きと、当たったときの白い絵はゲームが作る）。足もとがセルの下の端、左右の真ん中がキャラの立つ位置
-const SHEET={loaded:false};
+const SHEET={loaded:false,weaponIn:new Set()};
+// 面積の平均で縮める（どのブラウザでも同じ結果）。ふちの半透明はなくして、ドットの輪郭をくっきりさせる
+function shrink(src,w,h){
+  const sw=src.width,sh=src.height,s=src.getContext('2d').getImageData(0,0,sw,sh).data,o=canvasOf(w,h),ox=o.getContext('2d'),im=ox.createImageData(w,h),d=im.data;
+  const fx=sw/w,fy=sh/h;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    let r=0,g=0,b=0,a=0,t=0;const x0=x*fx,x1=x0+fx,y0=y*fy,y1=y0+fy;
+    for(let yy=Math.floor(y0);yy<Math.ceil(y1);yy++){const wy=Math.min(y1,yy+1)-Math.max(y0,yy);
+      for(let xx=Math.floor(x0);xx<Math.ceil(x1);xx++){const wx=Math.min(x1,xx+1)-Math.max(x0,xx),wgt=wx*wy,i=(yy*sw+xx)*4,al=s[i+3]*wgt;
+        r+=s[i]*al;g+=s[i+1]*al;b+=s[i+2]*al;a+=al;t+=wgt}}
+    const k=(y*w+x)*4,A=a/t;
+    if(A>110&&a>0){d[k]=r/a;d[k+1]=g/a;d[k+2]=b/a;d[k+3]=255}
+  }
+  ox.putImageData(im,0,0);return o;
+}
 async function loadSheet(){
   if(/[?&]nosheet\b/.test(location.search))return;
   try{
@@ -563,12 +577,15 @@ async function loadSheet(){
     const meta=pv?pv.json:await (await fetch('sprites.json',{cache:'no-cache'})).json();
     const img=new Image();
     img.src=pv?pv.png:URL.createObjectURL(await (await fetch('sprites.png',{cache:'no-cache'})).blob());await img.decode();
-    const F=meta.frames,cut=k=>{const f=F[k];if(!f)return null;const c=canvasOf(f.w,f.h);c.getContext('2d').drawImage(img,f.x,f.y,f.w,f.h,0,0,f.w,f.h);return sprC(c)};
+    // セルは描くときの大きさ（キャラ 48、敵は2倍）。s（表示の倍率）に合わせて縮めて使う
+    const F=meta.frames,cut=k=>{const f=F[k];if(!f)return null;let c=canvasOf(f.w,f.h);c.getContext('2d').drawImage(img,f.x,f.y,f.w,f.h,0,0,f.w,f.h);
+      if(f.s&&f.s!==1)c=shrink(c,Math.max(1,Math.round(f.w*f.s)),Math.max(1,Math.round(f.h*f.s)));return sprC(c)};
     const set=(obj,key,name)=>{const s2=cut(name);if(s2)obj[key]=s2};
     for(const k in CLS){set(CLS[k].spr,0,`char.${k}.0`);set(CLS[k].spr,1,`char.${k}.1`);set(CLS[k],'pose',`char.${k}.pose`)}
     for(const k in MOB){set(MOB[k].spr,0,`mob.${k}.0`);set(MOB[k].spr,1,`mob.${k}.1`)}
     for(const k of ['slime','bat','skel','wiz'])SP[k].forEach((_,i)=>set(SP[k],i,`enemy.${k}.${i}`));
     SP.dragon.forEach((_,i)=>set(SP.dragon,i,`boss.dragon.${i}`));
+    SHEET.weaponIn=new Set(meta.weaponInSprite||[]);   // 絵に武器が入っているキャラは、ゲームが武器を重ねて描かない
     SHEET.loaded=true;
   }catch(e){}
 }
@@ -1185,6 +1202,7 @@ function drawSword(m){
     ctx.fillStyle='#fcfcfc';
     for(let t=-1.9;t<a;t+=.13){const tt=m.face>0?t:Math.PI-t;ctx.fillRect(Math.round(sx+Math.cos(tt)*27),Math.round(sy+Math.sin(tt)*27),3,2);ctx.fillStyle='#a8ecff';ctx.fillRect(Math.round(sx+Math.cos(tt)*24),Math.round(sy+Math.sin(tt)*24),2,1);ctx.fillStyle='#fcfcfc'}
   }
+  if(SHEET.weaponIn.has('char.'+m.cls))return;   // 絵に剣が入っているときは、振った軌跡だけ描く
   for(let i=0;i<len;i++){const x=Math.round(sx+Math.cos(ang)*i),y=Math.round(sy+Math.sin(ang)*i);ctx.fillStyle=i<5?(i===4?'#fff07a':'#c89020'):'#6c7480';ctx.fillRect(x,y,2,2);if(i>=5){ctx.fillStyle=i>len-3?'#ffffff':'#d8dee6';ctx.fillRect(x,y,1,1)}}
 }
 function drawMember(m){
@@ -1196,7 +1214,7 @@ function drawMember(m){
     const h=inHole(m.x,m.z,0)||HOLES[0];ctx.save();ctx.beginPath();ctx.rect(SX(h[0]),GY+Math.max(0,h[2])-40,h[1]-h[0],Math.min(H-GY,h[3])-Math.max(0,h[2])+40);ctx.clip();
     drawImg(img,m.x,m.z,m.h);ctx.restore();return;
   }
-  shadow(m.x,m.z,22);
+  shadow(m.x,m.z,Math.max(22,c.spr[0].w*.62));
   if(m===G.hero&&m.charge>.12){   // ため中: 光の粒が集まる。段ごとに 青→水色→金→赤 と色と数が変わる
     const lv=chargeLv(m.charge),w=WAVE[lv],cx=SX(m.x),cy=Math.round(GY+m.z-m.h-16),next=LV_T[lv]||LV_T[2],prev=LV_T[lv-1]||0;
     const prog=lv===maxLv()?1:(m.charge-prev)/(next-prev),n=8+lv*4;
