@@ -33,6 +33,9 @@
 - `sprites-guide.png` は名前と枠を書きこんだ見本（ゲームは読まない）
 - `tools/export-sprites.js`（`node games/Susume-Yusha/tools/export-sprites.js`）でコードの絵からシート・json・見本を作り直す。描きかえた `sprites.png` も上書きされるので注意
 - 木・岩・箱・背景はシートに入れていない（コードで描く）
+- 専用エディタ: `tools/ys_spriteSheetEditer/`（公開URL `https://yoshida-std.github.io/website/tools/ys_spriteSheetEditer/`）。ゲームのシートを読み、コマを選んで画像の入れかえ（ドロップ・貼りつけ・ファイル。足もと下・左右中央に合わせ、大きければ縮める）とドットの描きなおし（ペン・消しゴム・スポイト・塗りつぶし・左右反転・元に戻す）ができる。プレビューで歩きの2コマを右向き・左向きで動かす
+  - 「ゲームで ためす」: 描きかけのシートを localStorage（`susumeYusha.sheetPreview`）に入れ、ゲームを `?preview` で開く。ゲームはそのシートで動く（同じサイトの中だけ。保存はされない）
+  - 保存: sprites.png の書き出し、または GitHub の Contents API で直接コミット（リポジトリ・ブランチ・場所・トークンを入れる。トークンは覚えさせたときだけ localStorage の `susumeYusha.ghToken`）。セルの大きさは変えないので sprites.json はそのまま
 
 ## 仲間
 

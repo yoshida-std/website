@@ -558,9 +558,11 @@ const SHEET={loaded:false};
 async function loadSheet(){
   if(/[?&]nosheet\b/.test(location.search))return;
   try{
-    const meta=await (await fetch('sprites.json',{cache:'no-cache'})).json();
-    const blob=await (await fetch('sprites.png',{cache:'no-cache'})).blob();
-    const img=new Image();img.src=URL.createObjectURL(blob);await img.decode();
+    // ?preview: シートエディタで描きかえ中のシート（同じサイトの localStorage）で試す
+    let pv=null;if(/[?&]preview\b/.test(location.search))try{pv=JSON.parse(localStorage.getItem('susumeYusha.sheetPreview'))}catch(e){}
+    const meta=pv?pv.json:await (await fetch('sprites.json',{cache:'no-cache'})).json();
+    const img=new Image();
+    img.src=pv?pv.png:URL.createObjectURL(await (await fetch('sprites.png',{cache:'no-cache'})).blob());await img.decode();
     const F=meta.frames,cut=k=>{const f=F[k];if(!f)return null;const c=canvasOf(f.w,f.h);c.getContext('2d').drawImage(img,f.x,f.y,f.w,f.h,0,0,f.w,f.h);return sprC(c)};
     const set=(obj,key,name)=>{const s2=cut(name);if(s2)obj[key]=s2};
     for(const k in CLS){set(CLS[k].spr,0,`char.${k}.0`);set(CLS[k].spr,1,`char.${k}.1`);set(CLS[k],'pose',`char.${k}.pose`)}

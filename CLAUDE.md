@@ -4,7 +4,7 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 公開URL: `https://yoshida-std.github.io/website/`
 
 - `games/` … ブラウザゲーム（Aitsu-bom, Taijiros-yan, umi, Mogurush, judge2, Susume-Yusha）
-- `tools/` … 制作ツール（ys_*）
+- `tools/` … 制作ツール（ys_*。`ys_spriteSheetEditer` は すすめ！ゆうしゃ のキャラの絵のエディタ）
 - `common/line-promo/` … ゲームから LINE スタンプ／絵文字へ誘導する共通部品（下の「LINEスタンプ誘導」）
 - ビルドなし。各作品は基本的に `index.html` 1枚で完結する
 - ルート・`games/`・`tools/` に一覧ページはない（URL直打ちでアクセス）
