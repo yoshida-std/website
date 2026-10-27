@@ -550,6 +550,28 @@ function buildArt(){
 }
 buildArt();
 
+/* ---------- キャラのグラフィックシート（sprites.png / sprites.json） ---------- */
+// sprites.png を描きかえて置くと、ゲームのキャラの絵がその絵になる（どの絵がどこにあるかは sprites.json）。
+// 読めないとき（ファイルがない・?nosheet を付けたとき）は、上のコードで描いた絵のまま。
+// 絵は右向きで描く（左向きと、当たったときの白い絵はゲームが作る）。足もとがセルの下の端、左右の真ん中がキャラの立つ位置
+const SHEET={loaded:false};
+async function loadSheet(){
+  if(/[?&]nosheet\b/.test(location.search))return;
+  try{
+    const meta=await (await fetch('sprites.json',{cache:'no-cache'})).json();
+    const blob=await (await fetch('sprites.png',{cache:'no-cache'})).blob();
+    const img=new Image();img.src=URL.createObjectURL(blob);await img.decode();
+    const F=meta.frames,cut=k=>{const f=F[k];if(!f)return null;const c=canvasOf(f.w,f.h);c.getContext('2d').drawImage(img,f.x,f.y,f.w,f.h,0,0,f.w,f.h);return sprC(c)};
+    const set=(obj,key,name)=>{const s2=cut(name);if(s2)obj[key]=s2};
+    for(const k in CLS){set(CLS[k].spr,0,`char.${k}.0`);set(CLS[k].spr,1,`char.${k}.1`);set(CLS[k],'pose',`char.${k}.pose`)}
+    for(const k in MOB){set(MOB[k].spr,0,`mob.${k}.0`);set(MOB[k].spr,1,`mob.${k}.1`)}
+    for(const k of ['slime','bat','skel','wiz'])SP[k].forEach((_,i)=>set(SP[k],i,`enemy.${k}.${i}`));
+    SP.dragon.forEach((_,i)=>set(SP.dragon,i,`boss.dragon.${i}`));
+    SHEET.loaded=true;
+  }catch(e){}
+}
+loadSheet();
+
 // 3x5 の数字
 const DIG=['111101101101111','010110010010111','111001111100111','111001111001111','101101111001001','111100111001111','111100111101111','111001001001001','111101111101111','111101111001111'];
 function digits(n,x,y,col,k=2){
