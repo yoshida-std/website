@@ -740,7 +740,7 @@ function updNpcs(){
     }else if(n.state==='captive'){
       if(n.guards.every(e=>e.dead)){
         n.state='joined';const a=member(n.cls,n.x,n.z);a.face=1;G.allies.push(a);
-        say(`${CLS[n.cls].name}を たすけた！ なかまに くわわった！`);sfx('join');addFx(n.x,n.z,20,'#fcd800',14,60);
+        say(`${CLS[n.cls].name}を たすけた！ なかまに くわわった！`);say(`ためぎりが ${maxLv()}だんかい まで できるように なった！`);sfx('join');addFx(n.x,n.z,20,'#fcd800',14,60);
       }else if(n.x<G.camX-14){
         n.state='lost';n.guards.forEach(e=>{e.guard=null});
         say(`${CLS[n.cls].name}を たすけられなかった…`);sfx('down');
@@ -887,7 +887,8 @@ const WAVE=[   // 段ごとの 大きさ・ダメージ・速さ・射程(秒)�
   {r:18,dmg:42,spd:270,life:1.2,c1:'#ffb820',c2:'#ffe878'},
   {r:25,dmg:72,spd:285,life:1.4,c1:'#ff5020',c2:'#ffc080'},
 ];
-const chargeLv=t=>t>=LV_T[2]?3:t>=LV_T[1]?2:t>=LV_T[0]?1:0;
+const chargeLv=t=>Math.min(t>=LV_T[2]?3:t>=LV_T[1]?2:t>=LV_T[0]?1:0,maxLv());
+const maxLv=()=>Math.min(3,G.allies.length);   // ためられる段の上限 = 仲間の数
 function castSlash(p,lv){
   if(p.slashCD>0&&!lv)return;p.slashCD=.35;
   p.swing=.2;p.swCD=Math.max(p.swCD,.22);
@@ -928,7 +929,7 @@ function updHero(dt){
   moveBody(p,vx*dt,vz*dt);
   p.x=clamp(p.x,G.camX+16,G.camX+W-16);p.z=clamp(p.z,2,DEPTH-2);   // 左端に押されたら障害物もすり抜けて押し出される
   if(input.charging){
-    p.charge=Math.min(LV_T[2]+.2,(p.charge||0)+dt);const lv=chargeLv(p.charge);
+    p.charge=Math.min((LV_T[maxLv()-1]||0)+.2,(p.charge||0)+dt);const lv=chargeLv(p.charge);
     if(lv>(p.lv||0)){p.lv=lv;const n=[0,76,79,84][lv];tone(midi(n+12),.12,'square',.1);tone(midi(n+19),.18,'triangle',.08,0,.06)}   // 段が上がるたびに音
   }
   if(input.release){input.release=false;castSlash(p,chargeLv(p.charge||0));p.charge=0;p.lv=0}
@@ -1097,7 +1098,7 @@ function drawMember(m){
   shadow(m.x,m.z,22);
   if(m===G.hero&&m.charge>.12){   // ため中: 光の粒が集まる。段ごとに 青→水色→金→赤 と色と数が変わる
     const lv=chargeLv(m.charge),w=WAVE[lv],cx=SX(m.x),cy=Math.round(GY+m.z-m.h-16),next=LV_T[lv]||LV_T[2],prev=LV_T[lv-1]||0;
-    const prog=lv===3?1:(m.charge-prev)/(next-prev),n=8+lv*4;
+    const prog=lv===maxLv()?1:(m.charge-prev)/(next-prev),n=8+lv*4;
     for(let i=0;i<n;i++){const a=G.t*(6+lv*2)+i*Math.PI*2/n,rr=(13+lv*3)+(1-prog)*9+Math.sin(G.t*20+i)*2;
       ctx.fillStyle=i%2?w.c2:w.c1;ctx.fillRect(Math.round(cx+Math.cos(a)*rr),Math.round(cy+Math.sin(a)*rr*1.2),2,2)}
     if(lv&&Math.floor(G.t*(10+lv*4))%2){ctx.fillStyle=['','rgba(48,216,232,.28)','rgba(255,216,74,.32)','rgba(255,80,32,.36)'][lv];ctx.beginPath();ctx.arc(cx,cy,12+lv*3,0,Math.PI*2);ctx.fill()}
@@ -1215,7 +1216,7 @@ function showTitle(){
   showOverlay(`<p class="tag">PROTOTYPE</p><h1>すすめ！<br>ゆうしゃ</h1>
   <ul class="rules">
     <li><span>画面は <em>どんどん右へ</em> すすむ。左の <em>円盤</em> で上下左右に動く</span></li>
-    <li><span>円盤の まんなかを <em>タップ</em> で <em>斬撃</em> を とばす。<em>長押し</em> で 3だんかい ためて 大きな 斬撃（敵の たまも けせる）。穴や岩は 自動で ジャンプ</span></li>
+    <li><span>円盤の まんなかを <em>タップ</em> で <em>斬撃</em> を とばす。<em>長押し</em> で ためて 大きな 斬撃（敵の たまも けせる）。ためられる だんかいは <em>なかまの かず</em> まで（さいだい3）。穴や岩は 自動で ジャンプ</span></li>
     <li><span>敵に近づくと <em>剣を振って薙ぎ払う</em>。ただし <em class="m">魔法は はじけない</em> のでよける</span></li>
     <li><span>とちゅうで <em>仲間</em> に出会う（最大4人）。仲間もHPがなくなると いなくなる</span></li>
     <li><span>ゆうしゃのHPがなくなると ゲームオーバー。さいごに まつ ボスを たおせ！</span></li>
