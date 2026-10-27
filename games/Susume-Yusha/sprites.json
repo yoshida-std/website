@@ -233,22 +233,40 @@
    "h": 60,
    "s": 0.5
   },
-  "boss.dragon.0": {
+  "boss.dragon.stance": {
    "x": 6,
    "y": 890,
-   "w": 216,
-   "h": 196,
+   "w": 242,
+   "h": 224,
    "s": 0.5
   },
-  "boss.dragon.1": {
-   "x": 228,
+  "boss.dragon.roar": {
+   "x": 254,
    "y": 890,
-   "w": 216,
-   "h": 196,
+   "w": 242,
+   "h": 224,
+   "s": 0.5
+  },
+  "boss.dragon.claw": {
+   "x": 502,
+   "y": 890,
+   "w": 242,
+   "h": 224,
+   "s": 0.5
+  },
+  "boss.dragon.flap": {
+   "x": 750,
+   "y": 890,
+   "w": 242,
+   "h": 224,
    "s": 0.5
   }
  },
  "custom": [
+  "boss.dragon.claw",
+  "boss.dragon.flap",
+  "boss.dragon.roar",
+  "boss.dragon.stance",
   "char.hero.0",
   "char.hero.1",
   "char.hero.pose"
