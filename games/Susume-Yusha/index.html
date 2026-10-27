@@ -707,7 +707,7 @@ const OBS=[['rock',375,30],['tree',450,8],['tree',705,14],['rock',810,72],['rock
   ['rock',3420,70],['tree',3465,40],['crate',3700,30],['rock',3720,18],['tree',3975,70],['tree',4180,16]].map(([t,x,z])=>({t,x,z,...OB_DEF[t]}));
 const ALLY_SPOTS=[{cls:'warrior',x:960,z:50},{cls:'mage',x:1875,z:36},{cls:'priest',x:2970,z:58}];
 const MOB_SPOTS=[{cls:'town',x:720,z:72},{cls:'child',x:1350,z:22},{cls:'woman',x:1695,z:62},{cls:'merchant',x:2370,z:60},{cls:'soldier',x:2700,z:42},{cls:'princess',x:3360,z:46},{cls:'king',x:3750,z:62},{cls:'aitsu',x:2010,z:30,rare:true}];
-const AITSU_RATE=.1;   // 隠れキャラ あいつ が出る確率（URL に ?aitsu で必ず出る）
+const AITSU_RATE=.2;   // 隠れキャラ あいつ が出る確率（URL に ?aitsu で必ず出る）
 const SLOTS=[{dx:-24,dz:-18},{dx:-24,dz:18},{dx:-44,dz:0}];
 
 function inHole(x,z,m=3){for(const h of HOLES)if(x>h[0]+m&&x<h[1]-m&&z>h[2]+m&&z<h[3]-m)return h;return null}
