@@ -3,7 +3,7 @@
 スーファミRPG風の絵で、勇者が右へ進む横スクロールアクション（プロトタイプ）。公開URL: `https://yoshida-std.github.io/website/games/Susume-Yusha/`
 リポジトリ全体の作業ルール（ブランチ・PR・確認方法・コピーライト表記）はルートの `CLAUDE.md` を参照。
 
-プッシュ前の確認用 Artifact: `https://claude.ai/artifact/KEX8vTqyZ5X9F5ju5pqruJ`（変更のたびにこの URL を更新する。`index.html` と、`files` で `sprites.png`・`sprites.json` を同じパスで載せる。音は WebAudio で鳴らすので音声ファイルはない）
+プッシュ前の確認用 Artifact: `https://claude.ai/artifact/KEX8vTqyZ5X9F5ju5pqruJ`（変更のたびにこの URL を更新する。`index.html` と、`files` で `sprites.png`・`sprites.json`・`sound/bgm_field.mp3`・`sound/bgm_boss.mp3` を同じパスで載せる）
 
 ## 概要と操作
 
@@ -23,6 +23,12 @@
 - 勇者の HP が 0 でゲームオーバー
 - 道の途中で町の人（`MOB`: まちびと・こども・むすめ・しょうにん・へいし・おひめさま・おうさま。`MOB_SPOTS`）も魔物に襲われている（仲間と同じ `updNpcs`、`n.mob`）。助けると `G.followers` に入り、画面の左の最後列をスクロールに合わせて歩く（`updFollowers`）。ボス戦の間は画面の外へかくれ、勝ったら入ってきて勇者たちの後ろに並び、喜んで跳ねる。クリア画面に「たすけた ひと」を出す
 - ボスをたおすと、勇者と仲間が順に小さく跳んで、正面を向いて剣や杖をかかげる決めポーズ（`CLS[].pose`。`POSE_HEAD`/`POSE_SWORD`/`POSE_STAFF`/`POSE_BODY` を重ねて作る）。勇者を真ん中に、画面の中央に横一列に並ぶ。約3秒後（町の人がいれば4秒後）にクリア画面
+
+## 音
+
+- BGM は音声ファイル: `sound/bgm_field.mp3`（道中、BGM031「力を出しきれ」32秒）と `sound/bgm_boss.mp3`（ボス、BGM084「燃やしつくすぜ」41.14秒）。ユーザーがくれた WAV を ffmpeg で 128kbps の MP3 にしたもの
+- WebAudio でくり返し流す（`BGM_FILES`, `bgmFile`）。MP3 の頭の無音を飛ばし、もとの WAV の長さでくり返す（`loopPoints`）。遊んでいる・音 ON・画面が見えているときだけ流し（`syncBgm` を 50ms ごと）、一時停止では止めて続きから。ボスをたおしたら止める（`stopBgm`）
+- 音声ファイルを読めないときは、前からある合成の BGM（`SONGS`）を鳴らす。効果音は合成（`SFX`）
 
 ## キャラのグラフィックシート
 

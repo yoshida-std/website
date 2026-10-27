@@ -143,6 +143,7 @@ function initAudio(){
       master=ac.createGain();master.gain.value=.22;master.connect(ac.destination);
       noiseBuf=ac.createBuffer(1,ac.sampleRate*.3,ac.sampleRate);
       const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+      decodeBgm();
     }
     if(ac.state==='suspended')ac.resume();
   }catch(e){}
@@ -185,9 +186,46 @@ const SONGS={
   boss:{dt:.16,mel:[69,72,76,72,75,72,76,0,69,72,77,76,75,0,71,0,69,72,76,81,80,76,77,0,74,77,76,75,76,0,64,0],
     bass:[45,57,45,57,44,56,44,56,43,55,43,55,44,56,40,52]},
 };
-let bgm=null;
-function playBgm(name){bgm={s:SONGS[name],step:0,next:ac?ac.currentTime+.1:0}}
+let bgm=null,bgmWant=null;   // bgm: 合成の BGM の進み具合、bgmWant: 流したい曲の名前
+function playBgm(name){bgm={s:SONGS[name],step:0,next:ac?ac.currentTime+.1:0};if(bgmWant!==name){stopFile(false);bgmFile.offset=0}bgmWant=name;syncBgm()}
+function stopBgm(){bgm=null;bgmWant=null;stopFile(false)}
+// BGM の音声ファイル（sound/*.mp3）。読めたらこちらを流し、読めないときは合成の BGM のまま
+//   field: BGM031「力を出しきれ」（道中）、boss: BGM084「燃やしつくすぜ」（ボス）。len はもとの WAV の長さ（くり返す長さ）
+const BGM_FILES={field:{src:'sound/bgm_field.mp3',len:1411200/44100},boss:{src:'sound/bgm_boss.mp3',len:1814398/44100}};
+const bgmFile={raw:{},buf:{},src:null,gain:null,offset:0,startAt:0,ls:0,le:0};
+for(const k in BGM_FILES)fetch(BGM_FILES[k].src).then(r=>r.ok?r.arrayBuffer():null).then(a=>{if(a){bgmFile.raw[k]=a;decodeBgm()}}).catch(()=>{});
+function decodeBgm(){
+  if(!ac)return;
+  for(const k in bgmFile.raw){const a=bgmFile.raw[k];delete bgmFile.raw[k];
+    new Promise((ok,ng)=>ac.decodeAudioData(a,ok,ng)).then(b=>{bgmFile.buf[k]=b;syncBgm()}).catch(()=>{})}
+}
+// MP3 は頭に短い無音が入ることがある。無音のあとから、もとの長さぶんをくり返す（つなぎ目に間ができないように）
+function loopPoints(b,len){
+  const d=b.getChannelData(0),max=Math.min(d.length,Math.floor(b.sampleRate*.1));let i=0;
+  while(i<max&&Math.abs(d[i])<.003)i++;if(i>=max)i=0;
+  const ls=i/b.sampleRate;return [ls,Math.min(b.duration,ls+len)];
+}
+function startFile(){
+  const b=bgmFile.buf[bgmWant],[ls,le]=loopPoints(b,BGM_FILES[bgmWant].len);
+  if(!bgmFile.gain){bgmFile.gain=ac.createGain();bgmFile.gain.gain.value=.5;bgmFile.gain.connect(ac.destination)}
+  const src=ac.createBufferSource();src.buffer=b;src.loop=true;src.loopStart=ls;src.loopEnd=le;src.connect(bgmFile.gain);
+  const off=bgmFile.offset%(le-ls);src.start(0,ls+off);
+  Object.assign(bgmFile,{src,ls,le,startAt:ac.currentTime-off});
+}
+function stopFile(keep){
+  const src=bgmFile.src;if(!src)return;
+  if(keep)bgmFile.offset=(ac.currentTime-bgmFile.startAt)%(bgmFile.le-bgmFile.ls);   // 一時停止のときは続きから
+  try{src.stop()}catch(e){}src.disconnect();bgmFile.src=null;
+}
+// 流すかどうかを、いまの状態（遊んでいる・音 ON・画面が見えている）に合わせる
+function syncBgm(){
+  if(!ac)return;
+  const on=!!(bgmWant&&bgmFile.buf[bgmWant]&&G&&G.state==='play'&&!muted&&!document.hidden);
+  if(on&&!bgmFile.src)startFile();else if(!on&&bgmFile.src)stopFile(true);
+}
 setInterval(()=>{
+  syncBgm();
+  if(bgmWant&&bgmFile.buf[bgmWant])return;   // 音声ファイルを流しているときは、合成の BGM は鳴らさない
   if(!ac||!bgm||muted||!G||G.state!=='play')return;
   if(bgm.next<ac.currentTime)bgm.next=ac.currentTime+.05;
   while(bgm.next<ac.currentTime+.25){
@@ -642,7 +680,7 @@ function newGame(){
   G.hero.safe={x:40,z:46};
   msgQ.length=0;msgT=0;$('#msg').hidden=true;
   say('ゆうしゃは たびだった！ みぎへ すすめ！');
-  playBgm('field');
+  stopBgm();playBgm('field');
 }
 
 /* ---------- メッセージ窓 ---------- */
@@ -769,7 +807,7 @@ function hitBoss(base,dir=-1,slash=false){
   const b=G.boss;if(!b||b.hp<=0||b.inv>0||b.state==='enter')return;
   const [d,crit]=roll(base);
   b.hp-=d;b.inv=.12;b.flash=.1;hitFx(b.x-24,b.z,b.h+50,dir,d,crit,slash);sfx('hit');
-  if(b.hp<=0){b.hp=0;b.state='die';b.t=0;G.enemies.forEach(e=>{e.dead=true});G.shots=G.shots.filter(s=>s.friend);playBgm('field');bgm=null}
+  if(b.hp<=0){b.hp=0;b.state='die';b.t=0;G.enemies.forEach(e=>{e.dead=true});G.shots=G.shots.filter(s=>s.friend);stopBgm()}
 }
 // 剣: 近くに敵がいると自動で振って、前方の敵をまとめて薙ぎ払う
 function trySwing(m,range,dmg){
