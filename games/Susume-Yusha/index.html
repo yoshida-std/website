@@ -270,6 +270,30 @@ for(const k in CLS){
   const item=c.head==='helm'?POSE_SWORD:POSE_STAFF,head=[...Array(6).fill('................'),...POSE_HEAD[c.head]];
   c.pose=spr([...head.map((r,i)=>[...r].map((ch,j)=>item[i]&&item[i][j]!=='.'?item[i][j]:ch).join('')),...POSE_BODY],pal);
 }
+// 町の人（助けると後ろをついてくる）。頭・体・足を組み合わせる。こどもは小さい
+const MOB_HEADS={
+  cap:["................","....kkkkk.......","...kHHHHHk......","..kHHHHHHHHk....","..kksssksk......","...kssssssk.....","....kkkkkk......"],
+  hair:["....kkkkk.......","...kHHHHHk......","..kHHHHHHHk.....","..kHHssksk......","..kHssssssk.....","..kHHkkkkk......","..kHHk.........."],
+  crownHair:["....kykyk.......","...kyyyyyk......","..kHHHHHHk......","..kHHssksk......","..kHssssssk.....","..kHHkkkkk......","..kHHk.........."],
+  crownBeard:["....kykyk.......","...kyyyyyk......","..kHHHHHHk......","..kHsssksk......","..kHwwwwwwk.....","...kwwwwwk......","....kkkkk......."],
+};
+const SKIRT=[["...kAAAAk.......","..kAAAAAAk......","..kAAAAAAAk.....","..kkkkkkkkk....."],["...kAAAAk.......","...kAAAAAk......","..kAAAAAAk......","..kkkkkkkk......"]];
+const KID=[["....kkkk........","...kHHHHk.......","..kHHHHHHk......","..kksskssk......","...kssssk.......","....kkkk........","...kAAAk........","..kAaaAsk.......","...kAAAk........"],
+  [["...kLkLk........","...kLkLk........","..kkk.kkk......."],["....kLLk........","....kLLk........","...kkkkk........"]]];
+const MOB={
+  town:{name:'まちびと',head:'cap',legs:'pants',c:{H:'n',h:'N',A:'e',a:'N',C:'E',L:'N'}},
+  child:{name:'こども',kid:true,c:{H:'o',h:'y',A:'r',a:'y',C:'r',L:'N'}},
+  woman:{name:'むすめ',head:'hair',legs:'skirt',c:{H:'N',h:'n',A:'p',a:'w',C:'p',L:'R'}},
+  merchant:{name:'しょうにん',head:'cap',legs:'pants',c:{H:'y',h:'o',A:'b',a:'n',C:'n',L:'N'}},
+  soldier:{name:'へいし',head:'helm',legs:'pants',spear:true,c:{H:'g',h:'G',A:'G',a:'y',C:'b',L:'G'}},
+  princess:{name:'おひめさま',head:'crownHair',legs:'skirt',c:{H:'o',h:'y',A:'p',a:'w',C:'p',L:'p'}},
+  king:{name:'おうさま',head:'crownBeard',legs:'skirt',c:{H:'w',h:'y',A:'R',a:'y',C:'R',L:'R'}},
+};
+for(const k in MOB){
+  const m=MOB[k],pal={...PAL};for(const ch in m.c)pal[ch]=PAL[m.c[ch]];
+  m.spr=m.kid?KID[1].map(l=>spr([...KID[0],...l],pal))
+    :(m.legs==='skirt'?SKIRT:LEGS).map(l=>spr([...(MOB_HEADS[m.head]||HEADS[m.head]),...BODY,...l],pal));
+}
 const SP={
   bat:[spr(mirror(["k.......","kk......","kvk....k","kvvk..kv",".kvvkkvv",".kvvvvvv","..kvvvwk","...kvvvv","....kkvv",".......k"])),
        spr(mirror(["........","......kk","....kkvv","..kkvvvv",".kvvvvvw","kvvkvvvv","kvk.kkvv","kk....kv","k......k","........"]))],
@@ -548,6 +572,8 @@ const OBS=[['rock',250,30],['tree',300,8],['tree',470,14],['rock',540,72],['rock
   ['tree',1150,84],['rock',1220,40],['crate',1300,64],['tree',1560,30],['rock',1620,76],['crate',1810,20],['tree',2000,12],
   ['rock',2060,52],['crate',2270,74],['tree',2310,40],['rock',2480,18],['tree',2650,70]].map(([t,x,z])=>({t,x,z,...OB_DEF[t]}));
 const ALLY_SPOTS=[{cls:'warrior',x:640,z:50},{cls:'mage',x:1250,z:36},{cls:'priest',x:1980,z:58}];
+const MOB_SPOTS=[{cls:'town',x:480,z:72},{cls:'child',x:900,z:22},{cls:'woman',x:1130,z:62},{cls:'merchant',x:1580,z:60},
+  {cls:'soldier',x:1800,z:42},{cls:'princess',x:2240,z:46},{cls:'king',x:2500,z:62}];
 const SLOTS=[{dx:-24,dz:-18},{dx:-24,dz:18},{dx:-44,dz:0}];
 
 function inHole(x,z,m=3){for(const h of HOLES)if(x>h[0]+m&&x<h[1]-m&&z>h[2]+m&&z<h[3]-m)return h;return null}
@@ -569,7 +595,7 @@ let G=null;
 function member(cls,x,z){const c=CLS[cls];return {cls,x,z,h:0,vh:0,face:1,hp:c.hp,max:c.hp,inv:0,swing:0,swCD:0,atkCD:1,walk:0,flash:0,kx:0,kz:0,onG:true,fall:0,jd:-1}}
 function newGame(){
   G={state:'play',t:0,camX:0,shake:0,hero:member('hero',-24,46),intro:true,allies:[],enemies:[],shots:[],fx:[],
-    npcs:ALLY_SPOTS.map(a=>({...a,state:'wait',guards:[],hurt:0})),hitstop:0,flyers:[],nextSpawn:300,spawnT:4,boss:null,locked:false,
+    npcs:[...ALLY_SPOTS.map(a=>({...a,state:'wait',guards:[],hurt:0})),...MOB_SPOTS.map(a=>({...a,mob:true,state:'wait',guards:[],hurt:0}))],followers:[],hitstop:0,flyers:[],nextSpawn:300,spawnT:4,boss:null,locked:false,
     kills:0,wizIntro:false,magicTold:false,overT:0,clearT:0};
   G.hero.safe={x:40,z:46};
   msgQ.length=0;msgT=0;$('#msg').hidden=true;
@@ -739,7 +765,9 @@ function spawnEnemy(type,x,z,force=false){
   return G.enemies[G.enemies.length-1];
 }
 // 道の仲間: 画面に入る前に魔物の群れが取りかこむ。全部たおすと助けられる。画面の左へ流れたら助けられない
-const GUARDS={warrior:['slime','slime','slime','skel'],mage:['skel','skel','bat','bat'],priest:['skel','wiz','skel','bat','bat']};
+const GUARDS={warrior:['slime','slime','slime','skel'],mage:['skel','skel','bat','bat'],priest:['skel','wiz','skel','bat','bat'],
+  town:['slime','slime'],child:['bat','slime'],woman:['skel','slime'],merchant:['slime','slime','bat'],soldier:['skel','skel'],princess:['skel','wiz','bat'],king:['skel','skel','wiz']};
+const npcName=n=>(n.mob?MOB:CLS)[n.cls].name;
 function updNpcs(){
   for(const n of G.npcs){
     if(n.state==='wait'&&n.x<G.camX+W+70){
@@ -747,14 +775,19 @@ function updNpcs(){
       const list=GUARDS[n.cls];
       list.forEach((t,i)=>{const a=i/list.length*Math.PI*2+.4,e=spawnEnemy(t,n.x+Math.cos(a)*34,clamp(n.z+Math.sin(a)*18,4,DEPTH-4),true);
         e.guard=n;e.ang=a;n.guards.push(e)});
-      say(`${CLS[n.cls].name}が まものに おそわれている！`);
+      say(`${npcName(n)}が まものに おそわれている！`);
     }else if(n.state==='captive'){
       if(n.guards.every(e=>e.dead)){
+        if(n.mob){   // 町の人: 後ろをついてくる
+          n.state='joined';G.followers.push({cls:n.cls,x:n.x,z:n.z,h:0,walk:0,face:1});
+          say(`${npcName(n)}を たすけた！`);tone(midi(79),.1,'square',.12);tone(midi(84),.18,'square',.12,0,.1);addFx(n.x,n.z,20,'#fcd800',10,50);
+          continue;
+        }
         n.state='joined';const a=member(n.cls,n.x,n.z);a.face=1;G.allies.push(a);
         say(`${CLS[n.cls].name}を たすけた！ なかまに くわわった！`);say(`ためぎりが ${maxLv()}だんかい まで できるように なった！`);sfx('join');addFx(n.x,n.z,20,'#fcd800',14,60);
       }else if(n.x<G.camX-14){
         n.state='lost';n.guards.forEach(e=>{e.guard=null});
-        say(`${CLS[n.cls].name}を たすけられなかった…`);sfx('down');
+        say(`${npcName(n)}を たすけられなかった…`);sfx('down');
       }
     }
   }
@@ -825,6 +858,28 @@ function updEnemy(e,dt){
 }
 
 /* ---------- ボス ---------- */
+// 助けた町の人: 画面の左の最後列を、スクロールに合わせて歩く。ボス戦では画面の外へかくれ、勝ったら入ってきて後ろに並ぶ
+function updFollowers(dt){
+  const n=G.followers.length,won=G.state==='won',hide=G.locked&&!won;
+  G.followers.forEach((f,i)=>{
+    let tx,tz,sp;
+    if(won){tx=G.lineX-17+(i-(n-1)/2)*22;tz=clamp(G.lineZ-22,2,DEPTH-2);sp=110}
+    else if(hide){tx=G.camX-40;tz=f.z;sp=90}
+    else{tx=G.camX+14+(n-1-i)*15;tz=clamp(G.hero.z+((i%3)-1)*16,4,DEPTH-4);sp=SCROLL+90}
+    const dx=tx-f.x,dz=tz-f.z,mx=clamp(dx,-sp*dt,sp*dt),mz=clamp(dz,-50*dt,50*dt);
+    f.x+=mx;f.z+=mz;
+    if(Math.abs(mx)+Math.abs(mz)>.05||(!hide&&!won))f.walk+=dt;
+    f.face=dx<-2?-1:1;
+    f.h=inHole(f.x,f.z)?Math.abs(Math.sin(G.t*9))*10:0;   // 穴の上は跳ねてわたる
+    if(won&&Math.abs(dx)<2&&G.clearT>1.2){f.face=1;f.h=Math.max(0,Math.sin(G.clearT*7+i*1.3))*8}   // 勝ったら喜んで跳ねる
+  });
+}
+function drawFollower(f){
+  const m=MOB[f.cls];if(f.x<CAM-30)return;
+  const fr=m.spr[Math.floor(f.walk*8)%2];
+  shadow(f.x,f.z,m.kid?16:22);drawImg(f.face<0?fr.l:fr.r,f.x,f.z,f.h);
+  if(m.spear){const sx=SX(f.x)+f.face*9,sy=Math.round(GY+f.z-f.h);ctx.fillStyle='#8a5a28';ctx.fillRect(sx,sy-34,2,30);ctx.fillStyle='#d8dee6';ctx.fillRect(sx-1,sy-40,4,6);ctx.fillStyle='#ffffff';ctx.fillRect(sx,sy-40,1,4)}
+}
 function startBoss(){
   G.locked=true;
   G.boss={x:END+70,z:46,h:0,hp:460,max:460,w:34,ht:88,state:'enter',t:0,inv:0,flash:0,next:0,atk:0,home:END-64,cd:0};
@@ -1032,11 +1087,12 @@ function update(dt){
   if(G.state==='over'){G.overT+=dt;if(G.overT>1.6&&!overlayShown)showOver();return}
   if(G.state==='won'){   // 勝利: みんなで小さく跳んで、正面を向いて決めポーズ
     G.clearT+=dt;
-    const lx=clamp(G.hero.x,G.camX+70,G.camX+W-70),lz=clamp(G.hero.z,20,DEPTH-20),OFF=[0,-34,34,-68];   // 勇者を真ん中に横一列に並ぶ
+    const lx=G.camX+W/2+17,lz=clamp(G.hero.z,30,DEPTH-20),OFF=[0,-34,34,-68];   // 勇者を真ん中に横一列に並ぶ（画面の真ん中）
+    G.lineX=lx;G.lineZ=lz;updFollowers(dt);
     party().forEach((m,i)=>{const k=Math.min(1,dt*5);m.x+=(lx+OFF[i]-m.x)*k;m.z+=(lz-m.z)*k;m.walk+=dt});
     party().forEach((m,i)=>{const t=G.clearT-.15*i;m.h=t>0&&t<.45?Math.sin(t/.45*Math.PI)*22:0;
       if(Math.random()<dt*3)G.fx.push({k:'twinkle',x:m.x+rnd(-16,16),z:m.z,h:rnd(20,48),life:.35,max:.35,vx:0,vh:0})});
-    if(G.clearT>3.2&&!overlayShown)showClear();return}
+    if(G.clearT>(G.followers.length?4:3.2)&&!overlayShown)showClear();return}
   if(G.state!=='play')return;
   updHero(dt);
   G.allies.forEach((a,i)=>updAlly(a,i,dt));
@@ -1045,6 +1101,7 @@ function update(dt){
   G.enemies.forEach(e=>updEnemy(e,dt));
   G.enemies=G.enemies.filter(e=>!e.dead);
   updFlyers(dt);
+  updFollowers(dt);
   if(G.boss)updBoss(dt);
   updShots(dt);
 }
@@ -1174,9 +1231,10 @@ function draw(){
   const L=[];
   for(const o of OBS)if(o.x>CAM-20&&o.x<CAM+W+20)L.push({z:o.z+o.d,f:()=>{shadow(o.x,o.z,o.t==='tree'?30:o.w*2+2);drawImg(SP[o.t].r,o.x,o.z+o.d-1,0)}});
   for(const n of G.npcs)if((n.state==='wait'||n.state==='captive')&&n.x>CAM-30&&n.x<CAM+W+30)L.push({z:n.z,f:()=>{
-    n.hurt-=1/60;const sp=CLS[n.cls].spr[0],shk=Math.floor(G.t*24)%2?1:-1;
+    n.hurt-=1/60;const sp=(n.mob?MOB:CLS)[n.cls].spr[0],shk=Math.floor(G.t*24)%2?1:-1;
     shadow(n.x,n.z,22);drawImg(n.hurt>0?sp.wl:sp.l,n.x+shk,n.z,0);
     const by=Math.round(GY+n.z-38+Math.sin(G.t*5)*2),bx=SX(n.x);ctx.fillStyle='#303850';ctx.fillRect(bx-5,by-13,11,14);ctx.fillStyle='#fcfcfc';ctx.fillRect(bx-4,by-12,9,12);ctx.fillStyle='#d82800';ctx.fillRect(bx-1,by-10,3,6);ctx.fillRect(bx-1,by-3,3,2)}});
+  G.followers.forEach(f=>L.push({z:f.z,f:()=>drawFollower(f)}));
   L.push({z:G.hero.z+.1,f:()=>drawMember(G.hero)});
   G.allies.forEach(a=>L.push({z:a.z,f:()=>drawMember(a)}));
   G.enemies.forEach(e=>L.push({z:e.z,f:()=>drawEnemy(e)}));
@@ -1237,7 +1295,8 @@ function showTitle(){
     <li><span>画面は <em>どんどん右へ</em> すすむ。左の <em>円盤</em> で上下左右に動く</span></li>
     <li><span>円盤の まんなかを <em>タップ</em> で <em>斬撃</em> を とばす。<em>長押し</em> で ためて 大きな 斬撃（敵の たまも けせる）。ためられる だんかいは <em>なかまの かず</em> まで（さいだい3）。穴や岩は 自動で ジャンプ</span></li>
     <li><span>敵に近づくと <em>剣を振って薙ぎ払う</em>。ただし <em class="m">魔法は はじけない</em> のでよける</span></li>
-    <li><span>とちゅうで <em>仲間</em> に出会う（最大4人）。仲間もHPがなくなると いなくなる</span></li>
+    <li><span>まものに おそわれている <em>仲間</em> を たすけよう（最大4人）。仲間もHPがなくなると いなくなる</span></li>
+    <li><span>おそわれている <em>町の人</em> も たすけると、うしろを ついてくる</span></li>
     <li><span>ゆうしゃのHPがなくなると ゲームオーバー。さいごに まつ ボスを たおせ！</span></li>
   </ul>
   <button class="menuBtn" data-act="start">はじめる</button><p class="pc">PC: 矢印/WASD で移動、スペースで 斬撃（長押しで ため）</p>${COPY}`);
@@ -1250,7 +1309,7 @@ function showOver(){
 function showClear(){
   const t=Math.floor(G.t);
   showOverlay(`<h2>ステージ クリア！</h2><p>ほのおの ドラゴンを たおした！</p>
-  <div class="stats"><span>タイム</span><span>${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}</span><span>たおした てき</span><span>${G.kills}</span><span>のこった なかま</span><span>${G.allies.length} / 3</span></div>
+  <div class="stats"><span>タイム</span><span>${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}</span><span>たおした てき</span><span>${G.kills}</span><span>のこった なかま</span><span>${G.allies.length} / 3</span><span>たすけた ひと</span><span>${G.followers.length} / ${MOB_SPOTS.length}</span></div>
   <button class="menuBtn" data-act="start">もういちど</button><button class="menuBtn sub" data-act="title">タイトルへ</button>${COPY}`);
 }
 function togglePause(){
