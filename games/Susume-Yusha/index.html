@@ -89,6 +89,14 @@ canvas{touch-action:none;display:block}
   background:repeating-linear-gradient(92deg,#0000 0 .5em,#0001 .5em .6em),linear-gradient(#a8703e,#7c4c26 55%,#5c3618);box-shadow:inset 0 0 0 .1em #c99060,inset 0 -.16em 0 #3e2410,0 .14em 0 #1e1004}
 .cBtn:active{transform:translateY(.08em)}
 .cBtn:focus-visible{outline:.12em solid #fff;outline-offset:.15em}
+#clearView.over{background:linear-gradient(rgba(20,0,30,.35),rgba(20,0,30,.05) 40%,rgba(20,0,30,.05) 68%,rgba(20,0,30,.4))}
+.cTitle.ov::before{color:#1e0a14;-webkit-text-stroke:.3em #1e0a14;text-shadow:0 .1em 0 #0a0408}
+.cTitle.ov::after{color:#b8bcc8;-webkit-text-stroke:.19em #b8bcc8}
+.cTitle.ov span{background:linear-gradient(#ffe8e0 8%,#ff8a70 32%,#e02838 58%,#8a0a24 80%,#c81830);-webkit-background-clip:text;background-clip:text}
+#clearView.over .cTitle{animation:cSink .9s cubic-bezier(.3,1.3,.5,1) both}
+.cScroll.ov{color:#3a2a30;background:linear-gradient(#ece4e4,#cfc2c4 55%,#b0a2a6);border-top-color:#7a6a70;border-bottom-color:#5a4a50}
+.cScroll.ov::before,.cScroll.ov::after{background:linear-gradient(90deg,#6a5a60,#e4dade 45%,#a8989e 70%,#5a4a50);box-shadow:inset 0 0 0 .07em #3a2a30,0 .12em .2em #0006}
+@keyframes cSink{from{opacity:0;transform:translateY(-.8em) scale(1.08)}55%{opacity:1}}
 #clearView>*{animation:cFade .45s ease-out both}
 #clearView .cTitle{animation:cDrop .5s cubic-bezier(.2,1.6,.5,1) both}
 #clearView .cScroll{animation:cUnroll .4s .3s ease-out both}
@@ -871,7 +879,7 @@ function damage(m,amt,dir){
   popNum(m.x,m.z,m.h+38,amt,'#f83800');sfx('hurt');
   if(m===G.hero)G.shake=.25;
   if(m.hp<=0){
-    if(m===G.hero){G.state='over';G.overT=0;sfx('down');say('ゆうしゃは しんでしまった！')}
+    if(m===G.hero){G.state='over';G.overT=0;m.inv=0;m.flash=0;m.swing=0;m.charge=0;input.charging=false;sfx('down');say('ゆうしゃは しんでしまった！')}
     else{G.allies.splice(G.allies.indexOf(m),1);addFx(m.x,m.z,m.h+16,'#fcfcfc',14,70);say(`${CLS[m.cls].name}は ちからつきた…`);sfx('down')}
   }
 }
@@ -1302,7 +1310,7 @@ function update(dt){
   updMsg(dt);
   for(const f of G.fx){f.life-=dt;f.x+=f.vx*dt;f.h+=f.vh*dt;if(f.num!=null)f.vh*=Math.pow(.02,dt);else if(!f.k)f.vh-=200*dt}
   G.fx=G.fx.filter(f=>f.life>0);
-  if(G.state==='over'){G.overT+=dt;if(G.overT>1.6&&!overlayShown)showOver();return}
+  if(G.state==='over'){G.overT+=dt;if(G.overT>1.8&&!overlayShown)showOver();return}
   if(G.state==='won'){   // 勝利: みんなで小さく跳んで、正面を向いて決めポーズ
     G.clearT+=dt;
     const lx=G.camX+W/2+17,lz=36,OFF=[0,-34,34,-68];   // 勇者を真ん中に横一列に並ぶ（画面の真ん中）
@@ -1390,6 +1398,10 @@ function drawMember(m){
     const h=inHole(m.x,m.z,0)||HOLES[0];ctx.save();ctx.beginPath();ctx.rect(SX(h[0]),GY+Math.max(0,h[2])-40,h[1]-h[0],Math.min(H-GY,h[3])-Math.max(0,h[2])+40);ctx.clip();
     drawImg(img,m.x,m.z,m.h);ctx.restore();return;
   }
+  if(G.state==='over'&&m===G.hero){   // たおれる: 白く光ってから、うしろへばたっと倒れる
+    const t=G.overT,k=Math.min(1,Math.max(0,(t-.25)/.3)),bounce=t>.55&&t<.75?Math.sin((t-.55)/.2*Math.PI)*2:0;
+    shadow(m.x,m.z,28);const im=t<.25&&Math.floor(t*20)%2?(m.face<0?fr.wl:fr.wr):(m.face<0?fr.l:fr.r);
+    ctx.save();ctx.translate(SX(m.x)-m.face*(im.width/2)*k*.6,Math.round(GY+m.z-m.h-bounce));ctx.rotate(-m.face*k*k*Math.PI/2);ctx.drawImage(im,-im.width/2,-im.height);ctx.restore();return}
   shadow(m.x,m.z,Math.max(22,c.spr[0].w*.62));
   if(m===G.hero&&G.intro&&G.introV>140){const sx=SX(m.x),sy=Math.round(GY+m.z),k=G.introV/430;   // ダッシュの風の線
     for(let i=0;i<5;i++){const y=sy-6-i*6+((i*7)%5),len=Math.round((70-i*6)*k);ctx.fillStyle=i%2?'#ffffffaa':'#d8f0ff99';ctx.fillRect(sx-14-len-(i%3)*6,y,Math.max(4,len),1)}}
@@ -1495,6 +1507,8 @@ function draw(){
     else{ctx.fillStyle=f.col;ctx.fillRect(fx,fy,2,2)}
   }
   ctx.restore();
+  if(G.state==='over'){   // ゲームオーバー: 画面がだんだん暗く赤むらさきに沈む
+    ctx.fillStyle=`rgba(30,4,28,${Math.min(.5,Math.max(0,G.overT-.5)*.45)})`;ctx.fillRect(0,0,W,H)}
   // ボスのHP
   const b=G.boss;
   if(b&&b.state!=='enter'){const x=W-110,y=36;ctx.fillStyle='#000';ctx.fillRect(x,y,104,7);ctx.fillStyle='#fcfcfc';ctx.fillRect(x+1,y+1,102,5);
@@ -1538,14 +1552,21 @@ function startDash(){
 }
 function hideTitle(){TD=null;$('#titleView').classList.remove('dash');$('#titleView').hidden=true;document.body.classList.remove('titleMode');layout()}
 function showOver(){
-  showOverlay(`<h2>ゲームオーバー</h2><p>ゆうしゃは しんでしまった！</p>
-  <div class="stats"><span>すすんだ きょり</span><span>${Math.floor(G.hero.x/10)}m</span><span>たおした てき</span><span>${G.kills}</span></div>
-  <button class="menuBtn" data-act="start">もういちど</button><button class="menuBtn sub" data-act="title">タイトルへ</button>${COPY}`);
+  const cv=$('#clearView');
+  msgQ.length=0;msgT=0;$('#msg').hidden=true;
+  const rows=[['すすんだ きょり',`${Math.max(0,Math.floor(G.hero.x/10))}m`],['のこり',`${Math.max(0,Math.ceil((END-G.hero.x)/10))}m`],['たおした てき',G.kills],['たすけた ひと',G.followers.length]];
+  cv.className='over';
+  cv.innerHTML=`<h2 class="cTitle ov" data-t="ゲームオーバー"><span>ゲームオーバー</span></h2>
+    <div class="cScroll ov">ゆうしゃは ちからつきた…</div>
+    <div class="cStats">${rows.map(([k,v],i)=>`<span style="animation-delay:${.7+i*.14}s">${k}</span><span style="animation-delay:${.76+i*.14}s">${v}</span>`).join('')}</div>
+    <div class="cBtns"><button class="cBtn gold" data-act="start">もういちど</button><button class="cBtn wood" data-act="title">タイトルへ</button></div>`;
+  cv.hidden=false;overlayShown=true;
 }
 function showClear(){
   const t=Math.floor(G.t),cv=$('#clearView');
   msgQ.length=0;msgT=0;$('#msg').hidden=true;
   const rows=[['タイム',`${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`],['たおした てき',G.kills],['のこった なかま',`${G.allies.length} / 3`],['たすけた ひと',`${G.followers.length} / ${G.npcs.filter(n=>n.mob).length}`]];
+  cv.className='';
   cv.innerHTML=`<h2 class="cTitle" data-t="ステージ クリア!"><span>ステージ クリア!</span></h2>
     <div class="cScroll">ほのおの ドラゴンを たおした！</div>
     <div class="cStats">${rows.map(([k,v],i)=>`<span style="animation-delay:${.6+i*.14}s">${k}</span><span style="animation-delay:${.66+i*.14}s">${v}</span>`).join('')}</div>
