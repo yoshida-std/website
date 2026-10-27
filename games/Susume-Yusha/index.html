@@ -89,6 +89,14 @@ canvas{touch-action:none;display:block}
   background:repeating-linear-gradient(92deg,#0000 0 .5em,#0001 .5em .6em),linear-gradient(#a8703e,#7c4c26 55%,#5c3618);box-shadow:inset 0 0 0 .1em #c99060,inset 0 -.16em 0 #3e2410,0 .14em 0 #1e1004}
 .cBtn:active{transform:translateY(.08em)}
 .cBtn:focus-visible{outline:.12em solid #fff;outline-offset:.15em}
+#clearView.over{background:linear-gradient(rgba(20,0,30,.35),rgba(20,0,30,.05) 40%,rgba(20,0,30,.05) 68%,rgba(20,0,30,.4))}
+.cTitle.ov::before{color:#1e0a14;-webkit-text-stroke:.3em #1e0a14;text-shadow:0 .1em 0 #0a0408}
+.cTitle.ov::after{color:#b8bcc8;-webkit-text-stroke:.19em #b8bcc8}
+.cTitle.ov span{background:linear-gradient(#ffe8e0 8%,#ff8a70 32%,#e02838 58%,#8a0a24 80%,#c81830);-webkit-background-clip:text;background-clip:text}
+#clearView.over .cTitle{animation:cSink .9s cubic-bezier(.3,1.3,.5,1) both}
+.cScroll.ov{color:#3a2a30;background:linear-gradient(#ece4e4,#cfc2c4 55%,#b0a2a6);border-top-color:#7a6a70;border-bottom-color:#5a4a50}
+.cScroll.ov::before,.cScroll.ov::after{background:linear-gradient(90deg,#6a5a60,#e4dade 45%,#a8989e 70%,#5a4a50);box-shadow:inset 0 0 0 .07em #3a2a30,0 .12em .2em #0006}
+@keyframes cSink{from{opacity:0;transform:translateY(-.8em) scale(1.08)}55%{opacity:1}}
 #clearView>*{animation:cFade .45s ease-out both}
 #clearView .cTitle{animation:cDrop .5s cubic-bezier(.2,1.6,.5,1) both}
 #clearView .cScroll{animation:cUnroll .4s .3s ease-out both}
@@ -98,6 +106,37 @@ canvas{touch-action:none;display:block}
 @keyframes cUnroll{from{opacity:0;transform:scaleX(.08)}}
 @keyframes cFade{from{opacity:0;transform:translateY(.35em)}}
 @media (prefers-reduced-motion:reduce){#clearView *,#clearView>*{animation:none!important}}
+/* タイトル: 操作エリアをかくしてゲーム画面を全幅に。勇者が1人で歩くフィールドを背景に、ロゴとボタン2つ。あそびかたはボタンで窓を出す（1em = ゲームの8ドット） */
+body.titleMode #panel{display:none}
+#titleView{position:absolute;inset:0;z-index:3;display:grid;grid-template-rows:1fr auto;justify-items:center;padding:1.1em 1.2em 1.3em;box-sizing:border-box;text-align:center;
+  background:linear-gradient(rgba(10,20,60,.18),rgba(10,20,60,0) 45%,rgba(10,20,60,0) 72%,rgba(10,20,60,.3));
+  --round:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",var(--font);--pop:"Mochiy Pop One","M PLUS Rounded 1c",var(--font)}
+.tLogo{align-self:start;display:flex;flex-direction:column;align-items:center;margin:0;padding-top:.1em}
+.tLogo .cTitle{line-height:1.05}
+.tLogo .s1{font-size:1.75em;margin-left:-2.4em;transform:rotate(-4deg)}
+.tLogo .s2{font-size:3.5em;margin-top:-.1em;letter-spacing:.06em}
+.tLogo .cScroll{font-size:.9em;margin-top:.45em}
+.tBtns{display:flex;gap:1.1em;justify-self:end;margin-right:4%}
+.tBtns{flex-direction:column;gap:.55em;margin-bottom:.2em}
+.tBtns .cBtn{font-size:1.3em;min-width:6.6em}
+.tCopy{position:absolute;left:.9em;bottom:.6em;margin:0;font-size:.72em;color:#fff;opacity:.85;text-shadow:1px 1px 0 #000,0 0 3px #000}
+#titleView .tLogo{animation:cDrop .6s cubic-bezier(.2,1.6,.5,1) both}
+#titleView .cScroll{animation:cUnroll .4s .45s ease-out both}
+#titleView .tBtns{animation:cFade .45s .8s ease-out both}
+#howto{position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;padding:.7em 1em;box-sizing:border-box;background:#000a}
+#howto .win{width:100%;max-width:48em;max-height:100%;overflow-y:auto;touch-action:pan-y;box-sizing:border-box;padding:.6em 1.1em .8em;display:flex;flex-direction:column;align-items:center;gap:.45em}
+#howto h2{margin:0;font-family:var(--round);font-weight:800;font-size:1.35em;color:var(--gold);letter-spacing:.1em}
+#howto ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:.45em 1.4em;text-align:left;font-size:.98em;line-height:1.5}
+#howto li{display:grid;grid-template-columns:1.9em 1fr;align-items:start}
+#howto li b{display:flex;align-items:center;justify-content:center;width:1.5em;height:1.5em;margin-top:.05em;border-radius:50%;background:var(--gold);color:#3a2206;font-family:var(--round);font-size:.85em}
+#howto em{font-style:normal;color:var(--gold)}
+#howto em.m{color:var(--pink)}
+#howto .pc{margin:0;font-size:.8em!important}
+#howto .cBtn{font-size:1.15em;padding:.25em 1.6em .3em}
+#titleView.dash .tLogo,#titleView.dash .tBtns,#titleView.dash .tCopy{transition:opacity .35s,transform .35s;opacity:0}
+#titleView.dash .tBtns{transform:translateX(1.5em)}
+#titleView.dash .tLogo{transform:translateY(-.6em)}
+@media (prefers-reduced-motion:reduce){#titleView *{animation:none!important}}
 #rotate{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
   text-align:center;font-size:18px;line-height:1.6;padding:0 max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
 #rotate .ph{width:46px;height:80px;border:4px solid var(--fg);border-radius:8px;animation:turn 2s steps(4) infinite}
@@ -140,6 +179,25 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
     <canvas id="cv" width="320" height="224"></canvas>
     <div id="msg" class="win" hidden></div>
     <div id="clearView" hidden></div>
+    <div id="titleView" hidden>
+      <h1 class="tLogo" aria-label="すすめ！ゆうしゃ"><span class="cTitle s1" data-t="すすめ！"><span>すすめ！</span></span><span class="cTitle s2" data-t="ゆうしゃ"><span>ゆうしゃ</span></span>
+        <span class="cScroll">ほのおの ドラゴンを たおせ！</span></h1>
+      <div class="tBtns"><button class="cBtn gold" data-act="start">はじめる</button><button class="cBtn wood" data-act="howto">あそびかた</button></div>
+      <p class="tCopy">©YoshidaStudio, ©PANICPUMPKIN</p>
+      <div id="howto" hidden><div class="win scrollable">
+        <h2>あそびかた</h2>
+        <ul>
+          <li><b>1</b><span>画面は <em>どんどん 右へ</em> すすむ。左の <em>円盤</em> で 上下左右に うごく。穴や岩は 自動で ジャンプ</span></li>
+          <li><b>2</b><span>敵に 近づくと <em>剣を 自動で ふる</em>。円盤の まんなかを <em>タップ</em> で 斬撃を とばす</span></li>
+          <li><b>3</b><span><em>長押し</em> で ためて 大きな 斬撃（敵の たまも けせる）。ためられるのは <em>なかまの かず</em> まで</span></li>
+          <li><b>4</b><span>敵が 光って <em>「！」</em> が出たら 攻撃の あいず。<em>上か下へ よけろ</em>。<em class="m">魔法は 剣で はじけない</em></span></li>
+          <li><b>5</b><span>おそわれている <em>なかま</em> を たすけよう（さいだい4人）。まものは なかまも ねらってくる</span></li>
+          <li><b>6</b><span><em>町の人</em> も たすけると ついてくる。ゆうしゃの HP が なくなると ゲームオーバー</span></li>
+        </ul>
+        <p class="pc">PC: 矢印/WASD で 移動、スペースで 斬撃（長押しで ため）</p>
+        <button class="cBtn gold" data-act="close">とじる</button>
+      </div></div>
+    </div>
   </div>
 </div>
 <div id="rotate" hidden><div class="ph"></div><div>スマホを よこむきに してね</div></div>
@@ -729,7 +787,7 @@ function moveBody(e,dx,dz){
 let G=null;
 function member(cls,x,z){const c=CLS[cls];return {cls,x,z,h:0,vh:0,face:1,hp:c.hp,max:c.hp,inv:0,swing:0,swCD:0,atkCD:1,walk:0,flash:0,kx:0,kz:0,onG:true,fall:0,jd:-1}}
 function newGame(){
-  G={state:'play',t:0,camX:0,shake:0,hero:member('hero',-24,46),intro:true,allies:[],enemies:[],shots:[],fx:[],
+  G={state:'play',t:0,camX:0,shake:0,hero:member('hero',-60,46),intro:true,introV:0,allies:[],enemies:[],shots:[],fx:[],
     npcs:[...ALLY_SPOTS.map(a=>({...a,state:'wait',guards:[],hurt:0})),...MOB_SPOTS.filter(a=>!a.rare||Math.random()<AITSU_RATE||/[?&]aitsu\b/.test(location.search)).map(a=>({...a,mob:true,state:'wait',guards:[],hurt:0}))],followers:[],hitstop:0,flyers:[],nextSpawn:300,spawnT:4,boss:null,locked:false,
     kills:0,wizIntro:false,magicTold:false,overT:0,clearT:0};
   G.hero.safe={x:40,z:46};
@@ -821,7 +879,7 @@ function damage(m,amt,dir){
   popNum(m.x,m.z,m.h+38,amt,'#f83800');sfx('hurt');
   if(m===G.hero)G.shake=.25;
   if(m.hp<=0){
-    if(m===G.hero){G.state='over';G.overT=0;sfx('down');say('ゆうしゃは しんでしまった！')}
+    if(m===G.hero){G.state='over';G.overT=0;m.inv=0;m.flash=0;m.swing=0;m.charge=0;input.charging=false;sfx('down');say('ゆうしゃは しんでしまった！')}
     else{G.allies.splice(G.allies.indexOf(m),1);addFx(m.x,m.z,m.h+16,'#fcfcfc',14,70);say(`${CLS[m.cls].name}は ちからつきた…`);sfx('down')}
   }
 }
@@ -1140,9 +1198,12 @@ function updHero(dt){
     }
     return;
   }
-  if(G.intro){   // スタート: 左の画面外から歩いて入ってくる（その間は操作・スクロール・敵なし）
-    p.x+=70*dt;p.walk+=dt;p.face=1;
-    if(p.x>=70){p.x=70;G.intro=false;p.safe={x:70,z:p.z}}
+  if(G.intro){   // スタート: 左の画面外から猛ダッシュで入ってきて、ずざっと止まる（その間は操作・スクロール・敵なし）
+    const v=G.introV=Math.min(430,40+(70-p.x)*7);
+    p.x+=v*dt;p.walk+=dt*v/45;p.face=1;
+    if(v>120&&Math.random()<.7)G.fx.push({k:'dust',x:p.x-6+rnd(-2,2),z:p.z+rnd(-3,3),h:rnd(0,3),vx:-rnd(20,60),vh:rnd(10,30),life:rnd(.3,.5),max:.5});
+    if(p.x>=69){p.x=70;G.intro=false;G.introV=0;p.safe={x:70,z:p.z};p.walk=0;
+      for(let i=0;i<7;i++)G.fx.push({k:'dust',x:p.x+rnd(-4,8),z:p.z+rnd(-4,4),h:rnd(0,3),vx:rnd(10,70),vh:rnd(15,45),life:rnd(.35,.6),max:.6});noise(.12,.12)}
     return;
   }
   readInput();
@@ -1249,7 +1310,7 @@ function update(dt){
   updMsg(dt);
   for(const f of G.fx){f.life-=dt;f.x+=f.vx*dt;f.h+=f.vh*dt;if(f.num!=null)f.vh*=Math.pow(.02,dt);else if(!f.k)f.vh-=200*dt}
   G.fx=G.fx.filter(f=>f.life>0);
-  if(G.state==='over'){G.overT+=dt;if(G.overT>1.6&&!overlayShown)showOver();return}
+  if(G.state==='over'){G.overT+=dt;if(G.overT>1.8&&!overlayShown)showOver();return}
   if(G.state==='won'){   // 勝利: みんなで小さく跳んで、正面を向いて決めポーズ
     G.clearT+=dt;
     const lx=G.camX+W/2+17,lz=36,OFF=[0,-34,34,-68];   // 勇者を真ん中に横一列に並ぶ（画面の真ん中）
@@ -1302,8 +1363,8 @@ function drawBg(){
   tile(ART.ground,1,GY);
   tile(ART.forest,.55,GY+2-ART.forest.height);
   if(dark){ctx.fillStyle='rgba(40,10,70,.42)';ctx.fillRect(0,0,W,H)}
-  // 穴
-  for(const h of HOLES){
+  // 穴（タイトルの背景では描かない）
+  if(!G.title)for(const h of HOLES){
     if(h[1]<CAM-4||h[0]>CAM+W+4)continue;
     const x=SX(h[0]),w=h[1]-h[0],y0=GY+Math.max(0,h[2]),y1=Math.min(H,GY+h[3]);
     ctx.fillStyle='#0c0805';ctx.fillRect(x,y0,w,y1-y0);
@@ -1337,7 +1398,13 @@ function drawMember(m){
     const h=inHole(m.x,m.z,0)||HOLES[0];ctx.save();ctx.beginPath();ctx.rect(SX(h[0]),GY+Math.max(0,h[2])-40,h[1]-h[0],Math.min(H-GY,h[3])-Math.max(0,h[2])+40);ctx.clip();
     drawImg(img,m.x,m.z,m.h);ctx.restore();return;
   }
+  if(G.state==='over'&&m===G.hero){   // たおれる: 白く光ってから、うしろへばたっと倒れる
+    const t=G.overT,k=Math.min(1,Math.max(0,(t-.25)/.3)),bounce=t>.55&&t<.75?Math.sin((t-.55)/.2*Math.PI)*2:0;
+    shadow(m.x,m.z,28);const im=t<.25&&Math.floor(t*20)%2?(m.face<0?fr.wl:fr.wr):(m.face<0?fr.l:fr.r);
+    ctx.save();ctx.translate(SX(m.x)-m.face*(im.width/2)*k*.6,Math.round(GY+m.z-m.h-bounce));ctx.rotate(-m.face*k*k*Math.PI/2);ctx.drawImage(im,-im.width/2,-im.height);ctx.restore();return}
   shadow(m.x,m.z,Math.max(22,c.spr[0].w*.62));
+  if(m===G.hero&&G.intro&&G.introV>140){const sx=SX(m.x),sy=Math.round(GY+m.z),k=G.introV/430;   // ダッシュの風の線
+    for(let i=0;i<5;i++){const y=sy-6-i*6+((i*7)%5),len=Math.round((70-i*6)*k);ctx.fillStyle=i%2?'#ffffffaa':'#d8f0ff99';ctx.fillRect(sx-14-len-(i%3)*6,y,Math.max(4,len),1)}}
   if(m===G.hero&&m.charge>.12){   // ため中: 光の粒が集まる。段ごとに 青→水色→金→赤 と色と数が変わる
     const lv=chargeLv(m.charge),w=WAVE[lv],cx=SX(m.x),cy=Math.round(GY+m.z-m.h-16),next=LV_T[lv]||LV_T[2],prev=LV_T[lv-1]||0;
     const prog=lv===maxLv()?1:(m.charge-prev)/(next-prev),n=8+lv*4;
@@ -1423,6 +1490,8 @@ function draw(){
       for(let i=0;i<8;i++){const a=i*Math.PI/4+.39,L=r*(i%2?.55:1);ctx.fillStyle=t<.45?'#ffffff':f.crit?'#ffd84a':'#a8ecff';
         for(let j=Math.floor(L*.4);j<L;j+=1.5)ctx.fillRect(Math.round(fx+Math.cos(a)*j),Math.round(fy+Math.sin(a)*j),2,2)}
       const c=Math.max(1,Math.round(6*(1-t)));ctx.fillStyle='#ffffff';ctx.fillRect(fx-c,fy-c,c*2,c*2)}
+    else if(f.k==='dust'){const r=Math.round(2+(1-f.life/f.max)*4);ctx.globalAlpha=Math.min(1,f.life/f.max*1.6)*.85;   // 土けむり
+      ctx.fillStyle='#e8d8b0';ctx.fillRect(fx-r,fy-r,r*2,r*2);ctx.fillStyle='#c8b080';ctx.fillRect(fx-r,fy,r*2,r);ctx.globalAlpha=1}
     else if(f.k==='eslash'){const t=1-f.life/f.max;ctx.globalAlpha=1-t*.7;   // ガイコツの斬りつけ（弧）
       for(let a=-1.3;a<=1.3;a+=.08){const r=18+t*4,x=Math.round(fx+Math.cos(a)*r*f.dir*.9),y=Math.round(fy-6+Math.sin(a)*r*.7);ctx.fillStyle='#f8d8c0';ctx.fillRect(x-1,y,3,2);ctx.fillStyle='#ffffff';ctx.fillRect(x,y,1,1)}
       ctx.globalAlpha=1}
@@ -1438,6 +1507,8 @@ function draw(){
     else{ctx.fillStyle=f.col;ctx.fillRect(fx,fy,2,2)}
   }
   ctx.restore();
+  if(G.state==='over'){   // ゲームオーバー: 画面がだんだん暗く赤むらさきに沈む
+    ctx.fillStyle=`rgba(30,4,28,${Math.min(.5,Math.max(0,G.overT-.5)*.45)})`;ctx.fillRect(0,0,W,H)}
   // ボスのHP
   const b=G.boss;
   if(b&&b.state!=='enter'){const x=W-110,y=36;ctx.fillStyle='#000';ctx.fillRect(x,y,104,7);ctx.fillStyle='#fcfcfc';ctx.fillRect(x+1,y+1,102,5);
@@ -1467,26 +1538,35 @@ function showOverlay(html){ov.innerHTML=`<div class="card win scrollable">${html
 function hideOverlay(){ov.hidden=true;$('#clearView').hidden=true;overlayShown=false}
 const COPY='<p class="copy">©YoshidaStudio, ©PANICPUMPKIN</p>';
 function showTitle(){
-  showOverlay(`<p class="tag">PROTOTYPE</p><h1>すすめ！<br>ゆうしゃ</h1>
-  <ul class="rules">
-    <li><span>画面は <em>どんどん右へ</em> すすむ。左の <em>円盤</em> で上下左右に動く</span></li>
-    <li><span>円盤の まんなかを <em>タップ</em> で <em>斬撃</em> を とばす。<em>長押し</em> で ためて 大きな 斬撃（敵の たまも けせる）。ためられる だんかいは <em>なかまの かず</em> まで（さいだい3）。穴や岩は 自動で ジャンプ</span></li>
-    <li><span>敵に近づくと <em>剣を振って薙ぎ払う</em>。ただし <em class="m">魔法は はじけない</em> のでよける</span></li>
-    <li><span>まものに おそわれている <em>仲間</em> を たすけよう（最大4人）。仲間もHPがなくなると いなくなる</span></li>
-    <li><span>おそわれている <em>町の人</em> も たすけると、うしろを ついてくる</span></li>
-    <li><span>ゆうしゃのHPがなくなると ゲームオーバー。さいごに まつ ボスを たおせ！</span></li>
-  </ul>
-  <button class="menuBtn" data-act="start">はじめる</button><p class="pc">PC: 矢印/WASD で移動、スペースで 斬撃（長押しで ため）</p>${COPY}`);
+  hideOverlay();$('#msg').hidden=true;$('#howto').hidden=true;
+  const tv=$('#titleView');tv.hidden=true;void tv.offsetWidth;tv.hidden=false;   // 出てくる動きをやり直す
+  document.body.classList.add('titleMode');layout();
+  tv.querySelector('[data-act=start]').focus({preventScroll:true});
 }
+// はじめる: 勇者が猛ダッシュで画面の右へ走りぬけてから、ゲームを始める
+let TD=null;
+function startDash(){
+  if(TD)return;
+  TD={t0:performance.now()/1000,dust:[],last:0};$('#titleView').classList.add('dash');
+  SFX.swing();tone(220,.35,'sawtooth',.06,700);
+}
+function hideTitle(){TD=null;$('#titleView').classList.remove('dash');$('#titleView').hidden=true;document.body.classList.remove('titleMode');layout()}
 function showOver(){
-  showOverlay(`<h2>ゲームオーバー</h2><p>ゆうしゃは しんでしまった！</p>
-  <div class="stats"><span>すすんだ きょり</span><span>${Math.floor(G.hero.x/10)}m</span><span>たおした てき</span><span>${G.kills}</span></div>
-  <button class="menuBtn" data-act="start">もういちど</button><button class="menuBtn sub" data-act="title">タイトルへ</button>${COPY}`);
+  const cv=$('#clearView');
+  msgQ.length=0;msgT=0;$('#msg').hidden=true;
+  const rows=[['すすんだ きょり',`${Math.max(0,Math.floor(G.hero.x/10))}m`],['のこり',`${Math.max(0,Math.ceil((END-G.hero.x)/10))}m`],['たおした てき',G.kills],['たすけた ひと',G.followers.length]];
+  cv.className='over';
+  cv.innerHTML=`<h2 class="cTitle ov" data-t="ゲームオーバー"><span>ゲームオーバー</span></h2>
+    <div class="cScroll ov">ゆうしゃは ちからつきた…</div>
+    <div class="cStats">${rows.map(([k,v],i)=>`<span style="animation-delay:${.7+i*.14}s">${k}</span><span style="animation-delay:${.76+i*.14}s">${v}</span>`).join('')}</div>
+    <div class="cBtns"><button class="cBtn gold" data-act="start">もういちど</button><button class="cBtn wood" data-act="title">タイトルへ</button></div>`;
+  cv.hidden=false;overlayShown=true;
 }
 function showClear(){
   const t=Math.floor(G.t),cv=$('#clearView');
   msgQ.length=0;msgT=0;$('#msg').hidden=true;
   const rows=[['タイム',`${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`],['たおした てき',G.kills],['のこった なかま',`${G.allies.length} / 3`],['たすけた ひと',`${G.followers.length} / ${G.npcs.filter(n=>n.mob).length}`]];
+  cv.className='';
   cv.innerHTML=`<h2 class="cTitle" data-t="ステージ クリア!"><span>ステージ クリア!</span></h2>
     <div class="cScroll">ほのおの ドラゴンを たおした！</div>
     <div class="cStats">${rows.map(([k,v],i)=>`<span style="animation-delay:${.6+i*.14}s">${k}</span><span style="animation-delay:${.66+i*.14}s">${v}</span>`).join('')}</div>
@@ -1514,12 +1594,17 @@ function onTap(el,fn){
 function overlayAct(target){
   const b=target.closest('button');if(!b)return;initAudio();
   const a=b.dataset.act;
-  if(a==='start'){hideOverlay();newGame()}
+  if(a==='start'&&!$('#titleView').hidden){startDash()}
+  else if(a==='start'){hideOverlay();hideTitle();newGame()}
+  else if(a==='howto'){$('#howto').hidden=false;$('#howto [data-act=close]').focus({preventScroll:true})}
+  else if(a==='close'){$('#howto').hidden=true;$('#titleView [data-act=howto]').focus({preventScroll:true})}
   else if(a==='title'){G=null;stopBgm();$('#clearView').hidden=true;showTitle()}
   else if(a==='resume')togglePause();
   else if(a==='sound'){muted=!muted;b.textContent=`おと: ${muted?'OFF':'ON'}`}
 }
-onTap(ov,overlayAct);onTap($('#clearView'),overlayAct);
+onTap(ov,overlayAct);onTap($('#clearView'),overlayAct);onTap($('#titleView'),overlayAct);
+$('#howto').addEventListener('click',e=>{if(e.target.id==='howto')$('#howto').hidden=true});   // 窓の外をタップしてもとじる
+addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#howto').hidden)$('#howto').hidden=true});
 onTap($('#pauseBtn'),()=>{initAudio();togglePause()});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&G&&G.state==='play')togglePause()});
 
@@ -1629,7 +1714,7 @@ function layout(){
   const portrait=ih>iw;
   $('#rotate').hidden=!portrait;
   if(portrait&&G&&G.state==='play')togglePause();
-  const pw=Math.floor(iw/3),sw=iw-pw;   // 左1/3が操作エリア、右2/3がゲーム画面
+  const pw=document.body.classList.contains('titleMode')?0:Math.floor(iw/3),sw=iw-pw;   // 左1/3が操作エリア、右2/3がゲーム画面（タイトルは全幅）
   $('#panel').style.width=pw+'px';
   let sc=ih/H;
   W=clamp(Math.floor(sw/sc),256,440);
@@ -1637,7 +1722,7 @@ function layout(){
   if(cv.width!==W)cv.width=W;
   ctx.imageSmoothingEnabled=false;
   const s=$('#screen');s.style.width=Math.floor(W*sc)+'px';s.style.height=Math.floor(H*sc)+'px';
-  $('#clearView').style.fontSize=(Math.floor(H*sc)/28)+'px';   // クリア画面の 1em = ゲームの8ドット
+  $('#clearView').style.fontSize=$('#titleView').style.fontSize=(Math.floor(H*sc)/28)+'px';   // クリア画面の 1em = ゲームの8ドット
   fitStick();requestAnimationFrame(drawControls);
 }
 addEventListener('resize',layout);
@@ -1656,11 +1741,29 @@ function frame(now){
   else drawIdle(now/1000);
   requestAnimationFrame(frame);
 }
-// タイトルの後ろで流す画面
+// タイトルの背景: 勇者が1人でフィールドを歩く（穴はなし。勇者の通り道の障害物は描かない）
+const TZ=66;
 function drawIdle(t){
-  if(!G){G={camX:t*20%(END-W),hero:{x:0},enemies:[],shots:[],fx:[],allies:[],npcs:[],boss:null,locked:false,t};CAM=G.camX;
-    drawBg();for(const o of OBS)if(o.x>CAM-20&&o.x<CAM+W+20)drawImg(SP[o.t].r,o.x,o.z+o.d-1,0);
-    const hs=CLS.hero.spr[Math.floor(t*8)%2].r;drawImg(hs,CAM+70,50,0);G=null;}
+  const cam=(t*SCROLL)%(END-W-700);
+  G={title:true,camX:cam,hero:{x:0},enemies:[],shots:[],fx:[],allies:[],npcs:[],boss:null,locked:false,t,state:'title'};CAM=Math.round(cam);
+  drawBg();
+  // ダッシュ: ためて（0.18秒、少し沈む）→ 加速して右へ。足もとに土けむり、うしろに風の線
+  const d=TD?t-TD.t0:0,run=Math.max(0,d-.18),dx=TD?Math.round(30*run+620*run*run):0;
+  const hero={cls:'hero',x:CAM+Math.round(W*.27)+dx-(TD&&d<.18?2:0),z:TZ,h:0,face:1,walk:TD?(d<.18?0:t*3.5):t,inv:0,flash:0,swing:0,charge:0,fall:0};G.hero=hero;
+  if(TD&&run>0&&t-TD.last>.025&&SX(hero.x)<W+10){TD.last=t;for(let i=0;i<2;i++)TD.dust.push({x:hero.x-6+rnd(-3,3),z:TZ+rnd(-3,3),h:rnd(0,4),vx:-rnd(30,70),vh:rnd(10,30),life:rnd(.35,.6),max:.6})}
+  if(TD)for(const p of TD.dust){p.life-=1/60;p.x+=p.vx/60;p.h=Math.max(0,p.h+p.vh/60);p.vh-=60/60}
+  if(TD)TD.dust=TD.dust.filter(p=>p.life>0);
+  const L=[];
+  for(const o of OBS)if(o.x>CAM-20&&o.x<CAM+W+20&&Math.abs(o.z-TZ)>(o.t==='tree'?12:16))L.push({z:o.z+o.d,f:()=>{shadow(o.x,o.z,o.t==='tree'?30:o.w*2+2);drawImg(SP[o.t].r,o.x,o.z+o.d-1,0)}});
+  L.push({z:TZ+.1,f:()=>{
+    if(TD&&run>.05){const sx=SX(hero.x),sy=Math.round(GY+TZ);   // 風の線
+      for(let i=0;i<5;i++){const y=sy-6-i*6+((i*7)%5),len=Math.min(80,18+run*90)-i*4;ctx.fillStyle=i%2?'#ffffffaa':'#d8f0ff99';ctx.fillRect(Math.round(sx-14-len-(i%3)*6),y,Math.max(4,len),1)}}
+    if(TD)for(const p of TD.dust){const r=Math.round(2+(1-p.life/p.max)*4);ctx.globalAlpha=Math.min(1,p.life/p.max*1.6)*.85;ctx.fillStyle='#e8d8b0';ctx.fillRect(SX(p.x)-r,Math.round(GY+p.z-p.h)-r,r*2,r*2);ctx.fillStyle='#c8b080';ctx.fillRect(SX(p.x)-r,Math.round(GY+p.z-p.h),r*2,r);ctx.globalAlpha=1}
+    drawMember(hero)}});
+  L.sort((a,b)=>a.z-b.z).forEach(o=>o.f());
+  const gone=TD&&SX(hero.x)>W+30&&!TD.dust.length&&!TD.done;
+  G=null;
+  if(gone){TD.done=true;hideOverlay();hideTitle();newGame()}   // 走りぬけたらゲームへ
   $('#members').innerHTML||updHudEmpty();
 }
 function updHudEmpty(){let h='<div class="mem"><span class="nm">ゆうしゃ</span><span class="bar"><i style="width:100%"></i></span></div>';
