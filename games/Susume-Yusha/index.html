@@ -130,7 +130,7 @@ const rnd=(a,b)=>a+Math.random()*(b-a);
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 
 /* ---------- 定数 ---------- */
-let W=320;const H=224,GY=124,DEPTH=92,END=3000,SCROLL=40;   // W は画面の比率で決まる。GY: 地面の奥の端の画面y、DEPTH: 奥行き、SCROLL: 強制スクロールの速さ(px/秒)
+let W=320;const H=224,GY=124,DEPTH=92,END=4500,SCROLL=40;   // W は画面の比率で決まる。GY: 地面の奥の端の画面y、DEPTH: 奥行き、SCROLL: 強制スクロールの速さ(px/秒)
 const cv=$('#cv'),ctx=cv.getContext('2d');
 
 /* ---------- 音（WebAudio の矩形波） ---------- */
@@ -563,17 +563,17 @@ function digits(n,x,y,col,k=2){
 /* ---------- ステージ ---------- */
 // 穴: x0,x1 と奥行き z0,z1（-10〜110 は奥から手前まで全部）
 // どの穴も、跳ばなくても通れる道（幅24以上）を残す
-const HOLES=[[380,410,-10,30],[380,410,54,110],[820,858,36,110],[1050,1080,-10,58],[1050,1080,82,110],[1390,1440,-10,46],[1480,1520,50,110],
-  [1700,1730,-10,14],[1700,1730,38,110],[1880,1930,-10,40],[2150,2181,-10,44],[2150,2181,68,110],[2400,2445,30,110],
-  [2560,2590,-10,24],[2560,2590,48,110]];
+const HOLES=[[570,600,-10,30],[570,600,54,110],[820,850,-10,30],[820,850,54,110],[1230,1268,36,110],[1575,1605,-10,58],[1575,1605,82,110],
+  [2085,2135,-10,46],[2220,2260,50,110],[2550,2580,-10,14],[2550,2580,38,110],[2820,2870,-10,40],[3110,3142,-10,50],[3110,3142,74,110],
+  [3225,3256,-10,44],[3225,3256,68,110],[3525,3560,-10,36],[3600,3645,30,110],[3840,3870,-10,24],[3840,3870,48,110],[3940,3970,-10,40]];
 // 障害物: 種類, x, z  （岩・箱は飛びこえられる。木はこえられない）
 const OB_DEF={rock:{w:8,d:5,ht:10},crate:{w:8,d:6,ht:14},tree:{w:6,d:4,ht:99}};
-const OBS=[['rock',250,30],['tree',300,8],['tree',470,14],['rock',540,72],['rock',700,22],['crate',900,52],['rock',960,80],
-  ['tree',1150,84],['rock',1220,40],['crate',1300,64],['tree',1560,30],['rock',1620,76],['crate',1810,20],['tree',2000,12],
-  ['rock',2060,52],['crate',2270,74],['tree',2310,40],['rock',2480,18],['tree',2650,70]].map(([t,x,z])=>({t,x,z,...OB_DEF[t]}));
-const ALLY_SPOTS=[{cls:'warrior',x:640,z:50},{cls:'mage',x:1250,z:36},{cls:'priest',x:1980,z:58}];
-const MOB_SPOTS=[{cls:'town',x:480,z:72},{cls:'child',x:900,z:22},{cls:'woman',x:1130,z:62},{cls:'merchant',x:1580,z:60},
-  {cls:'soldier',x:1800,z:42},{cls:'princess',x:2240,z:46},{cls:'king',x:2500,z:62}];
+const OBS=[['rock',375,30],['tree',450,8],['tree',705,14],['rock',810,72],['rock',1050,22],['rock',1110,40],['crate',1350,52],
+  ['rock',1440,80],['tree',1500,80],['tree',1725,84],['rock',1830,40],['crate',1950,64],['crate',2160,30],['tree',2340,30],
+  ['rock',2430,76],['rock',2660,78],['crate',2715,20],['tree',3000,12],['tree',3040,24],['rock',3090,52],['crate',3405,74],
+  ['rock',3420,70],['tree',3465,40],['crate',3700,30],['rock',3720,18],['tree',3975,70],['tree',4180,16]].map(([t,x,z])=>({t,x,z,...OB_DEF[t]}));
+const ALLY_SPOTS=[{cls:'warrior',x:960,z:50},{cls:'mage',x:1875,z:36},{cls:'priest',x:2970,z:58}];
+const MOB_SPOTS=[{cls:'town',x:720,z:72},{cls:'child',x:1350,z:22},{cls:'woman',x:1695,z:62},{cls:'merchant',x:2370,z:60},{cls:'soldier',x:2700,z:42},{cls:'princess',x:3360,z:46},{cls:'king',x:3750,z:62}];
 const SLOTS=[{dx:-24,dz:-18},{dx:-24,dz:18},{dx:-44,dz:0}];
 
 function inHole(x,z,m=3){for(const h of HOLES)if(x>h[0]+m&&x<h[1]-m&&z>h[2]+m&&z<h[3]-m)return h;return null}
@@ -795,7 +795,7 @@ function updNpcs(){
 function spawnLogic(dt){
   if(G.locked)return;
   const edge=G.camX+W+24,prog=G.camX/END;
-  if(!G.wizIntro&&G.camX>760){G.wizIntro=true;spawnEnemy('wiz',edge,30);say('まどうしの まほうは けんで はじけない！ よけろ！')}
+  if(!G.wizIntro&&G.camX>1140){G.wizIntro=true;spawnEnemy('wiz',edge,30);say('まどうしの まほうは けんで はじけない！ よけろ！')}
   while(G.camX+W>=G.nextSpawn){
     const pool=prog<.15?['slime','slime']:prog<.3?['slime','slime','bat']:prog<.5?['slime','bat','skel']:['slime','bat','skel','wiz','skel'];
     const n=prog<.2?2:prog<.6?3:4;
