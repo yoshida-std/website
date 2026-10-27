@@ -1445,9 +1445,15 @@ function layout(){
   if(cv.width!==W)cv.width=W;
   ctx.imageSmoothingEnabled=false;
   const s=$('#screen');s.style.width=Math.floor(W*sc)+'px';s.style.height=Math.floor(H*sc)+'px';
-  requestAnimationFrame(drawControls);
+  fitStick();requestAnimationFrame(drawControls);
 }
 addEventListener('resize',layout);
+// 円盤は操作エリアの下側に収まる大きさにする（一時停止ボタンに重ならない）。フォントの読み込みなどで高さが変わったら合わせ直す
+function fitStick(){
+  const z=$('#stickZone'),w=Math.floor(Math.max(90,Math.min(210,z.clientWidth*.8,z.clientHeight*.92)));
+  if($('#stick').style.width!==w+'px'){$('#stick').style.width=w+'px';requestAnimationFrame(drawControls)}
+}
+if(window.ResizeObserver)new ResizeObserver(fitStick).observe($('#stickZone'));
 
 /* ---------- ループ ---------- */
 let last=performance.now();
