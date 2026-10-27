@@ -26,15 +26,15 @@
 
 ## キャラのグラフィックシート
 
-- `sprites.png`（ゲームが読むシート、透明の背景）と `sprites.json`（どの絵がシートのどこにあるか: `frames` の `名前: {x,y,w,h}`）。起動時に読みこみ（`loadSheet`）、コードで描いた絵の代わりに使う。読めないとき・URL に `?nosheet` を付けたときはコードの絵のまま（`SHEET.loaded`）
+- `sprites.png`（ゲームが読むシート、透明の背景）と `sprites.json`（どの絵がシートのどこにあるか: `frames` の `名前: {x,y,w,h,s}`）。セルは「描くときの大きさ」で、ゲームは `s`（表示の倍率）に合わせて縮めて表示する（`shrink`: 面積の平均、ふちの半透明はなくす）。キャラ（勇者・仲間・町の人）は表示の 1.5 倍（48x48 → 32x32、s=2/3。ポーズ 48x66 → 32x44、こども 48x36 → 32x24）、敵・ドラゴンは表示の 2 倍（s=1/2。スライム 72x60 → 36x30、ドラゴン 216x196 → 108x98）。表示の大きさ・当たり判定はこれまでと同じ起動時に読みこみ（`loadSheet`）、コードで描いた絵の代わりに使う。読めないとき・URL に `?nosheet` を付けたときはコードの絵のまま（`SHEET.loaded`）
 - 名前: `char.{hero|warrior|mage|priest}.{0|1|pose}`（0・1 は歩きの2コマ）、`mob.{town|child|woman|merchant|soldier|princess|king}.{0|1}`、`enemy.{slime|bat|skel}.{0|1}`、`enemy.wiz.0`、`boss.dragon.{0|1}`
 - 絵は右向き（左向きと、当たったときの白い絵はゲームが作る）。足もとがセルの下の端、左右の真ん中がキャラの立つ位置。剣・杖・槍・影はゲームが描く（決めポーズの剣・杖は絵に入っている）。絵に武器が入っているキャラは `sprites.json` の `weaponInSprite`（例 `["char.hero"]`）に書くと、ゲームは武器を重ねて描かず、振ったときの軌跡だけ描く
-- 勇者はユーザーが用意した絵（64x64 を仲間と同じ 32x32 に縮めたもの、剣入り、決めポーズは親指を立てた正面向き）。ほかのキャラは今のところコードの絵を書き出したもの（32 前後）
+- 勇者はユーザーが用意した絵（64x64 を 48x48 のセルに縮めて入れたもの。表示は仲間と同じ 32x32。剣入り、決めポーズは親指を立てた正面向き）。`sprites.json` の `custom` に入れてあり、書き出しスクリプトで上書きされない。ほかのキャラはコードの絵（元のドットを Scale3x / 敵は Scale2x で大きくしたもの）
 - 描きかえるときはセルの中だけを描く。セルの大きさを変えたら `sprites.json` の w,h も直す（当たり判定は変わらない）
 - `sprites-guide.png` は名前と枠を書きこんだ見本（ゲームは読まない）
-- `tools/export-sprites.js`: `node games/Susume-Yusha/tools/export-sprites.js` でコードの絵からシート・json・見本を作り直す（描きかえた絵も上書きされるので注意）。`--from-sheet` を付けると、いまのシートの絵のまま並べなおして見本も作り直す（セルの大きさを変えた・絵を足したあとに使う。`weaponInSprite` は引きつぐ）
+- `tools/export-sprites.js`: `node games/Susume-Yusha/tools/export-sprites.js` でコードの絵から描く大きさのシート・json・見本を作り直す（`custom` のコマはいまのシートの絵を使う。それ以外は描きかえていても上書き）。`--from-sheet` を付けると、いまのシートの絵をすべてそのまま使って並べなおし、見本も作り直す。`custom`・`weaponInSprite` は引きつぐ
 - 木・岩・箱・背景はシートに入れていない（コードで描く）
-- 専用エディタ: `tools/ys_spriteSheetEditer/`（公開URL `https://yoshida-std.github.io/website/tools/ys_spriteSheetEditer/`、確認用 Artifact `https://claude.ai/artifact/PLtp88E6JkvpB8jQ1p323j`。Artifact では書き出し・GitHub 保存・ゲームでためすは動かないので、本番は Pages で使う）。ゲームのシートを読み、コマを選んで画像の入れかえ（ドロップ・貼りつけ・ファイル。足もと下・左右中央に合わせ、大きければ縮める）とドットの描きなおし（ペン・消しゴム・スポイト・塗りつぶし・左右反転・元に戻す）ができる。プレビューで歩きの2コマを右向き・左向きで動かす
+- 専用エディタ（描く大きさのセルを編集。プレビューと表示の大きさはゲームと同じに縮めて見せる）: `tools/ys_spriteSheetEditer/`（公開URL `https://yoshida-std.github.io/website/tools/ys_spriteSheetEditer/`、確認用 Artifact `https://claude.ai/artifact/PLtp88E6JkvpB8jQ1p323j`。Artifact では書き出し・GitHub 保存・ゲームでためすは動かないので、本番は Pages で使う）。ゲームのシートを読み、コマを選んで画像の入れかえ（ドロップ・貼りつけ・ファイル。足もと下・左右中央に合わせ、大きければ縮める）とドットの描きなおし（ペン・消しゴム・スポイト・塗りつぶし・左右反転・元に戻す）ができる。プレビューで歩きの2コマを右向き・左向きで動かす
   - 「ゲームで ためす」: 描きかけのシートを localStorage（`susumeYusha.sheetPreview`）に入れ、ゲームを `?preview` で開く。ゲームはそのシートで動く（同じサイトの中だけ。保存はされない）
   - 保存: sprites.png の書き出し、または GitHub の Contents API で直接コミット（リポジトリ・ブランチ・場所・トークンを入れる。トークンは覚えさせたときだけ localStorage の `susumeYusha.ghToken`）。セルの大きさは変えないので sprites.json はそのまま
 

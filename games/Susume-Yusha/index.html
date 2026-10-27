@@ -236,7 +236,7 @@ function scale2x(c){
   }
   ox.putImageData(im,0,0);return o;
 }
-function spr(rows,pal=PAL){const r=scale2x(shade(mk(rows,pal))),wr=white(r);return {r,l:flip(r),wr,wl:flip(wr),w:r.width,h:r.height}}
+function spr(rows,pal=PAL){const src=shade(mk(rows,pal)),r=scale2x(src),wr=white(r);return {r,l:flip(r),wr,wl:flip(wr),w:r.width,h:r.height,src}}   // src: 陰をつけた元のドット（シートの書き出しで使う）
 const mirror=rows=>rows.map(r=>r+[...r].reverse().join(''));
 
 // 人型: H かぶと/ぼうし, h 飾り, A 服, a ベルト, C マント, L くつ
@@ -555,6 +555,20 @@ buildArt();
 // 読めないとき（ファイルがない・?nosheet を付けたとき）は、上のコードで描いた絵のまま。
 // 絵は右向きで描く（左向きと、当たったときの白い絵はゲームが作る）。足もとがセルの下の端、左右の真ん中がキャラの立つ位置
 const SHEET={loaded:false,weaponIn:new Set()};
+// 面積の平均で縮める（どのブラウザでも同じ結果）。ふちの半透明はなくして、ドットの輪郭をくっきりさせる
+function shrink(src,w,h){
+  const sw=src.width,sh=src.height,s=src.getContext('2d').getImageData(0,0,sw,sh).data,o=canvasOf(w,h),ox=o.getContext('2d'),im=ox.createImageData(w,h),d=im.data;
+  const fx=sw/w,fy=sh/h;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    let r=0,g=0,b=0,a=0,t=0;const x0=x*fx,x1=x0+fx,y0=y*fy,y1=y0+fy;
+    for(let yy=Math.floor(y0);yy<Math.ceil(y1);yy++){const wy=Math.min(y1,yy+1)-Math.max(y0,yy);
+      for(let xx=Math.floor(x0);xx<Math.ceil(x1);xx++){const wx=Math.min(x1,xx+1)-Math.max(x0,xx),wgt=wx*wy,i=(yy*sw+xx)*4,al=s[i+3]*wgt;
+        r+=s[i]*al;g+=s[i+1]*al;b+=s[i+2]*al;a+=al;t+=wgt}}
+    const k=(y*w+x)*4,A=a/t;
+    if(A>110&&a>0){d[k]=r/a;d[k+1]=g/a;d[k+2]=b/a;d[k+3]=255}
+  }
+  ox.putImageData(im,0,0);return o;
+}
 async function loadSheet(){
   if(/[?&]nosheet\b/.test(location.search))return;
   try{
@@ -563,7 +577,9 @@ async function loadSheet(){
     const meta=pv?pv.json:await (await fetch('sprites.json',{cache:'no-cache'})).json();
     const img=new Image();
     img.src=pv?pv.png:URL.createObjectURL(await (await fetch('sprites.png',{cache:'no-cache'})).blob());await img.decode();
-    const F=meta.frames,cut=k=>{const f=F[k];if(!f)return null;const c=canvasOf(f.w,f.h);c.getContext('2d').drawImage(img,f.x,f.y,f.w,f.h,0,0,f.w,f.h);return sprC(c)};
+    // セルは描くときの大きさ（キャラ 48、敵は2倍）。s（表示の倍率）に合わせて縮めて使う
+    const F=meta.frames,cut=k=>{const f=F[k];if(!f)return null;let c=canvasOf(f.w,f.h);c.getContext('2d').drawImage(img,f.x,f.y,f.w,f.h,0,0,f.w,f.h);
+      if(f.s&&f.s!==1)c=shrink(c,Math.max(1,Math.round(f.w*f.s)),Math.max(1,Math.round(f.h*f.s)));return sprC(c)};
     const set=(obj,key,name)=>{const s2=cut(name);if(s2)obj[key]=s2};
     for(const k in CLS){set(CLS[k].spr,0,`char.${k}.0`);set(CLS[k].spr,1,`char.${k}.1`);set(CLS[k],'pose',`char.${k}.pose`)}
     for(const k in MOB){set(MOB[k].spr,0,`mob.${k}.0`);set(MOB[k].spr,1,`mob.${k}.1`)}
