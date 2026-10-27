@@ -25,14 +25,14 @@
   },
   "char.warrior.0": {
    "x": 6,
-   "y": 78,
+   "y": 72,
    "w": 48,
    "h": 48,
    "s": 0.6667
   },
   "char.warrior.1": {
    "x": 60,
-   "y": 78,
+   "y": 72,
    "w": 48,
    "h": 48,
    "s": 0.6667
@@ -41,222 +41,222 @@
    "x": 114,
    "y": 60,
    "w": 48,
-   "h": 66,
+   "h": 60,
    "s": 0.6667
   },
   "char.mage.0": {
    "x": 6,
-   "y": 150,
+   "y": 138,
    "w": 48,
    "h": 48,
    "s": 0.6667
   },
   "char.mage.1": {
    "x": 60,
-   "y": 150,
+   "y": 138,
    "w": 48,
    "h": 48,
    "s": 0.6667
   },
   "char.mage.pose": {
    "x": 114,
-   "y": 132,
+   "y": 126,
    "w": 48,
-   "h": 66,
+   "h": 60,
    "s": 0.6667
   },
   "char.priest.0": {
    "x": 6,
-   "y": 222,
+   "y": 204,
    "w": 48,
    "h": 48,
    "s": 0.6667
   },
   "char.priest.1": {
    "x": 60,
-   "y": 222,
+   "y": 204,
    "w": 48,
    "h": 48,
    "s": 0.6667
   },
   "char.priest.pose": {
    "x": 114,
-   "y": 204,
+   "y": 192,
    "w": 48,
-   "h": 66,
+   "h": 60,
    "s": 0.6667
   },
   "mob.town.0": {
    "x": 6,
-   "y": 276,
+   "y": 258,
    "w": 48,
    "h": 48,
    "s": 0.6667
   },
   "mob.town.1": {
    "x": 60,
-   "y": 276,
+   "y": 258,
    "w": 48,
    "h": 48,
    "s": 0.6667
   },
   "mob.child.0": {
    "x": 6,
-   "y": 330,
+   "y": 312,
    "w": 48,
    "h": 36,
    "s": 0.6667
   },
   "mob.child.1": {
    "x": 60,
-   "y": 330,
+   "y": 312,
    "w": 48,
    "h": 36,
    "s": 0.6667
   },
   "mob.woman.0": {
    "x": 6,
-   "y": 372,
+   "y": 354,
    "w": 48,
    "h": 48,
    "s": 0.6667
   },
   "mob.woman.1": {
    "x": 60,
-   "y": 372,
+   "y": 354,
    "w": 48,
    "h": 48,
    "s": 0.6667
   },
   "mob.merchant.0": {
    "x": 6,
-   "y": 426,
+   "y": 408,
    "w": 48,
    "h": 48,
    "s": 0.6667
   },
   "mob.merchant.1": {
    "x": 60,
-   "y": 426,
+   "y": 408,
    "w": 48,
    "h": 48,
    "s": 0.6667
   },
   "mob.soldier.0": {
    "x": 6,
-   "y": 480,
+   "y": 462,
    "w": 48,
    "h": 48,
    "s": 0.6667
   },
   "mob.soldier.1": {
    "x": 60,
-   "y": 480,
+   "y": 462,
    "w": 48,
    "h": 48,
    "s": 0.6667
   },
   "mob.princess.0": {
    "x": 6,
-   "y": 534,
+   "y": 516,
    "w": 48,
    "h": 48,
    "s": 0.6667
   },
   "mob.princess.1": {
    "x": 60,
-   "y": 534,
+   "y": 516,
    "w": 48,
    "h": 48,
    "s": 0.6667
   },
   "mob.king.0": {
    "x": 6,
-   "y": 588,
+   "y": 570,
    "w": 48,
    "h": 48,
    "s": 0.6667
   },
   "mob.king.1": {
    "x": 60,
-   "y": 588,
+   "y": 570,
    "w": 48,
    "h": 48,
    "s": 0.6667
   },
   "enemy.slime.0": {
    "x": 6,
-   "y": 642,
+   "y": 624,
    "w": 72,
    "h": 60,
    "s": 0.5
   },
   "enemy.slime.1": {
    "x": 84,
-   "y": 642,
+   "y": 624,
    "w": 72,
    "h": 60,
    "s": 0.5
   },
   "enemy.bat.0": {
    "x": 6,
-   "y": 708,
+   "y": 690,
    "w": 64,
    "h": 40,
    "s": 0.5
   },
   "enemy.bat.1": {
    "x": 76,
-   "y": 708,
+   "y": 690,
    "w": 64,
    "h": 40,
    "s": 0.5
   },
   "enemy.skel.0": {
    "x": 6,
-   "y": 754,
+   "y": 736,
    "w": 64,
    "h": 64,
    "s": 0.5
   },
   "enemy.skel.1": {
    "x": 76,
-   "y": 754,
+   "y": 736,
    "w": 64,
    "h": 64,
    "s": 0.5
   },
   "enemy.wiz.0": {
    "x": 6,
-   "y": 824,
+   "y": 806,
    "w": 64,
    "h": 60,
    "s": 0.5
   },
   "boss.dragon.stance": {
    "x": 6,
-   "y": 890,
+   "y": 872,
    "w": 242,
    "h": 224,
    "s": 0.5
   },
   "boss.dragon.roar": {
    "x": 254,
-   "y": 890,
+   "y": 872,
    "w": 242,
    "h": 224,
    "s": 0.5
   },
   "boss.dragon.claw": {
    "x": 502,
-   "y": 890,
+   "y": 872,
    "w": 242,
    "h": 224,
    "s": 0.5
   },
   "boss.dragon.flap": {
    "x": 750,
-   "y": 890,
+   "y": 872,
    "w": 242,
    "h": 224,
    "s": 0.5
@@ -269,9 +269,44 @@
   "boss.dragon.stance",
   "char.hero.0",
   "char.hero.1",
-  "char.hero.pose"
+  "char.hero.pose",
+  "char.mage.0",
+  "char.mage.1",
+  "char.mage.pose",
+  "char.priest.0",
+  "char.priest.1",
+  "char.priest.pose",
+  "char.warrior.0",
+  "char.warrior.1",
+  "char.warrior.pose",
+  "enemy.bat.0",
+  "enemy.bat.1",
+  "enemy.skel.0",
+  "enemy.skel.1",
+  "enemy.slime.0",
+  "enemy.slime.1",
+  "enemy.wiz.0",
+  "mob.child.0",
+  "mob.child.1",
+  "mob.king.0",
+  "mob.king.1",
+  "mob.merchant.0",
+  "mob.merchant.1",
+  "mob.princess.0",
+  "mob.princess.1",
+  "mob.soldier.0",
+  "mob.soldier.1",
+  "mob.town.0",
+  "mob.town.1",
+  "mob.woman.0",
+  "mob.woman.1"
  ],
  "weaponInSprite": [
-  "char.hero"
+  "char.hero",
+  "char.mage",
+  "char.priest",
+  "char.warrior",
+  "mob.king",
+  "mob.soldier"
  ]
 }
