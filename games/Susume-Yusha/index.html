@@ -248,6 +248,15 @@ const HEADS={
 const BODY=["...kCAAAAk......","..kCCAAAAAsk....","..kCAaaaaAsk....","..kCAAAAAkk.....","...kkAAAAk......"];
 const LEGS=[["....kLkkLk......","....kLk.kLk.....","...kLLk.kLLk....","...kkkk.kkkk...."],
             ["....kLkLk.......","....kLkLk.......","....kLLLLk......","....kkkkkk......"]];
+// 正面の決めポーズ用（16x22）。頭（6〜13行目）・かかげた腕と持ち物（0〜12行目）・体（14〜21行目）を重ねる
+const POSE_HEAD={
+  helm:["..k..kkkk..k....","..khkHHHHkhk....","...kHHhhHHk.....","..kHkkkkkkHk....","..kkssssssk.....","...kskssksk.....","...kssssssk.....","....kkkkkk......"],
+  hat:[".....kk.........","....kHHk........","...kHHHHk.......",".kkHHhhHHkk.....","..kkssssskk.....","...kskssksk.....","...kssssssk.....","....kkkkkk......"],
+  mitre:["....kkkkk.......","...kHHhHHk......","...kHhhhHk......","..kkHHhHHkk.....","..kkssssskk.....","...kskssksk.....","...kssssssk.....","....kkkkkk......"],
+};
+const POSE_SWORD=["............w...","...........kwk..","...........kwk..","...........kgk..","...........kgk..","..........kyyyk.","...........kyk..","...........ksk..","..........kkAk..","..........kAAk..","..........kAk...","..........AAk...","..........kk...."];
+const POSE_STAFF=["................","..........kkk...",".........kyyyk..",".........kyyyk..","..........kkk...","...........knk..","...........knk..","...........ksk..","..........kkAk..","..........kAAk..","..........kAk...","..........AAk...","..........kk...."];
+const POSE_BODY=["..kCkAAAAkCk....",".kCkAAaaAAkCk...",".kCksAAAAskCk...",".kCkkAAAAkkCk...","..kkkLLkLLkk....","....kLLkLLk.....","...kLLLkLLLk....","...kkkkkkkkk...."];
 const CLS={
   hero:{name:'ゆうしゃ',hp:100,head:'helm',c:{H:'b',h:'y',A:'B',a:'y',C:'r',L:'N'}},
   warrior:{name:'せんし',hp:80,head:'helm',c:{H:'G',h:'g',A:'o',a:'N',C:'R',L:'G'}},
@@ -257,6 +266,9 @@ const CLS={
 for(const k in CLS){
   const c=CLS[k],pal={...PAL};for(const ch in c.c)pal[ch]=PAL[c.c[ch]];
   c.spr=LEGS.map(l=>spr([...HEADS[c.head],...BODY,...l],pal));
+  // 決めポーズ（正面を向いて、剣か杖を高くかかげる）
+  const item=c.head==='helm'?POSE_SWORD:POSE_STAFF,head=[...Array(6).fill('................'),...POSE_HEAD[c.head]];
+  c.pose=spr([...head.map((r,i)=>[...r].map((ch,j)=>item[i]&&item[i][j]!=='.'?item[i][j]:ch).join('')),...POSE_BODY],pal);
 }
 const SP={
   bat:[spr(mirror(["k.......","kk......","kvk....k","kvvk..kv",".kvvkkvv",".kvvvvvv","..kvvvwk","...kvvvv","....kkvv",".......k"])),
@@ -584,7 +596,6 @@ function stickMove(e){
   if(len>R){dx=dx/len*R;dy=dy/len*R}
   knob.style.transform=`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))`;
   stickMoved=Math.max(stickMoved,Math.hypot(e.clientX-stickX0,e.clientY-stickY0));
-  if(stickMoved>=16)input.charging=false;   // 指を動かしたら、ためはやめて移動にする
   const m=Math.min(1,len/R);
   if(m<.2){input.sx=input.sy=0}else{const k=Math.min(1,(m-.2)/.6)/m;input.sx=dx/R*k;input.sy=dy/R*k}
 }
@@ -592,7 +603,7 @@ function slashTap(){input.release=true;knob.classList.add('tap');setTimeout(()=>
 function stickRelease(tap){
   stickId=null;input.sx=input.sy=0;knob.style.transform='';
   input.charging=false;
-  if(tap&&stickCenter&&stickMoved<16)slashTap();   // 中央のつまみを放すと斬撃（長押ししていたら、ためた斬撃）。矢印の上を押したときは移動になる
+  if(tap&&stickCenter)slashTap();   // 中央のつまみから始めたタッチは、放すと斬撃（ためていたら、ためた斬撃）。そのまま指を動かせば、ためながら移動できる。矢印の上から始めたときは移動だけ
 }
 // 円盤の操作として受けるのは、操作エリアの下側か円盤の円の中で始めたタッチ（円盤が上にはみ出しても受ける）
 function onStick(x,y){
@@ -827,7 +838,7 @@ function updBoss(dt){
   if(b.state==='die'){
     if(Math.random()<dt*14){addFx(b.x+rnd(-36,36),b.z,rnd(0,88),Math.random()<.5?'#fcd800':'#f83800',8,70);sfx('boom')}
     G.shake=.1;
-    if(b.t>2.2){G.boss=null;G.state='won';G.clearT=0;say('ほのおの ドラゴンを たおした！');SFX.join()}
+    if(b.t>2.2){G.boss=null;G.state='won';G.clearT=0;G.shots=[];input.charging=false;party().forEach(m=>{m.inv=0;m.flash=0;m.swing=0;m.charge=0});say('ほのおの ドラゴンを たおした！');SFX.join()}
     return;
   }
   b.h=6+Math.sin(b.t*2.2)*4;
@@ -1019,7 +1030,13 @@ function update(dt){
   for(const f of G.fx){f.life-=dt;f.x+=f.vx*dt;f.h+=f.vh*dt;if(f.num!=null)f.vh*=Math.pow(.02,dt);else if(!f.k)f.vh-=200*dt}
   G.fx=G.fx.filter(f=>f.life>0);
   if(G.state==='over'){G.overT+=dt;if(G.overT>1.6&&!overlayShown)showOver();return}
-  if(G.state==='won'){G.clearT+=dt;if(G.clearT>1.8&&!overlayShown)showClear();return}
+  if(G.state==='won'){   // 勝利: みんなで小さく跳んで、正面を向いて決めポーズ
+    G.clearT+=dt;
+    const lx=clamp(G.hero.x,G.camX+70,G.camX+W-70),lz=clamp(G.hero.z,20,DEPTH-20),OFF=[0,-34,34,-68];   // 勇者を真ん中に横一列に並ぶ
+    party().forEach((m,i)=>{const k=Math.min(1,dt*5);m.x+=(lx+OFF[i]-m.x)*k;m.z+=(lz-m.z)*k;m.walk+=dt});
+    party().forEach((m,i)=>{const t=G.clearT-.15*i;m.h=t>0&&t<.45?Math.sin(t/.45*Math.PI)*22:0;
+      if(Math.random()<dt*3)G.fx.push({k:'twinkle',x:m.x+rnd(-16,16),z:m.z,h:rnd(20,48),life:.35,max:.35,vx:0,vh:0})});
+    if(G.clearT>3.2&&!overlayShown)showClear();return}
   if(G.state!=='play')return;
   updHero(dt);
   G.allies.forEach((a,i)=>updAlly(a,i,dt));
@@ -1090,7 +1107,9 @@ function drawSword(m){
 }
 function drawMember(m){
   if(m.inv>0&&Math.floor(m.inv*20)%2)return;
-  const c=CLS[m.cls],fr=c.spr[Math.floor(m.walk*8)%2],img=m.flash>0?(m.face<0?fr.wl:fr.wr):(m.face<0?fr.l:fr.r);
+  const c=CLS[m.cls];
+  if(G.state==='won'&&G.clearT>.12*party().indexOf(m)){shadow(m.x,m.z,22);drawImg(c.pose.r,m.x,m.z,m.h);return}
+  const fr=c.spr[Math.floor(m.walk*8)%2],img=m.flash>0?(m.face<0?fr.wl:fr.wr):(m.face<0?fr.l:fr.r);
   if(m.fall){
     const h=inHole(m.x,m.z,0)||HOLES[0];ctx.save();ctx.beginPath();ctx.rect(SX(h[0]),GY+Math.max(0,h[2])-40,h[1]-h[0],Math.min(H-GY,h[3])-Math.max(0,h[2])+40);ctx.clip();
     drawImg(img,m.x,m.z,m.h);ctx.restore();return;
