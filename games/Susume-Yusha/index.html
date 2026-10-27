@@ -707,7 +707,8 @@ const OBS=[['rock',375,30],['tree',450,8],['tree',705,14],['rock',810,72],['rock
   ['rock',3420,70],['tree',3465,40],['crate',3700,30],['rock',3720,18],['tree',3975,70],['tree',4180,16]].map(([t,x,z])=>({t,x,z,...OB_DEF[t]}));
 const ALLY_SPOTS=[{cls:'warrior',x:960,z:50},{cls:'mage',x:1875,z:36},{cls:'priest',x:2970,z:58}];
 const MOB_SPOTS=[{cls:'town',x:720,z:72},{cls:'child',x:1350,z:22},{cls:'woman',x:1695,z:62},{cls:'merchant',x:2370,z:60},{cls:'soldier',x:2700,z:42},{cls:'princess',x:3360,z:46},{cls:'king',x:3750,z:62},{cls:'aitsu',x:2010,z:30,rare:true}];
-const AITSU_RATE=.2;   // 隠れキャラ あいつ が出る確率（URL に ?aitsu で必ず出る）
+const AITSU_RATE=.2;
+const ALLY_AIM=.35;   // 仲間をねらう敵の割合   // 隠れキャラ あいつ が出る確率（URL に ?aitsu で必ず出る）
 const SLOTS=[{dx:-24,dz:-18},{dx:-24,dz:18},{dx:-44,dz:0}];
 
 function inHole(x,z,m=3){for(const h of HOLES)if(x>h[0]+m&&x<h[1]-m&&z>h[2]+m&&z<h[3]-m)return h;return null}
@@ -886,17 +887,17 @@ function trySwing(m,range,dmg){
 
 /* ---------- 敵 ---------- */
 const ET={
-  slime:{hp:9,w:7,ht:12,dmg:6,spd:28,col:'#3cbcfc'},
-  bat:{hp:8,w:12,ht:16,dmg:5,spd:44,col:'#9878f8',fly:true},
-  skel:{hp:30,w:11,ht:30,dmg:10,spd:20,col:'#fcfcfc'},
-  wiz:{hp:20,w:11,ht:30,dmg:4,spd:26,col:'#6844fc'},
+  slime:{hp:15,w:7,ht:12,dmg:9,spd:28,col:'#3cbcfc'},
+  bat:{hp:14,w:12,ht:16,dmg:8,spd:44,col:'#9878f8',fly:true},
+  skel:{hp:30,w:11,ht:30,dmg:15,spd:20,col:'#fcfcfc'},
+  wiz:{hp:20,w:11,ht:30,dmg:6,spd:26,col:'#6844fc'},
 };
 function freeZ(x){for(let i=0;i<8;i++){const z=rnd(6,DEPTH-6);if(!obAt(x,z,0)&&!inHole(x,z,-6))return z}return rnd(6,DEPTH-6)}
 function spawnEnemy(type,x,z,force=false){
   if(G.enemies.length>=11&&!force)return;
   const d=ET[type];
   G.enemies.push({type,x,z:z??freeZ(x),h:d.fly?24:0,hp:d.hp,w:d.w,ht:d.ht,dmg:d.dmg,spd:d.spd*rnd(.85,1.15),col:d.col,
-    t:rnd(0,6),kx:0,flash:0,face:-1,cast:2+rnd(0,1.5),charge:0,falling:0,dead:false,target:null});
+    t:rnd(0,6),kx:0,flash:0,face:-1,atk:null,atT:0,acd:rnd(.6,1.4),cast:2+rnd(0,1.5),charge:0,falling:0,dead:false,target:null});
   return G.enemies[G.enemies.length-1];
 }
 // 道の仲間: 画面に入る前に魔物の群れが取りかこむ。全部たおすと助けられる。画面の左へ流れたら助けられない
@@ -943,8 +944,16 @@ function spawnLogic(dt){
 function updEnemy(e,dt){
   e.t+=dt;e.flash-=dt;
   if(e.falling){e.falling+=dt;e.h-=120*dt;if(e.falling>.6)e.dead=true;return}
+  // 画面に入ったら、仲間がいれば ALLY_AIM の確率で仲間の一人をねらう（まどうしは魔法を撃つたびに選びなおす）
+  if(!e.picked&&e.type!=='wiz'&&e.x<G.camX+W&&!(e.guard&&e.guard.state==='captive'&&!e.aggro)){
+    e.picked=true;
+    if(G.allies.length&&Math.random()<ALLY_AIM){e.target=G.allies[Math.random()*G.allies.length|0];if(!G.aimTold){G.aimTold=true;say('まものが なかまを ねらっている！ まもれ！')}}
+  }
   const tg=e.target&&e.target.hp>0&&party().includes(e.target)?e.target:G.hero;
   const dx=tg.x-e.x,dz=tg.z-e.z,dist=Math.hypot(dx,dz)||1;
+  // 仲間をねらう敵は、間にいる勇者を上下に回りこむ
+  const dodge=tg!==G.hero&&(G.hero.x-e.x)*Math.sign(dx)>0&&(G.hero.x-e.x)*Math.sign(dx)<Math.abs(dx)&&Math.abs(G.hero.z-e.z)<22&&Math.abs(G.hero.x-e.x)<70
+    ?(e.z>=G.hero.z?1:-1):0;
   let vx=0,vz=0;
   const n=e.guard;
   if(n&&n.state==='captive'&&!e.aggro&&Math.hypot(G.hero.x-e.x,G.hero.z-e.z)<96)e.aggro=true;
@@ -960,13 +969,26 @@ function updEnemy(e,dt){
     e.z=clamp(e.z,2,DEPTH-2);
     return;
   }
+  e.acd-=dt;
+  if(e.atk)e.atT+=dt;
+  const adx=Math.abs(dx),onScr=e.x<G.camX+W-8;
   if(e.type==='slime'){
-    const hop=Math.sin(e.t*7);e.h=Math.max(0,hop)*6;
-    if(hop>0){vx=dx/dist*e.spd*1.6;vz=dz/dist*e.spd*1.6}
+    // とびかかり: 少し離れた所でちぢんでためる（まえぶれ）→ 勇者のいた所へ跳ぶ。跳んでいる間は剣で押し返されない
+    if(!e.atk&&e.acd<=0&&onScr&&adx>26&&adx<62&&Math.abs(dz)<14){e.atk='wind';e.atT=0;e.lx=tg.x;e.lz=tg.z;warnAtk()}
+    if(e.atk==='wind'){e.h=0;e.face=dx<0?-1:1;if(e.atT>.5){e.atk='leap';e.atT=0;const ld=Math.hypot(e.lx-e.x,e.lz-e.z)||1;e.lvx=(e.lx-e.x)/ld*175;e.lvz=(e.lz-e.z)/ld*175*.6}}
+    else if(e.atk==='leap'){e.kx=0;vx=e.lvx;vz=e.lvz;e.h=Math.sin(Math.min(1,e.atT/.38)*Math.PI)*16;if(e.atT>.38){e.atk=null;e.h=0;e.acd=rnd(1.4,2.2)}}
+    else{
+      const hop=Math.sin(e.t*7);e.h=Math.max(0,hop)*6;
+      if(hop>0){vx=dx/dist*e.spd*1.6;vz=dodge?dodge*e.spd*1.6:dz/dist*e.spd*1.6}
+    }
   }else if(e.type==='bat'){
-    e.h=20+Math.sin(e.t*5)*8;vx=dx/dist*e.spd;vz=dz/dist*e.spd+Math.cos(e.t*3)*20;
+    e.h=20+Math.sin(e.t*5)*8;vx=dx/dist*e.spd;vz=(dodge?dodge*e.spd:dz/dist*e.spd)+Math.cos(e.t*3)*20;
   }else if(e.type==='skel'){
-    vx=dx/dist*e.spd;vz=dz/dist*e.spd;
+    // 剣で斬る: 止まって剣をふりかぶる（まえぶれ）→ 前を斬る（体に触れなくても届く）。ふりかぶっている間は押し返されない
+    if(!e.atk&&e.acd<=0&&onScr&&adx<36&&Math.abs(dz)<13){e.atk='wind';e.atT=0;e.face=dx<0?-1:1;warnAtk()}
+    if(e.atk==='wind'){e.kx=0;if(e.atT>.6){e.atk='cut';e.atT=0;skelCut(e)}}
+    else if(e.atk==='cut'){e.kx=0;if(e.atT>.3){e.atk=null;e.acd=rnd(1.3,2)}}
+    else{vx=dx/dist*e.spd;vz=dodge?dodge*e.spd*1.4:dz/dist*e.spd}
   }else if(e.type==='wiz'){
     const want=84,adx=Math.abs(dx);
     vx=adx>want+10?Math.sign(dx)*e.spd:adx<want-20?-Math.sign(dx)*e.spd:0;
@@ -976,11 +998,11 @@ function updEnemy(e,dt){
     if(e.cast<=0&&e.x<G.camX+W-4){
       e.cast=rnd(2.3,3.1);e.charge=0;
       const a=Math.atan2(dz,dx);
-      G.shots.push({kind:'magic',x:e.x+Math.sign(dx)*12,z:e.z,h:16,vx:Math.cos(a)*78,vz:Math.sin(a)*78,dmg:12,life:4,friend:false});
+      G.shots.push({kind:'magic',x:e.x+Math.sign(dx)*12,z:e.z,h:16,vx:Math.cos(a)*78,vz:Math.sin(a)*78,dmg:18,life:4,friend:false});
       sfx('magic');e.target=Math.random()<.35&&G.allies.length?G.allies[Math.random()*G.allies.length|0]:G.hero;
     }
   }
-  e.face=dx<0?-1:1;
+  if(!e.atk)e.face=dx<0?-1:1;
   vx+=e.kx;e.kx-=e.kx*Math.min(1,dt*8);
   if(ET[e.type].fly){e.x+=vx*dt;e.z+=vz*dt}else moveBody(e,vx*dt,vz*dt);
   e.z=clamp(e.z,2,DEPTH-2);
@@ -990,6 +1012,14 @@ function updEnemy(e,dt){
   for(const m of party()){
     if(Math.abs(e.x-m.x)<e.w+7&&Math.abs(e.z-m.z)<9&&e.h<m.h+30&&e.h+e.ht>m.h){damage(m,e.dmg,Math.sign(m.x-e.x)||-1);e.kx=Math.sign(e.x-m.x)*60}
   }
+}
+
+// はじめて敵が攻撃のまえぶれを見せたときに知らせる
+function warnAtk(){if(!G.atkTold){G.atkTold=true;say('てきが ひかったら こうげきの あいず！ うえか したへ よけろ！')}}
+// ガイコツの斬りつけ: 前 38 まで届く
+function skelCut(e){
+  sfx('swing');G.fx.push({k:'eslash',x:e.x+e.face*6,z:e.z,h:16,dir:e.face,life:.2,max:.2,vx:0,vh:0});
+  for(const m of party()){const fx=(m.x-e.x)*e.face;if(fx>-6&&fx<38&&Math.abs(m.z-e.z)<14&&m.h<30)damage(m,e.dmg,e.face)}
 }
 
 /* ---------- ボス ---------- */
@@ -1038,7 +1068,7 @@ function updBoss(dt){
   }else if(b.state==='fire'){
     if(b.t>.55){
       const n=rage?5:3,a0=Math.atan2(p.z-b.z,p.x-b.x);
-      for(let i=0;i<n;i++){const a=a0+(i-(n-1)/2)*.22;b.roarT=.35;G.shots.push({kind:'boss',x:b.x-38,z:b.z,h:b.h+74,fallTo:16,vx:Math.cos(a)*90,vz:Math.sin(a)*90*.8,dmg:14,life:4,friend:false})}
+      for(let i=0;i<n;i++){const a=a0+(i-(n-1)/2)*.22;b.roarT=.35;G.shots.push({kind:'boss',x:b.x-38,z:b.z,h:b.h+74,fallTo:16,vx:Math.cos(a)*90,vz:Math.sin(a)*90*.8,dmg:20,life:4,friend:false})}
       sfx('magic');b.state='idle';b.t=0;
     }
   }else if(b.state==='charge'){
@@ -1048,7 +1078,7 @@ function updBoss(dt){
   }
   b.z=clamp(b.z,8,DEPTH-8);
   for(const m of party()){
-    if(Math.abs(b.x-m.x)<b.w+6&&Math.abs(b.z-m.z)<16&&m.h<b.h+80)damage(m,b.state==='charge'?18:12,-1);
+    if(Math.abs(b.x-m.x)<b.w+6&&Math.abs(b.z-m.z)<16&&m.h<b.h+80)damage(m,b.state==='charge'?27:18,-1);
   }
 }
 
@@ -1332,8 +1362,13 @@ function drawEnemy(e){
   if(e.falling){const h=inHole(e.x,e.z,0);if(h){ctx.save();ctx.beginPath();ctx.rect(SX(h[0]),GY+Math.max(0,h[2])-40,h[1]-h[0],140);ctx.clip()}
     drawImg(img,e.x,e.z,e.h);if(h)ctx.restore();return}
   shadow(e.x,e.z,e.type==='bat'?14:e.type==='slime'?12:22);
+  if(e.atk==='wind'){   // 攻撃のまえぶれ: 白く点滅して「！」
+    const by=Math.round(GY+e.z-e.h-e.ht-12+(e.type==='slime'?2:0)),bx=SX(e.x);ctx.fillStyle='#303850';ctx.fillRect(bx-3,by-1,7,11);ctx.fillStyle='#fcd800';ctx.fillRect(bx-2,by,5,9);ctx.fillStyle='#d82800';ctx.fillRect(bx-1,by+1,3,4);ctx.fillRect(bx-1,by+6,3,2)}
   if(e.type==='wiz'&&e.charge&&Math.floor(G.t*20)%2){ctx.fillStyle='#f878f8';ctx.fillRect(SX(e.x+e.face*14)-3,Math.round(GY+e.z-32),6,6)}
-  drawImg(img,e.x+(e.flash>0?(Math.floor(G.t*40)%2?2:-2):0),e.z,e.h);
+  const blink=e.atk==='wind'&&Math.floor(G.t*14)%2,sq=e.type==='slime'&&e.atk==='wind';
+  const im2=blink?(e.face<0?fr.wl:fr.wr):img;
+  if(sq){const w=Math.round(im2.width*1.25),h=Math.round(im2.height*.75);ctx.drawImage(im2,SX(e.x)-(w>>1),Math.round(GY+e.z)-h,w,h)}   // ちぢんでためる
+  else drawImg(im2,e.x+(e.flash>0?(Math.floor(G.t*40)%2?2:-2):0)-(e.type==='skel'&&e.atk==='wind'?e.face*2:0),e.z,e.h);
 }
 function drawShot(s){
   const x=SX(s.x),y=Math.round(GY+s.z-s.h);
@@ -1388,6 +1423,9 @@ function draw(){
       for(let i=0;i<8;i++){const a=i*Math.PI/4+.39,L=r*(i%2?.55:1);ctx.fillStyle=t<.45?'#ffffff':f.crit?'#ffd84a':'#a8ecff';
         for(let j=Math.floor(L*.4);j<L;j+=1.5)ctx.fillRect(Math.round(fx+Math.cos(a)*j),Math.round(fy+Math.sin(a)*j),2,2)}
       const c=Math.max(1,Math.round(6*(1-t)));ctx.fillStyle='#ffffff';ctx.fillRect(fx-c,fy-c,c*2,c*2)}
+    else if(f.k==='eslash'){const t=1-f.life/f.max;ctx.globalAlpha=1-t*.7;   // ガイコツの斬りつけ（弧）
+      for(let a=-1.3;a<=1.3;a+=.08){const r=18+t*4,x=Math.round(fx+Math.cos(a)*r*f.dir*.9),y=Math.round(fy-6+Math.sin(a)*r*.7);ctx.fillStyle='#f8d8c0';ctx.fillRect(x-1,y,3,2);ctx.fillStyle='#ffffff';ctx.fillRect(x,y,1,1)}
+      ctx.globalAlpha=1}
     else if(f.k==='slash'){const t=1-f.life/f.max,L=26;ctx.globalAlpha=1-t;
       for(let j=-L/2;j<L/2;j++){const x=Math.round(fx+j*f.dir*.8),y=Math.round(fy-8+j*.9);ctx.fillStyle='#a8ecff';ctx.fillRect(x-1,y,4,2);ctx.fillStyle='#ffffff';ctx.fillRect(x,y,2,1)}
       ctx.globalAlpha=1}
