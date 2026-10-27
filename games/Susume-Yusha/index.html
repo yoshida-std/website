@@ -1777,8 +1777,8 @@ function updHudEmpty(){let h='<div class="mem"><span class="nm">ゆうしゃ</sp
   for(let i=0;i<3;i++)h+='<div class="mem empty"><span class="nm">？？？</span><span class="bar"></span></div>';$('#members').innerHTML=h}
 layout();showTitle();requestAnimationFrame(frame);
 </script>
-<!-- LINEスタンプ誘導: 名前に「あいつ」が入るスタンプ・絵文字。ボタンはタイトル・クリア・ゲームオーバーの画面だけで出す -->
-<script src="../../common/line-promo/line-sticker-promo.js" data-match="あいつ" data-position="top-left" data-auto-show="false"></script>
+<!-- LINEスタンプ誘導: 名前に「あいつ」が入るスタンプ・絵文字（「あいつの犬」は外す）。ボタンはタイトル・クリア・ゲームオーバーの画面だけで出す -->
+<script src="../../common/line-promo/line-sticker-promo.js" data-match="あいつ" data-exclude="あいつの犬" data-position="top-left" data-auto-show="false"></script>
 <script>if(!$('#titleView').hidden)StickerPromo.show()</script>
 </body>
 </html>

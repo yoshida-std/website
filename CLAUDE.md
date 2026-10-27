@@ -31,7 +31,7 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 
 ## LINEスタンプ誘導（`common/line-promo/`）
 
-- `line-sticker-promo.js` … 共通部品。ゲームに `<script src="../../common/line-promo/line-sticker-promo.js" data-keys="商品ID,商品ID"></script>` を入れると、緑の「LINEスタンプ」ボタンと一覧が出る。使い方は JS 冒頭のコメント。`data-match="文字"` で名前にその文字を含むものを全部出せる（すすめ！ゆうしゃ は `data-match="あいつ"`）
+- `line-sticker-promo.js` … 共通部品。ゲームに `<script src="../../common/line-promo/line-sticker-promo.js" data-keys="商品ID,商品ID"></script>` を入れると、緑の「LINEスタンプ」ボタンと一覧が出る。使い方は JS 冒頭のコメント。`data-match="文字"` で名前にその文字を含むものを全部出せ、`data-exclude="文字,文字"` でそこから外せる（すすめ！ゆうしゃ は `data-match="あいつ" data-exclude="あいつの犬"`）
 - `sticker-catalog.json` … カタログ。キーは LINE STORE の商品ID（スタンプは数字、絵文字は英数字24桁）。着せ替えは対象外。手で編集しない
 - カタログは `.github/workflows/update-sticker-catalog.yml` が毎日 9:00（日本時間）に作り直し、`main` にコミットする。Actions の画面から手動でも実行できる
   - `.github/scripts/build_sticker_catalog.py` が LINE STORE の作者ページ（日本語）を巡回する（旧 generate_list の処理を移したもの。CSV は作らない）

@@ -12,6 +12,7 @@
  * 【名前で選ぶ】（名前にこの文字を含むものを全部。カタログの順＝新しい順。カタログが更新されると新作も自動で出る）
  *   <script src="../../common/line-promo/line-sticker-promo.js" data-match="あいつ"></script>
  *   data-keys と一緒に使うと、キーで選んだものの後ろに足す（重なりは1回だけ）
+ *   data-exclude="あいつの犬"（カンマ区切り）で、名前にその文字を含むものを data-match の結果から外す
  *
  * 【JSから指定】
  *   StickerPromo.init({ keys: ["12345678", "5ac1bfd5040ab15980c9b435"], position: "top-right" });
@@ -205,7 +206,10 @@
     });
     if (opt.match) Object.keys(table).forEach(function (k) {   // 名前に match を含むもの
       var it = table[k];
-      if (it && String(it.name || "").indexOf(opt.match) >= 0 && items.indexOf(it) < 0) items.push(it);
+      var name = String((it && it.name) || "");
+      if (name.indexOf(opt.match) < 0 || items.indexOf(it) >= 0) return;
+      if ((opt.exclude || []).some(function (x) { return name.indexOf(x) >= 0; })) return;   // 外すもの
+      items.push(it);
     });
     return {
       items: items,
@@ -244,6 +248,7 @@
     init({
       keys: (SCRIPT.dataset.keys || "").split(",").map(function (k) { return k.trim(); }).filter(Boolean),
       match: SCRIPT.dataset.match,
+      exclude: (SCRIPT.dataset.exclude || "").split(",").map(function (k) { return k.trim(); }).filter(Boolean),
       catalog: SCRIPT.dataset.catalog,
       position: SCRIPT.dataset.position,
       label: SCRIPT.dataset.label,

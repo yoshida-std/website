@@ -34,7 +34,7 @@
 
 ## LINEスタンプ誘導
 
-- 共通部品（`common/line-promo/line-sticker-promo.js`）を `data-match="あいつ"` で入れてある。カタログの中で名前に「あいつ」が入るスタンプ・絵文字を全部（新しい順）紹介する。カタログが毎日作り直されるので、新作も自動で出る
+- 共通部品（`common/line-promo/line-sticker-promo.js`）を `data-match="あいつ"` で入れてある。カタログの中で名前に「あいつ」が入るスタンプ・絵文字を全部（新しい順）紹介する。ただし「あいつの犬」が入るものは外す（`data-exclude="あいつの犬"`）。カタログが毎日作り直されるので、新作も自動で出る
 - 緑の「LINEスタンプ」ボタンは画面の左上（`data-position="top-left"`）。タイトル・ステージクリア・ゲームオーバーの画面だけで出し（`promo(true)`）、遊んでいる間・はじめるのダッシュ中はかくす（`data-auto-show="false"`、`promo(false)`）
 
 ## 音
