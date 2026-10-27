@@ -1,5 +1,5 @@
 # 仲間・町の人・敵の絵（勇者に合わせた絵）を作り直して sprites.png に足す: python3 games/Susume-Yusha/tools/art/gen_all.py のあと node games/Susume-Yusha/tools/export-sprites.js --from-sheet
-import sys,json;sys.path.insert(0,'.')
+import sys,json,os;sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
 from people import *;import enemies as E
 from PIL import Image
 import os
