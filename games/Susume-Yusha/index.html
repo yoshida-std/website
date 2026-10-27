@@ -1546,7 +1546,7 @@ const COPY='<p class="copy">©YoshidaStudio, ©PANICPUMPKIN</p>';
 function showTitle(){
   hideOverlay();$('#msg').hidden=true;$('#howto').hidden=true;
   const tv=$('#titleView');tv.hidden=true;void tv.offsetWidth;tv.hidden=false;   // 出てくる動きをやり直す
-  document.body.classList.add('titleMode');layout();
+  document.body.classList.add('titleMode');layout();promo(true);
   tv.querySelector('[data-act=start]').focus({preventScroll:true});
 }
 // はじめる: 勇者が猛ダッシュで画面の右へ走りぬけてから、ゲームを始める
@@ -1556,12 +1556,13 @@ function startDash(){
   TD={t0:performance.now()/1000,dust:[],last:0};$('#titleView').classList.add('dash');
   SFX.swing();tone(220,.35,'sawtooth',.06,700);
 }
-function hideTitle(){TD=null;$('#titleView').classList.remove('dash');$('#titleView').hidden=true;document.body.classList.remove('titleMode');layout()}
+function promo(on){if(window.StickerPromo)on?StickerPromo.show():StickerPromo.hide()}
+function hideTitle(){promo(false);TD=null;$('#titleView').classList.remove('dash');$('#titleView').hidden=true;document.body.classList.remove('titleMode');layout()}
 function showOver(){
   const cv=$('#clearView');
   msgQ.length=0;msgT=0;$('#msg').hidden=true;
   const rows=[['すすんだ きょり',`${Math.max(0,Math.floor(G.hero.x/10))}m`],['のこり',`${Math.max(0,Math.ceil((END-G.hero.x)/10))}m`],['たおした てき',G.kills],['たすけた ひと',G.followers.length]];
-  cv.className='over';
+  cv.className='over';promo(true);
   cv.innerHTML=`<h2 class="cTitle ov" data-t="ゲームオーバー"><span>ゲームオーバー</span></h2>
     <div class="cScroll ov">ゆうしゃは ちからつきた…</div>
     <div class="cStats">${rows.map(([k,v],i)=>`<span style="animation-delay:${.7+i*.14}s">${k}</span><span style="animation-delay:${.76+i*.14}s">${v}</span>`).join('')}</div>
@@ -1572,7 +1573,7 @@ function showClear(){
   const t=Math.floor(G.t),cv=$('#clearView');
   msgQ.length=0;msgT=0;$('#msg').hidden=true;
   const rows=[['タイム',`${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`],['たおした てき',G.kills],['のこった なかま',`${G.allies.length} / 3`],['たすけた ひと',`${G.followers.length} / ${G.npcs.filter(n=>n.mob).length}`]];
-  cv.className='';
+  cv.className='';promo(true);
   cv.innerHTML=`<h2 class="cTitle" data-t="ステージ クリア!"><span>ステージ クリア!</span></h2>
     <div class="cScroll">ほのおの ドラゴンを たおした！</div>
     <div class="cStats">${rows.map(([k,v],i)=>`<span style="animation-delay:${.6+i*.14}s">${k}</span><span style="animation-delay:${.66+i*.14}s">${v}</span>`).join('')}</div>
@@ -1600,8 +1601,8 @@ function onTap(el,fn){
 function overlayAct(target){
   const b=target.closest('button');if(!b)return;initAudio();
   const a=b.dataset.act;
-  if(a==='start'&&!$('#titleView').hidden){startDash()}
-  else if(a==='start'){hideOverlay();hideTitle();newGame()}
+  if(a==='start'&&!$('#titleView').hidden){promo(false);startDash()}
+  else if(a==='start'){promo(false);hideOverlay();hideTitle();newGame()}
   else if(a==='howto'){$('#howto').hidden=false;$('#howto [data-act=close]').focus({preventScroll:true})}
   else if(a==='close'){$('#howto').hidden=true;$('#titleView [data-act=howto]').focus({preventScroll:true})}
   else if(a==='title'){G=null;stopBgm();$('#clearView').hidden=true;showTitle()}
@@ -1776,5 +1777,8 @@ function updHudEmpty(){let h='<div class="mem"><span class="nm">ゆうしゃ</sp
   for(let i=0;i<3;i++)h+='<div class="mem empty"><span class="nm">？？？</span><span class="bar"></span></div>';$('#members').innerHTML=h}
 layout();showTitle();requestAnimationFrame(frame);
 </script>
+<!-- LINEスタンプ誘導: 名前に「あいつ」が入るスタンプ・絵文字。ボタンはタイトル・クリア・ゲームオーバーの画面だけで出す -->
+<script src="../../common/line-promo/line-sticker-promo.js" data-match="あいつ" data-position="top-left" data-auto-show="false"></script>
+<script>if(!$('#titleView').hidden)StickerPromo.show()</script>
 </body>
 </html>
