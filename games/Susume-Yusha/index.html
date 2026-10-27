@@ -44,7 +44,7 @@ canvas{touch-action:none;display:block}
 #prog b{position:absolute;right:-3px;top:-3px;width:7px;height:9px;background:#ff3828;border:1px solid #000;box-sizing:border-box}
 #screen{position:relative;overflow:hidden;align-self:center}
 #cv{width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
-#pauseBtn{position:absolute;right:6px;bottom:6px;z-index:2;height:32px;padding:0 12px;font-size:12px;letter-spacing:.05em;opacity:.9}
+#pauseBtn{position:relative;z-index:1;align-self:flex-start;height:32px;padding:0 12px;font-size:12px;letter-spacing:.05em}
 #msg{position:absolute;left:3%;right:3%;top:6px;padding:7px 12px;font-size:clamp(12px,3.6vh,16px);line-height:1.45;pointer-events:none}
 #stickZone{position:relative;flex:1;min-height:0;touch-action:none}
 #panelBg{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
@@ -95,13 +95,13 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 <div id="app">
   <div id="panel">
     <canvas id="panelBg"></canvas>
+    <button id="pauseBtn" class="win" aria-label="一時停止">❚❚ ひとやすみ</button>
     <div id="party" class="win"><div id="members"></div><div id="prog"><i id="progHero"></i><b></b></div></div>
     <div id="stickZone"><div id="stick"><canvas id="shieldCv"></canvas><div id="knob"><canvas id="knobCv"></canvas></div></div></div>
   </div>
   <div id="screen">
     <canvas id="cv" width="320" height="224"></canvas>
     <div id="msg" class="win" hidden></div>
-    <button id="pauseBtn" class="win" aria-label="一時停止">❚❚ ひとやすみ</button>
   </div>
 </div>
 <div id="rotate" hidden><div class="ph"></div><div>スマホを よこむきに してね</div></div>
@@ -549,6 +549,30 @@ function buildArt(){
   SP.tree=makeTree();SP.rock=makeRock(4,20,13);SP.crate=makeCrate();SP.slime=[makeSlime(0),makeSlime(1)];SP.dragon=[makeDragon(0),makeDragon(1)];
 }
 buildArt();
+
+/* ---------- キャラのグラフィックシート（sprites.png / sprites.json） ---------- */
+// sprites.png を描きかえて置くと、ゲームのキャラの絵がその絵になる（どの絵がどこにあるかは sprites.json）。
+// 読めないとき（ファイルがない・?nosheet を付けたとき）は、上のコードで描いた絵のまま。
+// 絵は右向きで描く（左向きと、当たったときの白い絵はゲームが作る）。足もとがセルの下の端、左右の真ん中がキャラの立つ位置
+const SHEET={loaded:false};
+async function loadSheet(){
+  if(/[?&]nosheet\b/.test(location.search))return;
+  try{
+    // ?preview: シートエディタで描きかえ中のシート（同じサイトの localStorage）で試す
+    let pv=null;if(/[?&]preview\b/.test(location.search))try{pv=JSON.parse(localStorage.getItem('susumeYusha.sheetPreview'))}catch(e){}
+    const meta=pv?pv.json:await (await fetch('sprites.json',{cache:'no-cache'})).json();
+    const img=new Image();
+    img.src=pv?pv.png:URL.createObjectURL(await (await fetch('sprites.png',{cache:'no-cache'})).blob());await img.decode();
+    const F=meta.frames,cut=k=>{const f=F[k];if(!f)return null;const c=canvasOf(f.w,f.h);c.getContext('2d').drawImage(img,f.x,f.y,f.w,f.h,0,0,f.w,f.h);return sprC(c)};
+    const set=(obj,key,name)=>{const s2=cut(name);if(s2)obj[key]=s2};
+    for(const k in CLS){set(CLS[k].spr,0,`char.${k}.0`);set(CLS[k].spr,1,`char.${k}.1`);set(CLS[k],'pose',`char.${k}.pose`)}
+    for(const k in MOB){set(MOB[k].spr,0,`mob.${k}.0`);set(MOB[k].spr,1,`mob.${k}.1`)}
+    for(const k of ['slime','bat','skel','wiz'])SP[k].forEach((_,i)=>set(SP[k],i,`enemy.${k}.${i}`));
+    SP.dragon.forEach((_,i)=>set(SP.dragon,i,`boss.dragon.${i}`));
+    SHEET.loaded=true;
+  }catch(e){}
+}
+loadSheet();
 
 // 3x5 の数字
 const DIG=['111101101101111','010110010010111','111001111100111','111001111001111','101101111001001','111100111001111','111100111101111','111001001001001','111101111101111','111101111001111'];
