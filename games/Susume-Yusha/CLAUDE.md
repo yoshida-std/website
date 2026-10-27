@@ -29,7 +29,7 @@
 - `sprites.png`（ゲームが読むシート、透明の背景）と `sprites.json`（どの絵がシートのどこにあるか: `frames` の `名前: {x,y,w,h}`）。起動時に読みこみ（`loadSheet`）、コードで描いた絵の代わりに使う。読めないとき・URL に `?nosheet` を付けたときはコードの絵のまま（`SHEET.loaded`）
 - 名前: `char.{hero|warrior|mage|priest}.{0|1|pose}`（0・1 は歩きの2コマ）、`mob.{town|child|woman|merchant|soldier|princess|king}.{0|1}`、`enemy.{slime|bat|skel}.{0|1}`、`enemy.wiz.0`、`boss.dragon.{0|1}`
 - 絵は右向き（左向きと、当たったときの白い絵はゲームが作る）。足もとがセルの下の端、左右の真ん中がキャラの立つ位置。剣・杖・槍・影はゲームが描く（決めポーズの剣・杖は絵に入っている）。絵に武器が入っているキャラは `sprites.json` の `weaponInSprite`（例 `["char.hero"]`）に書くと、ゲームは武器を重ねて描かず、振ったときの軌跡だけ描く
-- 勇者はユーザーが用意した絵（64x64 を 48x48 に縮めたもの、剣入り、決めポーズは親指を立てた正面向き）。ほかのキャラは今のところコードの絵を書き出したもの（32 前後）
+- 勇者はユーザーが用意した絵（64x64 を仲間と同じ 32x32 に縮めたもの、剣入り、決めポーズは親指を立てた正面向き）。ほかのキャラは今のところコードの絵を書き出したもの（32 前後）
 - 描きかえるときはセルの中だけを描く。セルの大きさを変えたら `sprites.json` の w,h も直す（当たり判定は変わらない）
 - `sprites-guide.png` は名前と枠を書きこんだ見本（ゲームは読まない）
 - `tools/export-sprites.js`: `node games/Susume-Yusha/tools/export-sprites.js` でコードの絵からシート・json・見本を作り直す（描きかえた絵も上書きされるので注意）。`--from-sheet` を付けると、いまのシートの絵のまま並べなおして見本も作り直す（セルの大きさを変えた・絵を足したあとに使う。`weaponInSprite` は引きつぐ）
