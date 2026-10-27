@@ -111,11 +111,9 @@ body.titleMode #panel{display:none}
 #titleView{position:absolute;inset:0;z-index:3;display:grid;grid-template-rows:1fr auto;justify-items:center;padding:1.1em 1.2em 1.3em;box-sizing:border-box;text-align:center;
   background:linear-gradient(rgba(10,20,60,.18),rgba(10,20,60,0) 45%,rgba(10,20,60,0) 72%,rgba(10,20,60,.3));
   --round:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",var(--font);--pop:"Mochiy Pop One","M PLUS Rounded 1c",var(--font)}
-.tLogo{align-self:start;display:flex;flex-direction:column;align-items:center;margin:0;padding-top:.1em}
-.tLogo .cTitle{line-height:1.05}
-.tLogo .s1{font-size:1.75em;margin-left:-2.4em;transform:rotate(-4deg)}
-.tLogo .s2{font-size:3.5em;margin-top:-.1em;letter-spacing:.06em}
-.tLogo .cScroll{font-size:.9em;margin-top:.45em}
+.tLogo{font-size:1em;align-self:start;display:flex;flex-direction:column;align-items:center;margin:0;padding-top:.1em}
+.tLogo img{display:block;height:12.6em;width:auto;filter:drop-shadow(0 .25em .3em #0007);-webkit-user-drag:none;pointer-events:none}
+.tLogo .cScroll{font-size:.9em;margin-top:-.2em}
 .tBtns{display:flex;gap:1.1em;justify-self:end;margin-right:4%}
 .tBtns{flex-direction:column;gap:.55em;margin-bottom:.2em}
 .tBtns .cBtn{font-size:1.3em;min-width:6.6em}
@@ -180,7 +178,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
     <div id="msg" class="win" hidden></div>
     <div id="clearView" hidden></div>
     <div id="titleView" hidden>
-      <h1 class="tLogo" aria-label="すすめ！ゆうしゃ"><span class="cTitle s1" data-t="すすめ！"><span>すすめ！</span></span><span class="cTitle s2" data-t="ゆうしゃ"><span>ゆうしゃ</span></span>
+      <h1 class="tLogo"><img src="logo.png" alt="すすめ！ゆうしゃ" width="599" height="355" draggable="false">
         <span class="cScroll">ほのおの ドラゴンを たおせ！</span></h1>
       <div class="tBtns"><button class="cBtn gold" data-act="start">はじめる</button><button class="cBtn wood" data-act="howto">あそびかた</button></div>
       <p class="tCopy">©YoshidaStudio, ©PANICPUMPKIN</p>
