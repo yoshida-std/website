@@ -44,8 +44,8 @@ canvas{touch-action:none;display:block}
 #prog b{position:absolute;right:-3px;top:-3px;width:7px;height:9px;background:#ff3828;border:1px solid #000;box-sizing:border-box}
 #screen{position:relative;overflow:hidden;align-self:center}
 #cv{width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
-#pauseBtn{position:absolute;right:6px;top:6px;width:40px;height:34px;font-size:12px;padding:0}
-#msg{position:absolute;left:3%;right:calc(3% + 46px);top:6px;padding:7px 12px;font-size:clamp(12px,3.6vh,16px);line-height:1.45;pointer-events:none}
+#pauseBtn{position:absolute;right:6px;bottom:6px;z-index:2;height:32px;padding:0 12px;font-size:12px;letter-spacing:.05em;opacity:.9}
+#msg{position:absolute;left:3%;right:3%;top:6px;padding:7px 12px;font-size:clamp(12px,3.6vh,16px);line-height:1.45;pointer-events:none}
 #stickZone{position:relative;flex:1;min-height:0;touch-action:none}
 #panelBg{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
 #party,#stickZone{position:relative;z-index:1}
@@ -100,8 +100,8 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
   </div>
   <div id="screen">
     <canvas id="cv" width="320" height="224"></canvas>
-    <button id="pauseBtn" class="win" aria-label="一時停止">❚❚</button>
     <div id="msg" class="win" hidden></div>
+    <button id="pauseBtn" class="win" aria-label="一時停止">❚❚ ひとやすみ</button>
   </div>
 </div>
 <div id="rotate" hidden><div class="ph"></div><div>スマホを よこむきに してね</div></div>
@@ -647,6 +647,7 @@ function stickStart(id,x,y){
 // スマホはタッチイベントで受ける（iOS や Artifact の中でもスクロールに取られにくい）。マウスはポインターイベント
 const panelEl=$('#panel');
 panelEl.addEventListener('touchstart',e=>{
+  if(e.target.closest('button'))return;   // 一時停止ボタンは普通に押せるようにする
   e.preventDefault();
   for(const t of e.changedTouches)if(onStick(t.clientX,t.clientY))stickStart('t'+t.identifier,t.clientX,t.clientY);
 },{passive:false});
@@ -657,7 +658,7 @@ panelEl.addEventListener('touchmove',e=>{
 const touchEnd=e=>{for(const t of e.changedTouches)if('t'+t.identifier===stickId)stickRelease(e.type==='touchend')};
 panelEl.addEventListener('touchend',touchEnd);panelEl.addEventListener('touchcancel',touchEnd);
 panelEl.addEventListener('pointerdown',e=>{
-  if(e.pointerType==='touch'||!onStick(e.clientX,e.clientY))return;
+  if(e.pointerType==='touch'||e.target.closest('button')||!onStick(e.clientX,e.clientY))return;
   try{panelEl.setPointerCapture(e.pointerId)}catch(_){}stickStart('p'+e.pointerId,e.clientX,e.clientY);
 });
 panelEl.addEventListener('pointermove',e=>{if('p'+e.pointerId===stickId)stickMove(e)});
@@ -1444,9 +1445,15 @@ function layout(){
   if(cv.width!==W)cv.width=W;
   ctx.imageSmoothingEnabled=false;
   const s=$('#screen');s.style.width=Math.floor(W*sc)+'px';s.style.height=Math.floor(H*sc)+'px';
-  requestAnimationFrame(drawControls);
+  fitStick();requestAnimationFrame(drawControls);
 }
 addEventListener('resize',layout);
+// 円盤は操作エリアの下側に収まる大きさにする（一時停止ボタンに重ならない）。フォントの読み込みなどで高さが変わったら合わせ直す
+function fitStick(){
+  const z=$('#stickZone'),w=Math.floor(Math.max(90,Math.min(210,z.clientWidth*.8,z.clientHeight*.92)));
+  if($('#stick').style.width!==w+'px'){$('#stick').style.width=w+'px';requestAnimationFrame(drawControls)}
+}
+if(window.ResizeObserver)new ResizeObserver(fitStick).observe($('#stickZone'));
 
 /* ---------- ループ ---------- */
 let last=performance.now();
