@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#000000">
 <title>すすめ！ゆうしゃ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Mochiy+Pop+One&family=M+PLUS+Rounded+1c:wght@800&display=swap">
 <style>
 /* Layout: 横画面。左1/3が操作エリア（パーティ窓＋円盤）、右2/3がゲーム画面（高さ224ドット、幅は比率で決まる）。スーファミRPG風の青グラデーション窓と金属の円盤 */
 :root{
@@ -62,6 +62,42 @@ canvas{touch-action:none;display:block}
 @keyframes glow{0%,100%{transform:translate(-50%,-50%)}50%{transform:translate(-50%,-50%) scale(1.08)}}
 @media (prefers-reduced-motion:reduce){#knob.c0,#knob.c1,#knob.c2,#knob.c3{animation:none}}
 #stickLabel{position:absolute;left:0;right:0;top:2px;text-align:center;font-size:11px;color:var(--dim);line-height:1.5;text-shadow:1px 1px 0 #000,0 0 4px #000}
+/* ステージクリア: ゲーム画面の上に重ねる（1em = ゲームの8ドット。layout() で決める） */
+#clearView{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;gap:.35em;padding:.7em 1em 1.1em;box-sizing:border-box;
+  background:linear-gradient(rgba(10,20,60,.28),rgba(10,20,60,0) 38%,rgba(10,20,60,0) 70%,rgba(10,20,60,.22));text-align:center;
+  --round:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",var(--font);--pop:"Mochiy Pop One","M PLUS Rounded 1c",var(--font)}
+.cTitle{position:relative;margin:0;font-family:var(--pop);font-weight:400;font-size:3.3em;line-height:1.15;letter-spacing:.02em;white-space:nowrap}
+.cTitle::before,.cTitle::after{content:attr(data-t);position:absolute;inset:0}
+.cTitle::before{color:#4a2606;-webkit-text-stroke:.3em #4a2606;text-shadow:0 .1em 0 #2a1402}
+.cTitle::after{color:#f0c040;-webkit-text-stroke:.19em #f0c040}
+.cTitle span{position:relative;z-index:1;background:linear-gradient(#e8f8ff 8%,#7cc8ff 32%,#2f86e8 58%,#1a55b8 78%,#3a8ef0);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:.045em #fff}
+.cScroll{position:relative;margin:.3em 0 .3em;padding:.42em 2.4em .38em;font-family:var(--round);font-weight:800;font-size:1.2em;color:#4a2e12;white-space:nowrap;
+  background:linear-gradient(#fdf4dc,#efdcb0 55%,#dcc290);border-top:.09em solid #9a7a48;border-bottom:.12em solid #7a5a30;box-shadow:0 .15em .25em #0005}
+.cScroll::before,.cScroll::after{content:"";position:absolute;top:-.32em;bottom:-.32em;width:1.25em;border-radius:.45em;
+  background:linear-gradient(90deg,#9a7444,#f4e4bc 45%,#c9a66b 70%,#8a6436);box-shadow:inset 0 0 0 .07em #6a4a22,0 .12em .2em #0006}
+.cScroll::before{left:-.75em}.cScroll::after{right:-.75em}
+.cStats{display:grid;grid-template-columns:auto auto;gap:0 2.2em;width:min(17em,92%);font-family:var(--round);font-weight:800;font-size:1.75em;line-height:1.22;
+  color:#fff1cf;font-variant-numeric:tabular-nums;
+  text-shadow:.06em 0 #3a220c,-.06em 0 #3a220c,0 .06em #3a220c,0 -.06em #3a220c,.05em .05em #3a220c,-.05em .05em #3a220c,.05em -.05em #3a220c,-.05em -.05em #3a220c,0 .11em #1e1004}
+.cStats span{text-align:left;white-space:nowrap}.cStats span:nth-child(even){text-align:right}
+.cBtns{display:flex;gap:1.3em;margin-top:auto}
+.cBtn{position:relative;font-family:var(--round);font-weight:800;font-size:1.45em;line-height:1.2;padding:.38em 1.3em .42em;border-radius:.38em;border:.12em solid #3e2206;cursor:pointer}
+.cBtn.gold{color:#4a2a08;text-shadow:0 .05em 0 #fff8;background:linear-gradient(#fff0b0,#f4c24a 42%,#d18d1e 75%,#e9a93a);
+  box-shadow:inset 0 0 0 .1em #ffe7a0,inset 0 -.18em 0 #a8620e,0 0 .55em #ffd84aaa,0 .14em 0 #2a1402}
+.cBtn.gold::before{content:"▶";margin-right:.15em;font-size:.85em}
+.cBtn.wood{color:#fff1cf;text-shadow:.05em 0 #2e1a08,-.05em 0 #2e1a08,0 .05em #2e1a08,0 -.05em #2e1a08;
+  background:repeating-linear-gradient(92deg,#0000 0 .5em,#0001 .5em .6em),linear-gradient(#a8703e,#7c4c26 55%,#5c3618);box-shadow:inset 0 0 0 .1em #c99060,inset 0 -.16em 0 #3e2410,0 .14em 0 #1e1004}
+.cBtn:active{transform:translateY(.08em)}
+.cBtn:focus-visible{outline:.12em solid #fff;outline-offset:.15em}
+#clearView>*{animation:cFade .45s ease-out both}
+#clearView .cTitle{animation:cDrop .5s cubic-bezier(.2,1.6,.5,1) both}
+#clearView .cScroll{animation:cUnroll .4s .3s ease-out both}
+#clearView .cStats span{animation:cFade .35s ease-out both}
+#clearView .cBtns{animation-delay:1.25s}
+@keyframes cDrop{from{opacity:0;transform:translateY(-.5em) scale(1.25)}}
+@keyframes cUnroll{from{opacity:0;transform:scaleX(.08)}}
+@keyframes cFade{from{opacity:0;transform:translateY(.35em)}}
+@media (prefers-reduced-motion:reduce){#clearView *,#clearView>*{animation:none!important}}
 #rotate{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
   text-align:center;font-size:18px;line-height:1.6;padding:0 max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
 #rotate .ph{width:46px;height:80px;border:4px solid var(--fg);border-radius:8px;animation:turn 2s steps(4) infinite}
@@ -103,6 +139,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
   <div id="screen">
     <canvas id="cv" width="320" height="224"></canvas>
     <div id="msg" class="win" hidden></div>
+    <div id="clearView" hidden></div>
   </div>
 </div>
 <div id="rotate" hidden><div class="ph"></div><div>スマホを よこむきに してね</div></div>
@@ -140,7 +177,7 @@ function initAudio(){
   try{
     if(!ac){
       ac=new (window.AudioContext||window.webkitAudioContext)();
-      master=ac.createGain();master.gain.value=.22;master.connect(ac.destination);
+      master=ac.createGain();master.gain.value=.32;master.connect(ac.destination);
       noiseBuf=ac.createBuffer(1,ac.sampleRate*.3,ac.sampleRate);
       const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
       decodeBgm();
@@ -188,10 +225,22 @@ const SONGS={
 };
 let bgm=null,bgmWant=null;   // bgm: 合成の BGM の進み具合、bgmWant: 流したい曲の名前
 function playBgm(name){bgm={s:SONGS[name],step:0,next:ac?ac.currentTime+.1:0};if(bgmWant!==name){stopFile(false);bgmFile.offset=0}bgmWant=name;syncBgm()}
-function stopBgm(){bgm=null;bgmWant=null;stopFile(false)}
+function stopBgm(){bgm=null;bgmWant=null;stopFile(false);stopJingle()}
 // BGM の音声ファイル（sound/*.mp3）。読めたらこちらを流し、読めないときは合成の BGM のまま
 //   field: BGM031「力を出しきれ」（道中）、boss: BGM084「燃やしつくすぜ」（ボス）。len はもとの WAV の長さ（くり返す長さ）
-const BGM_FILES={field:{src:'sound/bgm_field.mp3',len:1411200/44100},boss:{src:'sound/bgm_boss.mp3',len:1814398/44100}};
+const BGM_FILES={field:{src:'sound/bgm_field.mp3',len:1411200/44100},boss:{src:'sound/bgm_boss.mp3',len:1814398/44100},
+  clear:{src:'sound/jingle_clear.mp3'}};   // clear: ME044「clear12」（ステージクリアのジングル、7.3秒、1回だけ）
+const BGM_VOL=.24,JINGLE_VOL=.45;   // 効果音（master .32）が聞こえるよう、BGM は小さめ
+// ステージクリアのジングル（くり返さない）。ファイルがないときは合成のファンファーレ
+let jingleSrc=null;
+function playJingle(){
+  stopJingle();
+  if(!ac||muted)return;
+  const b=bgmFile.buf.clear;if(!b){SFX.join();return}
+  const g=ac.createGain();g.gain.value=JINGLE_VOL;g.connect(ac.destination);
+  const src=ac.createBufferSource();src.buffer=b;src.connect(g);src.start();jingleSrc=src;src.onended=()=>{if(jingleSrc===src)jingleSrc=null};
+}
+function stopJingle(){if(jingleSrc){try{jingleSrc.stop()}catch(e){}jingleSrc=null}}
 const bgmFile={raw:{},buf:{},src:null,gain:null,offset:0,startAt:0,ls:0,le:0};
 for(const k in BGM_FILES)fetch(BGM_FILES[k].src).then(r=>r.ok?r.arrayBuffer():null).then(a=>{if(a){bgmFile.raw[k]=a;decodeBgm()}}).catch(()=>{});
 function decodeBgm(){
@@ -207,7 +256,7 @@ function loopPoints(b,len){
 }
 function startFile(){
   const b=bgmFile.buf[bgmWant],[ls,le]=loopPoints(b,BGM_FILES[bgmWant].len);
-  if(!bgmFile.gain){bgmFile.gain=ac.createGain();bgmFile.gain.gain.value=.5;bgmFile.gain.connect(ac.destination)}
+  if(!bgmFile.gain){bgmFile.gain=ac.createGain();bgmFile.gain.gain.value=BGM_VOL;bgmFile.gain.connect(ac.destination)}
   const src=ac.createBufferSource();src.buffer=b;src.loop=true;src.loopStart=ls;src.loopEnd=le;src.connect(bgmFile.gain);
   const off=bgmFile.offset%(le-ls);src.start(0,ls+off);
   Object.assign(bgmFile,{src,ls,le,startAt:ac.currentTime-off});
@@ -230,8 +279,8 @@ setInterval(()=>{
   if(bgm.next<ac.currentTime)bgm.next=ac.currentTime+.05;
   while(bgm.next<ac.currentTime+.25){
     const s=bgm.s,i=bgm.step%s.mel.length,w=bgm.next-ac.currentTime;
-    if(s.mel[i])tone(midi(s.mel[i]),s.dt*.85,'square',.06,0,w);
-    if(i%2===0){const b=s.bass[(i/2)%s.bass.length];if(b)tone(midi(b),s.dt*1.7,'triangle',.2,0,w)}
+    if(s.mel[i])tone(midi(s.mel[i]),s.dt*.85,'square',.035,0,w);
+    if(i%2===0){const b=s.bass[(i/2)%s.bass.length];if(b)tone(midi(b),s.dt*1.7,'triangle',.12,0,w)}
     bgm.next+=s.dt;bgm.step++;
   }
 },50);
@@ -974,7 +1023,7 @@ function updBoss(dt){
   if(b.state==='die'){
     if(Math.random()<dt*14){addFx(b.x+rnd(-36,36),b.z,rnd(0,88),Math.random()<.5?'#fcd800':'#f83800',8,70);sfx('boom')}
     G.shake=.1;
-    if(b.t>2.2){G.boss=null;G.state='won';G.clearT=0;G.shots=[];input.charging=false;party().forEach(m=>{m.inv=0;m.flash=0;m.swing=0;m.charge=0});say('ほのおの ドラゴンを たおした！');SFX.join()}
+    if(b.t>2.2){G.boss=null;G.state='won';G.clearT=0;G.shots=[];input.charging=false;party().forEach(m=>{m.inv=0;m.flash=0;m.swing=0;m.charge=0});say('ほのおの ドラゴンを たおした！');playJingle()}
     return;
   }
   b.h=6+Math.sin(b.t*2.2)*4;
@@ -1168,7 +1217,7 @@ function update(dt){
   if(G.state==='over'){G.overT+=dt;if(G.overT>1.6&&!overlayShown)showOver();return}
   if(G.state==='won'){   // 勝利: みんなで小さく跳んで、正面を向いて決めポーズ
     G.clearT+=dt;
-    const lx=G.camX+W/2+17,lz=clamp(G.hero.z,30,DEPTH-20),OFF=[0,-34,34,-68];   // 勇者を真ん中に横一列に並ぶ（画面の真ん中）
+    const lx=G.camX+W/2+17,lz=36,OFF=[0,-34,34,-68];   // 勇者を真ん中に横一列に並ぶ（画面の真ん中）
     G.lineX=lx;G.lineZ=lz;updFollowers(dt);
     party().forEach((m,i)=>{const k=Math.min(1,dt*5);m.x+=(lx+OFF[i]-m.x)*k;m.z+=(lz-m.z)*k;m.walk+=dt});
     party().forEach((m,i)=>{const t=G.clearT-.15*i;m.h=t>0&&t<.45?Math.sin(t/.45*Math.PI)*22:0;
@@ -1369,7 +1418,7 @@ let overlayShown=false;
 const ov=$('#overlay');
 function showOverlay(html){ov.innerHTML=`<div class="card win scrollable">${html}</div>`;ov.hidden=false;overlayShown=true;
   const b=ov.querySelector('button');if(b)b.focus({preventScroll:true})}
-function hideOverlay(){ov.hidden=true;overlayShown=false}
+function hideOverlay(){ov.hidden=true;$('#clearView').hidden=true;overlayShown=false}
 const COPY='<p class="copy">©YoshidaStudio, ©PANICPUMPKIN</p>';
 function showTitle(){
   showOverlay(`<p class="tag">PROTOTYPE</p><h1>すすめ！<br>ゆうしゃ</h1>
@@ -1389,10 +1438,14 @@ function showOver(){
   <button class="menuBtn" data-act="start">もういちど</button><button class="menuBtn sub" data-act="title">タイトルへ</button>${COPY}`);
 }
 function showClear(){
-  const t=Math.floor(G.t);
-  showOverlay(`<h2>ステージ クリア！</h2><p>ほのおの ドラゴンを たおした！</p>
-  <div class="stats"><span>タイム</span><span>${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}</span><span>たおした てき</span><span>${G.kills}</span><span>のこった なかま</span><span>${G.allies.length} / 3</span><span>たすけた ひと</span><span>${G.followers.length} / ${MOB_SPOTS.length}</span></div>
-  <button class="menuBtn" data-act="start">もういちど</button><button class="menuBtn sub" data-act="title">タイトルへ</button>${COPY}`);
+  const t=Math.floor(G.t),cv=$('#clearView');
+  msgQ.length=0;msgT=0;$('#msg').hidden=true;
+  const rows=[['タイム',`${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`],['たおした てき',G.kills],['のこった なかま',`${G.allies.length} / 3`],['たすけた ひと',`${G.followers.length} / ${MOB_SPOTS.length}`]];
+  cv.innerHTML=`<h2 class="cTitle" data-t="ステージ クリア!"><span>ステージ クリア!</span></h2>
+    <div class="cScroll">ほのおの ドラゴンを たおした！</div>
+    <div class="cStats">${rows.map(([k,v],i)=>`<span style="animation-delay:${.6+i*.14}s">${k}</span><span style="animation-delay:${.66+i*.14}s">${v}</span>`).join('')}</div>
+    <div class="cBtns"><button class="cBtn gold" data-act="start">もういちど</button><button class="cBtn wood" data-act="title">タイトルへ</button></div>`;
+  cv.hidden=false;overlayShown=true;
 }
 function togglePause(){
   if(!G)return;
@@ -1412,14 +1465,15 @@ function onTap(el,fn){
   },{passive:false});
   el.addEventListener('click',e=>{if(Date.now()-tTime<700)return;fn(e.target)});   // マウス・キーボード用（タッチのあとの click は二重にしない）
 }
-onTap(ov,target=>{
+function overlayAct(target){
   const b=target.closest('button');if(!b)return;initAudio();
   const a=b.dataset.act;
   if(a==='start'){hideOverlay();newGame()}
-  else if(a==='title'){G=null;showTitle()}
+  else if(a==='title'){G=null;stopBgm();$('#clearView').hidden=true;showTitle()}
   else if(a==='resume')togglePause();
   else if(a==='sound'){muted=!muted;b.textContent=`おと: ${muted?'OFF':'ON'}`}
-});
+}
+onTap(ov,overlayAct);onTap($('#clearView'),overlayAct);
 onTap($('#pauseBtn'),()=>{initAudio();togglePause()});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&G&&G.state==='play')togglePause()});
 
@@ -1537,6 +1591,7 @@ function layout(){
   if(cv.width!==W)cv.width=W;
   ctx.imageSmoothingEnabled=false;
   const s=$('#screen');s.style.width=Math.floor(W*sc)+'px';s.style.height=Math.floor(H*sc)+'px';
+  $('#clearView').style.fontSize=(Math.floor(H*sc)/28)+'px';   // クリア画面の 1em = ゲームの8ドット
   fitStick();requestAnimationFrame(drawControls);
 }
 addEventListener('resize',layout);

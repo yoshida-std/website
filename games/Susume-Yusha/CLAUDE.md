@@ -3,7 +3,7 @@
 スーファミRPG風の絵で、勇者が右へ進む横スクロールアクション（プロトタイプ）。公開URL: `https://yoshida-std.github.io/website/games/Susume-Yusha/`
 リポジトリ全体の作業ルール（ブランチ・PR・確認方法・コピーライト表記）はルートの `CLAUDE.md` を参照。
 
-プッシュ前の確認用 Artifact: `https://claude.ai/artifact/KEX8vTqyZ5X9F5ju5pqruJ`（変更のたびにこの URL を更新する。`index.html` と、`files` で `sprites.png`・`sprites.json`・`sound/bgm_field.mp3`・`sound/bgm_boss.mp3` を同じパスで載せる）
+プッシュ前の確認用 Artifact: `https://claude.ai/artifact/KEX8vTqyZ5X9F5ju5pqruJ`（変更のたびにこの URL を更新する。`index.html` と、`files` で `sprites.png`・`sprites.json`・`sound/bgm_field.mp3`・`sound/bgm_boss.mp3`・`sound/jingle_clear.mp3` を同じパスで載せる）
 
 ## 概要と操作
 
@@ -22,12 +22,14 @@
 - 穴はどれも、ジャンプしなくても通れる道（幅24以上）を残す（`HOLES`）。落ちると HP −20 で近くの安全な位置（`findSafe`）に戻る。岩・箱はジャンプでこえられる（上に乗れる）、木はこえられない
 - 勇者の HP が 0 でゲームオーバー
 - 道の途中で町の人（`MOB`: まちびと・こども・むすめ・しょうにん・へいし・おひめさま・おうさま。`MOB_SPOTS`）も魔物に襲われている（仲間と同じ `updNpcs`、`n.mob`）。助けると `G.followers` に入り、画面の左の最後列をスクロールに合わせて歩く（`updFollowers`）。ボス戦の間は画面の外へかくれ、勝ったら入ってきて勇者たちの後ろに並び、喜んで跳ねる。クリア画面に「たすけた ひと」を出す
-- ボスをたおすと、勇者と仲間が順に小さく跳んで、正面を向いて剣や杖をかかげる決めポーズ（`CLS[].pose`。`POSE_HEAD`/`POSE_SWORD`/`POSE_STAFF`/`POSE_BODY` を重ねて作る）。勇者を真ん中に、画面の中央に横一列に並ぶ。約3秒後（町の人がいれば4秒後）にクリア画面
+- ボスをたおすと、勇者と仲間が順に小さく跳んで、正面を向いて剣や杖をかかげる決めポーズ（`CLS[].pose`。`POSE_HEAD`/`POSE_SWORD`/`POSE_STAFF`/`POSE_BODY` を重ねて作る）。勇者を真ん中に、画面の中央に横一列に並ぶ。約3秒後（町の人がいれば4秒後）にクリア画面。クリア画面（`showClear`、`#clearView`）はゲーム画面の上に重ねて、後ろの勝利の場面が見えるようにする（暗い窓は使わない）。青いグラデーションに金のふちの「ステージ クリア!」（Mochiy Pop One）、巻物の帯「ほのおの ドラゴンを たおした！」、大きな成績（タイム・たおした てき・のこった なかま・たすけた ひと、M PLUS Rounded 1c）、金の「▶もういちど」と木目の「タイトルへ」。順に出てくる動き（動きを減らす設定では止める）。大きさは 1em＝ゲームの8ドット（`layout()` で決める）
 
 ## 音
 
 - BGM は音声ファイル: `sound/bgm_field.mp3`（道中、BGM031「力を出しきれ」32秒）と `sound/bgm_boss.mp3`（ボス、BGM084「燃やしつくすぜ」41.14秒）。ユーザーがくれた WAV を ffmpeg で 128kbps の MP3 にしたもの
 - WebAudio でくり返し流す（`BGM_FILES`, `bgmFile`）。MP3 の頭の無音を飛ばし、もとの WAV の長さでくり返す（`loopPoints`）。遊んでいる・音 ON・画面が見えているときだけ流し（`syncBgm` を 50ms ごと）、一時停止では止めて続きから。ボスをたおしたら止める（`stopBgm`）
+- ステージクリアのジングル: `sound/jingle_clear.mp3`（ME044「clear12」7.3秒、1回だけ）。ボスをたおして勝利の場面に入ったときに鳴らす（`playJingle`）。タイトルへ・もういちどで止める（`stopBgm` が `stopJingle` も呼ぶ）。読めないときは合成のファンファーレ（`SFX.join`）
+- 音量: 効果音は master 0.32、BGM のファイルは 0.24（`BGM_VOL`）、ジングルは 0.45（`JINGLE_VOL`）。BGM を抑えて効果音が聞こえるようにしてある。合成の BGM も小さめ
 - 音声ファイルを読めないときは、前からある合成の BGM（`SONGS`）を鳴らす。効果音は合成（`SFX`）
 
 ## キャラのグラフィックシート
