@@ -22,6 +22,7 @@
 - 穴はどれも、ジャンプしなくても通れる道（幅24以上）を残す（`HOLES`）。落ちると HP −20 で近くの安全な位置（`findSafe`）に戻る。岩・箱はジャンプでこえられる（上に乗れる）、木はこえられない
 - 勇者の HP が 0 でゲームオーバー
 - 道の途中で町の人（`MOB`: まちびと・こども・むすめ・しょうにん・へいし・おひめさま・おうさま。`MOB_SPOTS`）も魔物に襲われている（仲間と同じ `updNpcs`、`n.mob`）。助けると `G.followers` に入り、画面の左の最後列をスクロールに合わせて歩く（`updFollowers`）。ボス戦の間は画面の外へかくれ、勝ったら入ってきて勇者たちの後ろに並び、喜んで跳ねる。クリア画面に「たすけた ひと」を出す
+- 隠れキャラ「あいつ」（`MOB.aitsu`）: ユーザーの線画の白いキャラ（帽子・ねむそうな目）。町の人あつかいで、ゲームごとに `AITSU_RATE`（10%）の確率で `x:2010` に出て、魔物（スライム2・コウモリ）に襲われている。助けると「…なぜか ついてくる」。URL に `?aitsu` を付けると必ず出る。クリア画面の「たすけた ひと」の分母はそのゲームに出た町の人の数
 - ボスをたおすと、勇者と仲間が順に小さく跳んで、正面を向いて剣や杖をかかげる決めポーズ（`CLS[].pose`。`POSE_HEAD`/`POSE_SWORD`/`POSE_STAFF`/`POSE_BODY` を重ねて作る）。勇者を真ん中に、画面の中央に横一列に並ぶ。約3秒後（町の人がいれば4秒後）にクリア画面。クリア画面（`showClear`、`#clearView`）はゲーム画面の上に重ねて、後ろの勝利の場面が見えるようにする（暗い窓は使わない）。青いグラデーションに金のふちの「ステージ クリア!」（Mochiy Pop One）、巻物の帯「ほのおの ドラゴンを たおした！」、大きな成績（タイム・たおした てき・のこった なかま・たすけた ひと、M PLUS Rounded 1c）、金の「▶もういちど」と木目の「タイトルへ」。順に出てくる動き（動きを減らす設定では止める）。大きさは 1em＝ゲームの8ドット（`layout()` で決める）
 
 ## 音
@@ -34,10 +35,10 @@
 
 ## キャラのグラフィックシート
 
-- `sprites.png`（ゲームが読むシート、透明の背景）と `sprites.json`（どの絵がシートのどこにあるか: `frames` の `名前: {x,y,w,h,s}`）。セルは「描くときの大きさ」で、ゲームは `s`（表示の倍率）に合わせて縮めて表示する（`shrink`: 面積の平均、ふちの半透明はなくす）。キャラ（勇者・仲間・町の人）は表示の 1.5 倍（48x48 → 32x32、s=2/3。ポーズ 48x60 → 32x40、こども 48x36 → 32x24）、敵・ドラゴンは表示の 2 倍（s=1/2。スライム 72x60 → 36x30、ドラゴン 242x224 → 121x112）。表示の大きさ・当たり判定はこれまでと同じ。起動時に読みこみ（`loadSheet`）、コードで描いた絵の代わりに使う。読めないとき・URL に `?nosheet` を付けたときはコードの絵のまま（`SHEET.loaded`）
-- 名前: `char.{hero|warrior|mage|priest}.{0|1|pose}`（0・1 は歩きの2コマ）、`mob.{town|child|woman|merchant|soldier|princess|king}.{0|1}`、`enemy.{slime|bat|skel}.{0|1}`、`enemy.wiz.0`、`boss.dragon.{stance|roar|claw|flap}`（かまえ・ほえる・つめ・はばたき）
+- `sprites.png`（ゲームが読むシート、透明の背景）と `sprites.json`（どの絵がシートのどこにあるか: `frames` の `名前: {x,y,w,h,s}`）。セルは「描くときの大きさ」で、ゲームは `s`（表示の倍率）に合わせて縮めて表示する（`shrink`: 面積の平均、ふちの半透明はなくす）。キャラ（勇者・仲間・町の人）は表示の 1.5 倍（48x48 → 32x32、s=2/3。ポーズ 48x60 → 32x40、こども 48x36 → 32x24）、敵・ドラゴンは表示の 2 倍（s=1/2。スライム 72x60 → 18x15（スライムだけ s=1/4 で小さめ）、ドラゴン 242x224 → 121x112）。表示の大きさ・当たり判定はこれまでと同じ。起動時に読みこみ（`loadSheet`）、コードで描いた絵の代わりに使う。読めないとき・URL に `?nosheet` を付けたときはコードの絵のまま（`SHEET.loaded`）
+- 名前: `char.{hero|warrior|mage|priest}.{0|1|pose}`（0・1 は歩きの2コマ）、`mob.{town|child|woman|merchant|soldier|princess|king|aitsu}.{0|1}`、`enemy.{slime|bat|skel}.{0|1}`、`enemy.wiz.0`、`boss.dragon.{stance|roar|claw|flap}`（かまえ・ほえる・つめ・はばたき）
 - 絵は右向き（左向きと、当たったときの白い絵はゲームが作る）。足もとがセルの下の端、左右の真ん中がキャラの立つ位置。剣・杖・槍・影はゲームが描く（決めポーズの剣・杖は絵に入っている）。絵に武器が入っているキャラは `sprites.json` の `weaponInSprite` に書くと、ゲームは武器（剣・杖・槍）を重ねて描かず、振ったときの軌跡だけ描く。いまは勇者・せんし（おの）・まほうつかい（杖）・そうりょ（杖）・へいし（槍）・おうさま（しゃく）
-- 勇者はユーザーが用意した絵（64x64 を 48x48 のセルに縮めて入れたもの。表示は仲間と同じ 32x32。剣入り、決めポーズは親指を立てた正面向き）。`sprites.json` の `custom` に入れてあり、書き出しスクリプトで上書きされない。仲間・町の人・敵も勇者に合わせた絵に描きなおした（`tools/art/`。4倍の大きさで形・陰・こげ茶のふちを描き、勇者と同じ縮め方で縮める）。どれも `custom` に入れてある。描きなおすときは `tools/art/people.py`（`SPECS` に服・髪・かぶりもの・持ち物）と `tools/art/enemies.py` を直して `python3 games/Susume-Yusha/tools/art/gen_all.py` → `node games/Susume-Yusha/tools/export-sprites.js --from-sheet`（シートの最後に足してから並べなおす）
+- 勇者はユーザーが用意した絵（64x64 を 48x48 のセルに縮めて入れたもの。表示は仲間と同じ 32x32。剣入り、決めポーズは親指を立てた正面向き）。`sprites.json` の `custom` に入れてあり、書き出しスクリプトで上書きされない。仲間・町の人・敵も勇者に合わせた絵に描きなおした（`tools/art/`。4倍の大きさで形・陰・こげ茶のふちを描き、勇者と同じ縮め方で縮める）。どれも `custom` に入れてある。あいつはユーザーの線画（`tools/art/src/aitsu_*.png`、左向き）を `tools/art/aitsu.py` で 32x32 の白黒ドット（s=1。目は描きなおし）にしたもの（作り直すときは `python3 games/Susume-Yusha/tools/art/aitsu.py` → `--from-sheet`）。描きなおすときは `tools/art/people.py`（`SPECS` に服・髪・かぶりもの・持ち物）と `tools/art/enemies.py` を直して `python3 games/Susume-Yusha/tools/art/gen_all.py` → `node games/Susume-Yusha/tools/export-sprites.js --from-sheet`（シートの最後に足してから並べなおす）
 - 描きかえるときはセルの中だけを描く。セルの大きさを変えたら `sprites.json` の w,h も直す（当たり判定は変わらない）
 - `sprites-guide.png` は名前と枠を書きこんだ見本（ゲームは読まない）
 - `tools/export-sprites.js`: `node games/Susume-Yusha/tools/export-sprites.js` でコードの絵から描く大きさのシート・json・見本を作り直す（`custom` のコマはいまのシートの絵を使う。それ以外は描きかえていても上書き）。`--from-sheet` を付けると、いまのシートの絵をすべてそのまま使って並べなおし、見本も作り直す。`custom`・`weaponInSprite` は引きつぐ

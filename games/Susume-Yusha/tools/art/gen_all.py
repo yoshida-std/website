@@ -11,7 +11,7 @@ for k in ('town','child','woman','merchant','soldier','princess','king'):
     sp=SPECS[k]
     for fr in (0,1):
         cells[f'mob.{k}.{fr}']=((person_side(sp,fr,48,36,scale=.72) if k=='child' else person_side(sp,fr)),2/3)
-cells['enemy.slime.0']=(E.slime(0),.5);cells['enemy.slime.1']=(E.slime(1),.5)
+cells['enemy.slime.0']=(E.slime(0),.25);cells['enemy.slime.1']=(E.slime(1),.25)   # スライムは小さめ（表示 18x15）
 cells['enemy.bat.0']=(E.bat(0),.5);cells['enemy.bat.1']=(E.bat(1),.5)
 cells['enemy.skel.0']=(E.skel(0),.5);cells['enemy.skel.1']=(E.skel(1),.5)
 cells['enemy.wiz.0']=(E.wiz(0),.5)

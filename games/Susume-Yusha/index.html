@@ -376,6 +376,7 @@ const MOB={
   soldier:{name:'へいし',head:'helm',legs:'pants',spear:true,c:{H:'g',h:'G',A:'G',a:'y',C:'b',L:'G'}},
   princess:{name:'おひめさま',head:'crownHair',legs:'skirt',c:{H:'o',h:'y',A:'p',a:'w',C:'p',L:'p'}},
   king:{name:'おうさま',head:'crownBeard',legs:'skirt',c:{H:'w',h:'y',A:'R',a:'y',C:'R',L:'R'}},
+  aitsu:{name:'あいつ',head:'cap',legs:'pants',c:{H:'w',h:'w',A:'w',a:'w',C:'w',L:'w',s:'w'},saved:'あいつを たすけた！ …なぜか ついてくる'},   // 隠れキャラ（たまにしか出ない）
 };
 for(const k in MOB){
   const m=MOB[k],pal={...PAL};for(const ch in m.c)pal[ch]=PAL[m.c[ch]];
@@ -705,7 +706,8 @@ const OBS=[['rock',375,30],['tree',450,8],['tree',705,14],['rock',810,72],['rock
   ['rock',2430,76],['rock',2660,78],['crate',2715,20],['tree',3000,12],['tree',3040,24],['rock',3090,52],['crate',3405,74],
   ['rock',3420,70],['tree',3465,40],['crate',3700,30],['rock',3720,18],['tree',3975,70],['tree',4180,16]].map(([t,x,z])=>({t,x,z,...OB_DEF[t]}));
 const ALLY_SPOTS=[{cls:'warrior',x:960,z:50},{cls:'mage',x:1875,z:36},{cls:'priest',x:2970,z:58}];
-const MOB_SPOTS=[{cls:'town',x:720,z:72},{cls:'child',x:1350,z:22},{cls:'woman',x:1695,z:62},{cls:'merchant',x:2370,z:60},{cls:'soldier',x:2700,z:42},{cls:'princess',x:3360,z:46},{cls:'king',x:3750,z:62}];
+const MOB_SPOTS=[{cls:'town',x:720,z:72},{cls:'child',x:1350,z:22},{cls:'woman',x:1695,z:62},{cls:'merchant',x:2370,z:60},{cls:'soldier',x:2700,z:42},{cls:'princess',x:3360,z:46},{cls:'king',x:3750,z:62},{cls:'aitsu',x:2010,z:30,rare:true}];
+const AITSU_RATE=.1;   // 隠れキャラ あいつ が出る確率（URL に ?aitsu で必ず出る）
 const SLOTS=[{dx:-24,dz:-18},{dx:-24,dz:18},{dx:-44,dz:0}];
 
 function inHole(x,z,m=3){for(const h of HOLES)if(x>h[0]+m&&x<h[1]-m&&z>h[2]+m&&z<h[3]-m)return h;return null}
@@ -727,7 +729,7 @@ let G=null;
 function member(cls,x,z){const c=CLS[cls];return {cls,x,z,h:0,vh:0,face:1,hp:c.hp,max:c.hp,inv:0,swing:0,swCD:0,atkCD:1,walk:0,flash:0,kx:0,kz:0,onG:true,fall:0,jd:-1}}
 function newGame(){
   G={state:'play',t:0,camX:0,shake:0,hero:member('hero',-24,46),intro:true,allies:[],enemies:[],shots:[],fx:[],
-    npcs:[...ALLY_SPOTS.map(a=>({...a,state:'wait',guards:[],hurt:0})),...MOB_SPOTS.map(a=>({...a,mob:true,state:'wait',guards:[],hurt:0}))],followers:[],hitstop:0,flyers:[],nextSpawn:300,spawnT:4,boss:null,locked:false,
+    npcs:[...ALLY_SPOTS.map(a=>({...a,state:'wait',guards:[],hurt:0})),...MOB_SPOTS.filter(a=>!a.rare||Math.random()<AITSU_RATE||/[?&]aitsu\b/.test(location.search)).map(a=>({...a,mob:true,state:'wait',guards:[],hurt:0}))],followers:[],hitstop:0,flyers:[],nextSpawn:300,spawnT:4,boss:null,locked:false,
     kills:0,wizIntro:false,magicTold:false,overT:0,clearT:0};
   G.hero.safe={x:40,z:46};
   msgQ.length=0;msgT=0;$('#msg').hidden=true;
@@ -884,7 +886,7 @@ function trySwing(m,range,dmg){
 
 /* ---------- 敵 ---------- */
 const ET={
-  slime:{hp:9,w:12,ht:22,dmg:6,spd:28,col:'#3cbcfc'},
+  slime:{hp:9,w:7,ht:12,dmg:6,spd:28,col:'#3cbcfc'},
   bat:{hp:8,w:12,ht:16,dmg:5,spd:44,col:'#9878f8',fly:true},
   skel:{hp:30,w:11,ht:30,dmg:10,spd:20,col:'#fcfcfc'},
   wiz:{hp:20,w:11,ht:30,dmg:4,spd:26,col:'#6844fc'},
@@ -899,7 +901,7 @@ function spawnEnemy(type,x,z,force=false){
 }
 // 道の仲間: 画面に入る前に魔物の群れが取りかこむ。全部たおすと助けられる。画面の左へ流れたら助けられない
 const GUARDS={warrior:['slime','slime','slime','skel'],mage:['skel','skel','bat','bat'],priest:['skel','wiz','skel','bat','bat'],
-  town:['slime','slime'],child:['bat','slime'],woman:['skel','slime'],merchant:['slime','slime','bat'],soldier:['skel','skel'],princess:['skel','wiz','bat'],king:['skel','skel','wiz']};
+  town:['slime','slime'],child:['bat','slime'],woman:['skel','slime'],merchant:['slime','slime','bat'],soldier:['skel','skel'],princess:['skel','wiz','bat'],king:['skel','skel','wiz'],aitsu:['slime','bat','slime']};
 const npcName=n=>(n.mob?MOB:CLS)[n.cls].name;
 function updNpcs(){
   for(const n of G.npcs){
@@ -913,7 +915,7 @@ function updNpcs(){
       if(n.guards.every(e=>e.dead)){
         if(n.mob){   // 町の人: 後ろをついてくる
           n.state='joined';G.followers.push({cls:n.cls,x:n.x,z:n.z,h:0,walk:0,face:1});
-          say(`${npcName(n)}を たすけた！`);tone(midi(79),.1,'square',.12);tone(midi(84),.18,'square',.12,0,.1);addFx(n.x,n.z,20,'#fcd800',10,50);
+          say(MOB[n.cls].saved||`${npcName(n)}を たすけた！`);tone(midi(79),.1,'square',.12);tone(midi(84),.18,'square',.12,0,.1);addFx(n.x,n.z,20,'#fcd800',10,50);
           continue;
         }
         n.state='joined';const a=member(n.cls,n.x,n.z);a.face=1;G.allies.push(a);
@@ -959,7 +961,7 @@ function updEnemy(e,dt){
     return;
   }
   if(e.type==='slime'){
-    const hop=Math.sin(e.t*7);e.h=Math.max(0,hop)*9;
+    const hop=Math.sin(e.t*7);e.h=Math.max(0,hop)*6;
     if(hop>0){vx=dx/dist*e.spd*1.6;vz=dz/dist*e.spd*1.6}
   }else if(e.type==='bat'){
     e.h=20+Math.sin(e.t*5)*8;vx=dx/dist*e.spd;vz=dz/dist*e.spd+Math.cos(e.t*3)*20;
@@ -1329,7 +1331,7 @@ function drawEnemy(e){
   const img=e.flash>0?(e.face<0?fr.wl:fr.wr):(e.face<0?fr.l:fr.r);
   if(e.falling){const h=inHole(e.x,e.z,0);if(h){ctx.save();ctx.beginPath();ctx.rect(SX(h[0]),GY+Math.max(0,h[2])-40,h[1]-h[0],140);ctx.clip()}
     drawImg(img,e.x,e.z,e.h);if(h)ctx.restore();return}
-  shadow(e.x,e.z,e.type==='bat'?14:22);
+  shadow(e.x,e.z,e.type==='bat'?14:e.type==='slime'?12:22);
   if(e.type==='wiz'&&e.charge&&Math.floor(G.t*20)%2){ctx.fillStyle='#f878f8';ctx.fillRect(SX(e.x+e.face*14)-3,Math.round(GY+e.z-32),6,6)}
   drawImg(img,e.x+(e.flash>0?(Math.floor(G.t*40)%2?2:-2):0),e.z,e.h);
 }
@@ -1446,7 +1448,7 @@ function showOver(){
 function showClear(){
   const t=Math.floor(G.t),cv=$('#clearView');
   msgQ.length=0;msgT=0;$('#msg').hidden=true;
-  const rows=[['タイム',`${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`],['たおした てき',G.kills],['のこった なかま',`${G.allies.length} / 3`],['たすけた ひと',`${G.followers.length} / ${MOB_SPOTS.length}`]];
+  const rows=[['タイム',`${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`],['たおした てき',G.kills],['のこった なかま',`${G.allies.length} / 3`],['たすけた ひと',`${G.followers.length} / ${G.npcs.filter(n=>n.mob).length}`]];
   cv.innerHTML=`<h2 class="cTitle" data-t="ステージ クリア!"><span>ステージ クリア!</span></h2>
     <div class="cScroll">ほのおの ドラゴンを たおした！</div>
     <div class="cStats">${rows.map(([k,v],i)=>`<span style="animation-delay:${.6+i*.14}s">${k}</span><span style="animation-delay:${.66+i*.14}s">${v}</span>`).join('')}</div>
