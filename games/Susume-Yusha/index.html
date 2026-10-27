@@ -1011,7 +1011,7 @@ function drawFollower(f){
   const m=MOB[f.cls];if(f.x<CAM-30)return;
   const fr=m.spr[Math.floor(f.walk*8)%2];
   shadow(f.x,f.z,m.kid?16:22);drawImg(f.face<0?fr.l:fr.r,f.x,f.z,f.h);
-  if(m.spear){const sx=SX(f.x)+f.face*9,sy=Math.round(GY+f.z-f.h);ctx.fillStyle='#8a5a28';ctx.fillRect(sx,sy-34,2,30);ctx.fillStyle='#d8dee6';ctx.fillRect(sx-1,sy-40,4,6);ctx.fillStyle='#ffffff';ctx.fillRect(sx,sy-40,1,4)}
+  if(m.spear&&!SHEET.weaponIn.has('mob.'+f.cls)){const sx=SX(f.x)+f.face*9,sy=Math.round(GY+f.z-f.h);ctx.fillStyle='#8a5a28';ctx.fillRect(sx,sy-34,2,30);ctx.fillStyle='#d8dee6';ctx.fillRect(sx-1,sy-40,4,6);ctx.fillStyle='#ffffff';ctx.fillRect(sx,sy-40,1,4)}
 }
 function startBoss(){
   G.locked=true;
@@ -1316,6 +1316,7 @@ function drawMember(m){
   if(m.cls==='hero'||m.cls==='warrior'){if(m.face<0)drawSword(m);drawImg(img,m.x,m.z,m.h);if(m.face>0)drawSword(m)}
   else{
     drawImg(img,m.x,m.z,m.h);
+    if(SHEET.weaponIn.has('char.'+m.cls))return;   // 絵に杖が入っているときは重ねない
     // 杖
     const sx=SX(m.x)+m.face*10,sy=Math.round(GY+m.z-m.h);
     ctx.fillStyle='#8a5a28';ctx.fillRect(sx,sy-28,2,24);ctx.fillStyle='#c89050';ctx.fillRect(sx,sy-28,1,24);
