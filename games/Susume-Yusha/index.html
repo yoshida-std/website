@@ -376,6 +376,7 @@ const MOB={
   soldier:{name:'へいし',head:'helm',legs:'pants',spear:true,c:{H:'g',h:'G',A:'G',a:'y',C:'b',L:'G'}},
   princess:{name:'おひめさま',head:'crownHair',legs:'skirt',c:{H:'o',h:'y',A:'p',a:'w',C:'p',L:'p'}},
   king:{name:'おうさま',head:'crownBeard',legs:'skirt',c:{H:'w',h:'y',A:'R',a:'y',C:'R',L:'R'}},
+  aitsu:{name:'あいつ',head:'cap',legs:'pants',c:{H:'w',h:'w',A:'w',a:'w',C:'w',L:'w',s:'w'},saved:'あいつを たすけた！ …なぜか ついてくる'},   // 隠れキャラ（たまにしか出ない）
 };
 for(const k in MOB){
   const m=MOB[k],pal={...PAL};for(const ch in m.c)pal[ch]=PAL[m.c[ch]];
@@ -705,7 +706,8 @@ const OBS=[['rock',375,30],['tree',450,8],['tree',705,14],['rock',810,72],['rock
   ['rock',2430,76],['rock',2660,78],['crate',2715,20],['tree',3000,12],['tree',3040,24],['rock',3090,52],['crate',3405,74],
   ['rock',3420,70],['tree',3465,40],['crate',3700,30],['rock',3720,18],['tree',3975,70],['tree',4180,16]].map(([t,x,z])=>({t,x,z,...OB_DEF[t]}));
 const ALLY_SPOTS=[{cls:'warrior',x:960,z:50},{cls:'mage',x:1875,z:36},{cls:'priest',x:2970,z:58}];
-const MOB_SPOTS=[{cls:'town',x:720,z:72},{cls:'child',x:1350,z:22},{cls:'woman',x:1695,z:62},{cls:'merchant',x:2370,z:60},{cls:'soldier',x:2700,z:42},{cls:'princess',x:3360,z:46},{cls:'king',x:3750,z:62}];
+const MOB_SPOTS=[{cls:'town',x:720,z:72},{cls:'child',x:1350,z:22},{cls:'woman',x:1695,z:62},{cls:'merchant',x:2370,z:60},{cls:'soldier',x:2700,z:42},{cls:'princess',x:3360,z:46},{cls:'king',x:3750,z:62},{cls:'aitsu',x:2010,z:30,rare:true}];
+const AITSU_RATE=.1;   // 隠れキャラ あいつ が出る確率（URL に ?aitsu で必ず出る）
 const SLOTS=[{dx:-24,dz:-18},{dx:-24,dz:18},{dx:-44,dz:0}];
 
 function inHole(x,z,m=3){for(const h of HOLES)if(x>h[0]+m&&x<h[1]-m&&z>h[2]+m&&z<h[3]-m)return h;return null}
@@ -727,7 +729,7 @@ let G=null;
 function member(cls,x,z){const c=CLS[cls];return {cls,x,z,h:0,vh:0,face:1,hp:c.hp,max:c.hp,inv:0,swing:0,swCD:0,atkCD:1,walk:0,flash:0,kx:0,kz:0,onG:true,fall:0,jd:-1}}
 function newGame(){
   G={state:'play',t:0,camX:0,shake:0,hero:member('hero',-24,46),intro:true,allies:[],enemies:[],shots:[],fx:[],
-    npcs:[...ALLY_SPOTS.map(a=>({...a,state:'wait',guards:[],hurt:0})),...MOB_SPOTS.map(a=>({...a,mob:true,state:'wait',guards:[],hurt:0}))],followers:[],hitstop:0,flyers:[],nextSpawn:300,spawnT:4,boss:null,locked:false,
+    npcs:[...ALLY_SPOTS.map(a=>({...a,state:'wait',guards:[],hurt:0})),...MOB_SPOTS.filter(a=>!a.rare||Math.random()<AITSU_RATE||/[?&]aitsu\b/.test(location.search)).map(a=>({...a,mob:true,state:'wait',guards:[],hurt:0}))],followers:[],hitstop:0,flyers:[],nextSpawn:300,spawnT:4,boss:null,locked:false,
     kills:0,wizIntro:false,magicTold:false,overT:0,clearT:0};
   G.hero.safe={x:40,z:46};
   msgQ.length=0;msgT=0;$('#msg').hidden=true;
@@ -899,7 +901,7 @@ function spawnEnemy(type,x,z,force=false){
 }
 // 道の仲間: 画面に入る前に魔物の群れが取りかこむ。全部たおすと助けられる。画面の左へ流れたら助けられない
 const GUARDS={warrior:['slime','slime','slime','skel'],mage:['skel','skel','bat','bat'],priest:['skel','wiz','skel','bat','bat'],
-  town:['slime','slime'],child:['bat','slime'],woman:['skel','slime'],merchant:['slime','slime','bat'],soldier:['skel','skel'],princess:['skel','wiz','bat'],king:['skel','skel','wiz']};
+  town:['slime','slime'],child:['bat','slime'],woman:['skel','slime'],merchant:['slime','slime','bat'],soldier:['skel','skel'],princess:['skel','wiz','bat'],king:['skel','skel','wiz'],aitsu:['slime','bat','slime']};
 const npcName=n=>(n.mob?MOB:CLS)[n.cls].name;
 function updNpcs(){
   for(const n of G.npcs){
@@ -913,7 +915,7 @@ function updNpcs(){
       if(n.guards.every(e=>e.dead)){
         if(n.mob){   // 町の人: 後ろをついてくる
           n.state='joined';G.followers.push({cls:n.cls,x:n.x,z:n.z,h:0,walk:0,face:1});
-          say(`${npcName(n)}を たすけた！`);tone(midi(79),.1,'square',.12);tone(midi(84),.18,'square',.12,0,.1);addFx(n.x,n.z,20,'#fcd800',10,50);
+          say(MOB[n.cls].saved||`${npcName(n)}を たすけた！`);tone(midi(79),.1,'square',.12);tone(midi(84),.18,'square',.12,0,.1);addFx(n.x,n.z,20,'#fcd800',10,50);
           continue;
         }
         n.state='joined';const a=member(n.cls,n.x,n.z);a.face=1;G.allies.push(a);
@@ -1446,7 +1448,7 @@ function showOver(){
 function showClear(){
   const t=Math.floor(G.t),cv=$('#clearView');
   msgQ.length=0;msgT=0;$('#msg').hidden=true;
-  const rows=[['タイム',`${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`],['たおした てき',G.kills],['のこった なかま',`${G.allies.length} / 3`],['たすけた ひと',`${G.followers.length} / ${MOB_SPOTS.length}`]];
+  const rows=[['タイム',`${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`],['たおした てき',G.kills],['のこった なかま',`${G.allies.length} / 3`],['たすけた ひと',`${G.followers.length} / ${G.npcs.filter(n=>n.mob).length}`]];
   cv.innerHTML=`<h2 class="cTitle" data-t="ステージ クリア!"><span>ステージ クリア!</span></h2>
     <div class="cScroll">ほのおの ドラゴンを たおした！</div>
     <div class="cStats">${rows.map(([k,v],i)=>`<span style="animation-delay:${.6+i*.14}s">${k}</span><span style="animation-delay:${.66+i*.14}s">${v}</span>`).join('')}</div>
