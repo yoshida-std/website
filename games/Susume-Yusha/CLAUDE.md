@@ -3,12 +3,12 @@
 スーファミRPG風の絵で、勇者が右へ進む横スクロールアクション（プロトタイプ）。公開URL: `https://yoshida-std.github.io/website/games/Susume-Yusha/`
 リポジトリ全体の作業ルール（ブランチ・PR・確認方法・コピーライト表記）はルートの `CLAUDE.md` を参照。
 
-プッシュ前の確認用 Artifact: `https://claude.ai/artifact/KEX8vTqyZ5X9F5ju5pqruJ`（変更のたびにこの URL を更新する。`index.html` と、`files` で `sprites.png`・`sprites.json`・`sound/bgm_field.mp3`・`sound/bgm_boss.mp3`・`sound/jingle_clear.mp3` を同じパスで載せる）
+プッシュ前の確認用 Artifact: `https://claude.ai/artifact/KEX8vTqyZ5X9F5ju5pqruJ`（変更のたびにこの URL を更新する。`index.html` と、`files` で `sprites.png`・`sprites.json`・`logo.png`・`sound/bgm_field.mp3`・`sound/bgm_boss.mp3`・`sound/jingle_clear.mp3` を同じパスで載せる）
 
 ## 概要と操作
 
 - スマホ横画面専用。縦向きのときは「よこむきに してね」を出して一時停止する（`#rotate`）
-- タイトル画面（`#titleView`、`showTitle`/`hideTitle`）: 操作エリアをかくしてゲーム画面を全幅にし（`body.titleMode`、`layout()` で `pw=0`）、勇者が1人でフィールドを歩く絵（`drawIdle`。穴は描かず、勇者の通り道 `TZ` の障害物も描かない）を背景に、ロゴ「すすめ！ゆうしゃ」（クリア画面と同じ青と金の字）・巻物の帯・右下に縦に並んだ「▶はじめる」「あそびかた」。「はじめる」を押すと、ロゴとボタンが消えて勇者が猛ダッシュで画面の右へ走りぬけ（`startDash`、`TD`。0.18秒ためて加速、土けむり・風の線）、出きったらゲームを始める（約1.4秒）。あそびかたはボタンで窓（`#howto`、2列6項目、とじる・窓の外タップ・Esc でとじる）を出す。スクロールなしで収まる大きさ（1em＝ゲームの8ドット）
+- タイトル画面（`#titleView`、`showTitle`/`hideTitle`）: 操作エリアをかくしてゲーム画面を全幅にし（`body.titleMode`、`layout()` で `pw=0`）、勇者が1人でフィールドを歩く絵（`drawIdle`。穴は描かず、勇者の通り道 `TZ` の障害物も描かない）を背景に、ロゴ（ユーザーが作った絵 `logo.png`。金の字・剣・ドラゴンの影。透明の背景、599x355）・巻物の帯・右下に縦に並んだ「▶はじめる」「あそびかた」。「はじめる」を押すと、ロゴとボタンが消えて勇者が猛ダッシュで画面の右へ走りぬけ（`startDash`、`TD`。0.18秒ためて加速、土けむり・風の線）、出きったらゲームを始める（約1.4秒）。あそびかたはボタンで窓（`#howto`、2列6項目、とじる・窓の外タップ・Esc でとじる）を出す。スクロールなしで収まる大きさ（1em＝ゲームの8ドット）
 - 画面の左 1/3 が操作エリア（`#panel`: パーティ窓と円盤）、右 2/3 がゲーム画面（`#screen`）
 - ゲーム画面は高さ 224 ドットの canvas をドットのまま拡大。幅 `W` は右 2/3 の比率で 256〜440 に変わる（`layout()`）。ベルトスクロール型で、地面に奥行き（`z`）がある
 - 絵: キャラは `sprites.png` から読む（下の「キャラのグラフィックシート」）。背景（空・雲・山2層・森・草原）、木・岩・箱・スライムは起動時に `buildArt()` で手続き的に描いておく（`ART`, `SP`）。ほかのキャラは文字列のドット絵に `shade()` で陰をつけ、`scale2x()` でなめらかに2倍にする（キャラは32ドット前後）。ボスのドラゴンはユーザーの絵（シートの `boss.dragon.*`）。コードの絵（`makeDragon()`、2コマ）はシートがないときの代わり。当たり判定・剣の間合いもこの大きさに合わせてある
