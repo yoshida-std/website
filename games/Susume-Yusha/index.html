@@ -125,6 +125,9 @@ body.titleMode #panel{display:none}
 #howto em.m{color:var(--pink)}
 #howto .pc{margin:0;font-size:.8em!important}
 #howto .cBtn{font-size:1.15em;padding:.25em 1.6em .3em}
+#titleView.dash .tLogo,#titleView.dash .tBtns,#titleView.dash .tCopy{transition:opacity .35s,transform .35s;opacity:0}
+#titleView.dash .tBtns{transform:translateX(1.5em)}
+#titleView.dash .tLogo{transform:translateY(-.6em)}
 @media (prefers-reduced-motion:reduce){#titleView *{animation:none!important}}
 #rotate{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
   text-align:center;font-size:18px;line-height:1.6;padding:0 max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
@@ -1519,7 +1522,14 @@ function showTitle(){
   document.body.classList.add('titleMode');layout();
   tv.querySelector('[data-act=start]').focus({preventScroll:true});
 }
-function hideTitle(){$('#titleView').hidden=true;document.body.classList.remove('titleMode');layout()}
+// はじめる: 勇者が猛ダッシュで画面の右へ走りぬけてから、ゲームを始める
+let TD=null;
+function startDash(){
+  if(TD)return;
+  TD={t0:performance.now()/1000,dust:[],last:0};$('#titleView').classList.add('dash');
+  SFX.swing();tone(220,.35,'sawtooth',.06,700);
+}
+function hideTitle(){TD=null;$('#titleView').classList.remove('dash');$('#titleView').hidden=true;document.body.classList.remove('titleMode');layout()}
 function showOver(){
   showOverlay(`<h2>ゲームオーバー</h2><p>ゆうしゃは しんでしまった！</p>
   <div class="stats"><span>すすんだ きょり</span><span>${Math.floor(G.hero.x/10)}m</span><span>たおした てき</span><span>${G.kills}</span></div>
@@ -1556,7 +1566,8 @@ function onTap(el,fn){
 function overlayAct(target){
   const b=target.closest('button');if(!b)return;initAudio();
   const a=b.dataset.act;
-  if(a==='start'){hideOverlay();hideTitle();newGame()}
+  if(a==='start'&&!$('#titleView').hidden){startDash()}
+  else if(a==='start'){hideOverlay();hideTitle();newGame()}
   else if(a==='howto'){$('#howto').hidden=false;$('#howto [data-act=close]').focus({preventScroll:true})}
   else if(a==='close'){$('#howto').hidden=true;$('#titleView [data-act=howto]').focus({preventScroll:true})}
   else if(a==='title'){G=null;stopBgm();$('#clearView').hidden=true;showTitle()}
@@ -1708,12 +1719,23 @@ function drawIdle(t){
   const cam=(t*SCROLL)%(END-W-700);
   G={title:true,camX:cam,hero:{x:0},enemies:[],shots:[],fx:[],allies:[],npcs:[],boss:null,locked:false,t,state:'title'};CAM=Math.round(cam);
   drawBg();
-  const hero={cls:'hero',x:CAM+Math.round(W*.27),z:TZ,h:0,face:1,walk:t,inv:0,flash:0,swing:0,charge:0,fall:0};G.hero=hero;
+  // ダッシュ: ためて（0.18秒、少し沈む）→ 加速して右へ。足もとに土けむり、うしろに風の線
+  const d=TD?t-TD.t0:0,run=Math.max(0,d-.18),dx=TD?Math.round(30*run+620*run*run):0;
+  const hero={cls:'hero',x:CAM+Math.round(W*.27)+dx-(TD&&d<.18?2:0),z:TZ,h:0,face:1,walk:TD?(d<.18?0:t*3.5):t,inv:0,flash:0,swing:0,charge:0,fall:0};G.hero=hero;
+  if(TD&&run>0&&t-TD.last>.025&&SX(hero.x)<W+10){TD.last=t;for(let i=0;i<2;i++)TD.dust.push({x:hero.x-6+rnd(-3,3),z:TZ+rnd(-3,3),h:rnd(0,4),vx:-rnd(30,70),vh:rnd(10,30),life:rnd(.35,.6),max:.6})}
+  if(TD)for(const p of TD.dust){p.life-=1/60;p.x+=p.vx/60;p.h=Math.max(0,p.h+p.vh/60);p.vh-=60/60}
+  if(TD)TD.dust=TD.dust.filter(p=>p.life>0);
   const L=[];
   for(const o of OBS)if(o.x>CAM-20&&o.x<CAM+W+20&&Math.abs(o.z-TZ)>(o.t==='tree'?12:16))L.push({z:o.z+o.d,f:()=>{shadow(o.x,o.z,o.t==='tree'?30:o.w*2+2);drawImg(SP[o.t].r,o.x,o.z+o.d-1,0)}});
-  L.push({z:TZ+.1,f:()=>drawMember(hero)});
+  L.push({z:TZ+.1,f:()=>{
+    if(TD&&run>.05){const sx=SX(hero.x),sy=Math.round(GY+TZ);   // 風の線
+      for(let i=0;i<5;i++){const y=sy-6-i*6+((i*7)%5),len=Math.min(80,18+run*90)-i*4;ctx.fillStyle=i%2?'#ffffffaa':'#d8f0ff99';ctx.fillRect(Math.round(sx-14-len-(i%3)*6),y,Math.max(4,len),1)}}
+    if(TD)for(const p of TD.dust){const r=Math.round(2+(1-p.life/p.max)*4);ctx.globalAlpha=Math.min(1,p.life/p.max*1.6)*.85;ctx.fillStyle='#e8d8b0';ctx.fillRect(SX(p.x)-r,Math.round(GY+p.z-p.h)-r,r*2,r*2);ctx.fillStyle='#c8b080';ctx.fillRect(SX(p.x)-r,Math.round(GY+p.z-p.h),r*2,r);ctx.globalAlpha=1}
+    drawMember(hero)}});
   L.sort((a,b)=>a.z-b.z).forEach(o=>o.f());
+  const gone=TD&&SX(hero.x)>W+30&&!TD.dust.length&&!TD.done;
   G=null;
+  if(gone){TD.done=true;hideOverlay();hideTitle();newGame()}   // 走りぬけたらゲームへ
   $('#members').innerHTML||updHudEmpty();
 }
 function updHudEmpty(){let h='<div class="mem"><span class="nm">ゆうしゃ</span><span class="bar"><i style="width:100%"></i></span></div>';
