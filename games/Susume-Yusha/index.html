@@ -98,6 +98,34 @@ canvas{touch-action:none;display:block}
 @keyframes cUnroll{from{opacity:0;transform:scaleX(.08)}}
 @keyframes cFade{from{opacity:0;transform:translateY(.35em)}}
 @media (prefers-reduced-motion:reduce){#clearView *,#clearView>*{animation:none!important}}
+/* タイトル: 操作エリアをかくしてゲーム画面を全幅に。勇者が1人で歩くフィールドを背景に、ロゴとボタン2つ。あそびかたはボタンで窓を出す（1em = ゲームの8ドット） */
+body.titleMode #panel{display:none}
+#titleView{position:absolute;inset:0;z-index:3;display:grid;grid-template-rows:1fr auto;justify-items:center;padding:1.1em 1.2em 1.3em;box-sizing:border-box;text-align:center;
+  background:linear-gradient(rgba(10,20,60,.18),rgba(10,20,60,0) 45%,rgba(10,20,60,0) 72%,rgba(10,20,60,.3));
+  --round:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",var(--font);--pop:"Mochiy Pop One","M PLUS Rounded 1c",var(--font)}
+.tLogo{align-self:start;display:flex;flex-direction:column;align-items:center;margin:0;padding-top:.1em}
+.tLogo .cTitle{line-height:1.05}
+.tLogo .s1{font-size:1.75em;margin-left:-2.4em;transform:rotate(-4deg)}
+.tLogo .s2{font-size:3.5em;margin-top:-.1em;letter-spacing:.06em}
+.tLogo .cScroll{font-size:.9em;margin-top:.45em}
+.tBtns{display:flex;gap:1.1em;justify-self:end;margin-right:4%}
+.tBtns{flex-direction:column;gap:.55em;margin-bottom:.2em}
+.tBtns .cBtn{font-size:1.3em;min-width:6.6em}
+.tCopy{position:absolute;left:.9em;bottom:.6em;margin:0;font-size:.72em;color:#fff;opacity:.85;text-shadow:1px 1px 0 #000,0 0 3px #000}
+#titleView .tLogo{animation:cDrop .6s cubic-bezier(.2,1.6,.5,1) both}
+#titleView .cScroll{animation:cUnroll .4s .45s ease-out both}
+#titleView .tBtns{animation:cFade .45s .8s ease-out both}
+#howto{position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;padding:.7em 1em;box-sizing:border-box;background:#000a}
+#howto .win{width:100%;max-width:48em;max-height:100%;overflow-y:auto;touch-action:pan-y;box-sizing:border-box;padding:.6em 1.1em .8em;display:flex;flex-direction:column;align-items:center;gap:.45em}
+#howto h2{margin:0;font-family:var(--round);font-weight:800;font-size:1.35em;color:var(--gold);letter-spacing:.1em}
+#howto ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:.45em 1.4em;text-align:left;font-size:.98em;line-height:1.5}
+#howto li{display:grid;grid-template-columns:1.9em 1fr;align-items:start}
+#howto li b{display:flex;align-items:center;justify-content:center;width:1.5em;height:1.5em;margin-top:.05em;border-radius:50%;background:var(--gold);color:#3a2206;font-family:var(--round);font-size:.85em}
+#howto em{font-style:normal;color:var(--gold)}
+#howto em.m{color:var(--pink)}
+#howto .pc{margin:0;font-size:.8em!important}
+#howto .cBtn{font-size:1.15em;padding:.25em 1.6em .3em}
+@media (prefers-reduced-motion:reduce){#titleView *{animation:none!important}}
 #rotate{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
   text-align:center;font-size:18px;line-height:1.6;padding:0 max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))}
 #rotate .ph{width:46px;height:80px;border:4px solid var(--fg);border-radius:8px;animation:turn 2s steps(4) infinite}
@@ -140,6 +168,25 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
     <canvas id="cv" width="320" height="224"></canvas>
     <div id="msg" class="win" hidden></div>
     <div id="clearView" hidden></div>
+    <div id="titleView" hidden>
+      <h1 class="tLogo" aria-label="すすめ！ゆうしゃ"><span class="cTitle s1" data-t="すすめ！"><span>すすめ！</span></span><span class="cTitle s2" data-t="ゆうしゃ"><span>ゆうしゃ</span></span>
+        <span class="cScroll">ほのおの ドラゴンを たおせ！</span></h1>
+      <div class="tBtns"><button class="cBtn gold" data-act="start">はじめる</button><button class="cBtn wood" data-act="howto">あそびかた</button></div>
+      <p class="tCopy">©YoshidaStudio, ©PANICPUMPKIN</p>
+      <div id="howto" hidden><div class="win scrollable">
+        <h2>あそびかた</h2>
+        <ul>
+          <li><b>1</b><span>画面は <em>どんどん 右へ</em> すすむ。左の <em>円盤</em> で 上下左右に うごく。穴や岩は 自動で ジャンプ</span></li>
+          <li><b>2</b><span>敵に 近づくと <em>剣を 自動で ふる</em>。円盤の まんなかを <em>タップ</em> で 斬撃を とばす</span></li>
+          <li><b>3</b><span><em>長押し</em> で ためて 大きな 斬撃（敵の たまも けせる）。ためられるのは <em>なかまの かず</em> まで</span></li>
+          <li><b>4</b><span>敵が 光って <em>「！」</em> が出たら 攻撃の あいず。<em>上か下へ よけろ</em>。<em class="m">魔法は 剣で はじけない</em></span></li>
+          <li><b>5</b><span>おそわれている <em>なかま</em> を たすけよう（さいだい4人）。まものは なかまも ねらってくる</span></li>
+          <li><b>6</b><span><em>町の人</em> も たすけると ついてくる。ゆうしゃの HP が なくなると ゲームオーバー</span></li>
+        </ul>
+        <p class="pc">PC: 矢印/WASD で 移動、スペースで 斬撃（長押しで ため）</p>
+        <button class="cBtn gold" data-act="close">とじる</button>
+      </div></div>
+    </div>
   </div>
 </div>
 <div id="rotate" hidden><div class="ph"></div><div>スマホを よこむきに してね</div></div>
@@ -1302,8 +1349,8 @@ function drawBg(){
   tile(ART.ground,1,GY);
   tile(ART.forest,.55,GY+2-ART.forest.height);
   if(dark){ctx.fillStyle='rgba(40,10,70,.42)';ctx.fillRect(0,0,W,H)}
-  // 穴
-  for(const h of HOLES){
+  // 穴（タイトルの背景では描かない）
+  if(!G.title)for(const h of HOLES){
     if(h[1]<CAM-4||h[0]>CAM+W+4)continue;
     const x=SX(h[0]),w=h[1]-h[0],y0=GY+Math.max(0,h[2]),y1=Math.min(H,GY+h[3]);
     ctx.fillStyle='#0c0805';ctx.fillRect(x,y0,w,y1-y0);
@@ -1467,17 +1514,12 @@ function showOverlay(html){ov.innerHTML=`<div class="card win scrollable">${html
 function hideOverlay(){ov.hidden=true;$('#clearView').hidden=true;overlayShown=false}
 const COPY='<p class="copy">©YoshidaStudio, ©PANICPUMPKIN</p>';
 function showTitle(){
-  showOverlay(`<p class="tag">PROTOTYPE</p><h1>すすめ！<br>ゆうしゃ</h1>
-  <ul class="rules">
-    <li><span>画面は <em>どんどん右へ</em> すすむ。左の <em>円盤</em> で上下左右に動く</span></li>
-    <li><span>円盤の まんなかを <em>タップ</em> で <em>斬撃</em> を とばす。<em>長押し</em> で ためて 大きな 斬撃（敵の たまも けせる）。ためられる だんかいは <em>なかまの かず</em> まで（さいだい3）。穴や岩は 自動で ジャンプ</span></li>
-    <li><span>敵に近づくと <em>剣を振って薙ぎ払う</em>。ただし <em class="m">魔法は はじけない</em> のでよける</span></li>
-    <li><span>まものに おそわれている <em>仲間</em> を たすけよう（最大4人）。仲間もHPがなくなると いなくなる</span></li>
-    <li><span>おそわれている <em>町の人</em> も たすけると、うしろを ついてくる</span></li>
-    <li><span>ゆうしゃのHPがなくなると ゲームオーバー。さいごに まつ ボスを たおせ！</span></li>
-  </ul>
-  <button class="menuBtn" data-act="start">はじめる</button><p class="pc">PC: 矢印/WASD で移動、スペースで 斬撃（長押しで ため）</p>${COPY}`);
+  hideOverlay();$('#msg').hidden=true;$('#howto').hidden=true;
+  const tv=$('#titleView');tv.hidden=true;void tv.offsetWidth;tv.hidden=false;   // 出てくる動きをやり直す
+  document.body.classList.add('titleMode');layout();
+  tv.querySelector('[data-act=start]').focus({preventScroll:true});
 }
+function hideTitle(){$('#titleView').hidden=true;document.body.classList.remove('titleMode');layout()}
 function showOver(){
   showOverlay(`<h2>ゲームオーバー</h2><p>ゆうしゃは しんでしまった！</p>
   <div class="stats"><span>すすんだ きょり</span><span>${Math.floor(G.hero.x/10)}m</span><span>たおした てき</span><span>${G.kills}</span></div>
@@ -1514,12 +1556,16 @@ function onTap(el,fn){
 function overlayAct(target){
   const b=target.closest('button');if(!b)return;initAudio();
   const a=b.dataset.act;
-  if(a==='start'){hideOverlay();newGame()}
+  if(a==='start'){hideOverlay();hideTitle();newGame()}
+  else if(a==='howto'){$('#howto').hidden=false;$('#howto [data-act=close]').focus({preventScroll:true})}
+  else if(a==='close'){$('#howto').hidden=true;$('#titleView [data-act=howto]').focus({preventScroll:true})}
   else if(a==='title'){G=null;stopBgm();$('#clearView').hidden=true;showTitle()}
   else if(a==='resume')togglePause();
   else if(a==='sound'){muted=!muted;b.textContent=`おと: ${muted?'OFF':'ON'}`}
 }
-onTap(ov,overlayAct);onTap($('#clearView'),overlayAct);
+onTap(ov,overlayAct);onTap($('#clearView'),overlayAct);onTap($('#titleView'),overlayAct);
+$('#howto').addEventListener('click',e=>{if(e.target.id==='howto')$('#howto').hidden=true});   // 窓の外をタップしてもとじる
+addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#howto').hidden)$('#howto').hidden=true});
 onTap($('#pauseBtn'),()=>{initAudio();togglePause()});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&G&&G.state==='play')togglePause()});
 
@@ -1629,7 +1675,7 @@ function layout(){
   const portrait=ih>iw;
   $('#rotate').hidden=!portrait;
   if(portrait&&G&&G.state==='play')togglePause();
-  const pw=Math.floor(iw/3),sw=iw-pw;   // 左1/3が操作エリア、右2/3がゲーム画面
+  const pw=document.body.classList.contains('titleMode')?0:Math.floor(iw/3),sw=iw-pw;   // 左1/3が操作エリア、右2/3がゲーム画面（タイトルは全幅）
   $('#panel').style.width=pw+'px';
   let sc=ih/H;
   W=clamp(Math.floor(sw/sc),256,440);
@@ -1637,7 +1683,7 @@ function layout(){
   if(cv.width!==W)cv.width=W;
   ctx.imageSmoothingEnabled=false;
   const s=$('#screen');s.style.width=Math.floor(W*sc)+'px';s.style.height=Math.floor(H*sc)+'px';
-  $('#clearView').style.fontSize=(Math.floor(H*sc)/28)+'px';   // クリア画面の 1em = ゲームの8ドット
+  $('#clearView').style.fontSize=$('#titleView').style.fontSize=(Math.floor(H*sc)/28)+'px';   // クリア画面の 1em = ゲームの8ドット
   fitStick();requestAnimationFrame(drawControls);
 }
 addEventListener('resize',layout);
@@ -1656,11 +1702,18 @@ function frame(now){
   else drawIdle(now/1000);
   requestAnimationFrame(frame);
 }
-// タイトルの後ろで流す画面
+// タイトルの背景: 勇者が1人でフィールドを歩く（穴はなし。勇者の通り道の障害物は描かない）
+const TZ=66;
 function drawIdle(t){
-  if(!G){G={camX:t*20%(END-W),hero:{x:0},enemies:[],shots:[],fx:[],allies:[],npcs:[],boss:null,locked:false,t};CAM=G.camX;
-    drawBg();for(const o of OBS)if(o.x>CAM-20&&o.x<CAM+W+20)drawImg(SP[o.t].r,o.x,o.z+o.d-1,0);
-    const hs=CLS.hero.spr[Math.floor(t*8)%2].r;drawImg(hs,CAM+70,50,0);G=null;}
+  const cam=(t*SCROLL)%(END-W-700);
+  G={title:true,camX:cam,hero:{x:0},enemies:[],shots:[],fx:[],allies:[],npcs:[],boss:null,locked:false,t,state:'title'};CAM=Math.round(cam);
+  drawBg();
+  const hero={cls:'hero',x:CAM+Math.round(W*.27),z:TZ,h:0,face:1,walk:t,inv:0,flash:0,swing:0,charge:0,fall:0};G.hero=hero;
+  const L=[];
+  for(const o of OBS)if(o.x>CAM-20&&o.x<CAM+W+20&&Math.abs(o.z-TZ)>(o.t==='tree'?12:16))L.push({z:o.z+o.d,f:()=>{shadow(o.x,o.z,o.t==='tree'?30:o.w*2+2);drawImg(SP[o.t].r,o.x,o.z+o.d-1,0)}});
+  L.push({z:TZ+.1,f:()=>drawMember(hero)});
+  L.sort((a,b)=>a.z-b.z).forEach(o=>o.f());
+  G=null;
   $('#members').innerHTML||updHudEmpty();
 }
 function updHudEmpty(){let h='<div class="mem"><span class="nm">ゆうしゃ</span><span class="bar"><i style="width:100%"></i></span></div>';
