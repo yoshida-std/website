@@ -1,5 +1,7 @@
-// すすめ！ゆうしゃ: コードで描いたキャラの絵から、グラフィックシートを作り直す
-//   node games/Susume-Yusha/tools/export-sprites.js
+// すすめ！ゆうしゃ: キャラの絵から、グラフィックシートを作り直す
+//   node games/Susume-Yusha/tools/export-sprites.js               … コードで描いた絵から作る
+//   node games/Susume-Yusha/tools/export-sprites.js --from-sheet  … いまの sprites.png / sprites.json の絵で並べなおす
+//                                                                   （セルの大きさを変えた・絵を足したあとの整理と、見本の作り直し）
 // 出力（games/Susume-Yusha/ に上書き）:
 //   sprites.png        … ゲームが読むシート（透明の背景）
 //   sprites.json       … どの絵がシートのどこにあるか
@@ -7,12 +9,20 @@
 // 注意: 描きかえた sprites.png も上書きされる。描きかえを残したいときは実行しない
 const {chromium}=require('playwright');
 const fs=require('fs'),path=require('path');
+const http=require('http');
 const dir=path.resolve(__dirname,'..');
+const fromSheet=process.argv.includes('--from-sheet');
 (async()=>{
+  const old=(()=>{try{return JSON.parse(fs.readFileSync(path.join(dir,'sprites.json'),'utf8'))}catch(e){return {}}})();
+  // ゲームのフォルダを配る小さなサーバー（シートを fetch で読むため）
+  const srv=http.createServer((q,r)=>{const f=path.join(dir,decodeURIComponent(q.url.split('?')[0]));
+    fs.readFile(f,(e,d)=>{if(e){r.writeHead(404);r.end();return}r.writeHead(200,{'Content-Type':f.endsWith('.png')?'image/png':f.endsWith('.json')?'application/json':'text/html; charset=utf-8'});r.end(d)})});
+  await new Promise(ok=>srv.listen(0,ok));
   const b=await chromium.launch();
   const p=await b.newPage({viewport:{width:844,height:390}});
-  await p.goto('file://'+path.join(dir,'index.html')+'?nosheet');
-  await p.waitForTimeout(500);
+  await p.goto(`http://localhost:${srv.address().port}/index.html`+(fromSheet?'':'?nosheet'));
+  await p.waitForTimeout(800);
+  if(fromSheet&&!(await p.evaluate(()=>SHEET.loaded)))throw new Error('sprites.png / sprites.json を読めませんでした');
   const out=await p.evaluate(()=>{
     const rows=[
       ['ゆうしゃ',['char.hero.0','char.hero.1','char.hero.pose'],[CLS.hero.spr[0],CLS.hero.spr[1],CLS.hero.pose]],
@@ -50,9 +60,10 @@ const dir=path.resolve(__dirname,'..');
     return {png:sheet.toDataURL('image/png'),guide:guide.toDataURL('image/png'),
       json:{note:'すすめ！ゆうしゃ のキャラの絵。sprites.png の各セル（x,y,w,h）を描きかえるとゲームに反映される。絵は右向き、足もとがセルの下の端。セルの大きさを変えたときは w,h も直す',version:1,frames}};
   });
+  if(old.weaponInSprite)out.json.weaponInSprite=old.weaponInSprite;   // 設定は引きつぐ
   const save=(f,d)=>fs.writeFileSync(path.join(dir,f),Buffer.from(d.split(',')[1],'base64'));
   save('sprites.png',out.png);save('sprites-guide.png',out.guide);
   fs.writeFileSync(path.join(dir,'sprites.json'),JSON.stringify(out.json,null,1)+'\n');
   console.log('frames:',Object.keys(out.json.frames).length);
-  await b.close();
-})();
+  await b.close();srv.close();
+})().catch(e=>{console.error(e.message);process.exit(1)});

@@ -554,7 +554,7 @@ buildArt();
 // sprites.png を描きかえて置くと、ゲームのキャラの絵がその絵になる（どの絵がどこにあるかは sprites.json）。
 // 読めないとき（ファイルがない・?nosheet を付けたとき）は、上のコードで描いた絵のまま。
 // 絵は右向きで描く（左向きと、当たったときの白い絵はゲームが作る）。足もとがセルの下の端、左右の真ん中がキャラの立つ位置
-const SHEET={loaded:false};
+const SHEET={loaded:false,weaponIn:new Set()};
 async function loadSheet(){
   if(/[?&]nosheet\b/.test(location.search))return;
   try{
@@ -569,6 +569,7 @@ async function loadSheet(){
     for(const k in MOB){set(MOB[k].spr,0,`mob.${k}.0`);set(MOB[k].spr,1,`mob.${k}.1`)}
     for(const k of ['slime','bat','skel','wiz'])SP[k].forEach((_,i)=>set(SP[k],i,`enemy.${k}.${i}`));
     SP.dragon.forEach((_,i)=>set(SP.dragon,i,`boss.dragon.${i}`));
+    SHEET.weaponIn=new Set(meta.weaponInSprite||[]);   // 絵に武器が入っているキャラは、ゲームが武器を重ねて描かない
     SHEET.loaded=true;
   }catch(e){}
 }
@@ -1185,6 +1186,7 @@ function drawSword(m){
     ctx.fillStyle='#fcfcfc';
     for(let t=-1.9;t<a;t+=.13){const tt=m.face>0?t:Math.PI-t;ctx.fillRect(Math.round(sx+Math.cos(tt)*27),Math.round(sy+Math.sin(tt)*27),3,2);ctx.fillStyle='#a8ecff';ctx.fillRect(Math.round(sx+Math.cos(tt)*24),Math.round(sy+Math.sin(tt)*24),2,1);ctx.fillStyle='#fcfcfc'}
   }
+  if(SHEET.weaponIn.has('char.'+m.cls))return;   // 絵に剣が入っているときは、振った軌跡だけ描く
   for(let i=0;i<len;i++){const x=Math.round(sx+Math.cos(ang)*i),y=Math.round(sy+Math.sin(ang)*i);ctx.fillStyle=i<5?(i===4?'#fff07a':'#c89020'):'#6c7480';ctx.fillRect(x,y,2,2);if(i>=5){ctx.fillStyle=i>len-3?'#ffffff':'#d8dee6';ctx.fillRect(x,y,1,1)}}
 }
 function drawMember(m){
@@ -1196,7 +1198,7 @@ function drawMember(m){
     const h=inHole(m.x,m.z,0)||HOLES[0];ctx.save();ctx.beginPath();ctx.rect(SX(h[0]),GY+Math.max(0,h[2])-40,h[1]-h[0],Math.min(H-GY,h[3])-Math.max(0,h[2])+40);ctx.clip();
     drawImg(img,m.x,m.z,m.h);ctx.restore();return;
   }
-  shadow(m.x,m.z,22);
+  shadow(m.x,m.z,Math.max(22,c.spr[0].w*.62));
   if(m===G.hero&&m.charge>.12){   // ため中: 光の粒が集まる。段ごとに 青→水色→金→赤 と色と数が変わる
     const lv=chargeLv(m.charge),w=WAVE[lv],cx=SX(m.x),cy=Math.round(GY+m.z-m.h-16),next=LV_T[lv]||LV_T[2],prev=LV_T[lv-1]||0;
     const prog=lv===maxLv()?1:(m.charge-prev)/(next-prev),n=8+lv*4;
