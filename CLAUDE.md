@@ -43,7 +43,7 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 
 ## ポートフォリオ（`portfolio/`）
 
-段階的に作っている。今あるのはトップ・LINE スタンプ・ブラウザゲームのページ。ツールは「準備中」でリンクなし。note はカードを置かず、トップの最新記事の欄で見せる（ナビの「note」はその欄 `#note` へのリンク）。
+段階的に作っている。今あるのはトップ・LINE スタンプ・ブラウザゲームのページ。ツールは「準備中」でリンクなし。note はカードを置かず、トップの最新記事の欄で見せる。YouTube のショートもトップの欄で見せる（ナビの「note」はその欄 `#note` へのリンク）。
 
 - `portfolio/index.html` … トップ（ヘッダー画像、LINEスタンプ・ゲーム・ツールのカードと、note の最新記事3件をサムネイル付きで）
   - ヘッダー画像は `portfolio/img/header.jpg`（1424×748）と `header-800.jpg`（スマホ用の縮小版）。PC では上下を少し切って低めに見せる（ロゴは中央なので切れない）
@@ -51,7 +51,13 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
   - `articles.json` は `.github/workflows/update-note-feed.yml` が3時間ごとに作り直して `main` にコミットする（`main` でスクリプトか workflow を変えたときと、Actions の画面から手動でも動く）。手で編集しない
   - `.github/scripts/build_note_feed.py` が `https://note.com/yoshida_std/rss` を読み、新しい順に最大10件を書き出す（標準ライブラリだけで動く）。読めない・0件なら更新しない（Actions は失敗になる）
   - この作業環境からは note.com に接続できない。動作確認はテスト用の RSS を `http.server` で配信し、環境変数 `NOTE_RSS` にその URL を指定して行う
+  - note の下に「最新のショート」の欄（YouTube のショート6件。縦長のサムネイル、スマホは横にスワイプ）。`portfolio/youtube/videos.json` を `fetch` して出す。0件・読めないときは欄ごと出さない。押すとショートの URL（`/shorts/動画ID`）が開く
+  - `videos.json` は `.github/workflows/update-youtube-feed.yml` が3時間ごとに作り直して `main` にコミットする（スクリプトか workflow を変えたときと、手動でも動く）。手で編集しない
+  - `.github/scripts/build_youtube_feed.py` が、チャンネル（ID `UCnCCTBOk6s1M7PFz2q1VZCQ`）の**ショートだけの再生リスト**（ID の `UC` を `UUSH` に変えたもの。YouTube の非公式な仕組み）の RSS を読み、新しい順に最大12件を書き出す。読めない・0件なら更新しない（Actions は失敗になる）。別の RSS を読むときは環境変数 `YOUTUBE_FEED`
+  - ショートのサムネイル（RSS の画像）は左右に黒帯の付いた横長なので、CSS で中央を縦長（9:16）に切り出している（`.short-thumb img` の `object-fit: cover`）
+  - この作業環境からは youtube.com に接続できない。動作確認はテスト用の RSS（Atom）を `http.server` で配信し、環境変数 `YOUTUBE_FEED` にその URL を指定して行う
 - `portfolio/games/index.html` … ブラウザゲームの一覧。**載せるゲームは `portfolio/games/games.json` に書いたものだけ**（`games/` のフォルダを巡回しない。制作中のゲームは書かなければ載らない）。公開日の新しい順（同じ日は書いた順）
+  - スマホ（iPhone / Android）で開いたときだけ「ホーム画面に追加」の案内を出す（`#a2hs`。機種は UA で見分ける。ホーム画面から開いているときと PC では出さない）。ウェブページからは追加の画面を出せない（iOS には仕組みがない。Android の `beforeinstallprompt` は、そのゲーム自身のページでしか使えない）ので、案内だけ
   - **ゲームを公開するとき**: `games.json` の `items` に1件足す。取り下げるときは消す。`games/` のフォルダの名前・中身は変えない
   - 1件の項目: `id`、`title`、`description`、`path`（ゲームのフォルダ。このページからの相対パスで `../../games/フォルダ名/`）、`image`（サムネイル。このページからの相対パスで `../img/games/…jpg`）、`orientation`（スマホで遊ぶ向き。`landscape`＝横向き、`portrait`＝縦向き。省略すると向きは表示しない）、`published`（公開日 `YYYY-MM-DD`）
   - サムネイルは `portfolio/img/games/` の JPEG。ゲームのタイトル画面を Playwright で撮り、ボタン・コピーライト・LINE ボタンは隠している（`.sp-btn,.tag,.rule,.menu,.copy,.tBtns,.tCopy` を `display:none`）
