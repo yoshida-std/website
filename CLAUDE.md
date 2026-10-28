@@ -46,8 +46,9 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 段階的に作っている。今あるのはトップと LINE スタンプのページだけ。ゲーム・ツール・note は「準備中」でリンクなし。
 
 - `portfolio/index.html` … トップ（各コーナーへのカード）
-- `portfolio/line/index.html` … LINEスタンプ・絵文字の一覧。`common/line-promo/sticker-catalog.json` を `fetch` して表示（カタログが更新されれば自動で反映）。スタンプ／絵文字のタブ、名前の絞り込み（全角半角・カタカナひらがなを区別しない。空白区切りで AND）。状態は `?type=emoji&q=…` で URL に残る
+- `portfolio/line/index.html` … LINEスタンプ・絵文字の一覧。`common/line-promo/sticker-catalog.json` を `fetch` して表示（カタログが更新されれば自動で反映）。スタンプ／絵文字のタブ、名前の絞り込み（全角半角・カタカナひらがなを区別しない。空白区切りで AND）。20件ずつのページ送り。各アイテムの右上にリンク（LINE STORE の URL）をコピーするボタン。状態は `?type=emoji&q=…&p=2` で URL に残る
   - 並びはカタログの順（新しい順）。`Object.keys` だと数字のキーが小さい順になってしまうので、JSON の文字列からキーの順を拾っている
+- コピーライトは「©YoshidaStudio」のみ（PANICPUMPKIN は入れない）
 - `portfolio/style.css` … 共通スタイル（PC・スマホ両対応、ダークモード対応）
 - ゲームではないので Artifact での確認は不要。動作確認はゲームと同じく `http.server` で配信して Playwright で見る（この環境からは LINE の画像サーバーに接続できないので、画像は表示されない）
 
