@@ -68,7 +68,7 @@ h1 { font-size: clamp(22px, 4vw, 30px); margin: 0 0 6px; }
 /* トップのセクションカード */
 .cards {
   display: grid; gap: 16px;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 .card {
   display: block; padding: 20px; text-decoration: none;
@@ -86,7 +86,7 @@ a.card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgb(0 0 0 / .
 div.card { opacity: .6; }
 
 /* トップの note 記事 */
-.section { margin-top: 40px; }
+.section { margin-top: 40px; scroll-margin-top: 72px; }
 .section-head {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px;
 }

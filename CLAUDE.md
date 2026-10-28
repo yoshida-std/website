@@ -43,9 +43,9 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 
 ## ポートフォリオ（`portfolio/`）
 
-段階的に作っている。今あるのはトップと LINE スタンプのページだけ。ゲーム・ツール・note は「準備中」でリンクなし。
+段階的に作っている。今あるのはトップと LINE スタンプのページだけ。ゲーム・ツールは「準備中」でリンクなし。note はカードを置かず、トップの最新記事の欄で見せる（ナビの「note」はその欄 `#note` へのリンク）。
 
-- `portfolio/index.html` … トップ（各コーナーへのカードと、note の最新記事3件をサムネイル付きで）
+- `portfolio/index.html` … トップ（LINEスタンプ・ゲーム・ツールのカードと、note の最新記事3件をサムネイル付きで）
   - 記事は `portfolio/note/articles.json` を `fetch` して出す。0件・読めないときは記事の欄ごと出さない。日付は JSON の日付（日本時間）の文字をそのまま出す
   - `articles.json` は `.github/workflows/update-note-feed.yml` が3時間ごとに作り直して `main` にコミットする（`main` でスクリプトか workflow を変えたときと、Actions の画面から手動でも動く）。手で編集しない
   - `.github/scripts/build_note_feed.py` が `https://note.com/yoshida_std/rss` を読み、新しい順に最大10件を書き出す（標準ライブラリだけで動く）。読めない・0件なら更新しない（Actions は失敗になる）
