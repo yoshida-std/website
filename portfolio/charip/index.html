@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>キャラクターIP | ヨシダスタジオ</title>
+<meta name="description" content="ヨシダスタジオのキャラクターと、お借りしているキャラクターの紹介。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ヨシダスタジオ">
+<meta property="og:title" content="キャラクターIP | ヨシダスタジオ">
+<meta property="og:description" content="ヨシダスタジオのキャラクターと、お借りしているキャラクターの紹介。">
+<meta property="og:url" content="https://yoshida-std.github.io/website/portfolio/charip/">
+<meta property="og:image" content="https://yoshida-std.github.io/website/portfolio/img/header.jpg">
+<meta property="og:image:width" content="1424">
+<meta property="og:image:height" content="748">
+<meta property="og:image:alt" content="ヨシダスタジオ YOSHIDA STUDIO">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../style.css?v=9">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="../">ヨシダスタジオ</a>
+    <nav class="nav">
+      <a href="../">トップ</a>
+      <a href="../line/">LINEスタンプ</a>
+      <a href="../games/">ゲーム</a>
+      <a href="./" aria-current="page">キャラクターIP</a>
+      <span>ツール</span>
+      <a href="../#note">note</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1>キャラクターIP</h1>
+  <p class="lead">ヨシダスタジオのキャラクターと、お借りしているキャラクターです。気になる子をタップすると紹介ページへ。</p>
+
+  <p class="count" id="count" aria-live="polite">読み込み中…</p>
+  <section class="ip-group" id="g-original" hidden>
+    <h2>ヨシダスタジオのオリジナル</h2>
+    <ul class="ips" id="list-original"></ul>
+  </section>
+  <section class="ip-group" id="g-opensource" hidden>
+    <h2>オープンソースのキャラクター</h2>
+    <p class="note">作者が自由に使えるよう公開しているキャラクターを、ルールに沿ってお借りしています。</p>
+    <ul class="ips" id="list-opensource"></ul>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">©YoshidaStudio</div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  // 公開する IP は charip.json に書いたものだけ。kind: "original"（自発）/ "opensource"（オープンソース）
+  // 紹介ページは path（このページからの相対パス）。提供元者は creator.name
+  var FEED = "charip.json";
+  var countEl = document.getElementById("count");
+
+  var cur = document.querySelector(".nav [aria-current]");
+  if (cur && cur.scrollIntoView) cur.scrollIntoView({ inline: "center", block: "nearest" });
+
+  function safeUrl(u) {
+    u = String(u || "");
+    return /^[a-z][a-z0-9+.-]*:/i.test(u) ? (/^https:\/\//i.test(u) ? u : "") : u;
+  }
+
+  fetch(FEED, { cache: "no-cache" })
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function (data) {
+      var items = (data.items || []).filter(function (it) { return it.name && safeUrl(it.path); });
+      items = items.map(function (it, i) { return { it: it, i: i }; })
+        .sort(function (a, b) {
+          var da = a.it.published || "", db = b.it.published || "";
+          return da < db ? 1 : da > db ? -1 : a.i - b.i;
+        })
+        .map(function (x) { return x.it; });
+      countEl.textContent = items.length ? items.length + " キャラクター" : "まだ公開しているキャラクターはいません。";
+
+      items.forEach(function (it) {
+        var kind = it.kind === "opensource" ? "opensource" : "original";
+        var li = document.createElement("li");
+        var a = document.createElement("a");
+        a.className = "game";
+        a.href = safeUrl(it.path);
+        var thumb = document.createElement("div");
+        thumb.className = "ip-thumb";
+        if (safeUrl(it.image)) {
+          var img = document.createElement("img");
+          img.src = safeUrl(it.image);
+          img.alt = "";
+          img.loading = "lazy";
+          img.decoding = "async";
+          thumb.appendChild(img);
+        }
+        var body = document.createElement("div");
+        body.className = "game-body";
+        var h = document.createElement("h2");
+        h.textContent = it.name;
+        body.appendChild(h);
+        if (it.description) {
+          var p = document.createElement("p");
+          p.textContent = it.description;
+          body.appendChild(p);
+        }
+        var by = document.createElement("div");
+        by.className = "game-meta";
+        var tag = document.createElement("span");
+        tag.className = "ip-tag";
+        tag.textContent = kind === "opensource" ? "オープンソース" : "オリジナル";
+        by.appendChild(tag);
+        if (it.creator && it.creator.name) {
+          var who = document.createElement("span");
+          who.className = "ip-by";
+          who.textContent = "提供: " + it.creator.name;
+          by.appendChild(who);
+        }
+        body.appendChild(by);
+        a.appendChild(thumb);
+        a.appendChild(body);
+        li.appendChild(a);
+        document.getElementById("list-" + kind).appendChild(li);
+        document.getElementById("g-" + kind).hidden = false;
+      });
+    })
+    .catch(function () {
+      countEl.textContent = "一覧を読み込めませんでした。時間をおいて再読み込みしてください。";
+    });
+})();
+</script>
+</body>
+</html>

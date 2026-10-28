@@ -43,7 +43,7 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 
 ## ポートフォリオ（`portfolio/`）
 
-段階的に作っている。今あるのはトップ・LINE スタンプ・ブラウザゲームのページ。ツールは「準備中」でリンクなし。note はカードを置かず、トップの最新記事の欄で見せる。YouTube のショートもトップの欄で見せる（ナビの「note」はその欄 `#note` へのリンク）。
+段階的に作っている。今あるのはトップ・LINE スタンプ・ブラウザゲームのページ（キャラクターIP は作成中で「準備中」）。ツールは「準備中」でリンクなし。note はカードを置かず、トップの最新記事の欄で見せる。YouTube のショートもトップの欄で見せる（ナビの「note」はその欄 `#note` へのリンク）。
 
 - `portfolio/index.html` … トップ（ヘッダー画像、LINEスタンプ・ゲーム・ツールのカードと、note の最新記事3件をサムネイル付きで）
   - ヘッダー画像は `portfolio/img/header.jpg`（1424×748）と `header-800.jpg`（スマホ用の縮小版）。PC では上下を少し切って低めに見せる（ロゴは中央なので切れない）
@@ -56,6 +56,11 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
   - `.github/scripts/build_youtube_feed.py` が、チャンネル（ID `UCnCCTBOk6s1M7PFz2q1VZCQ`）の**ショートだけの再生リスト**（ID の `UC` を `UUSH` に変えたもの。YouTube の非公式な仕組み）の RSS を読み、新しい順に最大12件を書き出す。読めない・0件なら更新しない（Actions は失敗になる）。別の RSS を読むときは環境変数 `YOUTUBE_FEED`
   - ショートのサムネイル（RSS の画像）は左右に黒帯の付いた横長なので、CSS で中央を縦長（9:16）に切り出している（`.short-thumb img` の `object-fit: cover`）
   - この作業環境からは youtube.com に接続できない。動作確認はテスト用の RSS（Atom）を `http.server` で配信し、環境変数 `YOUTUBE_FEED` にその URL を指定して行う
+- `portfolio/charip/` … キャラクターIP。**トップのカードとナビは「準備中」（リンクなし）**。公開するときは、トップのカードを `charip/` へのリンク（`is-ready`・バッジ「見る」）にし、全ページのナビの `<span>キャラクターIP</span>` をリンクにする
+  - **載せる IP は `portfolio/charip/charip.json` に書いたものだけ**（ゲームの `games.json` と同じ考え方。公開日の新しい順）。追加・公開・公開停止は Claude Code のエージェントに頼む（追加＝`items` に1件足して紹介ページを作る、停止＝消す）
+  - 1件の項目: `id`、`name`、`kind`（`original`＝自発 / `opensource`＝オープンソース。一覧は2つの見出しに分かれる）、`creator.name`（提供元者。一覧と詳細に出す）、`description`、`path`（紹介ページ。`charip/` からの相対パス `taijiro/`）、`image`（一覧のサムネイル。960×504。`../img/charip/…`）、`stickers`（`{"q": "絞り込みの文字"}`。`"type": "emoji"` で絵文字タブ）、`games`（`games.json` の `id` の配列。そこに載っているものだけボタンが出る）、`published`。`opensource` は `source`（`{"name": "…", "url": "https://…"}`。元ページ。例: あいつ → https://yosooi.jp/aitsu/）も書く
+  - 紹介ページは IP ごとに `charip/<id>/index.html`。**名前・提供元者・スタンプ／ゲームへのボタン・元ページへのリンク・最新スタンプは共通部品 `charip/ip.js`**（`<body data-ip="id">` と `data-ip-name` `data-ip-by` `data-ip-source` `data-ip-links` `data-ip-stickers` の目印を置くと `charip.json` から埋める。使い方は JS 冒頭）。**雰囲気・配置・デザインは IP ごとにエージェントと相談しながら作る**（そのページの `<style>` に書く。共通の部品は `style.css` の `.ip-*`）。スタンプのボタンは `line/?q=…` を開く
+  - 今あるのは「たいじろう」（`charip/taijiro/`。ゲームのドット絵の猫を使った空色のページ。`games` に `taijiros-yan` を指定済みだが、`games.json` に載せるまでボタンは出ない）。予定: 自発は「ウーパくん」「ちびうぱ」、オープンソースは「あいつ」（提供元の作者のページへリンク）
 - `portfolio/games/index.html` … ブラウザゲームの一覧。**載せるゲームは `portfolio/games/games.json` に書いたものだけ**（`games/` のフォルダを巡回しない。制作中のゲームは書かなければ載らない）。公開日の新しい順（同じ日は書いた順）
   - スマホ（iPhone / Android）で開いたときだけ「ホーム画面に追加」の案内を出す（`#a2hs`。機種は UA で見分ける。ホーム画面から開いているときと PC では出さない）。ウェブページからは追加の画面を出せない（iOS には仕組みがない。Android の `beforeinstallprompt` は、そのゲーム自身のページでしか使えない）ので、案内だけ
   - **ゲームを公開するとき**: `games.json` の `items` に1件足す。取り下げるときは消す。`games/` のフォルダの名前・中身は変えない
