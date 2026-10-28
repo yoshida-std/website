@@ -52,6 +52,7 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
   - `.github/scripts/build_note_feed.py` が `https://note.com/yoshida_std/rss` を読み、新しい順に最大10件を書き出す（標準ライブラリだけで動く）。読めない・0件なら更新しない（Actions は失敗になる）
   - この作業環境からは note.com に接続できない。動作確認はテスト用の RSS を `http.server` で配信し、環境変数 `NOTE_RSS` にその URL を指定して行う
 - `portfolio/games/index.html` … ブラウザゲームの一覧。**載せるゲームは `portfolio/games/games.json` に書いたものだけ**（`games/` のフォルダを巡回しない。制作中のゲームは書かなければ載らない）。公開日の新しい順（同じ日は書いた順）
+  - スマホ（iPhone / Android）で開いたときだけ「ホーム画面に追加」の案内を出す（`#a2hs`。機種は UA で見分ける。ホーム画面から開いているときと PC では出さない）。ウェブページからは追加の画面を出せない（iOS には仕組みがない。Android の `beforeinstallprompt` は、そのゲーム自身のページでしか使えない）ので、案内だけ
   - **ゲームを公開するとき**: `games.json` の `items` に1件足す。取り下げるときは消す。`games/` のフォルダの名前・中身は変えない
   - 1件の項目: `id`、`title`、`description`、`path`（ゲームのフォルダ。このページからの相対パスで `../../games/フォルダ名/`）、`image`（サムネイル。このページからの相対パスで `../img/games/…jpg`）、`orientation`（スマホで遊ぶ向き。`landscape`＝横向き、`portrait`＝縦向き。省略すると向きは表示しない）、`published`（公開日 `YYYY-MM-DD`）
   - サムネイルは `portfolio/img/games/` の JPEG。ゲームのタイトル画面を Playwright で撮り、ボタン・コピーライト・LINE ボタンは隠している（`.sp-btn,.tag,.rule,.menu,.copy,.tBtns,.tCopy` を `display:none`）

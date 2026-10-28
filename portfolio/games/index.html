@@ -16,7 +16,7 @@
 <meta property="og:image:alt" content="ヨシダスタジオ YOSHIDA STUDIO">
 <meta property="og:locale" content="ja_JP">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="../style.css?v=6">
+<link rel="stylesheet" href="../style.css?v=7">
 </head>
 <body>
 <header class="site-header">
@@ -36,6 +36,8 @@
   <h1>ブラウザゲーム</h1>
   <p class="lead">インストールなしで、すぐ遊べます。スマホで遊ぶときの画面の向きは、各ゲームに書いてあります。</p>
 
+  <p class="a2hs" id="a2hs" hidden></p>
+
   <p class="count" id="count" aria-live="polite">読み込み中…</p>
   <ul class="games" id="list"></ul>
 </main>
@@ -53,6 +55,22 @@
   var FEED = "games.json";
   var list = document.getElementById("list");
   var countEl = document.getElementById("count");
+
+  // スマホだけ「ホーム画面に追加」の案内を出す。ウェブページから追加の画面を出すことはできないので、
+  // 手順を書くだけ（追加するのは、ゲームを開いたそのページ）。ホーム画面から開いているときは出さない
+  (function () {
+    var ua = navigator.userAgent || "";
+    var standalone = (navigator.standalone === true) ||
+      (window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+    var ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    var android = /Android/.test(ua);
+    var el = document.getElementById("a2hs");
+    if (standalone || !(ios || android)) return;
+    el.textContent = ios
+      ? "ゲームを開いたら、Safari の共有ボタン（四角に↑のマーク）から「ホーム画面に追加」を選ぶと、アプリのようにすぐ遊べます。"
+      : "ゲームを開いたら、ブラウザのメニュー（︙）から「ホーム画面に追加」（または「アプリをインストール」）を選ぶと、アプリのようにすぐ遊べます。";
+    el.hidden = false;
+  })();
 
   // スマホはナビが横スクロールなので、今のページのタブが見える位置に動かす
   var cur = document.querySelector(".nav [aria-current]");
