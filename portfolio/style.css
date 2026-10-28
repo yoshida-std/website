@@ -131,6 +131,35 @@ div.card { opacity: .6; }
   .article-body h3 { font-size: 14px; -webkit-line-clamp: 3; }
 }
 
+/* ブラウザゲーム一覧 */
+.games {
+  list-style: none; margin: 0; padding: 0; display: grid; gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+.game {
+  display: flex; flex-direction: column; height: 100%; text-decoration: none;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  overflow: hidden; transition: transform .15s, box-shadow .15s;
+}
+.game:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgb(0 0 0 / .08); }
+.game-thumb { position: relative; overflow: hidden; aspect-ratio: 1.905; background: var(--line); }
+.game-thumb img { display: block; }
+.game-thumb .bg {
+  position: absolute; inset: -12%; width: 124%; height: 124%;
+  object-fit: cover; filter: blur(16px) brightness(.85);
+}
+.game-thumb .fg { position: relative; width: 100%; height: 100%; object-fit: contain; }
+.game-body { padding: 12px 16px 16px; }
+.game-body h2 { font-size: 18px; margin: 0 0 4px; }
+.game-body p { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
+.game-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--muted); }
+.game-meta .tag {
+  padding: 1px 9px; border-radius: 999px; background: var(--line); color: var(--text);
+}
+@media (max-width: 480px) {
+  .games { grid-template-columns: 1fr; }
+}
+
 /* LINEスタンプ一覧 */
 .toolbar {
   display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;

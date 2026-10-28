@@ -1,0 +1,22 @@
+{
+  "items": [
+    {
+      "id": "judge2",
+      "title": "天使と悪魔のジャッジ2",
+      "description": "数字が大きいほうは「たたく」、小さいほうは「さける」。ふたりで対戦も、CPU と勝負もできる反射神経ゲーム。",
+      "path": "../../games/judge2/",
+      "image": "../img/games/judge2.jpg",
+      "orientation": "landscape",
+      "published": "2026-10-28"
+    },
+    {
+      "id": "susume-yusha",
+      "title": "すすめ！ゆうしゃ",
+      "description": "右へ進む横スクロールのアクション。町の人を助けて仲間を増やし、ほのおのドラゴンを倒そう。",
+      "path": "../../games/Susume-Yusha/",
+      "image": "../img/games/susume-yusha.jpg",
+      "orientation": "landscape",
+      "published": "2026-10-28"
+    }
+  ]
+}
