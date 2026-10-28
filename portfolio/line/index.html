@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LINEスタンプ・絵文字 | ヨシダスタジオ</title>
+<meta name="description" content="ヨシダスタジオの LINE スタンプ・絵文字の一覧。">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="../">ヨシダスタジオ</a>
+    <nav class="nav">
+      <a href="../">トップ</a>
+      <a href="./" aria-current="page">LINEスタンプ</a>
+      <span>ゲーム</span>
+      <span>ツール</span>
+      <span>note</span>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1>LINEスタンプ・絵文字</h1>
+  <p class="lead">LINE STORE で販売中の作品です。タップすると LINE STORE が開きます。</p>
+
+  <div class="toolbar">
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" data-type="sticker" aria-selected="true">スタンプ <span data-count="sticker"></span></button>
+      <button type="button" role="tab" data-type="emoji" aria-selected="false">絵文字 <span data-count="emoji"></span></button>
+    </div>
+    <div class="search">
+      <input id="q" type="search" placeholder="名前で絞り込み" autocomplete="off" aria-label="名前で絞り込み">
+      <button type="button" id="clear" aria-label="クリア" hidden>×</button>
+    </div>
+  </div>
+
+  <p class="count" id="count" aria-live="polite">読み込み中…</p>
+  <ul class="grid" id="grid"></ul>
+  <p class="empty" id="empty" hidden>見つかりませんでした。</p>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">©YoshidaStudio, ©PANICPUMPKIN</div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  // カタログは GitHub Actions が毎日作り直す（並びは新しい順）
+  var CATALOG = "../../common/line-promo/sticker-catalog.json";
+
+  var grid = document.getElementById("grid");
+  var countEl = document.getElementById("count");
+  var emptyEl = document.getElementById("empty");
+  var input = document.getElementById("q");
+  var clearBtn = document.getElementById("clear");
+  var tabs = document.querySelectorAll(".tabs button");
+
+  var items = [];
+  var params = new URLSearchParams(location.search);
+  var state = {
+    type: params.get("type") === "emoji" ? "emoji" : "sticker",
+    q: params.get("q") || ""
+  };
+  input.value = state.q;
+
+  // 全角半角・大文字小文字・カタカナひらがなの違いを無視して比べる
+  function norm(s) {
+    return String(s).normalize("NFKC").toLowerCase()
+      .replace(/[ァ-ヶ]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0x60); })
+      .replace(/\s+/g, "");
+  }
+
+  function safeUrl(u) {
+    return /^https:\/\//.test(u) ? u : "#";
+  }
+
+  function render() {
+    tabs.forEach(function (b) {
+      b.setAttribute("aria-selected", String(b.dataset.type === state.type));
+    });
+    clearBtn.hidden = !state.q;
+
+    var words = state.q.split(/[\s　]+/).map(norm).filter(Boolean);
+    var list = items.filter(function (it) {
+      return it.type === state.type && words.every(function (w) { return it.key.indexOf(w) !== -1; });
+    });
+
+    var frag = document.createDocumentFragment();
+    list.forEach(function (it) {
+      var li = document.createElement("li");
+      li.className = "item";
+      var a = document.createElement("a");
+      a.href = safeUrl(it.url);
+      a.target = "_blank";
+      a.rel = "noopener";
+      var thumb = document.createElement("div");
+      thumb.className = "thumb";
+      var img = document.createElement("img");
+      img.src = it.image;
+      img.alt = "";
+      img.loading = "lazy";
+      img.decoding = "async";
+      thumb.appendChild(img);
+      var name = document.createElement("div");
+      name.className = "name";
+      name.textContent = it.name;
+      a.appendChild(thumb);
+      a.appendChild(name);
+      li.appendChild(a);
+      frag.appendChild(li);
+    });
+    grid.replaceChildren(frag);
+
+    countEl.textContent = list.length + " 件";
+    emptyEl.hidden = list.length > 0;
+  }
+
+  // 今の状態を URL に残す（共有・戻るボタン用）
+  function syncUrl() {
+    var p = new URLSearchParams();
+    if (state.type !== "sticker") p.set("type", state.type);
+    if (state.q) p.set("q", state.q);
+    var qs = p.toString();
+    history.replaceState(null, "", location.pathname + (qs ? "?" + qs : ""));
+  }
+
+  tabs.forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.type = b.dataset.type;
+      syncUrl();
+      render();
+    });
+  });
+  input.addEventListener("input", function () {
+    state.q = input.value.trim();
+    syncUrl();
+    render();
+  });
+  clearBtn.addEventListener("click", function () {
+    input.value = "";
+    state.q = "";
+    syncUrl();
+    render();
+    input.focus();
+  });
+
+  // Object.keys は数字のキー（スタンプ）を小さい順に並べ替えてしまうので、
+  // JSON の文字列に書かれている順（＝新しい順）でキーを拾う
+  function catalogOrder(text, map) {
+    var keys = [], seen = {}, m;
+    var re = /"([0-9A-Za-z]+)"\s*:\s*\{/g;
+    while ((m = re.exec(text))) {
+      if (map[m[1]] && !seen[m[1]]) { seen[m[1]] = true; keys.push(m[1]); }
+    }
+    Object.keys(map).forEach(function (k) { if (!seen[k]) keys.push(k); });
+    return keys;
+  }
+
+  fetch(CATALOG, { cache: "no-cache" })
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+    .then(function (text) {
+      var map = JSON.parse(text).items || {};
+      items = catalogOrder(text, map).map(function (id) {
+        var v = map[id];
+        return { id: id, type: v.type, name: v.name, url: v.url, image: v.image, key: norm(v.name) };
+      });
+      ["sticker", "emoji"].forEach(function (t) {
+        var n = items.filter(function (it) { return it.type === t; }).length;
+        document.querySelector('[data-count="' + t + '"]').textContent = "(" + n + ")";
+      });
+      render();
+    })
+    .catch(function () {
+      countEl.textContent = "一覧を読み込めませんでした。時間をおいて再読み込みしてください。";
+    });
+})();
+</script>
+</body>
+</html>
