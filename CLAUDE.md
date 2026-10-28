@@ -53,8 +53,9 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
   - この作業環境からは note.com に接続できない。動作確認はテスト用の RSS を `http.server` で配信し、環境変数 `NOTE_RSS` にその URL を指定して行う
 - `portfolio/games/index.html` … ブラウザゲームの一覧。**載せるゲームは `portfolio/games/games.json` に書いたものだけ**（`games/` のフォルダを巡回しない。制作中のゲームは書かなければ載らない）。公開日の新しい順（同じ日は書いた順）
   - **ゲームを公開するとき**: `games.json` の `items` に1件足す。取り下げるときは消す。`games/` のフォルダの名前・中身は変えない
-  - 1件の項目: `id`、`title`、`description`、`path`（ゲームのフォルダ。このページからの相対パスで `../../games/フォルダ名/`）、`image`（サムネイル。このページからの相対パスで `../img/games/…jpg`）、`published`（公開日 `YYYY-MM-DD`）
-  - サムネイルは `portfolio/img/games/` に 960×504 の JPEG。ゲームのタイトル画面を Playwright で撮り、ボタン・コピーライト・LINE ボタンは隠している（`.sp-btn,.tag,.rule,.menu,.copy,.tBtns,.tCopy` を `display:none`）
+  - 1件の項目: `id`、`title`、`description`、`path`（ゲームのフォルダ。このページからの相対パスで `../../games/フォルダ名/`）、`image`（サムネイル。このページからの相対パスで `../img/games/…jpg`）、`orientation`（スマホで遊ぶ向き。`landscape`＝横向き、`portrait`＝縦向き。省略すると向きは表示しない）、`published`（公開日 `YYYY-MM-DD`）
+  - サムネイルは `portfolio/img/games/` の JPEG。ゲームのタイトル画面を Playwright で撮り、ボタン・コピーライト・LINE ボタンは隠している（`.sp-btn,.tag,.rule,.menu,.copy,.tBtns,.tCopy` を `display:none`）
+  - 横向きのゲームは 960×504（枠の比率とほぼ同じ）。縦向きのゲームは、縦画面のスクリーンショット（例: iPhone 13 の 390×844 を 2 倍）をそのまま JPEG にすればよい。枠に全体が収まり、左右は同じ絵をぼかして敷く（CSS の `.game-thumb .bg`）
 - `portfolio/line/index.html` … LINEスタンプ・絵文字の一覧。`common/line-promo/sticker-catalog.json` を `fetch` して表示（カタログが更新されれば自動で反映）。スタンプ／絵文字のタブ、名前の絞り込み（全角半角・カタカナひらがなを区別しない。空白区切りで AND）。20件ずつのページ送り。各アイテムの右上にリンク（LINE STORE の URL）をコピーするボタン。状態は `?type=emoji&q=…&p=2` で URL に残る
   - 並びはカタログの順（新しい順）。`Object.keys` だと数字のキーが小さい順になってしまうので、JSON の文字列からキーの順を拾っている
 - 各ページの `<head>` に OGP（SNS で URL を共有したときのカード）。画像はヘッダー画像 `img/header.jpg`。SNS は相対パスを読めないので、`og:url`・`og:image` は `https://yoshida-std.github.io/website/portfolio/…` の絶対URLで書く。ページを足したら OGP も足す

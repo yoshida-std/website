@@ -16,7 +16,7 @@
 <meta property="og:image:alt" content="ヨシダスタジオ YOSHIDA STUDIO">
 <meta property="og:locale" content="ja_JP">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="../style.css?v=5">
+<link rel="stylesheet" href="../style.css?v=6">
 </head>
 <body>
 <header class="site-header">
@@ -34,7 +34,7 @@
 
 <main class="wrap">
   <h1>ブラウザゲーム</h1>
-  <p class="lead">インストールなしで、すぐ遊べます。スマホは横向きにして遊んでください。</p>
+  <p class="lead">インストールなしで、すぐ遊べます。スマホで遊ぶときの画面の向きは、各ゲームに書いてあります。</p>
 
   <p class="count" id="count" aria-live="polite">読み込み中…</p>
   <ul class="games" id="list"></ul>
@@ -48,6 +48,8 @@
 (function () {
   "use strict";
   // 公開するゲームは games.json に書いたものだけ（公開日の新しい順に並べる）
+  // orientation: "landscape"（スマホは横向き）/ "portrait"（スマホは縦向き）。省略すると向きは出さない
+  var ORIENTATION = { landscape: "スマホは横向き", portrait: "スマホは縦向き" };
   var FEED = "games.json";
   var list = document.getElementById("list");
   var countEl = document.getElementById("count");
@@ -88,12 +90,17 @@
         var thumb = document.createElement("div");
         thumb.className = "game-thumb";
         if (safeUrl(it.image)) {
-          var img = document.createElement("img");
-          img.src = safeUrl(it.image);
-          img.alt = "";
-          img.loading = "lazy";
-          img.decoding = "async";
-          thumb.appendChild(img);
+          // 縦長・横長どちらの画像でも枠に収まるよう、同じ画像をぼかして敷き、その上に全体を出す
+          ["bg", "fg"].forEach(function (cls) {
+            var img = document.createElement("img");
+            img.className = cls;
+            img.src = safeUrl(it.image);
+            img.alt = "";
+            img.loading = "lazy";
+            img.decoding = "async";
+            if (cls === "bg") img.setAttribute("aria-hidden", "true");
+            thumb.appendChild(img);
+          });
         }
         var body = document.createElement("div");
         body.className = "game-body";
@@ -105,13 +112,22 @@
           desc.textContent = it.description;
           body.appendChild(desc);
         }
+        var meta = document.createElement("div");
+        meta.className = "game-meta";
+        if (ORIENTATION[it.orientation]) {
+          var tag = document.createElement("span");
+          tag.className = "tag is-" + it.orientation;
+          tag.textContent = ORIENTATION[it.orientation];
+          meta.appendChild(tag);
+        }
         var date = formatDate(it.published);
         if (date) {
           var t = document.createElement("time");
           t.dateTime = it.published;
           t.textContent = "公開 " + date;
-          body.appendChild(t);
+          meta.appendChild(t);
         }
+        if (meta.firstChild) body.appendChild(meta);
         a.appendChild(thumb);
         a.appendChild(body);
         li.appendChild(a);
