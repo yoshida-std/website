@@ -43,7 +43,7 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 
 ## ポートフォリオ（`portfolio/`）
 
-段階的に作っている。今あるのはトップと LINE スタンプのページだけ。ゲーム・ツールは「準備中」でリンクなし。note はカードを置かず、トップの最新記事の欄で見せる（ナビの「note」はその欄 `#note` へのリンク）。
+段階的に作っている。今あるのはトップ・LINE スタンプ・ブラウザゲームのページ。ツールは「準備中」でリンクなし。note はカードを置かず、トップの最新記事の欄で見せる（ナビの「note」はその欄 `#note` へのリンク）。
 
 - `portfolio/index.html` … トップ（ヘッダー画像、LINEスタンプ・ゲーム・ツールのカードと、note の最新記事3件をサムネイル付きで）
   - ヘッダー画像は `portfolio/img/header.jpg`（1424×748）と `header-800.jpg`（スマホ用の縮小版）。PC では上下を少し切って低めに見せる（ロゴは中央なので切れない）
@@ -51,6 +51,10 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
   - `articles.json` は `.github/workflows/update-note-feed.yml` が3時間ごとに作り直して `main` にコミットする（`main` でスクリプトか workflow を変えたときと、Actions の画面から手動でも動く）。手で編集しない
   - `.github/scripts/build_note_feed.py` が `https://note.com/yoshida_std/rss` を読み、新しい順に最大10件を書き出す（標準ライブラリだけで動く）。読めない・0件なら更新しない（Actions は失敗になる）
   - この作業環境からは note.com に接続できない。動作確認はテスト用の RSS を `http.server` で配信し、環境変数 `NOTE_RSS` にその URL を指定して行う
+- `portfolio/games/index.html` … ブラウザゲームの一覧。**載せるゲームは `portfolio/games/games.json` に書いたものだけ**（`games/` のフォルダを巡回しない。制作中のゲームは書かなければ載らない）。公開日の新しい順（同じ日は書いた順）
+  - **ゲームを公開するとき**: `games.json` の `items` に1件足す。取り下げるときは消す。`games/` のフォルダの名前・中身は変えない
+  - 1件の項目: `id`、`title`、`description`、`path`（ゲームのフォルダ。このページからの相対パスで `../../games/フォルダ名/`）、`image`（サムネイル。このページからの相対パスで `../img/games/…jpg`）、`published`（公開日 `YYYY-MM-DD`）
+  - サムネイルは `portfolio/img/games/` に 960×504 の JPEG。ゲームのタイトル画面を Playwright で撮り、ボタン・コピーライト・LINE ボタンは隠している（`.sp-btn,.tag,.rule,.menu,.copy,.tBtns,.tCopy` を `display:none`）
 - `portfolio/line/index.html` … LINEスタンプ・絵文字の一覧。`common/line-promo/sticker-catalog.json` を `fetch` して表示（カタログが更新されれば自動で反映）。スタンプ／絵文字のタブ、名前の絞り込み（全角半角・カタカナひらがなを区別しない。空白区切りで AND）。20件ずつのページ送り。各アイテムの右上にリンク（LINE STORE の URL）をコピーするボタン。状態は `?type=emoji&q=…&p=2` で URL に残る
   - 並びはカタログの順（新しい順）。`Object.keys` だと数字のキーが小さい順になってしまうので、JSON の文字列からキーの順を拾っている
 - 各ページの `<head>` に OGP（SNS で URL を共有したときのカード）。画像はヘッダー画像 `img/header.jpg`。SNS は相対パスを読めないので、`og:url`・`og:image` は `https://yoshida-std.github.io/website/portfolio/…` の絶対URLで書く。ページを足したら OGP も足す
