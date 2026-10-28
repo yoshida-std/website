@@ -118,6 +118,7 @@ div.card { opacity: .6; }
 @media (max-width: 480px) {
   .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
 }
+.item { position: relative; }
 .item a {
   display: flex; flex-direction: column; height: 100%; text-decoration: none;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
@@ -129,6 +130,38 @@ div.card { opacity: .6; }
 }
 .item .thumb img { width: 100%; height: 100%; object-fit: contain; }
 .item .name { padding: 8px 10px 10px; font-size: 13px; line-height: 1.45; word-break: break-word; }
+.item .copy {
+  position: absolute; top: 6px; right: 6px;
+  width: 26px; height: 26px; display: grid; place-items: center;
+  border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
+  background: color-mix(in srgb, var(--surface) 90%, transparent); color: var(--muted);
+}
+.item .copy:hover { color: var(--text); border-color: var(--muted); }
+
+.pager {
+  display: flex; justify-content: center; align-items: center; flex-wrap: wrap;
+  gap: 6px; margin-top: 24px;
+}
+.pager button {
+  appearance: none; font: inherit; font-size: 14px; min-width: 38px; height: 38px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--text); cursor: pointer;
+}
+.pager button[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.pager button:disabled { opacity: .35; cursor: default; }
+.pager span { color: var(--muted); padding: 0 2px; }
+@media (max-width: 480px) {
+  .pager { gap: 4px; }
+  .pager button { min-width: 34px; height: 34px; padding: 0 6px; }
+}
+
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px);
+  background: var(--text); color: var(--bg); font-size: 14px;
+  padding: 8px 16px; border-radius: 999px; opacity: 0; pointer-events: none;
+  transition: opacity .2s, transform .2s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
 .empty { color: var(--muted); padding: 40px 0; text-align: center; }
 
 .site-footer {

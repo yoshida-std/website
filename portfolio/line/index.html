@@ -39,6 +39,8 @@
   <p class="count" id="count" aria-live="polite">読み込み中…</p>
   <ul class="grid" id="grid"></ul>
   <p class="empty" id="empty" hidden>見つかりませんでした。</p>
+  <nav class="pager" id="pager" aria-label="ページ"></nav>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </main>
 
 <footer class="site-footer">
@@ -57,12 +59,17 @@
   var input = document.getElementById("q");
   var clearBtn = document.getElementById("clear");
   var tabs = document.querySelectorAll(".tabs button");
+  var pagerEl = document.getElementById("pager");
+  var toastEl = document.getElementById("toast");
+  var PER_PAGE = 20;
+  var COPY_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 
   var items = [];
   var params = new URLSearchParams(location.search);
   var state = {
     type: params.get("type") === "emoji" ? "emoji" : "sticker",
-    q: params.get("q") || ""
+    q: params.get("q") || "",
+    page: Math.max(1, parseInt(params.get("p"), 10) || 1)
   };
   input.value = state.q;
 
@@ -88,8 +95,12 @@
       return it.type === state.type && words.every(function (w) { return it.key.indexOf(w) !== -1; });
     });
 
+    var pages = Math.max(1, Math.ceil(list.length / PER_PAGE));
+    if (state.page > pages) state.page = pages;
+    var start = (state.page - 1) * PER_PAGE;
+
     var frag = document.createDocumentFragment();
-    list.forEach(function (it) {
+    list.slice(start, start + PER_PAGE).forEach(function (it) {
       var li = document.createElement("li");
       li.className = "item";
       var a = document.createElement("a");
@@ -110,12 +121,91 @@
       a.appendChild(thumb);
       a.appendChild(name);
       li.appendChild(a);
+      var copy = document.createElement("button");
+      copy.type = "button";
+      copy.className = "copy";
+      copy.title = "リンクをコピー";
+      copy.setAttribute("aria-label", it.name + " のリンクをコピー");
+      copy.innerHTML = COPY_ICON;
+      copy.addEventListener("click", function () { copyLink(a.href); });
+      li.appendChild(copy);
       frag.appendChild(li);
     });
     grid.replaceChildren(frag);
 
-    countEl.textContent = list.length + " 件";
+    countEl.textContent = list.length
+      ? list.length + " 件中 " + (start + 1) + "〜" + Math.min(start + PER_PAGE, list.length) + " 件"
+      : "0 件";
     emptyEl.hidden = list.length > 0;
+    renderPager(pages);
+  }
+
+  // ページ番号は 1 … 前後 … 最後 の形で出す
+  function renderPager(pages) {
+    pagerEl.replaceChildren();
+    if (pages <= 1) return;
+    function btn(label, page, opt) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      if (opt && opt.label) b.setAttribute("aria-label", opt.label);
+      if (page === state.page && !(opt && opt.nav)) b.setAttribute("aria-current", "page");
+      if (page < 1 || page > pages) b.disabled = true;
+      else b.addEventListener("click", function () { goPage(page); });
+      pagerEl.appendChild(b);
+    }
+    function gap() {
+      var s = document.createElement("span");
+      s.textContent = "…";
+      pagerEl.appendChild(s);
+    }
+    btn("‹", state.page - 1, { nav: true, label: "前のページ" });
+    var last = 0;
+    for (var i = 1; i <= pages; i++) {
+      if (i === 1 || i === pages || Math.abs(i - state.page) <= 1) {
+        if (last && i - last > 1) gap();
+        btn(String(i), i);
+        last = i;
+      }
+    }
+    btn("›", state.page + 1, { nav: true, label: "次のページ" });
+  }
+
+  function goPage(page) {
+    state.page = page;
+    syncUrl();
+    render();
+    var top = document.querySelector(".toolbar").getBoundingClientRect().top + scrollY - 70;
+    if (scrollY > top) scrollTo({ top: top, behavior: "smooth" });
+  }
+
+  var toastTimer;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 1600);
+  }
+
+  function copyLink(url) {
+    function fallback() {
+      var ta = document.createElement("textarea");
+      ta.value = url;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) {}
+      ta.remove();
+      toast(ok ? "リンクをコピーしました" : "コピーできませんでした");
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(url).then(function () { toast("リンクをコピーしました"); }, fallback);
+    } else {
+      fallback();
+    }
   }
 
   // 今の状態を URL に残す（共有・戻るボタン用）
@@ -123,6 +213,7 @@
     var p = new URLSearchParams();
     if (state.type !== "sticker") p.set("type", state.type);
     if (state.q) p.set("q", state.q);
+    if (state.page > 1) p.set("p", state.page);
     var qs = p.toString();
     history.replaceState(null, "", location.pathname + (qs ? "?" + qs : ""));
   }
@@ -130,18 +221,21 @@
   tabs.forEach(function (b) {
     b.addEventListener("click", function () {
       state.type = b.dataset.type;
+      state.page = 1;
       syncUrl();
       render();
     });
   });
   input.addEventListener("input", function () {
     state.q = input.value.trim();
+    state.page = 1;
     syncUrl();
     render();
   });
   clearBtn.addEventListener("click", function () {
     input.value = "";
     state.q = "";
+    state.page = 1;
     syncUrl();
     render();
     input.focus();
