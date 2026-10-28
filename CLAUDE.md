@@ -5,6 +5,7 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 
 - `games/` … ブラウザゲーム（Aitsu-bom, Taijiros-yan, umi, Mogurush, judge2, Susume-Yusha）
 - `tools/` … 制作ツール（ys_*。`ys_spriteSheetEditer` は すすめ！ゆうしゃ のキャラの絵のエディタ）
+- `portfolio/` … ヨシダスタジオのポートフォリオサイト（下の「ポートフォリオ」）
 - `common/line-promo/` … ゲームから LINE スタンプ／絵文字へ誘導する共通部品（下の「LINEスタンプ誘導」）
 - ビルドなし。各作品は基本的に `index.html` 1枚で完結する
 - ルート・`games/`・`tools/` に一覧ページはない（URL直打ちでアクセス）
@@ -39,6 +40,16 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
   - ページを読めない、0件、前回より2割以上減った、のどれかなら取得失敗とみなして更新しない（Actions は失敗になる）
   - この作業環境からは LINE STORE に接続できない。動作確認はテスト用のサーバーを立て、環境変数 `LINE_STORE_BASE` と `REQUEST_INTERVAL=0` を指定して行う
   - `items` 以外の設定（title, button, pixelArt, autoShow）は既存のカタログの値を引き継ぐので、直すときは JSON の該当部分だけ書き換える
+
+## ポートフォリオ（`portfolio/`）
+
+段階的に作っている。今あるのはトップと LINE スタンプのページだけ。ゲーム・ツール・note は「準備中」でリンクなし。
+
+- `portfolio/index.html` … トップ（各コーナーへのカード）
+- `portfolio/line/index.html` … LINEスタンプ・絵文字の一覧。`common/line-promo/sticker-catalog.json` を `fetch` して表示（カタログが更新されれば自動で反映）。スタンプ／絵文字のタブ、名前の絞り込み（全角半角・カタカナひらがなを区別しない。空白区切りで AND）。状態は `?type=emoji&q=…` で URL に残る
+  - 並びはカタログの順（新しい順）。`Object.keys` だと数字のキーが小さい順になってしまうので、JSON の文字列からキーの順を拾っている
+- `portfolio/style.css` … 共通スタイル（PC・スマホ両対応、ダークモード対応）
+- ゲームではないので Artifact での確認は不要。動作確認はゲームと同じく `http.server` で配信して Playwright で見る（この環境からは LINE の画像サーバーに接続できないので、画像は表示されない）
 
 ## 作品ごとのメモ
 
