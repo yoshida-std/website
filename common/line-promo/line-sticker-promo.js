@@ -1,5 +1,5 @@
 /*!
- * line-sticker-promo.js  v8
+ * line-sticker-promo.js  v9
  * 複数ゲームで共有する「LINEスタンプ／絵文字」誘導部品。
  * このJSと sticker-catalog.json（全スタンプ・絵文字の定義）を同じ共通パスに置きます。
  * 各ゲームは「キー」を渡すだけです。
@@ -8,6 +8,11 @@
  *
  * 【アイテムキーを指定】（カンマ区切り。並べた順に表示）
  *   <script src="../../common/line-promo/line-sticker-promo.js" data-keys="12345678,5ac1bfd5040ab15980c9b435"></script>
+ *
+ * 【名前で選ぶ】（名前にこの文字を含むものを全部。カタログの順＝新しい順。カタログが更新されると新作も自動で出る）
+ *   <script src="../../common/line-promo/line-sticker-promo.js" data-match="あいつ"></script>
+ *   data-keys と一緒に使うと、キーで選んだものの後ろに足す（重なりは1回だけ）
+ *   data-exclude="あいつの犬"（カンマ区切り）で、名前にその文字を含むものを data-match の結果から外す
  *
  * 【JSから指定】
  *   StickerPromo.init({ keys: ["12345678", "5ac1bfd5040ab15980c9b435"], position: "top-right" });
@@ -199,6 +204,13 @@
     (keys || []).forEach(function (k) {
       if (table[k]) items.push(table[k]); else console.warn("[StickerPromo] アイテムキーが見つかりません:", k);
     });
+    if (opt.match) Object.keys(table).forEach(function (k) {   // 名前に match を含むもの
+      var it = table[k];
+      var name = String((it && it.name) || "");
+      if (name.indexOf(opt.match) < 0 || items.indexOf(it) >= 0) return;
+      if ((opt.exclude || []).some(function (x) { return name.indexOf(x) >= 0; })) return;   // 外すもの
+      items.push(it);
+    });
     return {
       items: items,
       title: opt.title || over.title || catalog.title,
@@ -232,9 +244,11 @@
   global.StickerPromo = { init: init, show: show, hide: hide, open: open, close: closeModal };
 
   // data 属性があれば自動で開始
-  if (SCRIPT && SCRIPT.dataset.keys) {
+  if (SCRIPT && (SCRIPT.dataset.keys || SCRIPT.dataset.match)) {
     init({
-      keys: SCRIPT.dataset.keys.split(",").map(function (k) { return k.trim(); }).filter(Boolean),
+      keys: (SCRIPT.dataset.keys || "").split(",").map(function (k) { return k.trim(); }).filter(Boolean),
+      match: SCRIPT.dataset.match,
+      exclude: (SCRIPT.dataset.exclude || "").split(",").map(function (k) { return k.trim(); }).filter(Boolean),
       catalog: SCRIPT.dataset.catalog,
       position: SCRIPT.dataset.position,
       label: SCRIPT.dataset.label,

@@ -3,7 +3,7 @@
 スーファミRPG風の絵で、勇者が右へ進む横スクロールアクション（プロトタイプ）。公開URL: `https://yoshida-std.github.io/website/games/Susume-Yusha/`
 リポジトリ全体の作業ルール（ブランチ・PR・確認方法・コピーライト表記）はルートの `CLAUDE.md` を参照。
 
-プッシュ前の確認用 Artifact: `https://claude.ai/artifact/KEX8vTqyZ5X9F5ju5pqruJ`（変更のたびにこの URL を更新する。`index.html` と、`files` で `sprites.png`・`sprites.json`・`logo.png`・`sound/bgm_field.mp3`・`sound/bgm_boss.mp3`・`sound/jingle_clear.mp3` を同じパスで載せる）
+プッシュ前の確認用 Artifact: `https://claude.ai/artifact/KEX8vTqyZ5X9F5ju5pqruJ`（変更のたびにこの URL を更新する。`index.html` と、`files` で `sprites.png`・`sprites.json`・`logo.png`・`manifest.json`・`icon-192.png`・`icon-512.png`・`apple-touch-icon.png`・`sound/bgm_field.mp3`・`sound/bgm_boss.mp3`・`sound/jingle_clear.mp3` を同じパスで載せる）
 
 ## 概要と操作
 
@@ -25,6 +25,17 @@
 - 道の途中で町の人（`MOB`: まちびと・こども・むすめ・しょうにん・へいし・おひめさま・おうさま。`MOB_SPOTS`）も魔物に襲われている（仲間と同じ `updNpcs`、`n.mob`）。助けると `G.followers` に入り、画面の左の最後列をスクロールに合わせて歩く（`updFollowers`）。ボス戦の間は画面の外へかくれ、勝ったら入ってきて勇者たちの後ろに並び、喜んで跳ねる。クリア画面に「たすけた ひと」を出す
 - 隠れキャラ「あいつ」（`MOB.aitsu`）: ユーザーの線画の白いキャラ（帽子・ねむそうな目）。町の人あつかいで、ゲームごとに `AITSU_RATE`（20%）の確率で `x:2010` に出て、魔物（スライム2・コウモリ）に襲われている。助けると「…なぜか ついてくる」。URL に `?aitsu` を付けると必ず出る。クリア画面の「たすけた ひと」の分母はそのゲームに出た町の人の数
 - ボスをたおすと、勇者と仲間が順に小さく跳んで、正面を向いて剣や杖をかかげる決めポーズ（`CLS[].pose`。`POSE_HEAD`/`POSE_SWORD`/`POSE_STAFF`/`POSE_BODY` を重ねて作る）。勇者を真ん中に、画面の中央に横一列に並ぶ。約3秒後（町の人がいれば4秒後）にクリア画面。クリア画面（`showClear`、`#clearView`）はゲーム画面の上に重ねて、後ろの勝利の場面が見えるようにする（暗い窓は使わない）。青いグラデーションに金のふちの「ステージ クリア!」（Mochiy Pop One）、巻物の帯「ほのおの ドラゴンを たおした！」、大きな成績（タイム・たおした てき・のこった なかま・たすけた ひと、M PLUS Rounded 1c）、金の「▶もういちど」と木目の「タイトルへ」。順に出てくる動き（動きを減らす設定では止める）。大きさは 1em＝ゲームの8ドット（`layout()` で決める）
+
+## ホーム画面のアイコン
+
+- `manifest.json`（全画面・横向き）と、ユーザーが作ったアイコン（勇者の顔のドット絵）。Android は `icon-512.png`（もらった 512x512、透明の背景）と `icon-192.png`（512 を縮めたもの）、iOS は `apple-touch-icon.png`（もらった 180x180 を、透明の所が黒くならないようゲームの空の色のグラデーションに重ねたもの）
+- `apple-mobile-web-app-capable` など、ホーム画面から開いたとき全画面になる meta を `<head>` に入れてある
+- タイトルのコピーライトは丸ゴシックの太字（こげ茶のふち）で左下
+
+## LINEスタンプ誘導
+
+- 共通部品（`common/line-promo/line-sticker-promo.js`）を `data-match="あいつ"` で入れてある。カタログの中で名前に「あいつ」が入るスタンプ・絵文字を全部（新しい順）紹介する。ただし「あいつの犬」が入るものは外す（`data-exclude="あいつの犬"`）。カタログが毎日作り直されるので、新作も自動で出る
+- 緑の「LINEスタンプ」ボタンは画面の左上（`data-position="top-left"`）。タイトル・ステージクリア・ゲームオーバーの画面だけで出し（`promo(true)`）、遊んでいる間・はじめるのダッシュ中はかくす（`data-auto-show="false"`、`promo(false)`）
 
 ## 音
 
@@ -77,4 +88,3 @@
 ## 未定・これから
 
 - ステージは1つだけ。長さ `END`=4500（強制スクロールで約1分50秒でボス）。仲間・町の人の位置・穴・障害物は配列で手置き（`HOLES`, `OBS`, `ALLY_SPOTS`, `MOB_SPOTS`）。救出地点のまわり40には穴を置かない
-- LINEスタンプ誘導はまだ入れていない
