@@ -43,9 +43,13 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 
 ## ポートフォリオ（`portfolio/`）
 
-段階的に作っている。今あるのはトップと LINE スタンプのページだけ。ゲーム・ツール・note は「準備中」でリンクなし。
+段階的に作っている。今あるのはトップと LINE スタンプのページだけ。ゲーム・ツールは「準備中」でリンクなし。note はカードを置かず、トップの最新記事の欄で見せる（ナビの「note」はその欄 `#note` へのリンク）。
 
-- `portfolio/index.html` … トップ（各コーナーへのカード）
+- `portfolio/index.html` … トップ（LINEスタンプ・ゲーム・ツールのカードと、note の最新記事3件をサムネイル付きで）
+  - 記事は `portfolio/note/articles.json` を `fetch` して出す。0件・読めないときは記事の欄ごと出さない。日付は JSON の日付（日本時間）の文字をそのまま出す
+  - `articles.json` は `.github/workflows/update-note-feed.yml` が3時間ごとに作り直して `main` にコミットする（`main` でスクリプトか workflow を変えたときと、Actions の画面から手動でも動く）。手で編集しない
+  - `.github/scripts/build_note_feed.py` が `https://note.com/yoshida_std/rss` を読み、新しい順に最大10件を書き出す（標準ライブラリだけで動く）。読めない・0件なら更新しない（Actions は失敗になる）
+  - この作業環境からは note.com に接続できない。動作確認はテスト用の RSS を `http.server` で配信し、環境変数 `NOTE_RSS` にその URL を指定して行う
 - `portfolio/line/index.html` … LINEスタンプ・絵文字の一覧。`common/line-promo/sticker-catalog.json` を `fetch` して表示（カタログが更新されれば自動で反映）。スタンプ／絵文字のタブ、名前の絞り込み（全角半角・カタカナひらがなを区別しない。空白区切りで AND）。20件ずつのページ送り。各アイテムの右上にリンク（LINE STORE の URL）をコピーするボタン。状態は `?type=emoji&q=…&p=2` で URL に残る
   - 並びはカタログの順（新しい順）。`Object.keys` だと数字のキーが小さい順になってしまうので、JSON の文字列からキーの順を拾っている
 - コピーライトは「©YoshidaStudio」のみ（PANICPUMPKIN は入れない）
