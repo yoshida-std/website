@@ -7,7 +7,7 @@
       "creator": { "name": "ヨシダスタジオ" },
       "description": "ヨシダスタジオの看板ねこ。LINEスタンプやゲームで大かつやく。",
       "path": "taijiro/",
-      "image": "../img/charip/taijiro.jpg",
+      "image": "../img/charip/taijiro.gif",
       "stickers": { "q": "たいじろう" },
       "games": ["taijiros-yan"],
       "published": "2026-10-28"
