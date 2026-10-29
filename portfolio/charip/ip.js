@@ -70,7 +70,7 @@
       if (u) {
         var a = src.querySelector("a") || src.appendChild(document.createElement("a"));
         a.href = u; a.target = "_blank"; a.rel = "noopener";
-        a.textContent = (ip.source.name || by.name || u) + " のページ";
+        a.textContent = "元のページ（" + (ip.source.name || by.name || u) + "）";
         src.hidden = false;
       } else src.hidden = true;
     }

@@ -96,6 +96,7 @@
           img.loading = "lazy";
           img.decoding = "async";
           thumb.appendChild(img);
+          if (/^linear-gradient\([#0-9a-z ,()%.-]+\)$/i.test(it.thumbBg || "")) thumb.style.background = it.thumbBg;
         }
         var body = document.createElement("div");
         body.className = "game-body";

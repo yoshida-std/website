@@ -40,6 +40,29 @@
           }
         ]
       }
+    },
+    {
+      "id": "aitsu",
+      "name": "あいつ",
+      "kind": "opensource",
+      "creator": {
+        "name": "よそい"
+      },
+      "source": {
+        "name": "よそい",
+        "url": "https://yosooi.jp/aitsu/"
+      },
+      "description": "帽子をかぶった、ねむそうな白いやつ。よそいさんのキャラクターをお借りしています。",
+      "path": "aitsu/",
+      "image": "../img/charip/aitsu.gif",
+      "thumbBg": "linear-gradient(180deg, #282e48, #46506c)",
+      "stickers": {
+        "q": "あいつ"
+      },
+      "games": [
+        "susume-yusha"
+      ],
+      "published": "2026-10-29"
     }
   ]
 }
