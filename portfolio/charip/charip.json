@@ -42,6 +42,22 @@
       }
     },
     {
+      "id": "chibiupa",
+      "name": "ちびうぱ",
+      "kind": "original",
+      "creator": {
+        "name": "ヨシダスタジオ"
+      },
+      "description": "ウーパールーパーのキャラクター。「ウーパくん」をチビ化した、ちっちゃなうぱ。",
+      "path": "chibiupa/",
+      "image": "../img/charip/chibiupa.png",
+      "thumbBg": "linear-gradient(180deg, #ffd9e4, #fff1f5)",
+      "stickers": {
+        "q": "ちびうぱ"
+      },
+      "published": "2026-10-29"
+    },
+    {
       "id": "aitsu",
       "name": "あいつ",
       "kind": "opensource",
