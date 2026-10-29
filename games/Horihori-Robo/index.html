@@ -306,8 +306,9 @@ function digTarget(){
 function tryDig(){
   const t=digTarget(); digReq=0;
   if(!t){if(digFresh)SFX.no();digFresh=false;return;}
-  digFresh=false;
   const k=idx(t[0],t[1]);
+  if(holes.has(k)&&!digFresh)return; // holding the button never fills (only a new tap does)
+  digFresh=false;
   if(holes.has(k)){ // dig again = fill the hole
     holes.delete(k);
     const e=trappedAt(t[0],t[1]);
