@@ -119,6 +119,12 @@
           who.textContent = "提供: " + it.creator.name;
           by.appendChild(who);
         }
+        if ((it.aliases || []).length) {
+          var al = document.createElement("span");
+          al.className = "ip-by";
+          al.textContent = "別名: " + it.aliases.join("、");
+          by.appendChild(al);
+        }
         body.appendChild(by);
         a.appendChild(thumb);
         a.appendChild(body);

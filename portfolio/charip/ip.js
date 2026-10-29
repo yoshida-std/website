@@ -1,5 +1,5 @@
 // キャラクターIP 紹介ページの共通部分。ページ側は <body data-ip="IPのid"> と、次の目印を置く。
-//   [data-ip-name]    IP名            [data-ip-by]      「ヨシダスタジオ」などの提供元者名
+//   [data-ip-name]    IP名  [data-ip-aliases] 別名（なければ隠す）  [data-ip-by]      「ヨシダスタジオ」などの提供元者名
 //   [data-ip-source]  オープンソースのとき、元ページへのリンク（なければ隠す）
 //   [data-ip-links]   スタンプ・ゲームへのボタン  [data-ip-stickers] 最新スタンプ数点（任意）
 // 内容は charip.json から読む。載っていない（公開していない）IP は何も出さない。
@@ -40,6 +40,12 @@
     var ip = (data.items || []).filter(function (x) { return x.id === id; })[0];
     if (!ip) return;
     document.querySelectorAll("[data-ip-name]").forEach(function (el) { el.textContent = ip.name; });
+    var al = (ip.aliases || []).join("、");
+    document.querySelectorAll("[data-ip-aliases]").forEach(function (el) {
+      el.hidden = !al;
+      var t = el.querySelector("span");
+      if (t) t.textContent = al;
+    });
     var by = ip.creator || {};
     document.querySelectorAll("[data-ip-by]").forEach(function (el) { el.textContent = by.name || ""; });
     var src = document.querySelector("[data-ip-source]");
