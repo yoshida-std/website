@@ -1,6 +1,7 @@
 // キャラクターIP 紹介ページの共通部分。ページ側は <body data-ip="IPのid"> と、次の目印を置く。
 //   [data-ip-name]    IP名  [data-ip-aliases] 別名（なければ隠す）  [data-ip-by]      「ヨシダスタジオ」などの提供元者名
 //   [data-ip-source]  オープンソースのとき、元ページへのリンク（なければ隠す）
+//   [data-ip-members] グループ（group.members）の一覧。見出しは [data-ip-group] に入れる
 //   [data-ip-links]   スタンプ・ゲームへのボタン  [data-ip-stickers] 最新スタンプ数点（任意）
 // 内容は charip.json から読む。載っていない（公開していない）IP は何も出さない。
 (function () {
@@ -46,6 +47,21 @@
       var t = el.querySelector("span");
       if (t) t.textContent = al;
     });
+    var grp = ip.group || {}, mem = document.querySelector("[data-ip-members]");
+    if (mem && (grp.members || []).length) {
+      document.querySelectorAll("[data-ip-group]").forEach(function (el) { el.textContent = grp.name || ""; });
+      grp.members.forEach(function (m) {
+        if (!safeUrl(m.image)) return;
+        var fig = document.createElement("figure");
+        var img = document.createElement("img");
+        img.src = safeUrl(m.image); img.alt = m.name; img.loading = "lazy"; img.decoding = "async";
+        var cap = document.createElement("figcaption");
+        cap.textContent = m.name + (m.color && m.color !== m.name ? "（" + m.color + "）" : "");
+        fig.appendChild(img); fig.appendChild(cap);
+        mem.appendChild(fig);
+      });
+      (mem.closest("section") || mem).hidden = !mem.firstChild;
+    }
     var by = ip.creator || {};
     document.querySelectorAll("[data-ip-by]").forEach(function (el) { el.textContent = by.name || ""; });
     var src = document.querySelector("[data-ip-source]");

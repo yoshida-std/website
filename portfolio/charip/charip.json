@@ -3,15 +3,43 @@
     {
       "id": "taijiro",
       "name": "たいじろう",
-      "aliases": ["たいじろうズ", "たいじろう（むらさき）"],
+      "aliases": [
+        "たいじろう（むらさき）"
+      ],
       "kind": "original",
-      "creator": { "name": "ヨシダスタジオ" },
-      "description": "ヨシダスタジオの看板ねこ。LINEスタンプやゲームで大かつやく。",
+      "creator": {
+        "name": "ヨシダスタジオ"
+      },
+      "description": "ヨシダスタジオの看板ねこ。むらさきのたいじろうと、みどり・ピンクの仲間たち「たいじろうズ」。",
       "path": "taijiro/",
       "image": "../img/charip/taijiro.gif",
-      "stickers": { "q": "たいじろう" },
-      "games": ["taijiros-yan"],
-      "published": "2026-10-28"
+      "stickers": {
+        "q": "たいじろう"
+      },
+      "games": [
+        "taijiros-yan"
+      ],
+      "published": "2026-10-28",
+      "group": {
+        "name": "たいじろうズ",
+        "members": [
+          {
+            "name": "たいじろう",
+            "color": "むらさき",
+            "image": "../../img/charip/taijiro.gif"
+          },
+          {
+            "name": "みどり",
+            "color": "みどり",
+            "image": "../../img/charip/taijiro-midori.gif"
+          },
+          {
+            "name": "ピンク",
+            "color": "ピンク",
+            "image": "../../img/charip/taijiro-pink.gif"
+          }
+        ]
+      }
     }
   ]
 }

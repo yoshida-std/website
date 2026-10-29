@@ -38,6 +38,12 @@
 .ti-about { margin-top: 28px; }
 .ti-about h2, .ti-stickers h2 { font-size: 20px; margin: 0 0 8px; }
 .ti-about p { margin: 0 0 8px; }
+.ti-members { margin-top: 28px; }
+.ti-members h2 { font-size: 20px; margin: 0 0 8px; }
+.ti-members .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.ti-members figure { margin: 0; text-align: center; background: linear-gradient(180deg, #96cdf5, #d2e9fa); border-radius: var(--radius); padding: 8px 8px 10px; color: #1d3a57; }
+.ti-members img { width: 100%; height: auto; }
+.ti-members figcaption { font-size: 14px; font-weight: 700; }
 .ti-stickers { margin-top: 28px; }
 .ti-stickers .row { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
 .ti-stickers .row a { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; }
@@ -67,7 +73,7 @@
       <span class="kind">オリジナルキャラクター</span>
       <h1 data-ip-name>たいじろう</h1>
       <p>フードをかぶった、ちょっとおとぼけなねこ。</p>
-      <p class="by" data-ip-aliases>別名: <span>たいじろうズ、たいじろう（むらさき）</span></p>
+      <p class="by" data-ip-aliases>別名: <span>たいじろう（むらさき）</span></p>
       <p class="by">提供: <span data-ip-by>ヨシダスタジオ</span></p>
       <p class="ip-source" data-ip-source hidden><a href="#"></a></p>
       <div class="ip-links" data-ip-links></div>
@@ -77,7 +83,12 @@
 
   <section class="ti-about">
     <h2>たいじろうって？</h2>
-    <p>ヨシダスタジオの看板ねこ。「たいじろうズ」「たいじろう（むらさき）」とも呼ばれます。うごくスタンプや絵文字、ブラウザゲームに登場して、いろんな表情やダンスを見せてくれます。</p>
+    <p>ヨシダスタジオの看板ねこ。ふつう「たいじろう」と呼ぶのは、むらさきのこの子です（「たいじろう（むらさき）」とも）。仲間のみどりとピンクもいて、みんなで「たいじろうズ」。うごくスタンプや絵文字、ブラウザゲームに登場して、いろんな表情やダンスを見せてくれます。</p>
+  </section>
+
+  <section class="ti-members" hidden>
+    <h2>「<span data-ip-group>たいじろうズ</span>」のなかま</h2>
+    <div class="row" data-ip-members></div>
   </section>
 
   <section class="ti-stickers" hidden>
