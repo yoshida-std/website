@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>たいじろう | キャラクターIP | ヨシダスタジオ</title>
+<meta name="description" content="ヨシダスタジオの看板ねこ「たいじろう」の紹介。LINEスタンプやゲームで大かつやく。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ヨシダスタジオ">
+<meta property="og:title" content="たいじろう | ヨシダスタジオ">
+<meta property="og:description" content="ヨシダスタジオの看板ねこ「たいじろう」の紹介。LINEスタンプやゲームで大かつやく。">
+<meta property="og:url" content="https://yoshida-std.github.io/website/portfolio/charip/taijiro/">
+<meta property="og:image" content="https://yoshida-std.github.io/website/portfolio/img/charip/taijiro.jpg">
+<meta property="og:image:width" content="960">
+<meta property="og:image:height" content="504">
+<meta property="og:image:alt" content="たいじろう">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../../style.css?v=10">
+<style>
+/* たいじろうページだけの見た目：空色の背景に、アニメーションするたいじろう */
+.ti-hero {
+  display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 24px;
+  padding: 28px; border-radius: var(--radius); color: #1d3a57;
+  background: linear-gradient(180deg, #96cdf5 0%, #d2e9fa 100%);
+}
+.ti-hero .kind { display: inline-block; font-size: 12px; padding: 2px 12px; border-radius: 999px; background: #fff8; }
+.ti-hero h1 { font-size: clamp(34px, 8vw, 52px); letter-spacing: .08em; margin: 8px 0 4px; }
+.ti-hero p { margin: 0 0 6px; }
+.ti-hero .by { font-size: 13px; opacity: .8; }
+.ti-cat { justify-self: center; width: min(300px, 60vw); }
+.ti-cat img { width: 100%; height: auto; }
+@media (max-width: 600px) {
+  .ti-hero { grid-template-columns: 1fr; padding: 20px; text-align: center; }
+  .ti-cat { order: -1; width: 180px; }
+  .ti-hero .ip-links { justify-content: center; }
+}
+.ti-about { margin-top: 28px; }
+.ti-about h2, .ti-stickers h2 { font-size: 20px; margin: 0 0 8px; }
+.ti-about p { margin: 0 0 8px; }
+.ti-members { margin-top: 28px; }
+.ti-members h2 { font-size: 20px; margin: 0 0 8px; }
+.ti-members .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.ti-members figure { margin: 0; text-align: center; background: linear-gradient(180deg, #96cdf5, #d2e9fa); border-radius: var(--radius); padding: 8px 8px 10px; color: #1d3a57; }
+.ti-members img { width: 100%; height: auto; }
+.ti-members figcaption { font-size: 14px; font-weight: 700; }
+.ti-stickers { margin-top: 28px; }
+.ti-stickers .row { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+.ti-stickers .row a { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; }
+.ti-stickers .row img { width: 100%; aspect-ratio: 1; object-fit: contain; }
+</style>
+</head>
+<body data-ip="taijiro">
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="../../">ヨシダスタジオ</a>
+    <nav class="nav">
+      <a href="../../">トップ</a>
+      <a href="../../line/">LINEスタンプ</a>
+      <a href="../../games/">ゲーム</a>
+      <a href="../" aria-current="page">キャラクターIP</a>
+      <span>ツール</span>
+      <a href="../../#note">note</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="count"><a href="../">← キャラクターIP の一覧</a></p>
+
+  <section class="ti-hero">
+    <div>
+      <span class="kind">オリジナルキャラクター</span>
+      <h1 data-ip-name>たいじろう</h1>
+      <p>フードをかぶった、ちょっとおとぼけなねこ。</p>
+      <p class="by" data-ip-aliases>別名: <span>たいじろう（むらさき）</span></p>
+      <p class="by">提供: <span data-ip-by>ヨシダスタジオ</span></p>
+      <p class="ip-source" data-ip-source hidden><a href="#"></a></p>
+      <div class="ip-links" data-ip-links></div>
+    </div>
+    <div class="ti-cat"><img src="../../img/charip/taijiro.gif" width="180" height="180" alt="たいじろう"></div>
+  </section>
+
+  <section class="ti-about">
+    <h2>たいじろうって？</h2>
+    <p>ヨシダスタジオの看板ねこ。ふつう「たいじろう」と呼ぶのは、むらさきのこの子です（「たいじろう（むらさき）」とも）。仲間のみどりとピンクもいて、みんなで「たいじろうズ」。うごくスタンプや絵文字、ブラウザゲームに登場して、いろんな表情やダンスを見せてくれます。</p>
+  </section>
+
+  <section class="ti-members" hidden>
+    <h2>「<span data-ip-group>たいじろうズ</span>」のなかま</h2>
+    <div class="row" data-ip-members></div>
+  </section>
+
+  <section class="ti-stickers" hidden>
+    <h2>LINEスタンプ</h2>
+    <div class="row" data-ip-stickers></div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">©YoshidaStudio</div>
+</footer>
+<script src="../ip.js"></script>
+</body>
+</html>

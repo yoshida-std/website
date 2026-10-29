@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>あいつ | キャラクターIP | ヨシダスタジオ</title>
+<meta name="description" content="帽子をかぶったねむそうな白いキャラクター「あいつ」の紹介。よそおいさんのキャラクターをお借りしています。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ヨシダスタジオ">
+<meta property="og:title" content="あいつ | ヨシダスタジオ">
+<meta property="og:description" content="帽子をかぶったねむそうな白いキャラクター「あいつ」の紹介。よそおいさんのキャラクターをお借りしています。">
+<meta property="og:url" content="https://yoshida-std.github.io/website/portfolio/charip/aitsu/">
+<meta property="og:image" content="https://yoshida-std.github.io/website/portfolio/img/charip/aitsu.jpg">
+<meta property="og:image:width" content="960">
+<meta property="og:image:height" content="504">
+<meta property="og:image:alt" content="あいつ">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../../style.css?v=10">
+<style>
+/* あいつページだけの見た目：夜ふけの紺色に、ねむそうな白いやつ */
+.ai-hero {
+  display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 24px;
+  padding: 28px; border-radius: var(--radius); color: #eef0f8;
+  background: linear-gradient(180deg, #282e48 0%, #46506c 100%);
+}
+.ai-hero .kind { display: inline-block; font-size: 12px; padding: 2px 12px; border-radius: 999px; background: #fff2; }
+.ai-hero h1 { font-size: clamp(34px, 8vw, 52px); letter-spacing: .08em; margin: 8px 0 4px; }
+.ai-hero p { margin: 0 0 6px; }
+.ai-hero .by { font-size: 13px; opacity: .85; }
+.ai-hero .ip-source a { color: #eef0f8; }
+.ai-hero .ip-btn.sub { background: #fff1; color: #eef0f8; border-color: #fff4; }
+.ai-pic { justify-self: center; width: min(300px, 60vw); }
+.ai-pic img { width: 100%; height: auto; }
+@media (max-width: 600px) {
+  .ai-hero { grid-template-columns: 1fr; padding: 20px; text-align: center; }
+  .ai-pic { order: -1; width: 180px; }
+  .ai-hero .ip-links { justify-content: center; }
+}
+.ai-about, .ai-stickers { margin-top: 28px; }
+.ai-about h2, .ai-stickers h2 { font-size: 20px; margin: 0 0 8px; }
+.ai-about p { margin: 0 0 8px; }
+.ai-stickers .row { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+.ai-stickers .row a { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; }
+.ai-stickers .row img { width: 100%; aspect-ratio: 1; object-fit: contain; }
+</style>
+</head>
+<body data-ip="aitsu">
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="../../">ヨシダスタジオ</a>
+    <nav class="nav">
+      <a href="../../">トップ</a>
+      <a href="../../line/">LINEスタンプ</a>
+      <a href="../../games/">ゲーム</a>
+      <a href="../" aria-current="page">キャラクターIP</a>
+      <span>ツール</span>
+      <a href="../../#note">note</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="count"><a href="../">← キャラクターIP の一覧</a></p>
+
+  <section class="ai-hero">
+    <div>
+      <span class="kind">オープンソースのキャラクター</span>
+      <h1 data-ip-name>あいつ</h1>
+      <p>帽子をかぶった、ねむそうな白いやつ。</p>
+      <p class="by">提供: <span data-ip-by>よそおい</span></p>
+      <p class="ip-source" data-ip-source><a href="https://yosooi.jp/aitsu/" target="_blank" rel="noopener">元のページ（よそおい）</a></p>
+      <div class="ip-links" data-ip-links></div>
+    </div>
+    <div class="ai-pic"><img src="../../img/charip/aitsu.gif" width="180" height="180" alt="あいつ"></div>
+  </section>
+
+  <section class="ai-about">
+    <h2>あいつって？</h2>
+    <p>よそおいさんが公開しているキャラクターを、ヨシダスタジオがお借りして、LINEスタンプや絵文字、ゲームの隠れキャラにしています。</p>
+    <p>くわしい設定や使い方のルールは、元のページで確認できます。</p>
+  </section>
+
+  <section class="ai-stickers" hidden>
+    <h2>LINEスタンプ</h2>
+    <div class="row" data-ip-stickers></div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">©YoshidaStudio</div>
+</footer>
+<script src="../ip.js"></script>
+</body>
+</html>

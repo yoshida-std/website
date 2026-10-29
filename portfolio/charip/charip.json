@@ -1,0 +1,68 @@
+{
+  "items": [
+    {
+      "id": "taijiro",
+      "name": "たいじろう",
+      "aliases": [
+        "たいじろう（むらさき）"
+      ],
+      "kind": "original",
+      "creator": {
+        "name": "ヨシダスタジオ"
+      },
+      "description": "ヨシダスタジオの看板ねこ。むらさきのたいじろうと、みどり・ピンクの仲間たち「たいじろうズ」。",
+      "path": "taijiro/",
+      "image": "../img/charip/taijiro.gif",
+      "stickers": {
+        "q": "たいじろう"
+      },
+      "games": [
+        "taijiros-yan"
+      ],
+      "published": "2026-10-28",
+      "group": {
+        "name": "たいじろうズ",
+        "members": [
+          {
+            "name": "たいじろう",
+            "color": "むらさき",
+            "image": "../../img/charip/taijiro.gif"
+          },
+          {
+            "name": "みどり",
+            "color": "みどり",
+            "image": "../../img/charip/taijiro-midori.gif"
+          },
+          {
+            "name": "ピンク",
+            "color": "ピンク",
+            "image": "../../img/charip/taijiro-pink.gif"
+          }
+        ]
+      }
+    },
+    {
+      "id": "aitsu",
+      "name": "あいつ",
+      "kind": "opensource",
+      "creator": {
+        "name": "よそおい"
+      },
+      "source": {
+        "name": "よそおい",
+        "url": "https://yosooi.jp/aitsu/"
+      },
+      "description": "帽子をかぶった、ねむそうな白いやつ。よそおいさんのキャラクターをお借りしています。",
+      "path": "aitsu/",
+      "image": "../img/charip/aitsu.gif",
+      "thumbBg": "linear-gradient(180deg, #282e48, #46506c)",
+      "stickers": {
+        "q": "あいつ"
+      },
+      "games": [
+        "susume-yusha"
+      ],
+      "published": "2026-10-29"
+    }
+  ]
+}
