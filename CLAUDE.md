@@ -43,9 +43,9 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 
 ## ポートフォリオ（`portfolio/`）
 
-段階的に作っている。今あるのはトップ・LINE スタンプ・ブラウザゲームのページ（キャラクターIP は作成中で「準備中」）。ツールは「準備中」でリンクなし。note はカードを置かず、トップの最新記事の欄で見せる。YouTube のショートもトップの欄で見せる（ナビの「note」はその欄 `#note` へのリンク）。
+段階的に作っている。今あるのはトップ・LINE スタンプ・ブラウザゲーム・キャラクターIP のページ。ツールは「準備中」でリンクなし。note はカードを置かず、トップの最新記事の欄で見せる。YouTube のショートもトップの欄で見せる（ナビの「note」はその欄 `#note` へのリンク）。
 
-- `portfolio/index.html` … トップ（ヘッダー画像、LINEスタンプ・ゲーム・ツールのカードと、note の最新記事3件をサムネイル付きで）
+- `portfolio/index.html` … トップ（ヘッダー画像、LINEスタンプ・ゲーム・キャラクターIP・ツールのカードと、note の最新記事3件をサムネイル付きで）
   - ヘッダー画像は `portfolio/img/header.jpg`（1424×748）と `header-800.jpg`（スマホ用の縮小版）。PC では上下を少し切って低めに見せる（ロゴは中央なので切れない）
   - 記事は `portfolio/note/articles.json` を `fetch` して出す。0件・読めないときは記事の欄ごと出さない。日付は JSON の日付（日本時間）の文字をそのまま出す
   - `articles.json` は `.github/workflows/update-note-feed.yml` が3時間ごとに作り直して `main` にコミットする（`main` でスクリプトか workflow を変えたときと、Actions の画面から手動でも動く）。手で編集しない
@@ -56,7 +56,7 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
   - `.github/scripts/build_youtube_feed.py` は2段構えで読む。(1) チャンネル（ID `UCnCCTBOk6s1M7PFz2q1VZCQ`）の**ショートだけの再生リスト**（ID の `UC` を `UUSH` に変えたもの。YouTube の非公式な仕組みで、**ときどき 404 を返す**）の RSS。(2) (1) が読めなければ、チャンネル全体の RSS（公式・最新15本）を読み、1本ずつ `https://www.youtube.com/shorts/動画ID` を開いてショートだけに絞る（ショートなら 200、そうでなければ `/watch` へ転送。判定できなかった動画は残す）。新しい順に最大12件を書き出す。どちらも読めない・0件なら更新しない（Actions は失敗になり、サイトは前回の一覧のまま）。実行ログに、どちらで読んだか・ショートの判定結果が出る。別の RSS を読むときは環境変数 `YOUTUBE_FEED`
   - ショートのサムネイル（RSS の画像）は左右に黒帯の付いた横長なので、CSS で中央を縦長（9:16）に切り出している（`.short-thumb img` の `object-fit: cover`）
   - この作業環境からは youtube.com に接続できない。動作確認はテスト用のサーバー（RSS（Atom）と `/shorts/動画ID` を返すもの）を立て、環境変数 `YOUTUBE_BASE`（と `REQUEST_INTERVAL=0`、`RETRY_WAIT=0`）を指定して行う
-- `portfolio/charip/` … キャラクターIP。**トップのカードとナビは「準備中」（リンクなし）**。公開するときは、トップのカードを `charip/` へのリンク（`is-ready`・バッジ「見る」）にし、全ページのナビの `<span>キャラクターIP</span>` をリンクにする
+- `portfolio/charip/` … キャラクターIP。トップのカード（`is-ready`・バッジ「見る」）と全ページのナビから `charip/` へリンクしている（2026-10-29 公開）
   - **載せる IP は `portfolio/charip/charip.json` に書いたものだけ**（ゲームの `games.json` と同じ考え方。公開日の新しい順）。追加・公開・公開停止は Claude Code のエージェントに頼む（追加＝`items` に1件足して紹介ページを作る、停止＝消す）
   - 1件の項目: `id`、`name`、`aliases`（別名の配列。省略可。一覧と詳細に「別名: …」で出す）、`group`（省略可。`{"name": "たいじろうズ", "members": [{"name","color","image"}]}`。`image` は紹介ページからの相対パス。`data-ip-members` に並べる）、`kind`（`original`＝自発 / `opensource`＝オープンソース。一覧は2つの見出しに分かれる）、`creator.name`（提供元者。一覧と詳細に出す）、`description`、`path`（紹介ページ。`charip/` からの相対パス `taijiro/`）、`image`（一覧のサムネイル。透過GIFなど。`../img/charip/…`。枠に全体が収まる）、`thumbBg`（サムネイルの背景。`linear-gradient(...)` のみ。省略は空色）、`stickers`（`{"q": "絞り込みの文字"}`。`"type": "emoji"` で絵文字タブ）、`games`（`games.json` の `id` の配列。そこに載っているものだけボタンが出る）、`published`。`opensource` は `source`（`{"name": "…", "url": "https://…"}`。元ページ。例: あいつ → https://yosooi.jp/aitsu/）も書く
   - 紹介ページは IP ごとに `charip/<id>/index.html`。**名前・提供元者・スタンプ／ゲームへのボタン・元ページへのリンク・最新スタンプは共通部品 `charip/ip.js`**（`<body data-ip="id">` と `data-ip-name` `data-ip-by` `data-ip-source` `data-ip-links` `data-ip-stickers` の目印を置くと `charip.json` から埋める。使い方は JS 冒頭）。**雰囲気・配置・デザインは IP ごとにエージェントと相談しながら作る**（そのページの `<style>` に書く。共通の部品は `style.css` の `.ip-*`）。スタンプのボタンは `line/?q=…` を開く
