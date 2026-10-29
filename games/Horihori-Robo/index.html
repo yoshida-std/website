@@ -161,7 +161,7 @@ const SFX={
 let st='title', stage=1, score=0, lives=3, best=0;
 try{best=+localStorage.getItem('horihori_best')||0;}catch(e){}
 let grid=null, H=0, startX=5, startY=0, holes=new Map(), ens=[], pl=null, camY=0, camSpd=1;
-let grace=0, readyT=0, spawnT=3, bestRow=0, flow=null, flowKey=-1, tNow=0, digReq=0, digHeld=false, digFresh=false;
+let grace=0, readyT=0, spawnT=3, bestRow=0, flow=null, flowKey=-1, tNow=0, digReq=0, digHeld=false, digFresh=false, digHeldT=0;
 let fxP=[], fxT=[], ladders=3;
 const idx=(x,y)=>y*COLS+x;
 const isWall=(x,y)=>x<0||x>=COLS||y<0||y>=H||grid[idx(x,y)]===1;
@@ -343,7 +343,9 @@ function climbOut(){
 }
 function updPlayer(dt){
   const p=pl; p.inv=Math.max(0,p.inv-dt); digReq=Math.max(0,digReq-dt);
-  if(digHeld)digReq=0.4;
+  digHeldT=digHeld?digHeldT+dt:0;
+  if(digHeld&&digHeldT>0.5)digReq=0.4; // only a deliberate hold repeats; a slow tap must not dig twice
+  if(digReq<=0&&!digHeld)digFresh=false;
   const d=inputDir();
   if(d&&p.state!=='stuck'){p.fx=d[0];p.fy=d[1];}
   if(p.state==='walk'){
