@@ -46,13 +46,13 @@
       "name": "あいつ",
       "kind": "opensource",
       "creator": {
-        "name": "よそい"
+        "name": "よそおい"
       },
       "source": {
-        "name": "よそい",
+        "name": "よそおい",
         "url": "https://yosooi.jp/aitsu/"
       },
-      "description": "帽子をかぶった、ねむそうな白いやつ。よそいさんのキャラクターをお借りしています。",
+      "description": "帽子をかぶった、ねむそうな白いやつ。よそおいさんのキャラクターをお借りしています。",
       "path": "aitsu/",
       "image": "../img/charip/aitsu.gif",
       "thumbBg": "linear-gradient(180deg, #282e48, #46506c)",
