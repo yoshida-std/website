@@ -3,7 +3,7 @@
 スマホ縦画面向けの縦スクロール穴ほりアクション（仮題。名前・フォルダ名は変えてよい）。公開URL: `https://yoshida-std.github.io/website/games/Horihori-Robo/`
 リポジトリ全体の作業ルール（ブランチ・PR・確認方法・コピーライト表記）はルートの `CLAUDE.md` を参照。
 
-プッシュ前の確認用 Artifact: （未作成。作ったらここに URL を書き、以後その URL を更新する。`index.html` 1枚だけ載せればよい）
+プッシュ前の確認用 Artifact: `https://claude.ai/artifact/1JWDnmdpVxVJC3r7oNmZKN`（変更のたびにこの URL を更新する。`index.html` 1枚だけ載せる。Artifact には `<!doctype>`・`<html>`・`<head>`・`<body>` のタグを除いた写しを公開する）
 
 `index.html` 1枚で完結（音は WebAudio の合成、画像なし）。`games.json`（ポートフォリオの一覧）にはまだ載せていない。
 
