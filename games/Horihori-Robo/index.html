@@ -304,8 +304,33 @@ function arrivePlayer(p){
   }
   if(p.state==='walk'&&digReq>0)tryDig(); // dig right at the tile boundary, even while running
 }
+// Auto-aim: if a robot is within AIM_RANGE tiles (by walking distance), dig toward it
+// (the tile next to the player on the robot's way here); otherwise dig where the player faces.
+const AIM_RANGE=5;
+function aimDir(){
+  if(!flow||pl.moving)return null;
+  let best=null,bd=1e9;
+  for(const e of ens){
+    if(e.state!=='walk'||!e.active||e.cy<camY-1||e.cy>camY+viewRows+1)continue;
+    const d=flow[idx(e.cx,e.cy)];
+    if(d>=1&&d<=AIM_RANGE&&d<bd){bd=d;best=e;}
+  }
+  if(!best)return null;
+  let x=best.cx,y=best.cy,d=bd;
+  while(d>1){
+    let found=false;
+    for(const [dx,dy] of DIRS){
+      const ax=x+dx,ay=y+dy;
+      if(!isWall(ax,ay)&&flow[idx(ax,ay)]===d-1){x=ax;y=ay;found=true;break;}
+    }
+    if(!found)return null;
+    d--;
+  }
+  return [x-pl.cx,y-pl.cy];
+}
 function digInfo(){
-  const tx=pl.cx+pl.fx, ty=pl.cy+pl.fy;
+  const aim=aimDir(), fx=aim?aim[0]:pl.fx, fy=aim?aim[1]:pl.fy;
+  const tx=pl.cx+fx, ty=pl.cy+fy;
   if(isWall(tx,ty)){
     if(tx>=1&&tx<=COLS-2&&ty>=2&&ty<=H-2&&ladders>0)return {x:tx,y:ty,kind:'ladder'};
     return null;
@@ -319,6 +344,7 @@ function tryDig(){
     if(digFresh){SFX.no();if(ladders<=0&&isWall(pl.cx+pl.fx,pl.cy+pl.fy))text(pl.cx+.5,pl.cy-.3,'ハシゴなし','#ff9a9a');}
     digFresh=false;return;
   }
+  pl.fx=t.x-pl.cx;pl.fy=t.y-pl.cy; // face the target while digging
   const k=idx(t.x,t.y);
   if(t.kind!=='dig'&&!digFresh)return; // holding the button only digs; filling / ladders need a new tap
   digFresh=false;
@@ -768,7 +794,7 @@ function titleCard(){
   card('<p class="tag">DIG &amp; STOMP ACTION</p><h1>ホリホリ<br>ロボバスター</h1>'+
     '<div class="rules">'+
     '<div><em>▲</em><span>画面は<b>強制スクロール</b>。下に押しつぶされるまえに、上のゴールをめざせ！</span></div>'+
-    '<div><em>●</em><span><b>ホルボタン</b>（スティック以外の画面のどこをタップしてもOK）で目の前の地面に穴をほる。5秒ほどでふさがる。もう一度ほると埋まる</span></div>'+
+    '<div><em>●</em><span><b>ホルボタン</b>（スティック以外の画面のどこをタップしてもOK）で穴をほる。近く（歩いて5マス以内）にロボがいれば<b>ロボの来る方向</b>に自動でほり、いなければ向いている方向にほる（壁ならハシゴ）。5秒ほどでふさがる。もう一度ほると埋まる</span></div>'+
     '<div><em>●</em><span>白いロボを穴に落とそう。穴の中のロボの<b>頭をふんで</b>わたれる。ふさがるとロボはつぶれる</span></div>'+
     '<div><em>●</em><span>迷路には<b>金塊の山が10か所</b>。ぜんぶ取るとパーフェクトボーナス！</span></div>'+
     '<div><em>●</em><span>自分も穴に落ちる！ロボにさわる・押しつぶされるとミス。<b>ミスは3回まで</b></span></div>'+
