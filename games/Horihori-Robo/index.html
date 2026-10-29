@@ -50,9 +50,9 @@ canvas{display:block}
 #prog{height:100%;width:0;background:linear-gradient(90deg,#7dff6a,#fff27a)}
 #stage{position:relative;flex:1;min-height:0;border-radius:8px;overflow:hidden;border:3px solid #7ad84a;box-shadow:0 0 0 2px var(--line);background:#2d7a2d}
 #cv{position:absolute;inset:0;width:100%;height:100%}
-#banner{position:absolute;left:0;right:0;top:32%;text-align:center;pointer-events:none;font-size:34px;color:var(--fg);
-  text-shadow:3px 3px 0 #0008;line-height:1.4}
-#banner small{display:block;font-size:14px;color:#fff}
+#banner{position:absolute;left:0;right:0;top:32%;text-align:center;pointer-events:none;font-size:34px;color:#fff6a0;
+  text-shadow:2px 2px 0 #7a2a00,-2px -2px 0 #7a2a00,2px -2px 0 #7a2a00,-2px 2px 0 #7a2a00,0 4px 0 #7a2a00;line-height:1.4}
+#banner small{display:block;font-size:14px;color:#fff;text-shadow:1px 1px 0 #7a2a00,-1px -1px 0 #7a2a00,1px -1px 0 #7a2a00,-1px 1px 0 #7a2a00}
 #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(20,70,140,.9);
   padding:12px;box-sizing:border-box}
 .card{width:100%;max-width:340px;max-height:100%;overflow-y:auto;touch-action:pan-y;text-align:center;box-sizing:border-box;padding:4px 2px 10px}
@@ -70,8 +70,11 @@ canvas{display:block}
 .sp-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #8a4a00}
 .sp-btn.sub{background:#2f8fe6;color:#fff;border-color:#ffd84a;box-shadow:0 4px 0 #14457f;font-size:15px}
 .copy{font-size:10px!important;color:#cfe6ff!important;letter-spacing:.04em;margin-top:14px!important}
-#ctrl{flex:0 0 auto;height:clamp(128px,19vh,168px);display:flex;justify-content:space-between;align-items:center;padding:0 14px}
-#stick{position:relative;width:124px;height:124px;border-radius:50%;background:#2f8fe6aa;border:3px solid #ffd84a}
+#ctrl{flex:0 0 auto;height:clamp(154px,21vh,182px);display:flex;justify-content:space-between;align-items:center;padding:0 14px 0 28px}
+#stick{position:relative;width:112px;height:112px;border-radius:50%;background:#2f8fe6aa;border:3px solid #ffd84a}
+#stick::after{content:"";position:absolute;inset:-20px;border-radius:50%;z-index:-1;pointer-events:none;
+  background:radial-gradient(circle,#0000 0 62%,#ffffff33 64%,#ffffff2a 100%);border:3px dashed #ffb04a}
+#ringLabel{position:absolute;left:50%;top:-19px;font-size:10px;transform:translateX(-50%);color:#fff;letter-spacing:.02em;white-space:nowrap;pointer-events:none;text-shadow:0 1px 0 #7a3a00}
 #stick::before{content:"▲\A◀　▶\A▼";white-space:pre;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   text-align:center;color:#ffffff66;font-size:20px;line-height:1.25}
 #knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;
@@ -100,7 +103,7 @@ canvas{display:block}
     <div id="overlay"></div>
   </div>
   <div id="ctrl">
-    <div id="stick"><div id="knob"></div></div>
+    <div id="stick"><div id="knob"></div><span id="ringLabel">この外側タップで ホル</span></div>
     <div id="digBtn">ホル<small>あなをほる</small></div>
   </div>
 </div>
@@ -165,6 +168,7 @@ const SFX={
   clear:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.16,'square',.06,0,i*.12)),
   ladder:()=>[392,523,659].forEach((f,i)=>tone(f,.08,'square',.05,0,i*.06)),
   coin:()=>{tone(988,.07,'square',.05);tone(1319,.14,'square',.05,0,.07);},
+  alarm:()=>[880,660,880,660].forEach((f,i)=>tone(f,.12,'square',.05,0,i*.14)),
   pop:()=>tone(300,.12,'square',.04,300),
   go:()=>tone(660,.2,'square',.05)
 };
@@ -175,7 +179,7 @@ try{best=+localStorage.getItem('horihori_best')||0;}catch(e){}
 let grid=null, H=0, startX=5, startY=0, holes=new Map(), ens=[], pl=null, camY=0, camSpd=1;
 let grace=0, readyT=0, bestRow=0, flow=null, flowKey=-1, tNow=0, digReq=0, digHeld=false, digFresh=false, digHeldT=0;
 const digIds=new Set(); // pointers currently pressing 'dig' (the button, or any tap outside the stick)
-let fxP=[], fxT=[], ladders=3, golds=[], goldGot=0;
+let exitX=1, redDone=false, bannerT=0, fxP=[], fxT=[], ladders=3, golds=[], goldGot=0;
 const GOLD_N=10, GOLD_PTS=300, PERFECT_PTS=3000;
 const idx=(x,y)=>y*COLS+x;
 const isWall=(x,y)=>x<0||x>=COLS||y<0||y>=H||grid[idx(x,y)]===1;
@@ -183,11 +187,11 @@ const isWall=(x,y)=>x<0||x>=COLS||y<0||y>=H||grid[idx(x,y)]===1;
 // ---------- stage generation ----------
 function genStage(n){
   const R=Math.min(16+n*3,32), SR=6, CW=6;
-  const hh=2*R+SR+1;
+  const hh0=2*R+SR+1, hh=hh0+2; // 2 extra rows on top: exit row (row 1) and the wall row in front of it (row 2)
   camSpd=Math.min(2.0,0.95+0.12*n);
   let bestG=null, bestSlack=-1e9;
   for(let tries=0;tries<40;tries++){
-    const g=new Uint8Array(hh*COLS).fill(1);
+    const g0=new Uint8Array(hh0*COLS).fill(1), g=g0;
     const open=(x,y)=>{g[y*COLS+x]=0;};
     const vis=new Uint8Array(CW*R), sx=rnd(CW), list=[[sx,R-1]];
     vis[(R-1)*CW+sx]=1; open(2*sx+1,2*(R-1)+1);
@@ -210,10 +214,13 @@ function genStage(n){
       for(let y=y0;y<=y0+2;y++)for(let x=x0;x<=x0+2;x++)open(x,y);
       g[(y0+1)*COLS+(x0+1)]=1;
     }
-    // goal row
-    for(let x=1;x<COLS-1;x++)open(x,1);
     // start room (pillars at even,even)
     for(let y=2*R;y<2*R+SR;y++)for(let x=1;x<COLS-1;x++){if(!(x%2===0&&y%2===0))open(x,y);}
+    // shift the maze down 2 rows and cut ONE exit through the top two rows
+    const g2=new Uint8Array(hh*COLS).fill(1);
+    g2.set(g0,2*COLS);
+    const ex=1+2*rnd(6);
+    g2[1*COLS+ex]=0;g2[2*COLS+ex]=0;
     const sy=hh-3, sxp=5;
     // solvability vs. scroll speed
     const par=new Int32Array(hh*COLS).fill(-2), q=[idx(sxp,sy)], dist=new Int32Array(hh*COLS);
@@ -222,7 +229,7 @@ function genStage(n){
       const c=q[qi], cx=c%COLS, cy=(c/COLS)|0;
       for(const [dx,dy] of DIRS){
         const nx=cx+dx,ny=cy+dy;
-        if(nx<0||nx>=COLS||ny<0||ny>=hh||g[idx(nx,ny)]||par[idx(nx,ny)]!==-2)continue;
+        if(nx<0||nx>=COLS||ny<0||ny>=hh||g2[idx(nx,ny)]||par[idx(nx,ny)]!==-2)continue;
         par[idx(nx,ny)]=c; dist[idx(nx,ny)]=dist[c]+1; q.push(idx(nx,ny));
         if(ny===1){goal=idx(nx,ny);break;}
       }
@@ -232,14 +239,14 @@ function genStage(n){
       const d=dist[c], y=(c/COLS)|0, t=d/2.8;
       slack=Math.min(slack,(hh-camSpd*Math.max(0,t-2.2))-(y+1));
     }
-    if(slack>bestSlack){bestSlack=slack;bestG={g,hh,R,sy,sxp};}
+    if(slack>bestSlack){bestSlack=slack;bestG={g:g2,hh,R,sy,sxp,ex};}
     if(slack>=2.5)break;
   }
-  grid=bestG.g; H=bestG.hh; startX=bestG.sxp; startY=bestG.sy;
+  grid=bestG.g; H=bestG.hh; exitX=bestG.ex; startX=bestG.sxp; startY=bestG.sy;
   holes=new Map(); ens=[]; fxP=[]; fxT=[]; flow=null; flowKey=-1;
 }
-function mkEnt(x,y,active){
-  return {cx:x,cy:y,nx:x,ny:y,p:0,moving:false,dx:0,dy:1,state:'walk',t:0,dur:3,active:active,stomped:false,ph:Math.random()*6};
+function mkEnt(x,y,active,red){
+  return {red:!!red,cx:x,cy:y,nx:x,ny:y,p:0,moving:false,dx:0,dy:1,state:'walk',t:0,dur:3,active:active,stomped:false,ph:Math.random()*6};
 }
 const ePos=e=>e.moving?[e.cx+(e.nx-e.cx)*e.p,e.cy+(e.ny-e.cy)*e.p]:[e.cx,e.cy];
 
@@ -332,7 +339,7 @@ function digInfo(){
   const aim=aimDir(), fx=aim?aim[0]:pl.fx, fy=aim?aim[1]:pl.fy;
   const tx=pl.cx+fx, ty=pl.cy+fy;
   if(isWall(tx,ty)){
-    if(tx>=1&&tx<=COLS-2&&ty>=2&&ty<=H-2&&ladders>0)return {x:tx,y:ty,kind:'ladder'};
+    if(tx>=1&&tx<=COLS-2&&ty>=3&&ty<=H-2&&ladders>0)return {x:tx,y:ty,kind:'ladder'};
     return null;
   }
   if(ty<=1||grid[idx(tx,ty)]===2)return null;
@@ -430,11 +437,12 @@ function updEnemy(e,dt){
   if(e.state==='dead')return;
   if(!e.active){if(e.cy>=camY-4)e.active=true;else return;}
   if(e.state==='trapped'){e.t+=dt;if(e.t>=e.dur)escapeEnemy(e);return;}
-  const spd=Math.min(2.6,1.6+0.15*stage);
+  const spd=e.red?3.1:Math.min(2.6,1.6+0.15*stage);
   advance(e,dt,spd,chooseEnemy,enterEnemy,arriveEnemy,false);
 }
 function killEnemy(e,pts,col){
-  e.state='dead';sendToQueue(e);
+  e.state='dead';
+  if(e.red){if(pts)pts+=700;}else sendToQueue(e);
   if(pts){score+=pts;text(e.cx+.5,e.cy-.2,'+'+pts,'#ffe27a');}
   burst(e.cx+.5,e.cy+.5,col||'#fff',12);
 }
@@ -467,6 +475,17 @@ function pickSpawn(x0){
     return {x,y};
   }
   return null;
+}
+function spawnRedRobot(){ // once the forced scroll has stopped, ONE red robot comes up from the bottom of the screen
+  const y0=Math.min(H-3,Math.floor(camY+viewRows)+1);
+  for(let y=y0;y>=y0-4;y--){
+    const xs=[];for(let x=1;x<COLS-1;x++)if(!isWall(x,y)&&!ens.some(o=>o.state!=='dead'&&o.cx===x&&o.cy===y))xs.push(x);
+    if(xs.length){
+      const e=mkEnt(xs[rnd(xs.length)],y,true,true);ens.push(e);redDone=true;
+      banner.innerHTML='あかいロボが きた！<small>したから おいかけてくる！</small>';banner.hidden=false;bannerT=2;SFX.alarm();
+      return;
+    }
+  }
 }
 function updQueue(dt){
   queue.forEach((q,i)=>{q.t-=dt;q.x+=(SLOT0+i*SLOTW-q.x)*Math.min(1,dt*7);});
@@ -505,12 +524,12 @@ function respawn(){
     if(d<bd){bd=d;bx=x;by=y;}
   }
   Object.assign(pl,{cx:bx,cy:by,nx:bx,ny:by,p:0,moving:false,state:'walk',t:0,inv:2.5});
-  for(const e of ens)if(e.state!=='dead'&&Math.abs(e.cx-bx)+Math.abs(e.cy-by)<5&&(e.active||e.cy>=camY-1))killEnemy(e,0,'#fff');
+  for(const e of ens)if(e.state!=='dead'&&!e.red&&Math.abs(e.cx-bx)+Math.abs(e.cy-by)<5&&(e.active||e.cy>=camY-1))killEnemy(e,0,'#fff');
   flowKey=-1;
 }
 function placeGold(){ // 10 piles, one per horizontal band of the maze (spread from bottom to top)
   golds=[];goldGot=0;
-  const R=(H-7)/2, lo=3, hi=2*R-2, n=hi-lo+1;
+  const R=(H-9)/2, lo=5, hi=2*R, n=hi-lo+1;
   for(let i=0;i<GOLD_N;i++){
     const y0=lo+Math.floor(i*n/GOLD_N), y1=lo+Math.floor((i+1)*n/GOLD_N)-1, c=[];
     for(let y=y0;y<=y1;y++)for(let x=1;x<COLS-1;x++)if(grid[idx(x,y)]===0&&!golds.some(g=>g.x===x&&g.y===y))c.push([x,y]);
@@ -527,7 +546,7 @@ function collectGold(){
 }
 function loadStage(){
   genStage(stage);
-  queue=[];entering=[];
+  queue=[];entering=[];redDone=false;bannerT=0;
   placeGold();
   for(let i=0;i<MAX_ROBOTS;i++)queue.push({t:2+i*1.4,delay:respawnDelay()+2+i*1.4,x:SLOT0+i*SLOTW,ph:Math.random()*6});
   pl={cx:startX,cy:startY,nx:startX,ny:startY,p:0,moving:false,dx:0,dy:-1,fx:0,fy:-1,state:'walk',t:0,inv:0};
@@ -590,8 +609,10 @@ function update(dt){
     camY=Math.max(0,camY-sp*dt);
   }
   updQueue(dt);
+  if(bannerT>0){bannerT-=dt;if(bannerT<=0)banner.hidden=true;}
+  if(camY<=0&&!redDone)spawnRedRobot();
   if(pl.state!=='dead')collectGold();
-  for(const e of ens)if(e.state!=='dead'&&e.cy>camY+viewRows+1){e.state='dead';sendToQueue(e);}
+  for(const e of ens)if(e.state!=='dead'&&!e.red&&e.cy>camY+viewRows+1){e.state='dead';sendToQueue(e);}
   if(ens.length>120)ens=ens.filter(e=>e.state!=='dead');
   // collisions
   const [px,py]=ePos(pl);
@@ -636,7 +657,7 @@ function drawTiles(){
       const hs=((x*73856093)^(y*19349663))>>>0, grass=(y>=H-7)||hs%6===0;
       ctx.fillStyle=grass?((x+y)&1?'#a4e24e':'#97d842'):((x+y)&1?'#fde28f':'#f7d778');ctx.fillRect(px,py,ww,hh);
       if(grass&&hs%3===0){ctx.fillStyle='#6fb82c';const gx=px+(hs>>3)%Math.max(1,ww-8),gy=py+(hs>>7)%Math.max(1,hh-8);ctx.fillRect(gx,gy+3,2,5);ctx.fillRect(gx+3,gy,2,8);ctx.fillRect(gx+6,gy+3,2,5);}
-      if(y===1){ctx.fillStyle=(x+y)&1?'#ffffffee':'#2f7fe0cc';ctx.fillRect(px,py,ww,hh);}
+      if(y===1){ctx.fillStyle=(x+y)&1?'#ffffffee':'#2f7fe0cc';ctx.fillRect(px,py,ww,hh);ctx.strokeStyle='#ffd84a';ctx.lineWidth=Math.max(2,S*.08);ctx.strokeRect(px+2,py+2,ww-4,hh-4);ctx.font=Math.round(S*.3)+'px DotGothic16, sans-serif';ctx.textAlign='center';ctx.lineWidth=Math.max(2,S*.08);ctx.strokeStyle='#14457f';ctx.strokeText('GOAL',px+ww/2,py+hh*.62);ctx.fillStyle='#fff';ctx.fillText('GOAL',px+ww/2,py+hh*.62);}
       if(isWall(x-1,y)){ctx.fillStyle='rgba(60,40,0,.16)';ctx.fillRect(px,py,Math.round(S*.18),hh);}
       if(isWall(x,y-1)){ctx.fillStyle='rgba(60,40,0,.2)';ctx.fillRect(px,py,ww,Math.round(S*.16));}
       if(cell===2){
@@ -678,19 +699,20 @@ function drawRobot(e,ov){
     ctx.translate(Math.sin(tNow*30)*S*.02,S*.26);
   }
   ctx.translate(X,Y);
+  const R_=e.red, cW=R_?'#ff8a8a':'#ffffff', cB=R_?'#ff6a6a':'#f4f6fb', cA=R_?'#e04a4a':'#c9cfe2', cO=R_?'#b83232':'#9aa3bd';
   const u=S*(ov?ov.s:1), ph=e.moving?Math.sin(tNow*16+e.ph):0;
   rect(-u*.26,u*.36,u*.52,u*.1,'#0003');
-  rect(-u*.16,u*.22+ph*u*.03,u*.1,u*.16,'#9aa3bd');rect(u*.06,u*.22-ph*u*.03,u*.1,u*.16,'#9aa3bd');
-  rect(-u*.23,-u*.06,u*.46,u*.3,'#9aa3bd');rect(-u*.2,-u*.08,u*.4,u*.28,'#f4f6fb');
-  rect(-u*.31,-u*.04+ph*u*.03,u*.08,u*.2,'#c9cfe2');rect(u*.23,-u*.04-ph*u*.03,u*.08,u*.2,'#c9cfe2');
-  rect(-u*.12,u*.02,u*.24,u*.06,'#c9cfe2');
-  rect(-u*.25,-u*.42,u*.5,u*.36,'#9aa3bd');rect(-u*.22,-u*.4,u*.44,u*.32,'#ffffff');
+  rect(-u*.16,u*.22+ph*u*.03,u*.1,u*.16,cO);rect(u*.06,u*.22-ph*u*.03,u*.1,u*.16,cO);
+  rect(-u*.23,-u*.06,u*.46,u*.3,cO);rect(-u*.2,-u*.08,u*.4,u*.28,cB);
+  rect(-u*.31,-u*.04+ph*u*.03,u*.08,u*.2,cA);rect(u*.23,-u*.04-ph*u*.03,u*.08,u*.2,cA);
+  rect(-u*.12,u*.02,u*.24,u*.06,cA);
+  rect(-u*.25,-u*.42,u*.5,u*.36,cO);rect(-u*.22,-u*.4,u*.44,u*.32,cW);
   rect(-u*.17,-u*.33,u*.34,u*.17,'#1d2340');
-  const ec=e.eye||(trapped?'#7ad':(e.active?'#ff4a4a':'#667'));
+  const ec=e.eye||(trapped?'#7ad':(R_?'#ffe94a':(e.active?'#ff4a4a':'#667')));
   if(trapped){ctx.strokeStyle=ec;ctx.lineWidth=Math.max(1.5,u*.04);ctx.beginPath();
     for(const ex of[-.09,.09]){ctx.moveTo(u*(ex-.04),-u*.31);ctx.lineTo(u*(ex+.04),-u*.19);ctx.moveTo(u*(ex+.04),-u*.31);ctx.lineTo(u*(ex-.04),-u*.19);}ctx.stroke();}
   else{rect(-u*.13,-u*.3,u*.09,u*.1,ec);rect(u*.04,-u*.3,u*.09,u*.1,ec);}
-  rect(-u*.02,-u*.52,u*.04,u*.12,'#9aa3bd');rect(-u*.06,-u*.58,u*.12,u*.1,e.active?'#ff4a4a':'#888');
+  rect(-u*.02,-u*.52,u*.04,u*.12,cO);rect(-u*.06,-u*.58,u*.12,u*.1,e.active?'#ff4a4a':'#888');
   ctx.restore();
   if(trapped){ // dizzy stars
     ctx.fillStyle='#ffe27a';
@@ -885,7 +907,7 @@ function frame(t){
 }
 resize();genStage(1);camY=Math.max(0,H-viewRows);updateHud();titleCard();
 requestAnimationFrame(frame);
-window.__dbg={golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
+window.__dbg={setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
 })();
 </script>
 </body>
