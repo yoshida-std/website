@@ -158,6 +158,7 @@ const SFX={
   miss:()=>{tone(440,.5,'sawtooth',.07,-380);},
   clear:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.16,'square',.06,0,i*.12)),
   ladder:()=>[392,523,659].forEach((f,i)=>tone(f,.08,'square',.05,0,i*.06)),
+  pop:()=>tone(300,.12,'square',.04,300),
   go:()=>tone(660,.2,'square',.05)
 };
 
@@ -165,7 +166,7 @@ const SFX={
 let st='title', stage=1, score=0, lives=3, best=0;
 try{best=+localStorage.getItem('horihori_best')||0;}catch(e){}
 let grid=null, H=0, startX=5, startY=0, holes=new Map(), ens=[], pl=null, camY=0, camSpd=1;
-let grace=0, readyT=0, spawnT=3, bestRow=0, flow=null, flowKey=-1, tNow=0, digReq=0, digHeld=false, digFresh=false, digHeldT=0;
+let grace=0, readyT=0, bestRow=0, flow=null, flowKey=-1, tNow=0, digReq=0, digHeld=false, digFresh=false, digHeldT=0;
 let fxP=[], fxT=[], ladders=3;
 const idx=(x,y)=>y*COLS+x;
 const isWall=(x,y)=>x<0||x>=COLS||y<0||y>=H||grid[idx(x,y)]===1;
@@ -398,7 +399,7 @@ function updEnemy(e,dt){
   advance(e,dt,spd,chooseEnemy,enterEnemy,arriveEnemy,false);
 }
 function killEnemy(e,pts,col){
-  e.state='dead';
+  e.state='dead';sendToQueue(e);
   if(pts){score+=pts;text(e.cx+.5,e.cy-.2,'+'+pts,'#ffe27a');}
   burst(e.cx+.5,e.cy+.5,col||'#fff',12);
 }
@@ -412,18 +413,43 @@ function updHoles(dt){
     if(pl.state==='stuck'&&pl.cx===h.x&&pl.cy===h.y)miss('あなにうまった！');
   }
 }
-const MAX_ROBOTS=5; // at most 5 robots on screen at once
-const alive=e=>e.state!=='dead'; // robots that wander off the top still count, so the screen never holds more than 5
-function spawnRobot(){
-  if(camY<3)return;
-  if(ens.filter(alive).length>=MAX_ROBOTS)return;
+// ---------- robot waiting line ----------
+// Defeated robots queue up in a strip at the top of the screen. After a delay the head of the line
+// slides over and drops into the maze; the rest close up behind it.
+const MAX_ROBOTS=5, SLOT0=0.75, SLOTW=0.95;
+let queue=[], entering=[];
+const respawnDelay=()=>Math.max(4,7.5-0.4*stage);
+function sendToQueue(e){
+  queue.push({t:respawnDelay(),delay:respawnDelay(),x:Math.max(0.5,Math.min(COLS-.5,e.cx+.5)),ph:Math.random()*6});
+}
+function pickSpawn(x0){
   const y=Math.floor(camY)-1;
-  if(y<2)return;
-  for(let i=0;i<20;i++){
-    const x=1+rnd(COLS-2);
+  if(y<2)return null;
+  const xs=[];for(let x=1;x<COLS-1;x++)xs.push(x);
+  xs.sort((a,b)=>Math.abs(a-x0)-Math.abs(b-x0)+(Math.random()-.5)*3);
+  for(const x of xs){
     if(isWall(x,y)||ens.some(o=>o.state!=='dead'&&o.cx===x&&o.cy===y))continue;
-    ens.push(mkEnt(x,y,true));return;
+    return {x,y};
   }
+  return null;
+}
+function updQueue(dt){
+  queue.forEach((q,i)=>{q.t-=dt;q.x+=(SLOT0+i*SLOTW-q.x)*Math.min(1,dt*7);});
+  const h=queue[0];
+  if(h&&h.t<=0&&camY>=3){
+    const sp=pickSpawn(1+rnd(COLS-2));
+    if(sp){queue.shift();entering.push({x:h.x,x1:sp.x+.5,p:0,ph:h.ph});SFX.pop();}
+  }
+  for(const en of entering){
+    en.p+=dt/0.4;en.x+=(en.x1-en.x)*Math.min(1,dt*10);
+    if(en.p>=1&&!en.done){
+      en.done=true;
+      const sp=pickSpawn(en.x1-.5);
+      if(sp){ens.push(mkEnt(sp.x,sp.y,true));burst(sp.x+.5,sp.y+1,'#fff',8);}
+      else queue.unshift({t:0.3,delay:respawnDelay(),x:en.x,ph:en.ph});
+    }
+  }
+  entering=entering.filter(e=>!e.done);
 }
 
 // ---------- miss / clear / flow of the game ----------
@@ -449,8 +475,10 @@ function respawn(){
 }
 function loadStage(){
   genStage(stage);
+  queue=[];entering=[];
+  for(let i=0;i<MAX_ROBOTS;i++)queue.push({t:2+i*1.4,delay:respawnDelay()+2+i*1.4,x:SLOT0+i*SLOTW,ph:Math.random()*6});
   pl={cx:startX,cy:startY,nx:startX,ny:startY,p:0,moving:false,dx:0,dy:-1,fx:0,fy:-1,state:'walk',t:0,inv:0};
-  camY=Math.max(0,H-viewRows); bestRow=pl.cy; spawnT=1.5; digReq=0; digFresh=false; digHeld=false; digHeldT=0; ladders=3;
+  camY=Math.max(0,H-viewRows); bestRow=pl.cy; digReq=0; digFresh=false; digHeld=false; digHeldT=0; ladders=3;
   st='ready'; readyT=1.4; ov.hidden=true;
   banner.innerHTML='STAGE '+stage+'<small>つぶされるまえに うえの ゴールへ！</small>'; banner.hidden=false;
   SFX.go(); updateHud();
@@ -508,9 +536,8 @@ function update(dt){
     if(pl.cy-camY<viewRows*0.4)sp*=2.4;
     camY=Math.max(0,camY-sp*dt);
   }
-  spawnT-=dt;
-  if(spawnT<=0){spawnT=Math.max(0.7,1.5-0.1*stage);spawnRobot();}
-  for(const e of ens)if(e.state!=='dead'&&e.cy>camY+viewRows+1)e.state='dead';
+  updQueue(dt);
+  for(const e of ens)if(e.state!=='dead'&&e.cy>camY+viewRows+1){e.state='dead';sendToQueue(e);}
   if(ens.length>120)ens=ens.filter(e=>e.state!=='dead');
   // collisions
   const [px,py]=ePos(pl);
@@ -578,15 +605,15 @@ function drawHoles(){
   }
 }
 function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));}
-function drawRobot(e){
-  const [x,y]=ePos(e), X=sxp(x+.5), Y=sy(y+.38), trapped=e.state==='trapped';
+function drawRobot(e,ov){
+  const [x,y]=ov?[0,0]:ePos(e), X=ov?ov.X:sxp(x+.5), Y=ov?ov.Y:sy(y+.38), trapped=e.state==='trapped';
   ctx.save();
   if(trapped){
     ctx.beginPath();ctx.rect(X-S/2,Y-S/2,S,S*.62);ctx.clip();
     ctx.translate(Math.sin(tNow*30)*S*.02,S*.26);
   }
   ctx.translate(X,Y);
-  const u=S, ph=e.moving?Math.sin(tNow*16+e.ph):0;
+  const u=S*(ov?ov.s:1), ph=e.moving?Math.sin(tNow*16+e.ph):0;
   rect(-u*.26,u*.36,u*.52,u*.1,'#0003');
   rect(-u*.16,u*.22+ph*u*.03,u*.1,u*.16,'#9aa3bd');rect(u*.06,u*.22-ph*u*.03,u*.1,u*.16,'#9aa3bd');
   rect(-u*.23,-u*.06,u*.46,u*.3,'#9aa3bd');rect(-u*.2,-u*.08,u*.4,u*.28,'#f4f6fb');
@@ -594,7 +621,7 @@ function drawRobot(e){
   rect(-u*.12,u*.02,u*.24,u*.06,'#c9cfe2');
   rect(-u*.25,-u*.42,u*.5,u*.36,'#9aa3bd');rect(-u*.22,-u*.4,u*.44,u*.32,'#ffffff');
   rect(-u*.17,-u*.33,u*.34,u*.17,'#1d2340');
-  const ec=trapped?'#7ad':(e.active?'#ff4a4a':'#667');
+  const ec=e.eye||(trapped?'#7ad':(e.active?'#ff4a4a':'#667'));
   if(trapped){ctx.strokeStyle=ec;ctx.lineWidth=Math.max(1.5,u*.04);ctx.beginPath();
     for(const ex of[-.09,.09]){ctx.moveTo(u*(ex-.04),-u*.31);ctx.lineTo(u*(ex+.04),-u*.19);ctx.moveTo(u*(ex+.04),-u*.31);ctx.lineTo(u*(ex-.04),-u*.19);}ctx.stroke();}
   else{rect(-u*.13,-u*.3,u*.09,u*.1,ec);rect(u*.04,-u*.3,u*.09,u*.1,ec);}
@@ -643,6 +670,27 @@ function drawDigMark(){
   ctx.lineWidth=Math.max(1.5,S*.05);ctx.setLineDash([S*.2,S*.15]);
   ctx.strokeRect(px+2,py+2,w-4,h-4);ctx.setLineDash([]);
 }
+function drawQueueBand(){
+  if(!pl)return;
+  const bh=Math.round(S*1.05), cw=cv.width;
+  ctx.fillStyle='rgba(16,44,96,.9)';ctx.fillRect(0,0,cw,bh);
+  ctx.fillStyle='#ffd84a';ctx.fillRect(0,bh-3,cw,3);
+  ctx.fillStyle='rgba(255,255,255,.12)';
+  for(let i=0;i<MAX_ROBOTS;i++)ctx.fillRect(sxp(SLOT0+i*SLOTW)-Math.round(S*.4),Math.round(bh*.12),Math.round(S*.8),Math.round(bh*.76));
+  ctx.font=Math.round(S*.3)+'px DotGothic16, sans-serif';ctx.textAlign='right';ctx.fillStyle='#bfe4ff';
+  ctx.fillText('ロボ待機 ▶',cw-ox-6,Math.round(bh*.6));
+  const cy=Math.round(bh*.55);
+  queue.forEach((q,i)=>{
+    const soon=i===0&&q.t<0.9, X=sxp(q.x), bob=soon?Math.abs(Math.sin(tNow*14))*S*.12:0;
+    drawRobot({state:'walk',moving:false,active:true,ph:q.ph,eye:soon?(Math.floor(tNow*10)%2?'#ff4a4a':'#fff'):'#ffd84a'},{X:X,Y:cy-bob,s:.68});
+    const r=Math.max(0,Math.min(1,1-q.t/q.delay)), bw=Math.round(S*.7), bx=X-Math.round(bw/2), by=bh-Math.round(S*.2);
+    ctx.fillStyle='#0008';ctx.fillRect(bx,by,bw,Math.max(3,Math.round(S*.09)));
+    ctx.fillStyle=soon?'#ff9a4a':'#7dff6a';ctx.fillRect(bx,by,Math.round(bw*r),Math.max(3,Math.round(S*.09)));
+  });
+  for(const en of entering){
+    drawRobot({state:'walk',moving:true,active:true,ph:en.ph,eye:'#ff4a4a'},{X:sxp(en.x),Y:cy+Math.sin(Math.min(1,en.p)*3.14)*S*-.18+en.p*S*.4,s:.68});
+  }
+}
 function draw(){
   ctx.fillStyle='#2d7a2d';ctx.fillRect(0,0,cv.width,cv.height);
   if(!grid)return;
@@ -657,6 +705,7 @@ function draw(){
     while(oi<objs.length&&objs[oi].y<y+0.5){objs[oi].f();oi++;}
   }
   while(oi<objs.length){objs[oi].f();oi++;}
+  drawQueueBand();
   for(const p of fxP){ctx.globalAlpha=Math.max(0,p.life*2);ctx.fillStyle=p.col;ctx.fillRect(sxp(p.x),sy(p.y),Math.max(2,S*.12),Math.max(2,S*.12));}
   ctx.globalAlpha=1;
   ctx.font=Math.round(S*.5)+'px DotGothic16, sans-serif';ctx.textAlign='center';ctx.lineWidth=Math.max(2,S*.1);ctx.lineJoin='round';
@@ -757,7 +806,7 @@ function frame(t){
 }
 resize();genStage(1);camY=Math.max(0,H-viewRows);updateHud();titleCard();
 requestAnimationFrame(frame);
-window.__dbg={grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
+window.__dbg={queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
 })();
 </script>
 </body>
