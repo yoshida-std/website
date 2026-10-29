@@ -296,22 +296,35 @@ function arrivePlayer(p){
       p.state='stuck';p.t=0;SFX.fall();text(p.cx+.5,p.cy-.2,'ドボン','#9ab');
     }
   }
+  if(p.state==='walk'&&digReq>0)tryDig(); // dig right at the tile boundary, even while running
 }
 function digTarget(){
   const tx=pl.cx+pl.fx, ty=pl.cy+pl.fy;
-  if(isWall(tx,ty)||ty<=1||holes.has(idx(tx,ty)))return null;
-  for(const o of ens){
-    if(o.state==='dead')continue;
-    if((o.cx===tx&&o.cy===ty)||(o.moving&&o.nx===tx&&o.ny===ty))return null;
-  }
+  if(isWall(tx,ty)||ty<=1)return null;
   return [tx,ty];
 }
 function tryDig(){
   const t=digTarget(); digReq=0;
   if(!t){if(digFresh)SFX.no();digFresh=false;return;}
   digFresh=false;
-  holes.set(idx(t[0],t[1]),{x:t[0],y:t[1],age:0});
+  const k=idx(t[0],t[1]);
+  if(holes.has(k)){ // dig again = fill the hole
+    holes.delete(k);
+    const e=trappedAt(t[0],t[1]);
+    if(e){killEnemy(e,300,'#fff');SFX.crush();}
+    pl.state='dig';pl.t=0.2;SFX.dig();burst(t[0]+.5,t[1]+.5,'#a47a42',7);
+    return;
+  }
+  holes.set(k,{x:t[0],y:t[1],age:0});
   pl.state='dig';pl.t=0.25;SFX.dig();burst(t[0]+.5,t[1]+.5,'#a47a42',7);
+  for(const o of ens){ // a robot standing there falls in
+    if(o.state!=='walk')continue;
+    const nx=o.moving&&o.p>=0.5?o.nx:o.cx, ny=o.moving&&o.p>=0.5?o.ny:o.cy;
+    if(nx===t[0]&&ny===t[1]){
+      Object.assign(o,{cx:nx,cy:ny,nx:nx,ny:ny,moving:false,p:0,state:'trapped',t:0,dur:3+Math.random()*1.2,active:true});
+      SFX.trap();
+    }
+  }
 }
 function climbOut(){
   const d=inputDir(), tries=[];
@@ -325,7 +338,7 @@ function climbOut(){
 }
 function updPlayer(dt){
   const p=pl; p.inv=Math.max(0,p.inv-dt); digReq=Math.max(0,digReq-dt);
-  if(digHeld)digReq=0.3;
+  if(digHeld)digReq=0.4;
   const d=inputDir();
   if(d&&p.state!=='stuck'){p.fx=d[0];p.fy=d[1];}
   if(p.state==='walk'){
@@ -641,7 +654,7 @@ function titleCard(){
   card('<p class="tag">DIG &amp; STOMP ACTION</p><h1>ホリホリ<br>ロボバスター</h1>'+
     '<div class="rules">'+
     '<div><em>▲</em><span>画面は<b>強制スクロール</b>。下に押しつぶされるまえに、上のゴールをめざせ！</span></div>'+
-    '<div><em>●</em><span><b>ホルボタン</b>で目の前の地面に穴をほる。5秒ほどでふさがる</span></div>'+
+    '<div><em>●</em><span><b>ホルボタン</b>で目の前の地面に穴をほる。5秒ほどでふさがる。もう一度ほると埋まる</span></div>'+
     '<div><em>●</em><span>白いロボを穴に落とそう。穴の中のロボの<b>頭をふんで</b>わたれる。ふさがるとロボはつぶれる</span></div>'+
     '<div><em>●</em><span>自分も穴に落ちる！ロボにさわる・押しつぶされるとミス。<b>ミスは3回まで</b></span></div>'+
     '</div><p>BEST '+best+'</p><button class="sp-btn" data-act="start">スタート</button>'+COPY);
@@ -694,14 +707,14 @@ stick.addEventListener('pointermove',e=>{if(e.pointerId===stickId)stickMove(e);}
 stick.addEventListener('pointerup',e=>{if(e.pointerId===stickId)stickEnd();});
 stick.addEventListener('pointercancel',e=>{if(e.pointerId===stickId)stickEnd();});
 const dig=$('digBtn');
-dig.addEventListener('pointerdown',e=>{e.preventDefault();dig.setPointerCapture(e.pointerId);digHeld=true;digFresh=true;digReq=0.3;dig.classList.add('on');initAudio();});
+dig.addEventListener('pointerdown',e=>{e.preventDefault();dig.setPointerCapture(e.pointerId);digHeld=true;digFresh=true;digReq=0.4;dig.classList.add('on');initAudio();});
 const digEnd=()=>{digHeld=false;dig.classList.remove('on');};
 dig.addEventListener('pointerup',digEnd);dig.addEventListener('pointercancel',digEnd);
 const KD={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0],W:[0,-1],S:[0,1],A:[-1,0],D:[1,0]};
 const kStack=[];
 addEventListener('keydown',e=>{
   if(KD[e.key]){e.preventDefault();const i=kStack.indexOf(e.key);if(i>=0)kStack.splice(i,1);kStack.push(e.key);inp.kb=KD[kStack[kStack.length-1]];}
-  else if(e.key===' '||e.key==='z'||e.key==='x'||e.key==='Z'||e.key==='X'){e.preventDefault();if(!digHeld){digFresh=true;}digHeld=true;digReq=0.3;}
+  else if(e.key===' '||e.key==='z'||e.key==='x'||e.key==='Z'||e.key==='X'){e.preventDefault();if(!digHeld){digFresh=true;}digHeld=true;digReq=0.4;}
   else if(e.key==='p'||e.key==='Escape'){if(st==='pause')resume();else pause();}
 });
 addEventListener('keyup',e=>{
