@@ -180,7 +180,7 @@ let grid=null, H=0, startX=5, startY=0, holes=new Map(), ens=[], pl=null, camY=0
 let grace=0, readyT=0, bestRow=0, flow=null, flowKey=-1, tNow=0, digReq=0, digHeld=false, digFresh=false, digHeldT=0;
 const digIds=new Set(); // pointers currently pressing 'dig' (the button, or any tap outside the stick)
 let exitX=1, redDone=false, bannerT=0, fxP=[], fxT=[], ladders=3, golds=[], goldGot=0;
-const GOLD_N=10, GOLD_PTS=300, PERFECT_PTS=3000;
+const RESPAWN_PAUSE=2.0, GOLD_N=10, GOLD_PTS=300, PERFECT_PTS=3000;
 const idx=(x,y)=>y*COLS+x;
 const isWall=(x,y)=>x<0||x>=COLS||y<0||y>=H||grid[idx(x,y)]===1;
 
@@ -535,6 +535,7 @@ function respawn(){
   Object.assign(pl,{cx:bx,cy:by,nx:bx,ny:by,p:0,moving:false,state:'walk',t:0,inv:2.5});
   for(const e of ens)if(e.state!=='dead'&&!e.red&&Math.abs(e.cx-bx)+Math.abs(e.cy-by)<5&&(e.active||e.cy>=camY-1))killEnemy(e,0,'#fff');
   flowKey=-1;
+  grace=RESPAWN_PAUSE; // the forced scroll holds still for a moment, then starts again
 }
 function placeGold(){ // 10 piles, one per horizontal band of the maze (spread from bottom to top)
   golds=[];goldGot=0;
