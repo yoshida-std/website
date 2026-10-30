@@ -64,6 +64,11 @@ canvas{display:block}
   padding:9px 11px;margin:12px 0;color:var(--ink)}
 .rules div{display:grid;grid-template-columns:18px 1fr;gap:4px;margin-bottom:3px}
 .rules em{font-style:normal;color:var(--orange)}
+.spr{--u:72px;--c:0;--r:0;display:inline-block;width:var(--u);height:var(--u);background-repeat:no-repeat;
+  background-size:calc(var(--u)*8) calc(var(--u)*6);background-position:calc(var(--u)*var(--c)*-1) calc(var(--u)*var(--r)*-1)}
+.spr.cheer{animation:cheer .7s steps(1) infinite}
+@keyframes cheer{0%{background-position:calc(var(--u)*-4) calc(var(--u)*-5)}50%{background-position:calc(var(--u)*-5) calc(var(--u)*-5)}}
+.cast{display:flex;justify-content:center;align-items:flex-end;gap:2px;margin:2px 0 0}
 .big{font-size:22px;color:var(--fg);margin:6px 0}
 .sp-btn{display:block;width:100%;margin:8px 0 0;padding:11px 0;font-size:18px;color:#2a1200;background:var(--orange);
   border:3px solid #fff;border-radius:8px;box-shadow:0 4px 0 #8a4a00}
@@ -368,18 +373,18 @@ function tryDig(){
   digFresh=false;
   if(t.kind==='ladder'){ // lean a ladder on the wall: it can be crossed from now on (by robots too)
     ladders--;grid[k]=2;flowKey=-1;
-    pl.state='dig';pl.t=0.3;SFX.ladder();burst(t.x+.5,t.y+.5,'#c9a05a',8);text(t.x+.5,t.y-.2,'ハシゴ！','#ffe27a');updateHud();
+    pl.state='dig';pl.t=pl.digDur=0.3;SFX.ladder();burst(t.x+.5,t.y+.5,'#c9a05a',8);text(t.x+.5,t.y-.2,'ハシゴ！','#ffe27a');updateHud();
     return;
   }
   if(t.kind==='fill'){ // dig again = fill the hole
     holes.delete(k);lastFillAt=tNow;
     const e=trappedAt(t.x,t.y);
     if(e){killEnemy(e,300,'#fff');SFX.crush();}
-    pl.state='dig';pl.t=0.2;SFX.dig();burst(t.x+.5,t.y+.5,'#a47a42',7);
+    pl.state='dig';pl.t=pl.digDur=0.2;SFX.dig();burst(t.x+.5,t.y+.5,'#a47a42',7);
     return;
   }
   holes.set(k,{x:t.x,y:t.y,age:0});
-  pl.state='dig';pl.t=0.25;SFX.dig();burst(t.x+.5,t.y+.5,'#a47a42',7);
+  pl.state='dig';pl.t=pl.digDur=0.25;SFX.dig();burst(t.x+.5,t.y+.5,'#a47a42',7);
   for(const o of ens){ // a robot standing there falls in
     if(o.state!=='walk')continue;
     const nx=o.moving&&o.p>=0.5?o.nx:o.cx, ny=o.moving&&o.p>=0.5?o.ny:o.cy;
@@ -571,13 +576,13 @@ function stageClear(){
   if(st!=='play')return;
   st='clear'; SFX.clear();
   const bonus=1000+lives*500, perfect=goldGot>=golds.length&&golds.length>0; score+=bonus+(perfect?PERFECT_PTS:0); saveBest();
-  card('<h2>STAGE '+stage+' CLEAR!</h2><p class="big">ボーナス +'+bonus+'</p><p>金 '+goldGot+' / '+golds.length+'</p>'+(perfect?'<p class="big">PERFECT! +'+PERFECT_PTS+'</p>':'')+'<p>SCORE '+score+'</p>'+
+  card('<div class="cast"><i class="spr cheer" style="--u:88px;background-image:var(--hero-sheet)"></i></div><h2>STAGE '+stage+' CLEAR!</h2><p class="big">ボーナス +'+bonus+'</p><p>金 '+goldGot+' / '+golds.length+'</p>'+(perfect?'<p class="big">PERFECT! +'+PERFECT_PTS+'</p>':'')+'<p>SCORE '+score+'</p>'+
     '<button class="sp-btn" data-act="next">つぎのステージへ</button>');
   updateHud();
 }
 function gameOver(){
   st='over'; saveBest();
-  card('<h2>GAME OVER</h2><p class="big">SCORE '+score+'</p><p>BEST '+best+'　到達 STAGE '+stage+'</p>'+
+  card('<div class="cast"><i class="spr" style="--u:88px;--r:5;background-image:var(--hero-sheet)"></i></div><h2>GAME OVER</h2><p class="big">SCORE '+score+'</p><p>BEST '+best+'　到達 STAGE '+stage+'</p>'+
     '<button class="sp-btn" data-act="retry">もういちど</button><button class="sp-btn sub" data-act="title">タイトルへ</button>'+COPY);
   updateHud();
 }
@@ -712,7 +717,7 @@ function drawHoles(){
   }
 }
 function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));}
-function drawRobot(e,ov){
+function drawRobotVec(e,ov){
   const [x,y]=ov?[0,0]:ePos(e), X=ov?ov.X:sxp(x+.5), Y=ov?ov.Y:sy(y+.38), trapped=e.state==='trapped';
   ctx.save();
   if(trapped){
@@ -740,7 +745,7 @@ function drawRobot(e,ov){
     for(let i=0;i<3;i++){const a=tNow*5+i*2.1;ctx.fillRect(Math.round(X+Math.cos(a)*S*.28),Math.round(Y-S*.5+Math.sin(a)*S*.08),Math.max(2,S*.09),Math.max(2,S*.09));}
   }
 }
-function drawPlayer(){
+function drawPlayerVec(){
   const p=pl;if(!p)return;
   if(p.inv>0&&p.state!=='dead'&&Math.floor(tNow*12)%2)return;
   const [x,y]=ePos(p), X=sxp(x+.5), Y=sy(y+.38), u=S;
@@ -778,6 +783,96 @@ function drawDigMark(){
   ctx.lineWidth=Math.max(1.5,S*.05);ctx.setLineDash([S*.2,S*.15]);
   ctx.strokeRect(px+2,py+2,w-4,h-4);ctx.setLineDash([]);
 }
+// ---------- sprite sheet (robo.png: 8x6 cells of 128px; white robot / recoloured hero & boss) ----------
+// rows: 0 front idle (0-3) + back (4-7) | 1 walk right | 2 walk left | 3 ladder climb | 4 dig (0 ready, 1-7 dig) | 5 down (0-2), overheat (3), cheer (4-5)
+const SPR=128;
+let SHEETS=null;
+function recolor(img,mode){
+  const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
+  const x=c.getContext('2d');x.drawImage(img,0,0);
+  if(mode==='white')return c;
+  const d=x.getImageData(0,0,c.width,c.height),p=d.data, body=mode==='hero'?[255,226,112]:[255,132,132];
+  for(let i=0;i<p.length;i+=4){
+    if(!p[i+3])continue;
+    const r=p[i],g=p[i+1],b=p[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(r+g+b)/3,sat=mx?(mx-mn)/mx:0;
+    if(b>r+30&&b>g&&sat>.35&&l>70){ // blue parts (ears, panel) -> warm colours
+      if(mode==='hero'){p[i]=b;p[i+1]=(r+g)*.45;p[i+2]=r*.7;}else{p[i]=b;p[i+1]=r*.6;p[i+2]=r*.6;}
+    }else if(sat<.3&&l>90){p[i]=r*body[0]/255;p[i+1]=g*body[1]/255;p[i+2]=b*body[2]/255;} // white / grey body
+  }
+  x.putImageData(d,0,0);return c;
+}
+function loadSheets(){
+  const img=new Image();
+  img.onload=()=>{
+    try{
+      SHEETS={white:recolor(img,'white'),hero:recolor(img,'hero'),boss:recolor(img,'boss')};
+      const st=document.documentElement.style;
+      st.setProperty('--hero-sheet','url('+SHEETS.hero.toDataURL()+')');
+      st.setProperty('--boss-sheet','url('+SHEETS.boss.toDataURL()+')');
+      if(st==='title')titleCard();
+    }catch(e){SHEETS=null;}
+  };
+  img.src='robo.png';
+}
+function drawCell(sh,col,row,X,Y,D,flip){
+  const dy=Y+S*.46-D*.945, dx=X-D/2;
+  ctx.imageSmoothingEnabled=true;
+  if(flip){ctx.save();ctx.translate(X,0);ctx.scale(-1,1);ctx.translate(-X,0);}
+  ctx.drawImage(sh,col*SPR,row*SPR,SPR,SPR,dx,dy,D,D);
+  if(flip)ctx.restore();
+  ctx.imageSmoothingEnabled=false;
+}
+function walkFrame(dx,dy,moving,ph){
+  if(dx!==0)return {row:dx>0?1:2,col:moving?Math.floor(tNow*13+ph)%8:0};
+  if(dy<0)return {row:0,col:moving?[4,6,4,7][Math.floor(tNow*10+ph)%4]:4};
+  return {row:0,col:moving?Math.floor(tNow*12+ph)%4:Math.floor(tNow*3+ph)%4};
+}
+const onLadder=e=>{const t=e.moving&&e.p>=.5?[e.nx,e.ny]:[e.cx,e.cy];return grid[idx(t[0],t[1])]===2;};
+function drawShadow(X,Y,k){rect(X-S*.26*k,Y+S*.38,S*.52*k,S*.1,'#0003');}
+function drawRobotSprite(e,ov){
+  const sh=e.red?SHEETS.boss:SHEETS.white, trapped=e.state==='trapped';
+  let X,Y,sc=1;
+  if(ov){X=ov.X;Y=ov.Y;sc=ov.s;}else{const [x,y]=ePos(e);X=sxp(x+.5);Y=sy(y+.38);}
+  let f;
+  if(trapped)f={row:5,col:Math.floor(tNow*6+e.ph)%3};
+  else if(ov&&ov.mode==='soon')f=Math.floor(tNow*10)%2?{row:5,col:3}:{row:0,col:0};
+  else if(!ov&&onLadder(e))f={row:3,col:e.moving?Math.floor(tNow*14+e.ph)%8:0};
+  else f=ov?walkFrame(0,1,!!e.moving,e.ph):walkFrame(e.dx||0,e.dy===undefined?1:e.dy,!!e.moving,e.ph);
+  const bob=(!trapped&&e.moving&&(f.row===0))?Math.abs(Math.sin(tNow*14+e.ph))*S*.05*sc:0;
+  ctx.save();
+  if(trapped){ctx.beginPath();ctx.rect(X-S/2,Y-S/2,S,S*.62);ctx.clip();ctx.translate(Math.sin(tNow*30)*S*.02,S*.26);}
+  drawShadow(X,Y,sc);
+  drawCell(sh,f.col,f.row,X,Y-bob,S*1.4*sc,false);
+  ctx.restore();
+  if(trapped){ctx.fillStyle='#ffe27a';
+    for(let i=0;i<3;i++){const a=tNow*5+i*2.1;ctx.fillRect(Math.round(X+Math.cos(a)*S*.28),Math.round(Y-S*.55+Math.sin(a)*S*.08),Math.max(2,S*.09),Math.max(2,S*.09));}}
+}
+function drawPlayerSprite(){
+  const p=pl;
+  if(p.inv>0&&p.state!=='dead'&&Math.floor(tNow*12)%2)return;
+  const [x,y]=ePos(p);
+  let X=sxp(x+.5), Y=sy(y+.38), flip=false, f;
+  const fx=p.moving?p.dx:(p.fx||0), fy=p.moving?p.dy:(p.fy===undefined?-1:p.fy);
+  if(p.state==='dead'){
+    const k=Math.min(1,p.t/1.0);
+    f=p.t<.3?{row:5,col:3}:{row:5,col:Math.floor((p.t-.3)*5)%3};
+    Y+=-Math.sin(k*3.14)*S*.9+k*k*S*1.2;
+  }else if(p.state==='dig'){
+    const k=1-Math.max(0,p.t)/(p.digDur||.25);
+    f={row:4,col:1+Math.min(6,Math.floor(k*7))};flip=(p.fx||0)<0;
+  }else if(p.state==='stuck')f={row:0,col:Math.floor(tNow*3)%4};
+  else if(onLadder(p))f={row:3,col:p.moving?Math.floor(tNow*14)%8:0};
+  else f=walkFrame(fx,fy,!!p.moving,0);
+  const bob=(p.state==='walk'&&p.moving&&f.row===0)?Math.abs(Math.sin(tNow*14))*S*.05:0;
+  ctx.save();
+  if(p.state==='stuck'){ctx.beginPath();ctx.rect(X-S/2,Y-S/2,S,S*.6);ctx.clip();ctx.translate(0,S*.28);}
+  if(p.state==='dead')ctx.globalAlpha=1-Math.min(1,p.t)*.6;
+  if(p.state!=='dead')drawShadow(X,Y,1);
+  drawCell(SHEETS.hero,f.col,f.row,X,Y-bob,S*1.5,flip);
+  ctx.restore();
+}
+function drawRobot(e,ov){return SHEETS?drawRobotSprite(e,ov):drawRobotVec(e,ov);}
+function drawPlayer(){return SHEETS?drawPlayerSprite():drawPlayerVec();}
 function drawQueueBand(){
   if(!pl)return;
   const bh=Math.round(S*1.05), cw=cv.width;
@@ -790,7 +885,7 @@ function drawQueueBand(){
   const cy=Math.round(bh*.55);
   queue.forEach((q,i)=>{
     const soon=i===0&&q.t<0.9, X=sxp(q.x), bob=soon?Math.abs(Math.sin(tNow*14))*S*.12:0;
-    drawRobot({state:'walk',moving:false,active:true,ph:q.ph,eye:soon?(Math.floor(tNow*10)%2?'#ff4a4a':'#fff'):'#ffd84a'},{X:X,Y:cy-bob,s:.68});
+    drawRobot({state:'walk',moving:false,active:true,ph:q.ph,eye:soon?(Math.floor(tNow*10)%2?'#ff4a4a':'#fff'):'#ffd84a'},{X:X,Y:cy-bob,s:.68,mode:soon?'soon':''});
     const r=Math.max(0,Math.min(1,1-q.t/q.delay)), bw=Math.round(S*.7), bx=X-Math.round(bw/2), by=bh-Math.round(S*.2);
     ctx.fillStyle='#0008';ctx.fillRect(bx,by,bw,Math.max(3,Math.round(S*.09)));
     ctx.fillStyle=soon?'#ff9a4a':'#7dff6a';ctx.fillRect(bx,by,Math.round(bw*r),Math.max(3,Math.round(S*.09)));
@@ -834,14 +929,15 @@ function draw(){
 function card(html){ov.innerHTML='<div class="card scrollable">'+html+'</div>';ov.hidden=false;}
 function titleCard(){
   st='title';banner.hidden=true;
-  card('<p class="tag">DIG &amp; STOMP ACTION</p><h1>ホリホリ<br>ロボバスター</h1>'+
+  card('<div class="cast" style="--u:60px"><i class="spr" style="--u:60px;background-image:var(--hero-sheet)"></i><i class="spr" style="--u:60px;background-image:url(robo.png);--c:1"></i><i class="spr" style="--u:60px;background-image:url(robo.png);--r:5"></i><i class="spr" style="--u:60px;background-image:var(--boss-sheet);--c:3"></i></div><p class="tag">DIG &amp; STOMP ACTION</p><h1>ホリホリ<br>ロボバスター</h1>'+
+    '<p>BEST '+best+'</p><button class="sp-btn" data-act="start">スタート</button>'+
     '<div class="rules">'+
-    '<div><em>▲</em><span>画面は<b>強制スクロール</b>。下に押しつぶされるまえに、上のゴールをめざせ！</span></div>'+
-    '<div><em>●</em><span><b>ホルボタン</b>（スティック以外の画面のどこをタップしてもOK）で穴をほる。近く（歩いて5マス以内）にロボがいれば<b>ロボの来る方向</b>に自動でほり、いなければ向いている方向にほる（壁ならハシゴ）。5秒ほどでふさがる。もう一度ほると埋まる</span></div>'+
-    '<div><em>●</em><span>白いロボを穴に落とそう。穴の中のロボの<b>頭をふんで</b>わたれる。ふさがるとロボはつぶれる</span></div>'+
-    '<div><em>●</em><span>迷路には<b>金塊の山が10か所</b>。ぜんぶ取るとパーフェクトボーナス！</span></div>'+
-    '<div><em>●</em><span>自分も穴に落ちる！ロボにさわる・押しつぶされるとミス。<b>ミスは3回まで</b></span></div>'+
-    '</div><p>BEST '+best+'</p><button class="sp-btn" data-act="start">スタート</button>'+COPY);
+    '<div><em>▲</em><span>画面は<b>強制スクロール</b>。壁に挟まれる前に、上のゴールをめざせ！</span></div>'+
+    '<div><em>●</em><span><b>スティック以外のどこをタップ</b>しても穴をほる（ロボが近ければその方向に自動で）。もう一度で埋まる</span></div>'+
+    '<div><em>●</em><span>白いロボを穴に落として、<b>頭をふんで</b>わたろう。ふさがるとロボはつぶれる</span></div>'+
+    '<div><em>●</em><span>壁にタップで<b>ハシゴ</b>。<b>金塊10個</b>でパーフェクト！</span></div>'+
+    '<div><em>●</em><span>ロボにさわる・挟まれる・穴に埋まるとミス。<b>ミスは3回まで</b></span></div>'+
+    '</div>'+COPY);
 }
 function pauseCard(){
   card('<h2>PAUSE</h2><button class="sp-btn" data-act="resume">つづける</button>'+
@@ -926,7 +1022,7 @@ function frame(t){
   const dt=Math.min(0.05,(t-last)/1000||0);last=t;tNow=t/1000;
   update(dt);draw();
 }
-resize();genStage(1);camY=Math.max(0,H-viewRows);updateHud();titleCard();
+loadSheets();resize();genStage(1);camY=Math.max(0,H-viewRows);updateHud();titleCard();
 requestAnimationFrame(frame);
 window.__dbg={setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
 })();
