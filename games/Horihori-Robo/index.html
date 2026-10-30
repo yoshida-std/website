@@ -35,7 +35,12 @@ canvas{display:block}
 .stat{background:var(--panel);border:2px solid var(--line);border-radius:8px;padding:2px 8px;min-width:0;box-shadow:inset 0 0 0 2px #1d6fc4}
 .stat b{display:block;font-size:9px;letter-spacing:.12em;color:var(--dim);font-weight:400}
 .stat span{font-size:16px;white-space:nowrap;color:var(--fg)}
-#stScore{flex:1;text-align:right}
+#stScore{flex:1;min-width:58px;text-align:right}
+.stat b{white-space:nowrap}
+@media (max-width:400px){
+  #hud{gap:3px}.stat{padding:2px 5px}.stat span{font-size:14px}.stat b{font-size:8px;letter-spacing:.02em}
+  #stLife i{width:10px;height:10px;margin-right:2px}#pauseBtn{flex-basis:34px}
+}
 #stScore b{text-align:left}
 #stLife span{font-size:14px;letter-spacing:1px}
 #stLife i{display:inline-block;width:12px;height:12px;margin-right:3px;border-radius:50%;background:var(--red);border:2px solid #fff;box-sizing:border-box}
@@ -45,9 +50,9 @@ canvas{display:block}
 #prog{height:100%;width:0;background:linear-gradient(90deg,#7dff6a,#fff27a)}
 #stage{position:relative;flex:1;min-height:0;border-radius:8px;overflow:hidden;border:3px solid #7ad84a;box-shadow:0 0 0 2px var(--line);background:#2d7a2d}
 #cv{position:absolute;inset:0;width:100%;height:100%}
-#banner{position:absolute;left:0;right:0;top:32%;text-align:center;pointer-events:none;font-size:34px;color:var(--fg);
-  text-shadow:3px 3px 0 #0008;line-height:1.4}
-#banner small{display:block;font-size:14px;color:#fff}
+#banner{position:absolute;left:0;right:0;top:32%;text-align:center;pointer-events:none;font-size:34px;color:#fff6a0;
+  text-shadow:2px 2px 0 #7a2a00,-2px -2px 0 #7a2a00,2px -2px 0 #7a2a00,-2px 2px 0 #7a2a00,0 4px 0 #7a2a00;line-height:1.4}
+#banner small{display:block;font-size:14px;color:#fff;text-shadow:1px 1px 0 #7a2a00,-1px -1px 0 #7a2a00,1px -1px 0 #7a2a00,-1px 1px 0 #7a2a00}
 #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(20,70,140,.9);
   padding:12px;box-sizing:border-box}
 .card{width:100%;max-width:340px;max-height:100%;overflow-y:auto;touch-action:pan-y;text-align:center;box-sizing:border-box;padding:4px 2px 10px}
@@ -65,8 +70,11 @@ canvas{display:block}
 .sp-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #8a4a00}
 .sp-btn.sub{background:#2f8fe6;color:#fff;border-color:#ffd84a;box-shadow:0 4px 0 #14457f;font-size:15px}
 .copy{font-size:10px!important;color:#cfe6ff!important;letter-spacing:.04em;margin-top:14px!important}
-#ctrl{flex:0 0 auto;height:clamp(128px,19vh,168px);display:flex;justify-content:space-between;align-items:center;padding:0 14px}
-#stick{position:relative;width:124px;height:124px;border-radius:50%;background:#2f8fe6aa;border:3px solid #ffd84a}
+#ctrl{flex:0 0 auto;height:clamp(154px,21vh,182px);display:flex;justify-content:space-between;align-items:center;padding:0 14px 0 28px}
+#stick{position:relative;width:112px;height:112px;border-radius:50%;background:#2f8fe6aa;border:3px solid #ffd84a}
+#stick::after{content:"";position:absolute;inset:-20px;border-radius:50%;z-index:-1;pointer-events:none;
+  background:radial-gradient(circle,#0000 0 62%,#ffffff33 64%,#ffffff2a 100%);border:3px dashed #ffb04a}
+#ringLabel{position:absolute;left:50%;top:-19px;font-size:10px;transform:translateX(-50%);color:#fff;letter-spacing:.02em;white-space:nowrap;pointer-events:none;text-shadow:0 1px 0 #7a3a00}
 #stick::before{content:"▲\A◀　▶\A▼";white-space:pre;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   text-align:center;color:#ffffff66;font-size:20px;line-height:1.25}
 #knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;
@@ -84,6 +92,7 @@ canvas{display:block}
     <div class="stat"><b>STAGE</b><span id="vStage">1</span></div>
     <div class="stat" id="stLife"><b>MISS</b><span id="vLife"></span></div>
     <div class="stat"><b>ハシゴ</b><span id="vLad">×3</span></div>
+    <div class="stat"><b>金</b><span id="vGold">0/10</span></div>
     <div class="stat" id="stScore"><b>SCORE</b><span id="vScore">0</span></div>
     <button id="pauseBtn" aria-label="ポーズ">II</button>
   </div>
@@ -94,7 +103,7 @@ canvas{display:block}
     <div id="overlay"></div>
   </div>
   <div id="ctrl">
-    <div id="stick"><div id="knob"></div></div>
+    <div id="stick"><div id="knob"></div><span id="ringLabel">この外側タップで ホル</span></div>
     <div id="digBtn">ホル<small>あなをほる</small></div>
   </div>
 </div>
@@ -158,6 +167,9 @@ const SFX={
   miss:()=>{tone(440,.5,'sawtooth',.07,-380);},
   clear:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.16,'square',.06,0,i*.12)),
   ladder:()=>[392,523,659].forEach((f,i)=>tone(f,.08,'square',.05,0,i*.06)),
+  coin:()=>{tone(988,.07,'square',.05);tone(1319,.14,'square',.05,0,.07);},
+  alarm:()=>[880,660,880,660].forEach((f,i)=>tone(f,.12,'square',.05,0,i*.14)),
+  pop:()=>tone(300,.12,'square',.04,300),
   go:()=>tone(660,.2,'square',.05)
 };
 
@@ -165,19 +177,21 @@ const SFX={
 let st='title', stage=1, score=0, lives=3, best=0;
 try{best=+localStorage.getItem('horihori_best')||0;}catch(e){}
 let grid=null, H=0, startX=5, startY=0, holes=new Map(), ens=[], pl=null, camY=0, camSpd=1;
-let grace=0, readyT=0, spawnT=3, bestRow=0, flow=null, flowKey=-1, tNow=0, digReq=0, digHeld=false, digFresh=false, digHeldT=0;
-let fxP=[], fxT=[], ladders=3;
+let grace=0, readyT=0, bestRow=0, flow=null, flowKey=-1, tNow=0, digReq=0, digHeld=false, digFresh=false, digHeldT=0;
+const digIds=new Set(); // pointers currently pressing 'dig' (the button, or any tap outside the stick)
+let exitX=1, redDone=false, bannerT=0, fxP=[], fxT=[], ladders=3, golds=[], goldGot=0;
+const RESPAWN_PAUSE=2.0, GOLD_N=10, GOLD_PTS=300, PERFECT_PTS=3000;
 const idx=(x,y)=>y*COLS+x;
 const isWall=(x,y)=>x<0||x>=COLS||y<0||y>=H||grid[idx(x,y)]===1;
 
 // ---------- stage generation ----------
 function genStage(n){
   const R=Math.min(16+n*3,32), SR=6, CW=6;
-  const hh=2*R+SR+1;
+  const hh0=2*R+SR+1, hh=hh0+2; // 2 extra rows on top: exit row (row 1) and the wall row in front of it (row 2)
   camSpd=Math.min(2.0,0.95+0.12*n);
   let bestG=null, bestSlack=-1e9;
   for(let tries=0;tries<40;tries++){
-    const g=new Uint8Array(hh*COLS).fill(1);
+    const g0=new Uint8Array(hh0*COLS).fill(1), g=g0;
     const open=(x,y)=>{g[y*COLS+x]=0;};
     const vis=new Uint8Array(CW*R), sx=rnd(CW), list=[[sx,R-1]];
     vis[(R-1)*CW+sx]=1; open(2*sx+1,2*(R-1)+1);
@@ -200,10 +214,13 @@ function genStage(n){
       for(let y=y0;y<=y0+2;y++)for(let x=x0;x<=x0+2;x++)open(x,y);
       g[(y0+1)*COLS+(x0+1)]=1;
     }
-    // goal row
-    for(let x=1;x<COLS-1;x++)open(x,1);
     // start room (pillars at even,even)
     for(let y=2*R;y<2*R+SR;y++)for(let x=1;x<COLS-1;x++){if(!(x%2===0&&y%2===0))open(x,y);}
+    // shift the maze down 2 rows and cut ONE exit through the top two rows
+    const g2=new Uint8Array(hh*COLS).fill(1);
+    g2.set(g0,2*COLS);
+    const ex=1+2*rnd(6);
+    g2[1*COLS+ex]=0;g2[2*COLS+ex]=0;
     const sy=hh-3, sxp=5;
     // solvability vs. scroll speed
     const par=new Int32Array(hh*COLS).fill(-2), q=[idx(sxp,sy)], dist=new Int32Array(hh*COLS);
@@ -212,7 +229,7 @@ function genStage(n){
       const c=q[qi], cx=c%COLS, cy=(c/COLS)|0;
       for(const [dx,dy] of DIRS){
         const nx=cx+dx,ny=cy+dy;
-        if(nx<0||nx>=COLS||ny<0||ny>=hh||g[idx(nx,ny)]||par[idx(nx,ny)]!==-2)continue;
+        if(nx<0||nx>=COLS||ny<0||ny>=hh||g2[idx(nx,ny)]||par[idx(nx,ny)]!==-2)continue;
         par[idx(nx,ny)]=c; dist[idx(nx,ny)]=dist[c]+1; q.push(idx(nx,ny));
         if(ny===1){goal=idx(nx,ny);break;}
       }
@@ -222,14 +239,14 @@ function genStage(n){
       const d=dist[c], y=(c/COLS)|0, t=d/2.8;
       slack=Math.min(slack,(hh-camSpd*Math.max(0,t-2.2))-(y+1));
     }
-    if(slack>bestSlack){bestSlack=slack;bestG={g,hh,R,sy,sxp};}
+    if(slack>bestSlack){bestSlack=slack;bestG={g:g2,hh,R,sy,sxp,ex};}
     if(slack>=2.5)break;
   }
-  grid=bestG.g; H=bestG.hh; startX=bestG.sxp; startY=bestG.sy;
+  grid=bestG.g; H=bestG.hh; exitX=bestG.ex; startX=bestG.sxp; startY=bestG.sy;
   holes=new Map(); ens=[]; fxP=[]; fxT=[]; flow=null; flowKey=-1;
 }
-function mkEnt(x,y,active){
-  return {cx:x,cy:y,nx:x,ny:y,p:0,moving:false,dx:0,dy:1,state:'walk',t:0,dur:3,active:active,stomped:false,ph:Math.random()*6};
+function mkEnt(x,y,active,red){
+  return {red:!!red,cx:x,cy:y,nx:x,ny:y,p:0,moving:false,dx:0,dy:1,state:'walk',t:0,dur:3,active:active,stomped:false,ph:Math.random()*6};
 }
 const ePos=e=>e.moving?[e.cx+(e.nx-e.cx)*e.p,e.cy+(e.ny-e.cy)*e.p]:[e.cx,e.cy];
 
@@ -279,9 +296,11 @@ function updateFlow(){
 // ---------- player ----------
 const inp={stick:null,kb:null};
 const inputDir=()=>inp.stick||inp.kb;
-function enterPlayer(e,nx,ny){return !isWall(nx,ny);}
+const squeezeLimit=()=>camY+viewRows-0.7; // the lowest y the player can stand at; the screen's bottom edge pushes them up
+function enterPlayer(e,nx,ny){return !isWall(nx,ny)&&!(ny>e.cy&&ny>squeezeLimit());}
 function trappedAt(x,y){return ens.find(o=>o.state==='trapped'&&o.cx===x&&o.cy===y);}
 function arrivePlayer(p){
+  p.forced=false;
   if(p.cy===1){stageClear();return;}
   if(p.cy<bestRow){score+=(bestRow-p.cy)*10;bestRow=p.cy;}
   if(holes.has(idx(p.cx,p.cy))){
@@ -294,10 +313,44 @@ function arrivePlayer(p){
   }
   if(p.state==='walk'&&digReq>0)tryDig(); // dig right at the tile boundary, even while running
 }
+// Auto-aim: if a robot is within AIM_RANGE tiles (by walking distance), dig toward it
+// (the tile next to the player on the robot's way here); otherwise dig where the player faces.
+const AIM_RANGE=5;
+function aimDir(){
+  if(!flow||pl.moving)return null;
+  let best=null,bd=1e9;
+  for(const e of ens){
+    if(e.state!=='walk'||!e.active||e.cy<camY-1||e.cy>camY+viewRows+1)continue;
+    const d=flow[idx(e.cx,e.cy)];
+    if(d>=1&&d<=AIM_RANGE&&d<bd){bd=d;best=e;}
+  }
+  if(!best)return null;
+  let x=best.cx,y=best.cy,d=bd;
+  while(d>1){
+    let found=false;
+    for(const [dx,dy] of DIRS){
+      const ax=x+dx,ay=y+dy;
+      if(!isWall(ax,ay)&&flow[idx(ax,ay)]===d-1){x=ax;y=ay;found=true;break;}
+    }
+    if(!found)return null;
+    d--;
+  }
+  return [x-pl.cx,y-pl.cy];
+}
+// After filling a hole, further taps keep filling the other open holes around the player (for a short while)
+// instead of digging new ones.
+let lastFillAt=-99;
+function adjacentHole(aim){
+  const ds=aim?[aim].concat(DIRS):DIRS;
+  for(const d of ds){const x=pl.cx+d[0],y=pl.cy+d[1];if(holes.has(idx(x,y)))return {x,y,kind:'fill'};}
+  return null;
+}
 function digInfo(){
-  const tx=pl.cx+pl.fx, ty=pl.cy+pl.fy;
+  if(tNow-lastFillAt<2){const h=adjacentHole(aimDir());if(h)return h;}
+  const aim=aimDir(), fx=aim?aim[0]:pl.fx, fy=aim?aim[1]:pl.fy;
+  const tx=pl.cx+fx, ty=pl.cy+fy;
   if(isWall(tx,ty)){
-    if(tx>=1&&tx<=COLS-2&&ty>=2&&ty<=H-2&&ladders>0)return {x:tx,y:ty,kind:'ladder'};
+    if(tx>=1&&tx<=COLS-2&&ty>=3&&ty<=H-2&&ladders>0)return {x:tx,y:ty,kind:'ladder'};
     return null;
   }
   if(ty<=1||grid[idx(tx,ty)]===2)return null;
@@ -309,6 +362,7 @@ function tryDig(){
     if(digFresh){SFX.no();if(ladders<=0&&isWall(pl.cx+pl.fx,pl.cy+pl.fy))text(pl.cx+.5,pl.cy-.3,'ハシゴなし','#ff9a9a');}
     digFresh=false;return;
   }
+  pl.fx=t.x-pl.cx;pl.fy=t.y-pl.cy; // face the target while digging
   const k=idx(t.x,t.y);
   if(t.kind!=='dig'&&!digFresh)return; // holding the button only digs; filling / ladders need a new tap
   digFresh=false;
@@ -318,7 +372,7 @@ function tryDig(){
     return;
   }
   if(t.kind==='fill'){ // dig again = fill the hole
-    holes.delete(k);
+    holes.delete(k);lastFillAt=tNow;
     const e=trappedAt(t.x,t.y);
     if(e){killEnemy(e,300,'#fff');SFX.crush();}
     pl.state='dig';pl.t=0.2;SFX.dig();burst(t.x+.5,t.y+.5,'#a47a42',7);
@@ -354,7 +408,7 @@ function updPlayer(dt){
   if(d&&p.state!=='stuck'){p.fx=d[0];p.fy=d[1];}
   if(p.state==='walk'){
     if(!p.moving&&digReq>0)tryDig();
-    if(p.state==='walk')advance(p,dt,PSPD,inputDir,enterPlayer,arrivePlayer,true);
+    if(p.state==='walk')advance(p,dt,PSPD,inputDir,enterPlayer,arrivePlayer,!p.forced);
   }else if(p.state==='dig'){
     p.t-=dt;if(p.t<=0)p.state='walk';
   }else if(p.state==='stuck'){
@@ -394,11 +448,12 @@ function updEnemy(e,dt){
   if(e.state==='dead')return;
   if(!e.active){if(e.cy>=camY-4)e.active=true;else return;}
   if(e.state==='trapped'){e.t+=dt;if(e.t>=e.dur)escapeEnemy(e);return;}
-  const spd=Math.min(3.4,2.1+0.25*stage);
+  const spd=e.red?3.1:Math.min(2.6,1.6+0.15*stage);
   advance(e,dt,spd,chooseEnemy,enterEnemy,arriveEnemy,false);
 }
 function killEnemy(e,pts,col){
   e.state='dead';
+  if(e.red){if(pts)pts+=700;}else sendToQueue(e);
   if(pts){score+=pts;text(e.cx+.5,e.cy-.2,'+'+pts,'#ffe27a');}
   burst(e.cx+.5,e.cy+.5,col||'#fff',12);
 }
@@ -412,24 +467,60 @@ function updHoles(dt){
     if(pl.state==='stuck'&&pl.cx===h.x&&pl.cy===h.y)miss('あなにうまった！');
   }
 }
-const MAX_ROBOTS=5; // at most 5 robots on screen at once
-const alive=e=>e.state!=='dead'; // robots that wander off the top still count, so the screen never holds more than 5
-function spawnRobot(){
-  if(camY<3)return;
-  if(ens.filter(alive).length>=MAX_ROBOTS)return;
+// ---------- robot waiting line ----------
+// Defeated robots queue up in a strip at the top of the screen. After a delay the head of the line
+// slides over and drops into the maze; the rest close up behind it.
+const MAX_ROBOTS=5, SLOT0=0.75, SLOTW=0.95;
+let queue=[], entering=[];
+const respawnDelay=()=>Math.max(4,7.5-0.4*stage);
+function sendToQueue(e){
+  queue.push({t:respawnDelay(),delay:respawnDelay(),x:Math.max(0.5,Math.min(COLS-.5,e.cx+.5)),ph:Math.random()*6});
+}
+function pickSpawn(x0){
   const y=Math.floor(camY)-1;
-  if(y<2)return;
-  for(let i=0;i<20;i++){
-    const x=1+rnd(COLS-2);
+  if(y<2)return null;
+  const xs=[];for(let x=1;x<COLS-1;x++)xs.push(x);
+  xs.sort((a,b)=>Math.abs(a-x0)-Math.abs(b-x0)+(Math.random()-.5)*3);
+  for(const x of xs){
     if(isWall(x,y)||ens.some(o=>o.state!=='dead'&&o.cx===x&&o.cy===y))continue;
-    ens.push(mkEnt(x,y,true));return;
+    return {x,y};
   }
+  return null;
+}
+function spawnRedRobot(){ // once the forced scroll has stopped, ONE red robot comes up from the bottom of the screen
+  const y0=Math.min(H-3,Math.floor(camY+viewRows)+1);
+  for(let y=y0;y>=y0-4;y--){
+    const xs=[];for(let x=1;x<COLS-1;x++)if(!isWall(x,y)&&!ens.some(o=>o.state!=='dead'&&o.cx===x&&o.cy===y))xs.push(x);
+    if(xs.length){
+      const e=mkEnt(xs[rnd(xs.length)],y,true,true);ens.push(e);redDone=true;
+      banner.innerHTML='あかいロボが きた！<small>したから おいかけてくる！</small>';banner.hidden=false;bannerT=2;SFX.alarm();
+      return;
+    }
+  }
+}
+function updQueue(dt){
+  queue.forEach((q,i)=>{q.t-=dt;q.x+=(SLOT0+i*SLOTW-q.x)*Math.min(1,dt*7);});
+  const h=queue[0];
+  if(h&&h.t<=0&&camY>=3){
+    const sp=pickSpawn(1+rnd(COLS-2));
+    if(sp){queue.shift();entering.push({x:h.x,x1:sp.x+.5,p:0,ph:h.ph});SFX.pop();}
+  }
+  for(const en of entering){
+    en.p+=dt/0.4;en.x+=(en.x1-en.x)*Math.min(1,dt*10);
+    if(en.p>=1&&!en.done){
+      en.done=true;
+      const sp=pickSpawn(en.x1-.5);
+      if(sp){ens.push(mkEnt(sp.x,sp.y,true));burst(sp.x+.5,sp.y+1,'#fff',8);}
+      else queue.unshift({t:0.3,delay:respawnDelay(),x:en.x,ph:en.ph});
+    }
+  }
+  entering=entering.filter(e=>!e.done);
 }
 
 // ---------- miss / clear / flow of the game ----------
 function miss(msg){
   if(pl.state==='dead')return;
-  digReq=0;digFresh=false;digHeld=false;digHeldT=0;
+  digReq=0;digFresh=false;digHeld=false;digHeldT=0;digIds.clear();lastFillAt=-99;
   pl.state='dead';pl.t=0;pl.moving=false;lives--;st='dead';SFX.miss();updateHud();
   text(pl.cx+.5,pl.cy-.6,msg,'#ff9a9a');
   burst(pl.cx+.5,pl.cy+.5,'#ffd23c',14);
@@ -444,13 +535,34 @@ function respawn(){
     if(d<bd){bd=d;bx=x;by=y;}
   }
   Object.assign(pl,{cx:bx,cy:by,nx:bx,ny:by,p:0,moving:false,state:'walk',t:0,inv:2.5});
-  for(const e of ens)if(e.state!=='dead'&&Math.abs(e.cx-bx)+Math.abs(e.cy-by)<5&&(e.active||e.cy>=camY-1))killEnemy(e,0,'#fff');
+  for(const e of ens)if(e.state!=='dead'&&!e.red&&Math.abs(e.cx-bx)+Math.abs(e.cy-by)<5&&(e.active||e.cy>=camY-1))killEnemy(e,0,'#fff');
   flowKey=-1;
+  grace=RESPAWN_PAUSE; // the forced scroll holds still for a moment, then starts again
+}
+function placeGold(){ // 10 piles, one per horizontal band of the maze (spread from bottom to top)
+  golds=[];goldGot=0;
+  const R=(H-9)/2, lo=5, hi=2*R, n=hi-lo+1;
+  for(let i=0;i<GOLD_N;i++){
+    const y0=lo+Math.floor(i*n/GOLD_N), y1=lo+Math.floor((i+1)*n/GOLD_N)-1, c=[];
+    for(let y=y0;y<=y1;y++)for(let x=1;x<COLS-1;x++)if(grid[idx(x,y)]===0&&!golds.some(g=>g.x===x&&g.y===y))c.push([x,y]);
+    if(c.length){const p=c[rnd(c.length)];golds.push({x:p[0],y:p[1],got:false});}
+  }
+}
+function collectGold(){
+  const [px,py]=ePos(pl);
+  for(const g of golds){
+    if(g.got||Math.abs(g.x-px)>0.6||Math.abs(g.y-py)>0.6)continue;
+    g.got=true;goldGot++;score+=GOLD_PTS;SFX.coin();
+    text(g.x+.5,g.y-.2,'+'+GOLD_PTS,'#ffe27a');burst(g.x+.5,g.y+.5,'#ffd23a',10);
+  }
 }
 function loadStage(){
   genStage(stage);
+  queue=[];entering=[];redDone=false;bannerT=0;
+  placeGold();
+  for(let i=0;i<MAX_ROBOTS;i++)queue.push({t:2+i*1.4,delay:respawnDelay()+2+i*1.4,x:SLOT0+i*SLOTW,ph:Math.random()*6});
   pl={cx:startX,cy:startY,nx:startX,ny:startY,p:0,moving:false,dx:0,dy:-1,fx:0,fy:-1,state:'walk',t:0,inv:0};
-  camY=Math.max(0,H-viewRows); bestRow=pl.cy; spawnT=1.5; digReq=0; digFresh=false; digHeld=false; digHeldT=0; ladders=3;
+  camY=Math.max(0,H-viewRows); bestRow=pl.cy; digReq=0; digFresh=false; digHeld=false; digHeldT=0; ladders=3;
   st='ready'; readyT=1.4; ov.hidden=true;
   banner.innerHTML='STAGE '+stage+'<small>つぶされるまえに うえの ゴールへ！</small>'; banner.hidden=false;
   SFX.go(); updateHud();
@@ -458,8 +570,8 @@ function loadStage(){
 function stageClear(){
   if(st!=='play')return;
   st='clear'; SFX.clear();
-  const bonus=1000+lives*500; score+=bonus; saveBest();
-  card('<h2>STAGE '+stage+' CLEAR!</h2><p class="big">ボーナス +'+bonus+'</p><p>SCORE '+score+'</p>'+
+  const bonus=1000+lives*500, perfect=goldGot>=golds.length&&golds.length>0; score+=bonus+(perfect?PERFECT_PTS:0); saveBest();
+  card('<h2>STAGE '+stage+' CLEAR!</h2><p class="big">ボーナス +'+bonus+'</p><p>金 '+goldGot+' / '+golds.length+'</p>'+(perfect?'<p class="big">PERFECT! +'+PERFECT_PTS+'</p>':'')+'<p>SCORE '+score+'</p>'+
     '<button class="sp-btn" data-act="next">つぎのステージへ</button>');
   updateHud();
 }
@@ -508,13 +620,24 @@ function update(dt){
     if(pl.cy-camY<viewRows*0.4)sp*=2.4;
     camY=Math.max(0,camY-sp*dt);
   }
-  spawnT-=dt;
-  if(spawnT<=0){spawnT=Math.max(0.7,1.5-0.1*stage);spawnRobot();}
-  for(const e of ens)if(e.state!=='dead'&&e.cy>camY+viewRows+1)e.state='dead';
+  updQueue(dt);
+  if(bannerT>0){bannerT-=dt;if(bannerT<=0)banner.hidden=true;}
+  if(camY<=0&&!redDone)spawnRedRobot();
+  if(pl.state!=='dead')collectGold();
+  for(const e of ens)if(e.state!=='dead'&&!e.red&&e.cy>camY+viewRows+1){e.state='dead';sendToQueue(e);}
   if(ens.length>120)ens=ens.filter(e=>e.state!=='dead');
   // collisions
   const [px,py]=ePos(pl);
-  if(py+0.7>camY+viewRows&&pl.state!=='dead'){miss('おしつぶされた！');return;}
+  // forced scroll: the bottom edge pushes the player up; only getting squeezed against a wall is a miss
+  if(py>squeezeLimit()&&pl.state!=='dead'){
+    if(pl.state==='stuck'){miss('つぶされた！');return;}
+    if(pl.state==='walk'){
+      if(pl.moving){
+        if(pl.ny>pl.cy&&!pl.forced){[pl.cx,pl.nx]=[pl.nx,pl.cx];[pl.cy,pl.ny]=[pl.ny,pl.cy];pl.p=1-pl.p;pl.dx=-pl.dx;pl.dy=-pl.dy;}
+      }else if(isWall(pl.cx,pl.cy-1)){miss('かべに はさまれた！');return;}
+      else{pl.nx=pl.cx;pl.ny=pl.cy-1;pl.dx=0;pl.dy=-1;pl.moving=true;pl.p=0;pl.forced=true;}
+    }
+  }
   if(pl.inv<=0)for(const e of ens){
     if(e.state!=='walk'||!e.active)continue;
     const [ex,ey]=ePos(e);
@@ -526,7 +649,7 @@ function update(dt){
 // ---------- HUD ----------
 function updateHud(){
   $('vStage').textContent=stage;
-  $('vScore').textContent=score;$('vLad').textContent='×'+ladders;
+  $('vScore').textContent=score;$('vLad').textContent='×'+ladders;$('vGold').textContent=goldGot+'/'+golds.length;
   let h='';for(let i=0;i<3;i++)h+='<i class="'+(i<lives?'':'off')+'"></i>';
   $('vLife').innerHTML=h;
   if(pl&&H){$('prog').style.width=Math.max(0,Math.min(100,(startY-pl.cy)/(startY-1)*100))+'%';}
@@ -555,7 +678,7 @@ function drawTiles(){
       const hs=((x*73856093)^(y*19349663))>>>0, grass=(y>=H-7)||hs%6===0;
       ctx.fillStyle=grass?((x+y)&1?'#a4e24e':'#97d842'):((x+y)&1?'#fde28f':'#f7d778');ctx.fillRect(px,py,ww,hh);
       if(grass&&hs%3===0){ctx.fillStyle='#6fb82c';const gx=px+(hs>>3)%Math.max(1,ww-8),gy=py+(hs>>7)%Math.max(1,hh-8);ctx.fillRect(gx,gy+3,2,5);ctx.fillRect(gx+3,gy,2,8);ctx.fillRect(gx+6,gy+3,2,5);}
-      if(y===1){ctx.fillStyle=(x+y)&1?'#ffffffee':'#2f7fe0cc';ctx.fillRect(px,py,ww,hh);}
+      if(y===1){ctx.fillStyle=(x+y)&1?'#ffffffee':'#2f7fe0cc';ctx.fillRect(px,py,ww,hh);ctx.strokeStyle='#ffd84a';ctx.lineWidth=Math.max(2,S*.08);ctx.strokeRect(px+2,py+2,ww-4,hh-4);ctx.font=Math.round(S*.3)+'px DotGothic16, sans-serif';ctx.textAlign='center';ctx.lineWidth=Math.max(2,S*.08);ctx.strokeStyle='#14457f';ctx.strokeText('GOAL',px+ww/2,py+hh*.62);ctx.fillStyle='#fff';ctx.fillText('GOAL',px+ww/2,py+hh*.62);}
       if(isWall(x-1,y)){ctx.fillStyle='rgba(60,40,0,.16)';ctx.fillRect(px,py,Math.round(S*.18),hh);}
       if(isWall(x,y-1)){ctx.fillStyle='rgba(60,40,0,.2)';ctx.fillRect(px,py,ww,Math.round(S*.16));}
       if(cell===2){
@@ -564,6 +687,17 @@ function drawTiles(){
         for(let i=0;i<4;i++)ctx.fillRect(px+Math.round(ww*.2),py+Math.round(hh*(.1+i*.25)),Math.round(ww*.6),Math.max(2,Math.round(hh*.08)));
       }
     }
+  }
+}
+function drawGold(){
+  const u=S;
+  for(const g of golds){
+    if(g.got||g.y<camY-1||g.y>camY+viewRows+1)continue;
+    const X=sxp(g.x+.5), Y=sy(g.y+.62);
+    rect(X-u*.34,Y+u*.1,u*.68,u*.1,'#0003');
+    rect(X-u*.32,Y-u*.06,u*.64,u*.18,'#c98f00');rect(X-u*.25,Y-u*.2,u*.5,u*.16,'#e6a800');rect(X-u*.16,Y-u*.32,u*.32,u*.14,'#ffd23a');
+    rect(X-u*.12,Y-u*.3,u*.1,u*.05,'#fff3a0');rect(X-u*.2,Y-u*.18,u*.06,u*.05,'#fff3a0');rect(X+u*.1,Y-u*.04,u*.08,u*.05,'#ffe27a');
+    if(Math.floor(tNow*3+g.x+g.y)%4===0){const sx=X+u*.2,sy2=Y-u*.36;rect(sx-u*.02,sy2-u*.1,u*.04,u*.2,'#fff');rect(sx-u*.1,sy2-u*.02,u*.2,u*.04,'#fff');}
   }
 }
 function drawHoles(){
@@ -578,27 +712,28 @@ function drawHoles(){
   }
 }
 function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));}
-function drawRobot(e){
-  const [x,y]=ePos(e), X=sxp(x+.5), Y=sy(y+.38), trapped=e.state==='trapped';
+function drawRobot(e,ov){
+  const [x,y]=ov?[0,0]:ePos(e), X=ov?ov.X:sxp(x+.5), Y=ov?ov.Y:sy(y+.38), trapped=e.state==='trapped';
   ctx.save();
   if(trapped){
     ctx.beginPath();ctx.rect(X-S/2,Y-S/2,S,S*.62);ctx.clip();
     ctx.translate(Math.sin(tNow*30)*S*.02,S*.26);
   }
   ctx.translate(X,Y);
-  const u=S, ph=e.moving?Math.sin(tNow*16+e.ph):0;
+  const R_=e.red, cW=R_?'#ff8a8a':'#ffffff', cB=R_?'#ff6a6a':'#f4f6fb', cA=R_?'#e04a4a':'#c9cfe2', cO=R_?'#b83232':'#9aa3bd';
+  const u=S*(ov?ov.s:1), ph=e.moving?Math.sin(tNow*16+e.ph):0;
   rect(-u*.26,u*.36,u*.52,u*.1,'#0003');
-  rect(-u*.16,u*.22+ph*u*.03,u*.1,u*.16,'#9aa3bd');rect(u*.06,u*.22-ph*u*.03,u*.1,u*.16,'#9aa3bd');
-  rect(-u*.23,-u*.06,u*.46,u*.3,'#9aa3bd');rect(-u*.2,-u*.08,u*.4,u*.28,'#f4f6fb');
-  rect(-u*.31,-u*.04+ph*u*.03,u*.08,u*.2,'#c9cfe2');rect(u*.23,-u*.04-ph*u*.03,u*.08,u*.2,'#c9cfe2');
-  rect(-u*.12,u*.02,u*.24,u*.06,'#c9cfe2');
-  rect(-u*.25,-u*.42,u*.5,u*.36,'#9aa3bd');rect(-u*.22,-u*.4,u*.44,u*.32,'#ffffff');
+  rect(-u*.16,u*.22+ph*u*.03,u*.1,u*.16,cO);rect(u*.06,u*.22-ph*u*.03,u*.1,u*.16,cO);
+  rect(-u*.23,-u*.06,u*.46,u*.3,cO);rect(-u*.2,-u*.08,u*.4,u*.28,cB);
+  rect(-u*.31,-u*.04+ph*u*.03,u*.08,u*.2,cA);rect(u*.23,-u*.04-ph*u*.03,u*.08,u*.2,cA);
+  rect(-u*.12,u*.02,u*.24,u*.06,cA);
+  rect(-u*.25,-u*.42,u*.5,u*.36,cO);rect(-u*.22,-u*.4,u*.44,u*.32,cW);
   rect(-u*.17,-u*.33,u*.34,u*.17,'#1d2340');
-  const ec=trapped?'#7ad':(e.active?'#ff4a4a':'#667');
+  const ec=e.eye||(trapped?'#7ad':(R_?'#ffe94a':(e.active?'#ff4a4a':'#667')));
   if(trapped){ctx.strokeStyle=ec;ctx.lineWidth=Math.max(1.5,u*.04);ctx.beginPath();
     for(const ex of[-.09,.09]){ctx.moveTo(u*(ex-.04),-u*.31);ctx.lineTo(u*(ex+.04),-u*.19);ctx.moveTo(u*(ex+.04),-u*.31);ctx.lineTo(u*(ex-.04),-u*.19);}ctx.stroke();}
   else{rect(-u*.13,-u*.3,u*.09,u*.1,ec);rect(u*.04,-u*.3,u*.09,u*.1,ec);}
-  rect(-u*.02,-u*.52,u*.04,u*.12,'#9aa3bd');rect(-u*.06,-u*.58,u*.12,u*.1,e.active?'#ff4a4a':'#888');
+  rect(-u*.02,-u*.52,u*.04,u*.12,cO);rect(-u*.06,-u*.58,u*.12,u*.1,e.active?'#ff4a4a':'#888');
   ctx.restore();
   if(trapped){ // dizzy stars
     ctx.fillStyle='#ffe27a';
@@ -643,10 +778,31 @@ function drawDigMark(){
   ctx.lineWidth=Math.max(1.5,S*.05);ctx.setLineDash([S*.2,S*.15]);
   ctx.strokeRect(px+2,py+2,w-4,h-4);ctx.setLineDash([]);
 }
+function drawQueueBand(){
+  if(!pl)return;
+  const bh=Math.round(S*1.05), cw=cv.width;
+  ctx.fillStyle='rgba(16,44,96,.9)';ctx.fillRect(0,0,cw,bh);
+  ctx.fillStyle='#ffd84a';ctx.fillRect(0,bh-3,cw,3);
+  ctx.fillStyle='rgba(255,255,255,.12)';
+  for(let i=0;i<MAX_ROBOTS;i++)ctx.fillRect(sxp(SLOT0+i*SLOTW)-Math.round(S*.4),Math.round(bh*.12),Math.round(S*.8),Math.round(bh*.76));
+  ctx.font=Math.round(S*.3)+'px DotGothic16, sans-serif';ctx.textAlign='right';ctx.fillStyle='#bfe4ff';
+  ctx.fillText('ロボ待機 ▶',cw-ox-6,Math.round(bh*.6));
+  const cy=Math.round(bh*.55);
+  queue.forEach((q,i)=>{
+    const soon=i===0&&q.t<0.9, X=sxp(q.x), bob=soon?Math.abs(Math.sin(tNow*14))*S*.12:0;
+    drawRobot({state:'walk',moving:false,active:true,ph:q.ph,eye:soon?(Math.floor(tNow*10)%2?'#ff4a4a':'#fff'):'#ffd84a'},{X:X,Y:cy-bob,s:.68});
+    const r=Math.max(0,Math.min(1,1-q.t/q.delay)), bw=Math.round(S*.7), bx=X-Math.round(bw/2), by=bh-Math.round(S*.2);
+    ctx.fillStyle='#0008';ctx.fillRect(bx,by,bw,Math.max(3,Math.round(S*.09)));
+    ctx.fillStyle=soon?'#ff9a4a':'#7dff6a';ctx.fillRect(bx,by,Math.round(bw*r),Math.max(3,Math.round(S*.09)));
+  });
+  for(const en of entering){
+    drawRobot({state:'walk',moving:true,active:true,ph:en.ph,eye:'#ff4a4a'},{X:sxp(en.x),Y:cy+Math.sin(Math.min(1,en.p)*3.14)*S*-.18+en.p*S*.4,s:.68});
+  }
+}
 function draw(){
   ctx.fillStyle='#2d7a2d';ctx.fillRect(0,0,cv.width,cv.height);
   if(!grid)return;
-  drawTiles();drawHoles();drawDigMark();
+  drawTiles();drawGold();drawHoles();drawDigMark();
   const objs=ens.filter(e=>e.state!=='dead'&&e.cy>=camY-3&&e.cy<=camY+viewRows+2).map(e=>({y:ePos(e)[1],f:()=>drawRobot(e)}));
   if(pl)objs.push({y:ePos(pl)[1]+0.01,f:drawPlayer});
   objs.sort((a,b)=>a.y-b.y);
@@ -657,6 +813,7 @@ function draw(){
     while(oi<objs.length&&objs[oi].y<y+0.5){objs[oi].f();oi++;}
   }
   while(oi<objs.length){objs[oi].f();oi++;}
+  drawQueueBand();
   for(const p of fxP){ctx.globalAlpha=Math.max(0,p.life*2);ctx.fillStyle=p.col;ctx.fillRect(sxp(p.x),sy(p.y),Math.max(2,S*.12),Math.max(2,S*.12));}
   ctx.globalAlpha=1;
   ctx.font=Math.round(S*.5)+'px DotGothic16, sans-serif';ctx.textAlign='center';ctx.lineWidth=Math.max(2,S*.1);ctx.lineJoin='round';
@@ -680,8 +837,9 @@ function titleCard(){
   card('<p class="tag">DIG &amp; STOMP ACTION</p><h1>ホリホリ<br>ロボバスター</h1>'+
     '<div class="rules">'+
     '<div><em>▲</em><span>画面は<b>強制スクロール</b>。下に押しつぶされるまえに、上のゴールをめざせ！</span></div>'+
-    '<div><em>●</em><span><b>ホルボタン</b>で目の前の地面に穴をほる。5秒ほどでふさがる。もう一度ほると埋まる</span></div>'+
+    '<div><em>●</em><span><b>ホルボタン</b>（スティック以外の画面のどこをタップしてもOK）で穴をほる。近く（歩いて5マス以内）にロボがいれば<b>ロボの来る方向</b>に自動でほり、いなければ向いている方向にほる（壁ならハシゴ）。5秒ほどでふさがる。もう一度ほると埋まる</span></div>'+
     '<div><em>●</em><span>白いロボを穴に落とそう。穴の中のロボの<b>頭をふんで</b>わたれる。ふさがるとロボはつぶれる</span></div>'+
+    '<div><em>●</em><span>迷路には<b>金塊の山が10か所</b>。ぜんぶ取るとパーフェクトボーナス！</span></div>'+
     '<div><em>●</em><span>自分も穴に落ちる！ロボにさわる・押しつぶされるとミス。<b>ミスは3回まで</b></span></div>'+
     '</div><p>BEST '+best+'</p><button class="sp-btn" data-act="start">スタート</button>'+COPY);
 }
@@ -733,9 +891,22 @@ stick.addEventListener('pointermove',e=>{if(e.pointerId===stickId)stickMove(e);}
 stick.addEventListener('pointerup',e=>{if(e.pointerId===stickId)stickEnd();});
 stick.addEventListener('pointercancel',e=>{if(e.pointerId===stickId)stickEnd();});
 const dig=$('digBtn');
-dig.addEventListener('pointerdown',e=>{e.preventDefault();dig.setPointerCapture(e.pointerId);dig.classList.add('on');initAudio();if(st!=='play')return;digHeld=true;digFresh=true;digReq=0.4;});
-const digEnd=()=>{digHeld=false;dig.classList.remove('on');};
-dig.addEventListener('pointerup',digEnd);dig.addEventListener('pointercancel',digEnd);
+// One-handed play: a tap anywhere outside the stick works like the dig button
+function digPress(id){
+  initAudio();
+  if(st!=='play')return;
+  digIds.add(id);digHeld=true;digFresh=true;digReq=0.4;dig.classList.add('on');
+}
+function digRelease(id){
+  if(!digIds.delete(id))return;
+  if(digIds.size===0){digHeld=false;dig.classList.remove('on');}
+}
+document.addEventListener('pointerdown',e=>{
+  if(e.target.closest('#stick,#pauseBtn,#overlay,button'))return;
+  e.preventDefault();digPress(e.pointerId);
+});
+document.addEventListener('pointerup',e=>digRelease(e.pointerId));
+document.addEventListener('pointercancel',e=>digRelease(e.pointerId));
 const KD={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0],W:[0,-1],S:[0,1],A:[-1,0],D:[1,0]};
 const kStack=[];
 addEventListener('keydown',e=>{
@@ -757,7 +928,7 @@ function frame(t){
 }
 resize();genStage(1);camY=Math.max(0,H-viewRows);updateHud();titleCard();
 requestAnimationFrame(frame);
-window.__dbg={grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
+window.__dbg={setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
 })();
 </script>
 </body>
