@@ -335,7 +335,16 @@ function aimDir(){
   }
   return [x-pl.cx,y-pl.cy];
 }
+// After filling a hole, further taps keep filling the other open holes around the player (for a short while)
+// instead of digging new ones.
+let lastFillAt=-99;
+function adjacentHole(aim){
+  const ds=aim?[aim].concat(DIRS):DIRS;
+  for(const d of ds){const x=pl.cx+d[0],y=pl.cy+d[1];if(holes.has(idx(x,y)))return {x,y,kind:'fill'};}
+  return null;
+}
 function digInfo(){
+  if(tNow-lastFillAt<2){const h=adjacentHole(aimDir());if(h)return h;}
   const aim=aimDir(), fx=aim?aim[0]:pl.fx, fy=aim?aim[1]:pl.fy;
   const tx=pl.cx+fx, ty=pl.cy+fy;
   if(isWall(tx,ty)){
@@ -361,7 +370,7 @@ function tryDig(){
     return;
   }
   if(t.kind==='fill'){ // dig again = fill the hole
-    holes.delete(k);
+    holes.delete(k);lastFillAt=tNow;
     const e=trappedAt(t.x,t.y);
     if(e){killEnemy(e,300,'#fff');SFX.crush();}
     pl.state='dig';pl.t=0.2;SFX.dig();burst(t.x+.5,t.y+.5,'#a47a42',7);
@@ -509,7 +518,7 @@ function updQueue(dt){
 // ---------- miss / clear / flow of the game ----------
 function miss(msg){
   if(pl.state==='dead')return;
-  digReq=0;digFresh=false;digHeld=false;digHeldT=0;digIds.clear();
+  digReq=0;digFresh=false;digHeld=false;digHeldT=0;digIds.clear();lastFillAt=-99;
   pl.state='dead';pl.t=0;pl.moving=false;lives--;st='dead';SFX.miss();updateHud();
   text(pl.cx+.5,pl.cy-.6,msg,'#ff9a9a');
   burst(pl.cx+.5,pl.cy+.5,'#ffd23c',14);
