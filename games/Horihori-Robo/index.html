@@ -296,9 +296,11 @@ function updateFlow(){
 // ---------- player ----------
 const inp={stick:null,kb:null};
 const inputDir=()=>inp.stick||inp.kb;
-function enterPlayer(e,nx,ny){return !isWall(nx,ny);}
+const squeezeLimit=()=>camY+viewRows-0.7; // the lowest y the player can stand at; the screen's bottom edge pushes them up
+function enterPlayer(e,nx,ny){return !isWall(nx,ny)&&!(ny>e.cy&&ny>squeezeLimit());}
 function trappedAt(x,y){return ens.find(o=>o.state==='trapped'&&o.cx===x&&o.cy===y);}
 function arrivePlayer(p){
+  p.forced=false;
   if(p.cy===1){stageClear();return;}
   if(p.cy<bestRow){score+=(bestRow-p.cy)*10;bestRow=p.cy;}
   if(holes.has(idx(p.cx,p.cy))){
@@ -406,7 +408,7 @@ function updPlayer(dt){
   if(d&&p.state!=='stuck'){p.fx=d[0];p.fy=d[1];}
   if(p.state==='walk'){
     if(!p.moving&&digReq>0)tryDig();
-    if(p.state==='walk')advance(p,dt,PSPD,inputDir,enterPlayer,arrivePlayer,true);
+    if(p.state==='walk')advance(p,dt,PSPD,inputDir,enterPlayer,arrivePlayer,!p.forced);
   }else if(p.state==='dig'){
     p.t-=dt;if(p.t<=0)p.state='walk';
   }else if(p.state==='stuck'){
@@ -626,7 +628,16 @@ function update(dt){
   if(ens.length>120)ens=ens.filter(e=>e.state!=='dead');
   // collisions
   const [px,py]=ePos(pl);
-  if(py+0.7>camY+viewRows&&pl.state!=='dead'){miss('おしつぶされた！');return;}
+  // forced scroll: the bottom edge pushes the player up; only getting squeezed against a wall is a miss
+  if(py>squeezeLimit()&&pl.state!=='dead'){
+    if(pl.state==='stuck'){miss('つぶされた！');return;}
+    if(pl.state==='walk'){
+      if(pl.moving){
+        if(pl.ny>pl.cy&&!pl.forced){[pl.cx,pl.nx]=[pl.nx,pl.cx];[pl.cy,pl.ny]=[pl.ny,pl.cy];pl.p=1-pl.p;pl.dx=-pl.dx;pl.dy=-pl.dy;}
+      }else if(isWall(pl.cx,pl.cy-1)){miss('かべに はさまれた！');return;}
+      else{pl.nx=pl.cx;pl.ny=pl.cy-1;pl.dx=0;pl.dy=-1;pl.moving=true;pl.p=0;pl.forced=true;}
+    }
+  }
   if(pl.inv<=0)for(const e of ens){
     if(e.state!=='walk'||!e.active)continue;
     const [ex,ey]=ePos(e);
