@@ -53,6 +53,22 @@ canvas{display:block}
 #cv{position:absolute;inset:0;width:100%;height:100%}
 #banner{position:absolute;left:0;right:0;top:32%;text-align:center;pointer-events:none;font-size:34px;color:#fff6a0;
   text-shadow:2px 2px 0 #7a2a00,-2px -2px 0 #7a2a00,2px -2px 0 #7a2a00,-2px 2px 0 #7a2a00,0 4px 0 #7a2a00;line-height:1.4}
+#redAlert{position:absolute;left:50%;top:44%;width:min(94%,520px);height:auto;pointer-events:none;z-index:2;
+  transform:translate(-50%,-50%);filter:drop-shadow(0 6px 10px #0009)}
+#redAlert.show{animation:redIn 2.6s ease-out forwards}
+@keyframes redIn{
+  0%{transform:translate(-50%,-50%) scale(.35);opacity:0}
+  12%{transform:translate(-50%,-50%) scale(1.14);opacity:1}
+  20%{transform:translate(-50%,-50%) scale(.97)}
+  27%{transform:translate(-50%,-50%) scale(1)}
+  34%{transform:translate(-47.5%,-50%) scale(1)}
+  38%{transform:translate(-52.5%,-50%) scale(1)}
+  42%{transform:translate(-48.5%,-50%) scale(1)}
+  46%{transform:translate(-50%,-50%) scale(1)}
+  80%{transform:translate(-50%,-50%) scale(1);opacity:1}
+  100%{transform:translate(-50%,-50%) scale(1.06);opacity:0}
+}
+@media (prefers-reduced-motion:reduce){#redAlert.show{animation:redFade 2.6s linear forwards}@keyframes redFade{0%{opacity:0}10%,80%{opacity:1}100%{opacity:0}}}
 #banner small{display:block;font-size:14px;color:#fff;text-shadow:1px 1px 0 #7a2a00,-1px -1px 0 #7a2a00,1px -1px 0 #7a2a00,-1px 1px 0 #7a2a00}
 #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(20,70,140,.9);
   padding:12px;box-sizing:border-box}
@@ -110,6 +126,7 @@ canvas{display:block}
   <div id="stage">
     <canvas id="cv"></canvas>
     <div id="banner" hidden></div>
+    <img id="redAlert" src="redalert.png" alt="あかいロボが きた！" hidden>
     <div id="overlay"></div>
   </div>
   <div id="ctrl">
@@ -238,7 +255,7 @@ try{best=+localStorage.getItem('horihori_best')||0;}catch(e){}
 let grid=null, H=0, startX=5, startY=0, holes=new Map(), ens=[], pl=null, camY=0, camSpd=1;
 let grace=0, readyT=0, bestRow=0, flow=null, flowKey=-1, tNow=0, digReq=0, digHeld=false, digFresh=false, digHeldT=0;
 const digIds=new Set(); // pointers currently pressing 'dig' (the button, or any tap outside the stick)
-let exitX=1, redDone=false, bannerT=0, fxP=[], fxT=[], ladders=3, golds=[], goldGot=0;
+let exitX=1, redDone=false, bannerT=0, redT=0, fxP=[], fxT=[], ladders=3, golds=[], goldGot=0;
 const RESPAWN_PAUSE=2.0, GOLD_N=10, GOLD_PTS=300, PERFECT_PTS=3000;
 const idx=(x,y)=>y*COLS+x;
 const isWall=(x,y)=>x<0||x>=COLS||y<0||y>=H||grid[idx(x,y)]===1;
@@ -546,13 +563,18 @@ function pickSpawn(x0){
   }
   return null;
 }
+const redAlert=$('redAlert');
+function showRedAlert(){ // the cut-in picture: pops in, shakes, fades out (2.6s)
+  redAlert.hidden=false;redAlert.classList.remove('show');void redAlert.offsetWidth;redAlert.classList.add('show');redT=2.6;
+}
+function hideRedAlert(){redAlert.hidden=true;redAlert.classList.remove('show');redT=0;}
 function spawnRedRobot(){ // once the forced scroll has stopped, ONE red robot comes up from the bottom of the screen
   const y0=Math.min(H-3,Math.floor(camY+viewRows)+1);
   for(let y=y0;y>=y0-4;y--){
     const xs=[];for(let x=1;x<COLS-1;x++)if(!isWall(x,y)&&!ens.some(o=>o.state!=='dead'&&o.cx===x&&o.cy===y))xs.push(x);
     if(xs.length){
       const e=mkEnt(xs[rnd(xs.length)],y,true,true);ens.push(e);redDone=true;
-      banner.innerHTML='あかいロボが きた！<small>したから おいかけてくる！</small>';banner.hidden=false;bannerT=2;SFX.spawn();SFX.alarm();
+      showRedAlert();SFX.spawn();SFX.alarm();
       return;
     }
   }
@@ -617,7 +639,7 @@ function collectGold(){
 }
 function loadStage(){
   genStage(stage);
-  queue=[];entering=[];redDone=false;bannerT=0;
+  queue=[];entering=[];redDone=false;bannerT=0;hideRedAlert();
   placeGold();
   for(let i=0;i<MAX_ROBOTS;i++)queue.push({t:2+i*1.4,delay:respawnDelay()+2+i*1.4,x:SLOT0+i*SLOTW,ph:Math.random()*6});
   pl={cx:startX,cy:startY,nx:startX,ny:startY,p:0,moving:false,dx:0,dy:-1,fx:0,fy:-1,state:'walk',t:0,inv:0};
@@ -681,6 +703,7 @@ function update(dt){
   }
   updQueue(dt);
   if(bannerT>0){bannerT-=dt;if(bannerT<=0)banner.hidden=true;}
+  if(redT>0){redT-=dt;if(redT<=0)hideRedAlert();}
   if(camY<=0&&!redDone)spawnRedRobot();
   if(pl.state!=='dead')collectGold();
   for(const e of ens)if(e.state!=='dead'&&!e.red&&e.cy>camY+viewRows+1){e.state='dead';sendToQueue(e);}
@@ -841,7 +864,8 @@ function drawDigMark(){
 // rows: 0 front idle (0-3) + back (4-7) | 1 walk right | 2 walk left | 3 ladder climb | 4 dig (0 ready, 1-7 dig) | 5 down (0-2), overheat (3), cheer (4-5)
 const SPR=128;
 let SHEETS=null;
-function loadSheets(){ // robo.png (white), hero.png (yellow), boss.png (red): the colour variants are made ahead of time, so nothing reads pixels at run time
+function loadSheets(){
+  new Image().src='redalert.png'; // preload the cut-in picture // robo.png (white), hero.png (yellow), boss.png (red): the colour variants are made ahead of time, so nothing reads pixels at run time
   const names={white:'robo.png',hero:'hero.png',boss:'boss.png'}, out={};
   let left=3;
   for(const k in names){
@@ -964,7 +988,7 @@ function draw(){
 // ---------- overlay cards ----------
 function card(html){ov.classList.remove('is-title');ov.innerHTML='<div class="card scrollable">'+html+'</div>';ov.hidden=false;}
 function titleCard(){
-  st='title';banner.hidden=true;
+  st='title';banner.hidden=true;hideRedAlert();
   card('<div class="logo" role="img" aria-label="ホリホリ ロボバスター"></div><div class="pad">'+
     '<p>BEST '+best+'</p><button class="sp-btn" data-act="start">スタート</button>'+
     '<div class="rules">'+
