@@ -3,7 +3,7 @@
 スマホ縦画面向けの縦スクロール穴ほりアクション（仮題。名前・フォルダ名は変えてよい）。公開URL: `https://yoshida-std.github.io/website/games/Horihori-Robo/`
 リポジトリ全体の作業ルール（ブランチ・PR・確認方法・コピーライト表記）はルートの `CLAUDE.md` を参照。
 
-プッシュ前の確認用 Artifact: `https://claude.ai/artifact/1JWDnmdpVxVJC3r7oNmZKN`（変更のたびにこの URL を更新する。`index.html` と、`files` で `robo.png` `hero.png` `boss.png` `bgm.mp3` `dig.wav` `spawn.wav` `gold.wav` `clear.wav` `miss.wav` `logo.jpg` `redalert.png` を同じパスに載せる。`Artifact` ツールが使えないときは `publish_files`（`mcp__claude-artifacts`）で、リポジトリのファイルをそのまま公開する）
+プッシュ前の確認用 Artifact: `https://claude.ai/artifact/1JWDnmdpVxVJC3r7oNmZKN`（変更のたびにこの URL を更新する。`index.html` と、`files` で `robo.png` `hero.png` `boss.png` `bgm.mp3` `dig.wav` `spawn.wav` `gold.wav` `clear.wav` `miss.wav` `logo.jpg` `redalert.png` `ogp.jpg` `favicon.ico` `favicon-32.png` `apple-touch-icon.png` `icon-192.png` `icon-512.png` `icon-maskable-512.png` `manifest.webmanifest` を同じパスに載せる。`Artifact` ツールが使えないときは `publish_files`（`mcp__claude-artifacts`）で、リポジトリのファイルをそのまま公開する）
 
 `index.html` と、キャラのスプライトシート `robo.png`（白いロボ。1024×768、128px のコマ 8×6）・`hero.png`（主人公＝黄色）・`boss.png`（赤いロボ）と、BGM `bgm.mp3`、穴を掘る音 `dig.wav`、ロボが配置される音 `spawn.wav`、金塊を取る音 `gold.wav`、ステージクリアのジングル `clear.wav`、自機がやられた音 `miss.wav`、タイトルロゴ `logo.jpg`、赤いロボ登場の演出画像 `redalert.png` で完結（ほかの効果音は WebAudio の合成）。`games.json`（ポートフォリオの一覧）にはまだ載せていない。
 
@@ -36,6 +36,9 @@
   - クリアに万歳の主人公、ゲームオーバーにバツ目の主人公を CSS（`.spr`、`--hero-sheet` `--boss-sheet`）で出す
 - **タイトルロゴ** `logo.jpg`（ユーザー提供のロゴ。元は 2576×1438、1400×782 に縮小、218KB）。タイトル画面の上に大きく出す（`.logo`。高さ `clamp(210px,40vh,340px)`、`background-size:auto 112%` で中央を拡大して左右は切れてよい）。タイトルのときだけ `#overlay.is-title`（背景をロゴの地の濃い紺 `#0a1630` にそろえ、余白なし）。ロゴの下に BEST・スタートボタン・ルールを置く。ポートフォリオの一覧のサムネイルや OGP にも使える画像（まだ使っていない）
   - 画像が読めなかったときは、従来の矩形描画（`drawRobotVec` `drawPlayerVec`）で出る
+- **ホーム画面のアイコン・共有カード**（タイトルロゴの元画像 2576×1438 から作成）: `index.html` の `<head>` に、ファビコン（`favicon.ico` 16/32/48、`favicon-32.png`）、iOS のホーム画面用 `apple-touch-icon.png`（180）、Android 用 `manifest.webmanifest`（`icon-192.png` `icon-512.png`、`icon-maskable-512.png`。`display: standalone`、`orientation: portrait`、背景とテーマ色は `#0a1630`）、`og:*`・`twitter:card`（`ogp.jpg` 1200×630。画像は SNS が相対パスを読めないので `https://yoshida-std.github.io/website/games/Horihori-Robo/ogp.jpg` の絶対URL）、`apple-mobile-web-app-*`（ホーム画面から開くと全画面。タイトル「ホリホリ」）を入れてある。
+  - アイコンの絵は、ロゴの中央（黄色い主人公・赤い大型ロボ・ドリル。タイトル文字は入れない）を正方形に切り出したもの。ファビコンだけは小さくても読めるよう、主人公の顔とドリルにしぼって切り出した。`icon-maskable-512.png` は、丸などに切り抜かれても絵が欠けないよう、紺の地（`#0a1630`）に絵を76%に縮めて置いた。512と192、maskable は256色に減色（115KB / 24KB / 75KB）
+  - ホーム画面から開くとタイトルのまま始まる（ブラウザの枠なし）。オフライン対応（Service Worker）はまだない
 - **BGM** `bgm.mp3`（ユーザー提供。PANICPUMPKIN の曲「ちんけなくらし」、約2分25秒、2.9MB。コピーライト表記の PANICPUMPKIN はこの曲）。音量は小さめ（`BGM_VOL`=0.2。効果音より控えめ）。`fetch` → `decodeAudioData` → `AudioBufferSource` のループ（iOS でも音量が効くように WebAudio）。末尾の約1.5秒の無音はループに含めない（`BGM_LEN`=143.7）。ゲーム中だけ鳴る: スタート（`newGame`）で頭から、ポーズ・画面を離れる・ステージクリアで一時停止（位置を覚えて続きから）、つぎのステージ・つづけるで再開、ゲームオーバー・タイトルへで止める（頭に戻す）。ポーズ画面の「おと」OFF では鳴らさない
 - **穴を掘る音** `dig.wav`（ユーザー提供、0.08秒、13KB）。穴をほるとき・埋めるときに鳴る（`SFX.dig`、音量 0.55）
 - **ロボが配置される音** `spawn.wav`（ユーザー提供、0.26秒、46KB）。待機の列から降りてきたロボがステージ（迷路の上端）に置かれた瞬間、と赤いロボの登場の瞬間に鳴る（`SFX.spawn`、音量 0.5）
