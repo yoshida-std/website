@@ -117,12 +117,14 @@ canvas{display:block}
 .spr.cheer{animation:cheer .7s steps(1) infinite}
 @keyframes cheer{0%{background-position:calc(var(--u)*-4) calc(var(--u)*-5)}50%{background-position:calc(var(--u)*-5) calc(var(--u)*-5)}}
 .cast{display:flex;justify-content:center;align-items:flex-end;gap:2px;margin:2px 0 0}
+.rank{font-size:20px;margin:4px 0}.rank b{font-size:44px;font-weight:400;color:#fff6a0;text-shadow:3px 3px 0 #c4521e;vertical-align:-6px;margin-left:6px}.rank b.rS{color:#ffd23a}.rank b.rC{color:#cfe6ff}
 .big{font-size:22px;color:var(--fg);margin:6px 0}
 .sp-btn{display:block;width:100%;margin:8px 0 0;padding:11px 0;font-size:18px;color:#2a1200;background:var(--orange);
   border:3px solid #fff;border-radius:8px;box-shadow:0 4px 0 #8a4a00}
 .sp-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #8a4a00}
 .sp-btn.sub{background:#2f8fe6;color:#fff;border-color:#ffd84a;box-shadow:0 4px 0 #14457f;font-size:15px}
 .copy{font-size:10px!important;color:#cfe6ff!important;letter-spacing:.04em;margin-top:14px!important}
+@media (max-height:720px){.rank{margin:0}.rank b{font-size:34px;vertical-align:-4px}.card h2{margin:0}.card p{margin:2px 0}}
 @media (max-height:640px){ /* short phones: tighten the cards so the text and the buttons both fit */
   .card h2{font-size:22px;margin:2px 0}.big{font-size:18px;margin:2px 0}.card p{margin:3px 0;line-height:1.4}
   .sp-btn{padding:8px 0;font-size:16px}.sp-btn.sub{font-size:14px}.cfoot .sp-btn{margin-top:5px}
@@ -291,7 +293,17 @@ function bgmProgress(){return bgmBuf?(bgmOff%Math.min(BGM_LEN,bgmBuf.duration))/
 function bgmRewindIfLate(){if(bgmProgress()>=BGM_RESTART_AT)bgmOff=0;}
 
 // ---------- game state ----------
-let st='title', stage=1, score=0, lives=3, best=0;
+// Difficulty by stage. cam: forced-scroll speed (tiles/s), robot: white robots' speed, red: the red robot's speed,
+// respawn: seconds a defeated robot waits in line, R: maze height in cell rows (a longer stage as it goes on)
+const STAGE_TABLE=[
+  {cam:0.90, robot:1.70, red:2.9, respawn:8.0, R:14},  // 1: learn the controls (short, slow, long waits)
+  {cam:1.05, robot:1.95, red:3.0, respawn:7.0, R:18},
+  {cam:1.20, robot:2.15, red:3.1, respawn:6.2, R:22},
+  {cam:1.35, robot:2.35, red:3.2, respawn:5.4, R:26},
+  {cam:1.50, robot:2.55, red:3.4, respawn:4.6, R:30}   // 5: final (fast, short waits, long maze)
+];
+const stageCfg=n=>STAGE_TABLE[Math.min(Math.max(n,1),STAGE_TABLE.length)-1];
+let st='title', stage=1, score=0, lives=3, best=0, totalGold=0, totalGoldMax=0;
 try{best=+localStorage.getItem('horihori_best')||0;}catch(e){}
 let grid=null, H=0, startX=5, startY=0, holes=new Map(), ens=[], pl=null, camY=0, camSpd=1;
 let grace=0, readyT=0, bestRow=0, flow=null, flowKey=-1, tNow=0, digReq=0, digHeld=false, digFresh=false, digHeldT=0;
@@ -303,9 +315,9 @@ const isWall=(x,y)=>x<0||x>=COLS||y<0||y>=H||grid[idx(x,y)]===1;
 
 // ---------- stage generation ----------
 function genStage(n){
-  const R=Math.min(16+n*3,32), SR=6, CW=6;
+  const R=stageCfg(n).R, SR=6, CW=6;
   const hh0=2*R+SR+1, hh=hh0+2; // 2 extra rows on top: exit row (row 1) and the wall row in front of it (row 2)
-  camSpd=Math.min(2.0,0.95+0.12*n);
+  camSpd=stageCfg(n).cam;
   let bestG=null, bestSlack=-1e9;
   for(let tries=0;tries<40;tries++){
     const g0=new Uint8Array(hh0*COLS).fill(1), g=g0;
@@ -565,7 +577,7 @@ function updEnemy(e,dt){
   if(e.state==='dead')return;
   if(!e.active){if(e.cy>=camY-4)e.active=true;else return;}
   if(e.state==='trapped'){e.t+=dt;if(e.t>=e.dur)escapeEnemy(e);return;}
-  const spd=e.red?3.1:Math.min(2.6,1.6+0.15*stage);
+  const spd=e.red?stageCfg(stage).red:stageCfg(stage).robot;
   advance(e,dt,spd,chooseEnemy,enterEnemy,arriveEnemy,false);
 }
 function killEnemy(e,pts,col){
@@ -590,7 +602,7 @@ function updHoles(dt){
 const FINAL_STAGE=5, SLOT0=0.75, SLOTW=0.95;
 const robotPool=()=>3+(stage-1); // white robots: 3 at stage 1, one more each stage
 let queue=[], entering=[];
-const respawnDelay=()=>Math.max(4,7.5-0.4*stage);
+const respawnDelay=()=>stageCfg(stage).respawn;
 function sendToQueue(e){
   queue.push({t:respawnDelay(),delay:respawnDelay(),x:Math.max(0.5,Math.min(COLS-.5,e.cx+.5)),ph:Math.random()*6});
 }
@@ -709,17 +721,31 @@ function loadStage(){
   banner.innerHTML=(stage>=FINAL_STAGE?'FINAL STAGE':'STAGE '+stage)+'<small>つぶされるまえに うえの ゴールへ！</small>'; banner.hidden=false;
   SFX.go(); updateHud();
 }
+// Rank for the whole 5 stages (all gold + perfect every stage is about 38000)
+const RANKS=[['S',30000],['A',22000],['B',16000]];
+const rankOf=sc=>{for(const [r,v] of RANKS)if(sc>=v)return r;return 'C';};
 function stageClear(){
   if(st!=='play')return;
   st='clear'; const last=stage>=FINAL_STAGE; if(last)bgmStop(); else{bgmPause(); bgmRewindIfLate();} SFX.clear();
+  totalGold+=goldGot;totalGoldMax+=golds.length;
   const bonus=1000+lives*500, perfect=goldGot>=golds.length&&golds.length>0; score+=bonus+(perfect?PERFECT_PTS:0); saveBest();
-  card('<div class="cast"><i class="spr cheer" style="--u:clamp(48px,11vh,88px);background-image:var(--hero-sheet)"></i></div><h2>'+(last?'ALL CLEAR!':'STAGE '+stage+' CLEAR!')+'</h2><p class="big">ボーナス +'+bonus+'</p><p>金 '+goldGot+' / '+golds.length+'</p>'+(perfect?'<p class="big">PERFECT! +'+PERFECT_PTS+'</p>':'')+'<p>SCORE '+score+'</p>'+(last?'<p>BEST '+best+'</p>':''),
-    last?'<button class="sp-btn" data-act="retry">もういちど</button><button class="sp-btn sub" data-act="title">タイトルへ</button>':'<button class="sp-btn" data-act="next">つぎのステージへ</button>');
+  const cast='<div class="cast"><i class="spr cheer" style="--u:clamp(40px,8vh,88px);background-image:var(--hero-sheet)"></i></div>';
+  if(last){ // the end of the game: the rank comes first, the rest in two short lines
+    const r=rankOf(score);
+    card(cast+'<h2>ALL CLEAR!</h2><p class="rank">RANK <b class="r'+r+'">'+r+'</b></p>'+
+      '<p>SCORE '+score+'　BEST '+best+'</p><p>金 合計 '+totalGold+' / '+totalGoldMax+(perfect?'　PERFECT!':'')+'</p>',
+      '<button class="sp-btn" data-act="retry">もういちど</button><button class="sp-btn sub" data-act="title">タイトルへ</button>');
+  }else{
+    const healed=lives<3; if(healed)lives++;
+    card(cast+'<h2>STAGE '+stage+' CLEAR!</h2><p class="big">ボーナス +'+bonus+'</p><p>金 '+goldGot+' / '+golds.length+'</p>'+(perfect?'<p class="big">PERFECT! +'+PERFECT_PTS+'</p>':'')+
+      (healed?'<p>ミス かいふく +1</p>':'')+'<p>SCORE '+score+'</p>',
+      '<button class="sp-btn" data-act="next">つぎのステージへ</button>');
+  }
   updateHud();
 }
 function gameOver(){
   st='over'; bgmStop(); saveBest();
-  card('<div class="cast"><i class="spr" style="--u:clamp(48px,11vh,88px);--r:5;background-image:var(--hero-sheet)"></i></div><h2>GAME OVER</h2><p class="big">SCORE '+score+'</p><p>BEST '+best+'　到達 STAGE '+stage+'</p>',
+  card('<div class="cast"><i class="spr" style="--u:clamp(40px,8vh,88px);--r:5;background-image:var(--hero-sheet)"></i></div><h2>GAME OVER</h2><p class="big">SCORE '+score+'</p><p>BEST '+best+'　到達 STAGE '+stage+'</p>',
     '<button class="sp-btn" data-act="retry">もういちど</button><button class="sp-btn sub" data-act="title">タイトルへ</button>');
   updateHud();
 }
@@ -1080,7 +1106,7 @@ function rulesHtml(){
     '<div><em>●</em><span><b>スティック以外のどこをタップ</b>しても穴をほる（ロボが近ければその方向に自動で）。もう一度で埋まる</span></div>'+
     '<div><em>●</em><span>白いロボを穴に落として、<b>頭をふんで</b>わたろう。ふさがるとロボはつぶれる</span></div>'+
     '<div><em>●</em><span>壁にタップで<b>ハシゴ</b>。<b>金塊10個</b>でパーフェクト！<b>ストップウォッチ</b>でスクロールが10秒止まる</span></div>'+
-    '<div><em>●</em><span>ロボにさわる・挟まれる・穴に埋まるとミス。<b>ミスは3回まで</b></span></div>'+
+    '<div><em>●</em><span>ロボにさわる・挟まれる・穴に埋まるとミス。<b>ミスは3回まで</b>（ステージクリアで1つ回復）</span></div>'+
     '</div>';
 }
 function titleCard(){ // logo (shrinks on short screens) / BEST + the two buttons (always in view)
@@ -1108,7 +1134,7 @@ function resume(){
   if(!pausedFrom)return;
   st=pausedFrom;pausedFrom=null;ov.hidden=true;if(ac&&sfxOn)ac.resume();bgmStart();
 }
-function newGame(){initAudio();bgmStop();stage=1;score=0;lives=3;pausedFrom=null;loadStage();bgmStart();}
+function newGame(){initAudio();bgmStop();stage=1;score=0;lives=3;totalGold=0;totalGoldMax=0;pausedFrom=null;loadStage();bgmStart();}
 ov.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act;
@@ -1180,7 +1206,7 @@ function frame(t){
 }
 loadSheets();resize();genStage(1);camY=Math.max(0,H-viewRows);updateHud();titleCard();
 requestAnimationFrame(frame);
-window.__dbg={bgmSeek:sec=>{bgmPause();bgmOff=sec;bgmStart();},watch:()=>watch,freeze:()=>freezeT,missLoaded:()=>!!SAMPLES.miss.buf,clearLoaded:()=>!!SAMPLES.clear.buf,goldLoaded:()=>!!SAMPLES.gold.buf,digLoaded:()=>!!SAMPLES.dig.buf,spawnLoaded:()=>!!SAMPLES.spawn.buf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
+window.__dbg={cfg:()=>({cam:camSpd,cfg:stageCfg(stage),H:H}),setLives:v=>{lives=v;updateHud();},rankOf:rankOf,bgmSeek:sec=>{bgmPause();bgmOff=sec;bgmStart();},watch:()=>watch,freeze:()=>freezeT,missLoaded:()=>!!SAMPLES.miss.buf,clearLoaded:()=>!!SAMPLES.clear.buf,goldLoaded:()=>!!SAMPLES.gold.buf,digLoaded:()=>!!SAMPLES.dig.buf,spawnLoaded:()=>!!SAMPLES.spawn.buf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
 })();
 </script>
 </body>
