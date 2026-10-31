@@ -284,6 +284,11 @@ function bgmPause(){ // keeps the position, so bgmStart() continues from here
   bgmSrc=null;
 }
 function bgmStop(){bgmWant=false;bgmPause();bgmOff=0;}
+// The track has a proper ending. If a stage was cleared two thirds or more of the way through it,
+// the next stage starts the music from the beginning instead of running into the ending.
+const BGM_RESTART_AT=2/3;
+function bgmProgress(){return bgmBuf?(bgmOff%Math.min(BGM_LEN,bgmBuf.duration))/Math.min(BGM_LEN,bgmBuf.duration):0;}
+function bgmRewindIfLate(){if(bgmProgress()>=BGM_RESTART_AT)bgmOff=0;}
 
 // ---------- game state ----------
 let st='title', stage=1, score=0, lives=3, best=0;
@@ -705,7 +710,7 @@ function loadStage(){
 }
 function stageClear(){
   if(st!=='play')return;
-  st='clear'; bgmPause(); SFX.clear();
+  st='clear'; bgmPause(); bgmRewindIfLate(); SFX.clear();
   const bonus=1000+lives*500, perfect=goldGot>=golds.length&&golds.length>0; score+=bonus+(perfect?PERFECT_PTS:0); saveBest();
   card('<div class="cast"><i class="spr cheer" style="--u:clamp(48px,11vh,88px);background-image:var(--hero-sheet)"></i></div><h2>STAGE '+stage+' CLEAR!</h2><p class="big">ボーナス +'+bonus+'</p><p>金 '+goldGot+' / '+golds.length+'</p>'+(perfect?'<p class="big">PERFECT! +'+PERFECT_PTS+'</p>':'')+'<p>SCORE '+score+'</p>',
     '<button class="sp-btn" data-act="next">つぎのステージへ</button>');
@@ -1174,7 +1179,7 @@ function frame(t){
 }
 loadSheets();resize();genStage(1);camY=Math.max(0,H-viewRows);updateHud();titleCard();
 requestAnimationFrame(frame);
-window.__dbg={watch:()=>watch,freeze:()=>freezeT,missLoaded:()=>!!SAMPLES.miss.buf,clearLoaded:()=>!!SAMPLES.clear.buf,goldLoaded:()=>!!SAMPLES.gold.buf,digLoaded:()=>!!SAMPLES.dig.buf,spawnLoaded:()=>!!SAMPLES.spawn.buf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
+window.__dbg={bgmSeek:sec=>{bgmPause();bgmOff=sec;bgmStart();},watch:()=>watch,freeze:()=>freezeT,missLoaded:()=>!!SAMPLES.miss.buf,clearLoaded:()=>!!SAMPLES.clear.buf,goldLoaded:()=>!!SAMPLES.gold.buf,digLoaded:()=>!!SAMPLES.dig.buf,spawnLoaded:()=>!!SAMPLES.spawn.buf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
 })();
 </script>
 </body>
