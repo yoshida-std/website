@@ -77,22 +77,21 @@ canvas{display:block}
 #stopTimer b{font-weight:400;font-size:12px;letter-spacing:.08em;color:#d6efff}
 #stopTimer span{font-size:22px;font-variant-numeric:tabular-nums;color:#fff6a0}
 #stopTimer.low{background:rgba(208,64,47,.55)}#stopTimer.low span{color:#fff}
-#redAlert{position:absolute;left:50%;top:44%;width:min(94%,520px);height:auto;pointer-events:none;z-index:2;
-  transform:translate(-50%,-50%);filter:drop-shadow(0 6px 10px #0009)}
-#redAlert.show{animation:redIn 2.6s ease-out forwards}
+#redAlert{position:absolute;left:50%;top:40px;width:min(54%,300px);height:auto;pointer-events:none;z-index:2;
+  transform:translate(-50%,0);transform-origin:50% 0;filter:drop-shadow(0 4px 8px #0008)}
+/* small, near the top and a little see-through: the maze stays visible. The game holds still for the first 0.5s (the pop-in and shake), then plays on while the picture fades out (1.2s in all) */
+#redAlert.show{animation:redIn 1.2s ease-out forwards}
 @keyframes redIn{
-  0%{transform:translate(-50%,-50%) scale(.35);opacity:0}
-  12%{transform:translate(-50%,-50%) scale(1.14);opacity:1}
-  20%{transform:translate(-50%,-50%) scale(.97)}
-  27%{transform:translate(-50%,-50%) scale(1)}
-  34%{transform:translate(-47.5%,-50%) scale(1)}
-  38%{transform:translate(-52.5%,-50%) scale(1)}
-  42%{transform:translate(-48.5%,-50%) scale(1)}
-  46%{transform:translate(-50%,-50%) scale(1)}
-  80%{transform:translate(-50%,-50%) scale(1);opacity:1}
-  100%{transform:translate(-50%,-50%) scale(1.06);opacity:0}
+  0%{transform:translate(-50%,0) scale(.45);opacity:0}
+  14%{transform:translate(-50%,0) scale(1.1);opacity:.9}
+  24%{transform:translate(-50%,0) scale(1)}
+  30%{transform:translate(-47%,0) scale(1)}
+  36%{transform:translate(-53%,0) scale(1)}
+  42%{transform:translate(-49%,0) scale(1);opacity:.85}
+  48%{transform:translate(-50%,0) scale(1)}
+  100%{transform:translate(-50%,0) scale(1);opacity:0}
 }
-@media (prefers-reduced-motion:reduce){#redAlert.show{animation:redFade 2.6s linear forwards}@keyframes redFade{0%{opacity:0}10%,80%{opacity:1}100%{opacity:0}}}
+@media (prefers-reduced-motion:reduce){#redAlert.show{animation:redFade 1.2s linear forwards}@keyframes redFade{0%{opacity:0}12%{opacity:.9}100%{opacity:0}}}
 #banner small{display:block;font-size:14px;color:#fff;text-shadow:1px 1px 0 #7a2a00,-1px -1px 0 #7a2a00,1px -1px 0 #7a2a00,-1px 1px 0 #7a2a00}
 #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(20,70,140,.9);
   padding:12px;box-sizing:border-box}
@@ -292,7 +291,7 @@ try{best=+localStorage.getItem('horihori_best')||0;}catch(e){}
 let grid=null, H=0, startX=5, startY=0, holes=new Map(), ens=[], pl=null, camY=0, camSpd=1;
 let grace=0, readyT=0, bestRow=0, flow=null, flowKey=-1, tNow=0, digReq=0, digHeld=false, digFresh=false, digHeldT=0;
 const digIds=new Set(); // pointers currently pressing 'dig' (the button, or any tap outside the stick)
-let exitX=1, redDone=false, bannerT=0, redT=0, watch=null, freezeT=0, tickSec=-1, fxP=[], fxT=[], ladders=3, golds=[], goldGot=0;
+let exitX=1, redDone=false, bannerT=0, redT=0, alertFreezeT=0, watch=null, freezeT=0, tickSec=-1, fxP=[], fxT=[], ladders=3, golds=[], goldGot=0;
 const WATCH_STOP=10, RESPAWN_PAUSE=2.0, GOLD_N=10, GOLD_PTS=300, PERFECT_PTS=3000;
 const idx=(x,y)=>y*COLS+x;
 const isWall=(x,y)=>x<0||x>=COLS||y<0||y>=H||grid[idx(x,y)]===1;
@@ -601,10 +600,11 @@ function pickSpawn(x0){
   return null;
 }
 const redAlert=$('redAlert');
-function showRedAlert(){ // the cut-in picture: pops in, shakes, fades out (2.6s)
-  redAlert.hidden=false;redAlert.classList.remove('show');void redAlert.offsetWidth;redAlert.classList.add('show');redT=2.6;
+const ALERT_SHOW=1.2, ALERT_HOLD=0.5;
+function showRedAlert(){ // the cut-in picture: small, at the top, see-through; the game holds still for ALERT_HOLD, then plays on while it fades (ALERT_SHOW)
+  redAlert.hidden=false;redAlert.classList.remove('show');void redAlert.offsetWidth;redAlert.classList.add('show');redT=ALERT_SHOW;alertFreezeT=ALERT_HOLD;
 }
-function hideRedAlert(){redAlert.hidden=true;redAlert.classList.remove('show');redT=0;}
+function hideRedAlert(){redAlert.hidden=true;redAlert.classList.remove('show');redT=0;alertFreezeT=0;}
 function spawnRedRobot(){ // once the forced scroll has stopped, ONE red robot comes up from the bottom of the screen
   const y0=Math.min(H-3,Math.floor(camY+viewRows)+1);
   for(let y=y0;y>=y0-4;y--){
@@ -743,6 +743,9 @@ function update(dt){
     return;
   }
   if(st!=='play'){updFx(dt);return;}
+  if(alertFreezeT>0){ // the red robot's entrance: everything holds still for a moment
+    alertFreezeT=Math.max(0,alertFreezeT-dt);redT=Math.max(0,redT-dt);if(redT<=0)hideRedAlert();updFx(dt);return;
+  }
   updateFlow();
   updPlayer(dt);
   if(st!=='play')return;
