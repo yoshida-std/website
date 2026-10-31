@@ -33,6 +33,7 @@ canvas,.pad,.pbtn{touch-action:none}
   background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.4);font-size:min(5.4vh,22px);color:#fff;text-align:center;line-height:1.1}
 #bL,#bT{font-size:min(4.6vh,18px)}
 #bT{width:min(28vh,116px);height:min(28vh,116px);background:rgba(240,90,40,.35);border-color:rgba(255,160,100,.8)}
+.pbtn.cool{opacity:.4}
 .pbtn.on{background:rgba(255,210,60,.55)}
 #pauseBtn{position:absolute;left:50%;bottom:max(10px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:6;
   width:46px;height:34px;border-radius:10px;border:2px solid rgba(255,255,255,.4);background:rgba(0,0,0,.4);color:#fff;font-size:14px;padding:0}
@@ -143,7 +144,7 @@ const STG=[
   {wall:'#c85050',belt:'#40a0ff'},{wall:'#34345c',belt:'#f83030'}
 ];
 function cfg(n){return{
-  hp:6+2*(n-1), spd:30+4*(n-1), cdBase:1.1-0.12*(n-1),
+  hp:6+2*(n-1), spd:44+6*(n-1), cdBase:1.1-0.12*(n-1),
   dodgeP:0.2+0.1*(n-1), aggr:0.6+0.3*(n-1), armor:n>=3,
   pal:{gi:'#f6f6f6',sleeve:'#1a1a1a',pants:'#f6f6f6',belt:STG[n-1].belt,skin:'#f8b878',hair:'#161616',shoe:'#202020'}
 };}
@@ -255,7 +256,7 @@ function tryThrow(low){
   if(P.face!==(E.x>=P.x?1:-1))return false;   // 敵の方を向いているときだけ投げられる
   const close=Math.abs(E.x-P.x)<46;           // 近いとナイフがおそい（近距離に弱い）
   P.lock=close?.55:.3;                        // 投げている間は動けない
-  P.cd=P.lock;P.throwT=P.lock;P.low=low;
+  P.cd=close?1.4:1.0;P.throwT=P.lock;P.low=low;   // 1本投げたら、次を投げられるまで時間がかかる
   knives.push({x:P.x+P.face*12,y:GY-P.z-(low?10:36),vx:P.face*320,d:0,a:0,mine:true,seen:false,low});
   SND.throw();return true;
 }
@@ -419,6 +420,8 @@ function endLose(){
 function mirror(){return G.stage%2===1;}
 
 /* ===== 更新 ===== */
+let coolOn=null;
+function showCool(){const on=!!P&&G.state==='play'&&!canThrow();if(on!==coolOn){coolOn=on;$('bT').classList.toggle('cool',on);$('bL').classList.toggle('cool',on);}}
 function update(dt){
   const portrait=innerHeight>innerWidth;
   if(portrait&&(G.state==='play'||G.state==='intro')){pause();return;}
@@ -437,6 +440,7 @@ function update(dt){
     G.time-=dt;
     if(G.time<=0){G.time=0;lose('TIME UP');}
   }
+  showCool();
   if(s==='win'){G.t-=dt;if(G.t<=0)endWin();}
   if(s==='lose'){G.t-=dt;if(G.t<=0)endLose();}
 }
