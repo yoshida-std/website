@@ -143,12 +143,13 @@ const STG=[
   {wall:'#c85050',belt:'#40a0ff'},{wall:'#34345c',belt:'#f83030'}
 ];
 function cfg(n){return{
-  hp:8+3*(n-1), spd:46+6*(n-1), cdBase:1.1-0.12*(n-1),
-  dodgeP:0.2+0.16*(n-1), aggr:0.6+0.3*(n-1), armor:n>=3,
+  hp:6+2*(n-1), spd:30+4*(n-1), cdBase:1.1-0.12*(n-1),
+  dodgeP:0.2+0.1*(n-1), aggr:0.6+0.3*(n-1), armor:n>=3,
   pal:{gi:'#f6f6f6',sleeve:'#1a1a1a',pants:'#f6f6f6',belt:STG[n-1].belt,skin:'#f8b878',hair:'#161616',shoe:'#202020'}
 };}
 
 /* ===== ラウンド開始 ===== */
+const GOALX=LEN-100;                    // 敵がここまで来たら負け（階段のふもと／最上階は女性の前）
 function EDGE(){return G.stage===STAGES?LEN-90:LEN-12;}   // 行き止まりの位置（最上階は椅子の手前）
 function newPlayer(hp){return{lock:0,low:false,bufT:0,pT:false,pL:false,x:530,z:0,vz:0,hp,face:-1,cd:0,inv:0,hurt:0,kb:0,walk:0,moving:false,throwT:0,dead:false};}
 function startRound(){
@@ -212,6 +213,7 @@ function showTitle(){
    <div><b>ナイフ</b> <b>上段</b>（立って投げる）と<b>下段</b>（しゃがんで投げる）。<b>投げている間は動けない</b>。近いと投げるのがおそい</div>
    <div><b>むき</b> ステージによって、敵が来る向き（左／右）がかわる</div>
    <div><b>よけ</b> 相手がしゃがんだら<b>下段</b>。ジャンプでよけたら着地を待とう</div>
+   <div><b>まけ</b> 敵が<b>階段</b>（最上階は<b>女性</b>）にたどりついたら負け！ その前にたおせ</div>
    <div><b>やられたら</b> <b>1回あたっただけでアウト</b>！ 画面の下に落とされる。敵にはライフがある</div>
    <div><b>じかん</b> ${TIMELIM}びょうで決着をつけよう</div>
   </div>
@@ -326,7 +328,7 @@ function updEnemy(dt){
   if(e.dead){e.x+=e.kbv*dt;e.vz-=GR*dt;e.z+=e.vz*dt;return;}
   const airborne=e.z>0||e.vz>0;
   if(airborne){e.vz-=GR*dt;e.z+=e.vz*dt;if(e.z<=0){e.z=0;e.vz=0;}}
-  if(e.st!=='dash'&&e.st!=='hurt')e.face=dx>=0?1:-1;
+  if(e.st!=='dash'&&e.st!=='hurt')e.face=(ad<90||dx>=0)?(dx>=0?1:-1):1;   // 近くの自分の方を向く。遠ければゴールの方
   if(G.state==='intro'){            // 画面の外から歩いて入ってくる
     if(e.x<30){e.x=Math.min(30,e.x+62*dt);e.walk+=dt*1.6;e.face=1;}
     return;
@@ -334,10 +336,7 @@ function updEnemy(dt){
   if(G.state!=='play'||P.dead){return;}
   switch(e.st){
     case 'walk':{
-      if(ad>26){
-        const sp=c.spd*(1+clamp((ad-130)/110,0,1.8));
-        e.x+=Math.sign(dx)*sp*dt;e.walk+=dt*sp/40;
-      }
+      e.x+=c.spd*dt;e.walk+=dt*c.spd/22;       // 敵はいつも階段（最上階は女性）に向かって進む。自分が前にいても通りぬける
       if(e.cd<=0&&ad<56){
         const r=Math.random(),kk=.22+.04*G.stage;
         if(ad<36&&r>kk+.3){                       // パンチ連打
@@ -379,6 +378,7 @@ function updEnemy(dt){
       break;
   }
   e.x=clamp(e.x,camX-10,EDGE()-2);
+  if(G.state==='play'&&e.x>=GOALX&&!P.dead)lose('GOAL');   // 敵がゴールに着いたら負け
 }
 
 /* ===== 勝ち負け ===== */
@@ -409,7 +409,7 @@ function endWin(){
 function endLose(){
   G.state='over';showControls(false);
   const nb=saveBest();
-  showOverlay(`<h2>ゲームオーバー</h2><p>${G.msg==='TIME UP'?'じかんぎれ…':'やられてしまった…'}（ステージ${G.stage}）</p>
+  showOverlay(`<h2>ゲームオーバー</h2><p>${G.msg==='TIME UP'?'じかんぎれ…':G.msg==='GOAL'?(G.stage===STAGES?'女性をうばわれてしまった…':'階段まで行かれてしまった…'):'やられてしまった…'}（ステージ${G.stage}）</p>
   <div class="sc">SCORE ${sc6(G.score)}<br>BEST ${sc6(best)}${nb?' NEW!':''}</div>
   <button class="btn" data-act="retry">もういちど</button>
   <button class="btn sub" data-act="title">タイトルへ</button>`);
@@ -443,27 +443,27 @@ function update(dt){
 
 /* ===== 描画：最上階の、椅子に座らされた女性（チャイナドレス）===== */
 function drawCaptive(ox){
-  const X=LEN-84+ox,Y=GY;          // 椅子の左端、足元
+  const X=LEN-84+ox,Y=GY;          // 椅子の左端、足元。座った高さがプレイヤーの背丈（約45px）と同じくらい
   const wood='#7a3410',wood2='#c8782a',red='#d02030',red2='#9a1020',gold='#f8d820',skin='#f8c8a0',hair='#14141c',rope='#d8c08a';
   R(LEN-3+ox,83,3,GY-83,'#f87820');                                   // 端の柱
   // 椅子
-  R(X+26,Y-48,5,48,wood);R(X+26,Y-48,5,3,wood2);                       // 背もたれ
-  R(X,Y-17,30,4,wood);R(X,Y-17,30,1,wood2);                            // 座面
-  R(X+1,Y-13,3,13,wood);R(X+24,Y-13,3,13,wood);                        // 脚
-  // 脚と足（そろえて前へ）
-  R(X+1,Y-21,26,6,red);R(X+1,Y-21,26,1,red2);                          // ふとももからスカート
-  R(X+1,Y-16,5,11,red);R(X+2,Y-6,4,4,skin);R(X,Y-3,7,3,red2);          // ひざ下と足
-  R(X+1,Y-9,6,2,rope);                                                 // 足首のひも
+  R(X+26,Y-44,5,44,wood);R(X+26,Y-44,5,3,wood2);                       // 背もたれ
+  R(X,Y-12,30,3,wood);R(X,Y-12,30,1,wood2);                            // 座面
+  R(X+1,Y-9,3,9,wood);R(X+24,Y-9,3,9,wood);                            // 脚
+  // 脚と足
+  R(X+1,Y-17,26,5,red);R(X+1,Y-17,26,1,red2);                          // ふともも（スカート）
+  R(X+1,Y-12,5,9,red);R(X+2,Y-6,3,3,skin);R(X,Y-3,7,3,red2);           // ひざ下と足
+  R(X+1,Y-8,6,2,rope);                                                 // 足首のひも
   // 体（チャイナドレス）
-  R(X+15,Y-44,11,24,red);R(X+15,Y-44,2,24,red2);
-  R(X+15,Y-38,11,2,gold);R(X+15,Y-31,11,2,gold);                      // 金の縁どり
-  R(X+18,Y-44,2,3,gold);R(X+16,Y-47,6,3,gold);                         // 立ちえり
-  R(X+13,Y-40,3,12,red2);                                              // 腕（うしろ手）
-  R(X+14,Y-34,13,2,rope);                                              // 体をしばるひも
+  R(X+15,Y-33,11,17,red);R(X+15,Y-33,2,17,red2);
+  R(X+15,Y-29,11,2,gold);R(X+15,Y-23,11,2,gold);                      // 金の縁どり
+  R(X+16,Y-36,6,3,gold);                                               // 立ちえり
+  R(X+13,Y-31,3,9,red2);                                               // 腕（うしろ手）
+  R(X+14,Y-26,13,2,rope);                                              // 体をしばるひも
   // 頭
-  R(X+13,Y-60,10,11,skin);
-  R(X+12,Y-62,13,5,hair);R(X+22,Y-60,4,12,hair);R(X+23,Y-67,6,6,hair);R(X+24,Y-65,3,2,gold);   // 髪とおだんご、かんざし
-  R(X+14,Y-55,2,2,'#14141c');R(X+13,Y-51,3,1,'#c04858');               // 目と口
+  R(X+13,Y-46,10,10,skin);
+  R(X+12,Y-48,13,4,hair);R(X+22,Y-46,4,10,hair);R(X+23,Y-52,5,5,hair);R(X+24,Y-50,2,2,gold);   // 髪とおだんご、かんざし
+  R(X+14,Y-42,2,2,'#14141c');R(X+14,Y-38,2,1,'#c04858');               // 目と口
 }
 
 /* ===== 描画：背景 ===== */
