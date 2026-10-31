@@ -10,6 +10,7 @@
 <style>
 /* Layout: HUD / progress bar / scrolling maze canvas / controls (stick + dig button). Famicom-like palette */
 :root{
+  --hero-sheet:url(hero.png); --boss-sheet:url(boss.png);
   --bg:#1a4a8c; --panel:#2f8fe6; --line:#ffd84a; --fg:#eaff8f; --dim:#d6efff; --ink:#ffffff;
   --red:#ff5d5d; --green:#7dff6a; --orange:#ff9f2e;
   --font:"DotGothic16","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
@@ -836,32 +837,14 @@ function drawDigMark(){
 // rows: 0 front idle (0-3) + back (4-7) | 1 walk right | 2 walk left | 3 ladder climb | 4 dig (0 ready, 1-7 dig) | 5 down (0-2), overheat (3), cheer (4-5)
 const SPR=128;
 let SHEETS=null;
-function recolor(img,mode){
-  const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
-  const x=c.getContext('2d');x.drawImage(img,0,0);
-  if(mode==='white')return c;
-  const d=x.getImageData(0,0,c.width,c.height),p=d.data, body=mode==='hero'?[255,226,112]:[255,132,132];
-  for(let i=0;i<p.length;i+=4){
-    if(!p[i+3])continue;
-    const r=p[i],g=p[i+1],b=p[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(r+g+b)/3,sat=mx?(mx-mn)/mx:0;
-    if(b>r+30&&b>g&&sat>.35&&l>70){ // blue parts (ears, panel) -> warm colours
-      if(mode==='hero'){p[i]=b;p[i+1]=(r+g)*.45;p[i+2]=r*.7;}else{p[i]=b;p[i+1]=r*.6;p[i+2]=r*.6;}
-    }else if(sat<.3&&l>90){p[i]=r*body[0]/255;p[i+1]=g*body[1]/255;p[i+2]=b*body[2]/255;} // white / grey body
+function loadSheets(){ // robo.png (white), hero.png (yellow), boss.png (red): the colour variants are made ahead of time, so nothing reads pixels at run time
+  const names={white:'robo.png',hero:'hero.png',boss:'boss.png'}, out={};
+  let left=3;
+  for(const k in names){
+    const img=new Image();
+    img.onload=()=>{out[k]=img;if(--left===0){SHEETS=out;if(st==='title')titleCard();}};
+    img.src=names[k];
   }
-  x.putImageData(d,0,0);return c;
-}
-function loadSheets(){
-  const img=new Image();
-  img.onload=()=>{
-    try{
-      SHEETS={white:recolor(img,'white'),hero:recolor(img,'hero'),boss:recolor(img,'boss')};
-      const st=document.documentElement.style;
-      st.setProperty('--hero-sheet','url('+SHEETS.hero.toDataURL()+')');
-      st.setProperty('--boss-sheet','url('+SHEETS.boss.toDataURL()+')');
-      if(st==='title')titleCard();
-    }catch(e){SHEETS=null;}
-  };
-  img.src='robo.png';
 }
 function drawCell(sh,col,row,X,Y,D,flip){
   const dy=Y+S*.46-D*.945, dx=X-D/2;
