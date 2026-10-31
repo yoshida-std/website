@@ -3,9 +3,9 @@
 スマホ縦画面向けの縦スクロール穴ほりアクション（仮題。名前・フォルダ名は変えてよい）。公開URL: `https://yoshida-std.github.io/website/games/Horihori-Robo/`
 リポジトリ全体の作業ルール（ブランチ・PR・確認方法・コピーライト表記）はルートの `CLAUDE.md` を参照。
 
-プッシュ前の確認用 Artifact: `https://claude.ai/artifact/1JWDnmdpVxVJC3r7oNmZKN`（変更のたびにこの URL を更新する。`index.html` と、`files` で `robo.png` を同じパスに載せる。Artifact には `<!doctype>`・`<html>`・`<head>`・`<body>` のタグを除いた写しを公開する）
+プッシュ前の確認用 Artifact: `https://claude.ai/artifact/1JWDnmdpVxVJC3r7oNmZKN`（変更のたびにこの URL を更新する。`index.html` と、`files` で `robo.png` `bgm.mp3` を同じパスに載せる。Artifact には `<!doctype>`・`<html>`・`<head>`・`<body>` のタグを除いた写しを公開する）
 
-`index.html` と、キャラのスプライトシート `robo.png`（1024×768、128px のコマ 8×6）で完結（音は WebAudio の合成）。`games.json`（ポートフォリオの一覧）にはまだ載せていない。
+`index.html` と、キャラのスプライトシート `robo.png`（1024×768、128px のコマ 8×6）と、BGM `bgm.mp3` で完結（効果音は WebAudio の合成）。`games.json`（ポートフォリオの一覧）にはまだ載せていない。
 
 ## 概要と操作
 
@@ -34,6 +34,7 @@
   - 主人公: 掘るときは行4（`digDur` の進みでコマを送る。左向きは左右反転）、穴にはまっているときは頭だけ（正面）、ミスのときは行5（頭が熱くなる→バツ目）。ロボ: 穴に落ちると行5 の目がバツ。待機の列で出番が近い（あと0.9秒）と、頭が熱くなるコマと立ちを交互に
   - タイトルに4体（主人公・ロボ・バツ目のロボ・赤いロボ）、クリアに万歳の主人公、ゲームオーバーにバツ目の主人公を CSS（`.spr`、`--hero-sheet` `--boss-sheet`）で出す
   - 画像が読めなかったときは、従来の矩形描画（`drawRobotVec` `drawPlayerVec`）で出る
+- **BGM** `bgm.mp3`（ユーザー提供。PANICPUMPKIN の曲「ちんけなくらし」、約2分25秒、2.9MB。コピーライト表記の PANICPUMPKIN はこの曲）。音量は小さめ（`BGM_VOL`=0.2。効果音より控えめ）。`fetch` → `decodeAudioData` → `AudioBufferSource` のループ（iOS でも音量が効くように WebAudio）。末尾の約1.5秒の無音はループに含めない（`BGM_LEN`=143.7）。ゲーム中だけ鳴る: スタート（`newGame`）で頭から、ポーズ・画面を離れる・ステージクリアで一時停止（位置を覚えて続きから）、つぎのステージ・つづけるで再開、ゲームオーバー・タイトルへで止める（頭に戻す）。ポーズ画面の「おと」OFF では鳴らさない
 - 穴の見た目はすべて canvas の矩形描画（デバイスピクセル単位で `S`＝1マスのpx）
 - プレイヤーの歩く速さは `PSPD`=3.9マス/秒。ミス・ステージ開始のとき、ホルボタンの入力（`digReq` `digFresh` `digHeld`）を捨てる。`play` 以外の状態で押したホルボタンは無視する（死んだ直後のタップで復活後に掘れてしまう不具合の対策）
 - デバッグ用に `window.__dbg`（状態の参照）がある。消してよい

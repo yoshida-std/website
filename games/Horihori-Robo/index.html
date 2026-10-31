@@ -178,6 +178,34 @@ const SFX={
   go:()=>tone(660,.2,'square',.05)
 };
 
+// ---------- BGM (bgm.mp3, quiet; looped through WebAudio so it works on iOS too) ----------
+const BGM_VOL=0.2, BGM_LEN=143.7; // the file ends with ~1.5s of silence, which is left out of the loop
+let bgmBuf=null, bgmGain=null, bgmSrc=null, bgmWant=false, bgmOff=0, bgmAt=0, bgmLoading=false;
+function bgmLoad(){
+  if(bgmBuf||bgmLoading||!ac)return;
+  bgmLoading=true;
+  fetch('bgm.mp3').then(r=>r.arrayBuffer()).then(a=>new Promise((ok,ng)=>ac.decodeAudioData(a,ok,ng)))
+    .then(b=>{bgmBuf=b;if(bgmWant)bgmStart();}).catch(()=>{bgmLoading=false;});
+}
+function bgmStart(){
+  bgmWant=true;
+  if(!ac||!sfxOn)return;
+  if(!bgmBuf){bgmLoad();return;}
+  if(bgmSrc)return;
+  if(!bgmGain){bgmGain=ac.createGain();bgmGain.connect(ac.destination);}
+  bgmGain.gain.cancelScheduledValues(ac.currentTime);bgmGain.gain.value=BGM_VOL;
+  const s=ac.createBufferSource();
+  s.buffer=bgmBuf;s.loop=true;s.loopStart=0;s.loopEnd=Math.min(BGM_LEN,bgmBuf.duration);
+  s.connect(bgmGain);s.start(0,bgmOff%s.loopEnd);bgmAt=ac.currentTime-bgmOff;bgmSrc=s;
+}
+function bgmPause(){ // keeps the position, so bgmStart() continues from here
+  if(!bgmSrc)return;
+  bgmOff=(ac.currentTime-bgmAt)%bgmSrc.loopEnd;
+  try{bgmSrc.stop();}catch(e){}
+  bgmSrc=null;
+}
+function bgmStop(){bgmWant=false;bgmPause();bgmOff=0;}
+
 // ---------- game state ----------
 let st='title', stage=1, score=0, lives=3, best=0;
 try{best=+localStorage.getItem('horihori_best')||0;}catch(e){}
@@ -574,14 +602,14 @@ function loadStage(){
 }
 function stageClear(){
   if(st!=='play')return;
-  st='clear'; SFX.clear();
+  st='clear'; bgmPause(); SFX.clear();
   const bonus=1000+lives*500, perfect=goldGot>=golds.length&&golds.length>0; score+=bonus+(perfect?PERFECT_PTS:0); saveBest();
   card('<div class="cast"><i class="spr cheer" style="--u:88px;background-image:var(--hero-sheet)"></i></div><h2>STAGE '+stage+' CLEAR!</h2><p class="big">ボーナス +'+bonus+'</p><p>金 '+goldGot+' / '+golds.length+'</p>'+(perfect?'<p class="big">PERFECT! +'+PERFECT_PTS+'</p>':'')+'<p>SCORE '+score+'</p>'+
     '<button class="sp-btn" data-act="next">つぎのステージへ</button>');
   updateHud();
 }
 function gameOver(){
-  st='over'; saveBest();
+  st='over'; bgmStop(); saveBest();
   card('<div class="cast"><i class="spr" style="--u:88px;--r:5;background-image:var(--hero-sheet)"></i></div><h2>GAME OVER</h2><p class="big">SCORE '+score+'</p><p>BEST '+best+'　到達 STAGE '+stage+'</p>'+
     '<button class="sp-btn" data-act="retry">もういちど</button><button class="sp-btn sub" data-act="title">タイトルへ</button>'+COPY);
   updateHud();
@@ -948,21 +976,21 @@ function pauseCard(){
 let pausedFrom=null;
 function pause(){
   if(pausedFrom||(st!=='play'&&st!=='ready'))return;
-  pausedFrom=st;st='pause';pauseCard();if(ac)ac.suspend();
+  pausedFrom=st;st='pause';pauseCard();bgmPause();if(ac)ac.suspend();
 }
 function resume(){
   if(!pausedFrom)return;
-  st=pausedFrom;pausedFrom=null;ov.hidden=true;if(ac&&sfxOn)ac.resume();
+  st=pausedFrom;pausedFrom=null;ov.hidden=true;if(ac&&sfxOn)ac.resume();bgmStart();
 }
-function newGame(){initAudio();stage=1;score=0;lives=3;pausedFrom=null;loadStage();}
+function newGame(){initAudio();bgmStop();stage=1;score=0;lives=3;pausedFrom=null;loadStage();bgmStart();}
 ov.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act;
   if(a==='start'||a==='retry'||a==='restart')newGame();
-  else if(a==='next'){initAudio();stage++;loadStage();}
+  else if(a==='next'){initAudio();stage++;loadStage();bgmStart();}
   else if(a==='resume')resume();
-  else if(a==='sound'){sfxOn=!sfxOn;pauseCard();}
-  else if(a==='title'){pausedFrom=null;genStage(1);pl=null;camY=Math.max(0,H-viewRows);updateHud();titleCard();}
+  else if(a==='sound'){sfxOn=!sfxOn;if(!sfxOn)bgmPause();pauseCard();}
+  else if(a==='title'){bgmStop();pausedFrom=null;genStage(1);pl=null;camY=Math.max(0,H-viewRows);updateHud();titleCard();}
 });
 $('pauseBtn').addEventListener('click',()=>{if(st==='pause')resume();else pause();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
@@ -1024,7 +1052,7 @@ function frame(t){
 }
 loadSheets();resize();genStage(1);camY=Math.max(0,H-viewRows);updateHud();titleCard();
 requestAnimationFrame(frame);
-window.__dbg={setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
+window.__dbg={bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
 })();
 </script>
 </body>
