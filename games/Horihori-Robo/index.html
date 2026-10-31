@@ -1065,19 +1065,24 @@ function draw(){
 // ---------- overlay cards ----------
 // card(body, foot): body may scroll if the screen is short; foot (the buttons) stays in view
 function card(body,foot){ov.classList.remove('is-title');ov.innerHTML='<div class="card"><div class="cbody scrollable">'+body+'</div>'+(foot?'<div class="cfoot">'+foot+'</div>':'')+'</div>';ov.hidden=false;}
-function titleCard(){ // logo (shrinks on short screens) / BEST + start button (always in view) / rules (may scroll)
-  st='title';banner.hidden=true;hideRedAlert();
-  ov.innerHTML='<div class="card"><div class="logo" role="img" aria-label="ホリホリ ロボバスター"></div>'+
-    '<div class="pad cfoot"><p>BEST '+best+'</p><button class="sp-btn" data-act="start">スタート</button></div>'+
-    '<div class="pad cbody scrollable">'+
-    '<div class="rules">'+
+function rulesHtml(){
+  return '<div class="rules">'+
     '<div><em>▲</em><span>画面は<b>強制スクロール</b>。壁に挟まれる前に、上のゴールをめざせ！</span></div>'+
     '<div><em>●</em><span><b>スティック以外のどこをタップ</b>しても穴をほる（ロボが近ければその方向に自動で）。もう一度で埋まる</span></div>'+
     '<div><em>●</em><span>白いロボを穴に落として、<b>頭をふんで</b>わたろう。ふさがるとロボはつぶれる</span></div>'+
     '<div><em>●</em><span>壁にタップで<b>ハシゴ</b>。<b>金塊10個</b>でパーフェクト！<b>ストップウォッチ</b>でスクロールが10秒止まる</span></div>'+
     '<div><em>●</em><span>ロボにさわる・挟まれる・穴に埋まるとミス。<b>ミスは3回まで</b></span></div>'+
-    '</div></div></div>';
+    '</div>';
+}
+function titleCard(){ // logo (shrinks on short screens) / BEST + the two buttons (always in view)
+  st='title';banner.hidden=true;hideRedAlert();
+  ov.innerHTML='<div class="card"><div class="logo" role="img" aria-label="ホリホリ ロボバスター"></div>'+
+    '<div class="pad cfoot"><p>BEST '+best+'</p><button class="sp-btn" data-act="start">スタート</button>'+
+    '<button class="sp-btn sub" data-act="howto">あそびかた</button></div></div>';
   ov.hidden=false;ov.classList.add('is-title');
+}
+function howtoCard(){ // the rules only: they scroll if the screen is short, the button stays in view
+  card('<h2>あそびかた</h2>'+rulesHtml(),'<button class="sp-btn" data-act="back">もどる</button>');
 }
 function pauseCard(){
   card('<h2>PAUSE</h2>','<button class="sp-btn" data-act="resume">つづける</button>'+
@@ -1102,6 +1107,8 @@ ov.addEventListener('click',e=>{
   else if(a==='next'){initAudio();stage++;loadStage();bgmStart();}
   else if(a==='resume')resume();
   else if(a==='sound'){sfxOn=!sfxOn;if(!sfxOn)bgmPause();pauseCard();}
+  else if(a==='howto')howtoCard();
+  else if(a==='back')titleCard();
   else if(a==='title'){bgmStop();pausedFrom=null;genStage(1);pl=null;camY=Math.max(0,H-viewRows);updateHud();titleCard();}
 });
 $('pauseBtn').addEventListener('click',()=>{if(st==='pause')resume();else pause();});
