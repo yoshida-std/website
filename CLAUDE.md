@@ -80,5 +80,5 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 
 - `games/Mogurush/CLAUDE.md` … モグラッシュ！
 - `games/judge2/CLAUDE.md` … 天使と悪魔のジャッジ2
-- `games/Horihori-Robo/CLAUDE.md` … ホリホリ・ロボバスター（縦スクロールの穴ほりアクション。制作中）
+- `games/Horihori-Robo/CLAUDE.md` … ホリホリ・ロボバスター（縦スクロールの穴ほりアクション。ポートフォリオに公開済み）
 - `games/Susume-Yusha/CLAUDE.md` … すすめ！ゆうしゃ
