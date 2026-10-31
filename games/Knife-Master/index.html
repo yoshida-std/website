@@ -82,6 +82,7 @@ canvas,.pad,.pbtn{touch-action:none}
 
 /* ===== 基本設定 ===== */
 const W=480,H=200,GY=212,TOPY=-50;    // 論理サイズ / 地面（足元）のY（世界の座標）/ 世界を上へずらす量。スコア欄はゲーム画面の上に重ねる
+const LEN=1300;                        // ステージの長さ（世界の幅）。右（論理上）の端に上の階への階段がある
 const GR=520, SPD=150;                 // 重力 / 歩く速さ（逃げ足は速い）
 const TIMELIM=99, STAGES=5;
 const cv=document.getElementById('cv'), cx=cv.getContext('2d');
@@ -143,7 +144,7 @@ const STG=[
 ];
 function cfg(n){return{
   hp:8+3*(n-1), spd:46+6*(n-1), cdBase:1.1-0.12*(n-1),
-  dodgeP:0.25+0.08*(n-1), aggr:0.6+0.3*(n-1), armor:n>=3,
+  dodgeP:0.2+0.16*(n-1), aggr:0.6+0.3*(n-1), armor:n>=3,
   pal:{gi:'#f6f6f6',sleeve:'#1a1a1a',pants:'#f6f6f6',belt:STG[n-1].belt,skin:'#f8b878',hair:'#161616',shoe:'#202020'}
 };}
 
@@ -283,7 +284,7 @@ function updPlayer(dt){
     if(p.x>190){p.x=Math.max(190,p.x-150*dt);p.walk+=dt;p.moving=true;p.face=-1;}else p.moving=false;
   }else p.moving=false;
   if(p.dead||p.z>0||p.vz>0){p.vz-=GR*dt;p.z+=p.vz*dt;if(!p.dead&&p.z<=0){p.z=0;p.vz=0;}}   // やられたら床も抜けて落ちる
-  p.x=Math.max(p.x,camX+14);
+  p.x=clamp(p.x,camX+14,LEN-26);          // スクロールの終わりで行き止まり
 }
 
 /* ===== ナイフ ===== */
@@ -376,7 +377,7 @@ function updEnemy(dt){
       if(e.t<=0){e.st='walk';e.cd=Math.max(e.cd,.3);}
       break;
   }
-  e.x=Math.max(e.x,camX-10);
+  e.x=clamp(e.x,camX-10,LEN-12);
 }
 
 /* ===== 勝ち負け ===== */
@@ -429,7 +430,7 @@ function update(dt){
   if(s==='play'||s==='intro'||s==='win'||s==='lose'){
     updPlayer(dt);updEnemy(dt);
     if(s==='play'||s==='intro')updKnives(dt);
-    if(s!=='intro')camX=Math.max(camX,P.x-250);
+    if(s!=='intro')camX=Math.min(LEN-W,Math.max(camX,P.x-250));   // スクロールには限界がある
   }
   if(G.state==='play'){
     G.time-=dt;
@@ -462,6 +463,17 @@ function drawBG(){
   for(let k=t0;k<t0+26;k++){
     const x=k*20+ox;
     R(x,GY+15,20,16,'#f8a030');R(x+2,GY+17,16,12,'#a04800');R(x+4,GY+19,12,8,'#f8a030');R(x+7,GY+22,6,2,'#a04800');
+  }
+  // ステージの終わり: 上の階へ行く階段
+  if(camX+W>LEN-160){
+    const x0=LEN-132+ox,n=7,sw=18,sh=12;
+    for(let i=0;i<n;i++){
+      const x=x0+i*sw,top=GY-(i+1)*sh;
+      R(x,top,sw,GY-top,'#7a3410');R(x,top,sw,3,'#f8b848');R(x,top+3,2,GY-top-3,'#a85018');R(x,top+sh,sw,2,'#5a2208');
+    }
+    const dx=LEN-38+ox,dy=GY-n*sh-54;
+    R(dx-3,dy-4,38,58,'#f87820');R(dx,dy,32,54,'#0c0c18');R(dx+2,dy+2,28,50,'#1c1c34');R(dx+14,dy+20,4,6,'#f8d820');
+    R(LEN-3+ox,83,3,GY-83,'#f87820');                         // 端の柱
   }
   // 床下の水と柱
   R(0,GY+31,W,H-TOPY-GY-31,'#103090');
