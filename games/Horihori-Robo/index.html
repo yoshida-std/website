@@ -57,6 +57,10 @@ canvas{display:block}
 #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(20,70,140,.9);
   padding:12px;box-sizing:border-box}
 .card{width:100%;max-width:340px;max-height:100%;overflow-y:auto;touch-action:pan-y;text-align:center;box-sizing:border-box;padding:4px 2px 10px}
+.logo{height:clamp(210px,40vh,340px);background:#0a1630 url(logo.jpg) center 42%/auto 112% no-repeat}
+#overlay.is-title{background:#0a1630;padding:0;align-items:flex-start}
+#overlay.is-title .card{max-width:none;padding:0 0 10px}
+.pad{max-width:340px;margin:0 auto;padding:0 14px}
 .card h1{font-weight:400;font-size:clamp(28px,9.5vw,40px);margin:6px 0 0;line-height:1.15;color:var(--fg);text-shadow:3px 3px 0 #c4521e}
 .card h2{font-weight:400;font-size:28px;margin:4px 0;color:var(--fg);text-shadow:3px 3px 0 #c4521e}
 .card .tag{margin:6px 0 0;font-size:11px;letter-spacing:.3em;color:var(--green)}
@@ -958,10 +962,10 @@ function draw(){
 }
 
 // ---------- overlay cards ----------
-function card(html){ov.innerHTML='<div class="card scrollable">'+html+'</div>';ov.hidden=false;}
+function card(html){ov.classList.remove('is-title');ov.innerHTML='<div class="card scrollable">'+html+'</div>';ov.hidden=false;}
 function titleCard(){
   st='title';banner.hidden=true;
-  card('<div class="cast" style="--u:60px"><i class="spr" style="--u:60px;background-image:var(--hero-sheet)"></i><i class="spr" style="--u:60px;background-image:url(robo.png);--c:1"></i><i class="spr" style="--u:60px;background-image:url(robo.png);--r:5"></i><i class="spr" style="--u:60px;background-image:var(--boss-sheet);--c:3"></i></div><p class="tag">DIG &amp; STOMP ACTION</p><h1>ホリホリ<br>ロボバスター</h1>'+
+  card('<div class="logo" role="img" aria-label="ホリホリ ロボバスター"></div><div class="pad">'+
     '<p>BEST '+best+'</p><button class="sp-btn" data-act="start">スタート</button>'+
     '<div class="rules">'+
     '<div><em>▲</em><span>画面は<b>強制スクロール</b>。壁に挟まれる前に、上のゴールをめざせ！</span></div>'+
@@ -969,7 +973,8 @@ function titleCard(){
     '<div><em>●</em><span>白いロボを穴に落として、<b>頭をふんで</b>わたろう。ふさがるとロボはつぶれる</span></div>'+
     '<div><em>●</em><span>壁にタップで<b>ハシゴ</b>。<b>金塊10個</b>でパーフェクト！</span></div>'+
     '<div><em>●</em><span>ロボにさわる・挟まれる・穴に埋まるとミス。<b>ミスは3回まで</b></span></div>'+
-    '</div>'+COPY);
+    '</div>'+COPY+'</div>');
+  ov.classList.add('is-title');
 }
 function pauseCard(){
   card('<h2>PAUSE</h2><button class="sp-btn" data-act="resume">つづける</button>'+
