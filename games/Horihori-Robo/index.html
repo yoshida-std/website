@@ -215,7 +215,8 @@ function resize(){
 addEventListener('resize',resize);
 
 // ---------- audio ----------
-let ac=null, sfxOn=true;
+let ac=null, sfxOn=true, guideOn=true;
+try{guideOn=localStorage.getItem('horihori_guide')!=='0';}catch(e){}
 function initAudio(){
   if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
   if(ac&&ac.state==='suspended')ac.resume();
@@ -309,7 +310,7 @@ const STAGE_TABLE=[
   {cam:1.05, robot:1.95, red:3.0, respawn:7.0, R:18},
   {cam:1.20, robot:2.15, red:3.1, respawn:6.2, R:22},
   {cam:1.35, robot:2.35, red:3.2, respawn:5.4, R:26},
-  {cam:1.50, robot:2.55, red:3.4, respawn:4.6, R:30}   // 5: final (fast, short waits, long maze)
+  {cam:1.40, robot:2.55, red:3.4, respawn:4.6, R:30}   // 5: final (fast, short waits, long maze)
 ];
 const stageCfg=n=>STAGE_TABLE[Math.min(Math.max(n,1),STAGE_TABLE.length)-1];
 let st='title', stage=1, score=0, lives=3, best=0, totalGold=0, totalGoldMax=0;
@@ -982,6 +983,7 @@ function drawPlayerVec(){
 // The tile the next tap would act on, drawn big with a label (also while running: the tile ahead of where you are heading)
 const MARKS={dig:['#ffffff','rgba(255,255,255,.22)','ほる'],fill:['#ffb04a','rgba(255,176,74,.32)','うめる'],ladder:['#6fe0ff','rgba(111,224,255,.32)','ハシゴ']};
 function drawDigMark(){
+  if(!guideOn)return;
   if(!pl||pl.state!=='walk'||st!=='play')return;
   const t=pl.moving?planDig(pl.nx,pl.ny,pl.dx,pl.dy):digInfo(); if(!t)return;
   const m=MARKS[t.kind], px=sxp(t.x), w=sxp(t.x+1)-px, h=sy(t.y+1)-sy(t.y), pulse=.75+.25*Math.sin(tNow*8);
@@ -1146,6 +1148,7 @@ function howtoCard(){ // the rules only: they scroll if the screen is short, the
 function pauseCard(){
   card('<h2>PAUSE</h2>','<button class="sp-btn" data-act="resume">つづける</button>'+
     '<button class="sp-btn sub" data-act="sound">おと：'+(sfxOn?'ON':'OFF')+'</button>'+
+    '<button class="sp-btn sub" data-act="guide">ガイド表示：'+(guideOn?'ON':'OFF')+'</button>'+
     '<button class="sp-btn sub" data-act="restart">さいしょから</button>'+
     '<button class="sp-btn sub" data-act="title">タイトルへ</button>');
 }
@@ -1165,6 +1168,7 @@ ov.addEventListener('click',e=>{
   if(a==='start'||a==='retry'||a==='restart')newGame();
   else if(a==='next'){initAudio();stage++;loadStage();bgmStart();}
   else if(a==='resume')resume();
+  else if(a==='guide'){guideOn=!guideOn;try{localStorage.setItem('horihori_guide',guideOn?'1':'0');}catch(e){}pauseCard();}
   else if(a==='sound'){sfxOn=!sfxOn;if(!sfxOn)bgmPause();pauseCard();}
   else if(a==='howto')howtoCard();
   else if(a==='back')titleCard();
