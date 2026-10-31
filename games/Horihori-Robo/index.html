@@ -474,7 +474,16 @@ function adjacentHole(aim){
   for(const d of ds){const x=pl.cx+d[0],y=pl.cy+d[1];if(holes.has(idx(x,y)))return {x,y,kind:'fill'};}
   return null;
 }
+// A wall in the facing direction comes first: the ladder goes up even when a robot is close
+// (if no ladder is left, or the wall can't take one, the robot-aiming below applies as before)
+function ladderInfo(){
+  if(pl.moving)return null;
+  const tx=pl.cx+pl.fx, ty=pl.cy+pl.fy;
+  if(isWall(tx,ty)&&tx>=1&&tx<=COLS-2&&ty>=3&&ty<=H-2&&ladders>0)return {x:tx,y:ty,kind:'ladder'};
+  return null;
+}
 function digInfo(){
+  const lad=ladderInfo(); if(lad)return lad;
   if(tNow-lastFillAt<2){const h=adjacentHole(aimDir());if(h)return h;}
   const aim=aimDir(), fx=aim?aim[0]:pl.fx, fy=aim?aim[1]:pl.fy;
   const tx=pl.cx+fx, ty=pl.cy+fy;
@@ -1206,7 +1215,7 @@ function frame(t){
 }
 loadSheets();resize();genStage(1);camY=Math.max(0,H-viewRows);updateHud();titleCard();
 requestAnimationFrame(frame);
-window.__dbg={cfg:()=>({cam:camSpd,cfg:stageCfg(stage),H:H}),setLives:v=>{lives=v;updateHud();},rankOf:rankOf,bgmSeek:sec=>{bgmPause();bgmOff=sec;bgmStart();},watch:()=>watch,freeze:()=>freezeT,missLoaded:()=>!!SAMPLES.miss.buf,clearLoaded:()=>!!SAMPLES.clear.buf,goldLoaded:()=>!!SAMPLES.gold.buf,digLoaded:()=>!!SAMPLES.dig.buf,spawnLoaded:()=>!!SAMPLES.spawn.buf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
+window.__dbg={setLadders:v=>{ladders=v;updateHud();},cfg:()=>({cam:camSpd,cfg:stageCfg(stage),H:H}),setLives:v=>{lives=v;updateHud();},rankOf:rankOf,bgmSeek:sec=>{bgmPause();bgmOff=sec;bgmStart();},watch:()=>watch,freeze:()=>freezeT,missLoaded:()=>!!SAMPLES.miss.buf,clearLoaded:()=>!!SAMPLES.clear.buf,goldLoaded:()=>!!SAMPLES.gold.buf,digLoaded:()=>!!SAMPLES.dig.buf,spawnLoaded:()=>!!SAMPLES.spawn.buf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
 })();
 </script>
 </body>
