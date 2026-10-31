@@ -71,11 +71,12 @@ canvas{display:block}
 #cv{position:absolute;inset:0;width:100%;height:100%}
 #banner{position:absolute;left:0;right:0;top:32%;text-align:center;pointer-events:none;font-size:34px;color:#fff6a0;
   text-shadow:2px 2px 0 #7a2a00,-2px -2px 0 #7a2a00,2px -2px 0 #7a2a00,-2px 2px 0 #7a2a00,0 4px 0 #7a2a00;line-height:1.4}
-#stopTimer{position:absolute;left:50%;top:56px;transform:translateX(-50%);display:flex;align-items:baseline;gap:8px;padding:3px 14px;
-  background:#2f6fd0;border:3px solid #ffd84a;border-radius:99px;color:#fff;pointer-events:none;z-index:2;box-shadow:0 3px 0 #14457f}
-#stopTimer b{font-weight:400;font-size:12px;letter-spacing:.08em;color:#bfe4ff}
+#stopTimer{position:absolute;left:50%;top:36px;transform:translateX(-50%);display:flex;align-items:baseline;gap:8px;padding:2px 14px;
+  background:rgba(12,30,72,.55);border:3px solid rgba(255,216,74,.7);border-radius:99px;color:#fff;pointer-events:none;z-index:2;
+  text-shadow:0 1px 2px #0008}
+#stopTimer b{font-weight:400;font-size:12px;letter-spacing:.08em;color:#d6efff}
 #stopTimer span{font-size:22px;font-variant-numeric:tabular-nums;color:#fff6a0}
-#stopTimer.low{background:#d0402f}#stopTimer.low span{color:#fff}
+#stopTimer.low{background:rgba(208,64,47,.55)}#stopTimer.low span{color:#fff}
 #redAlert{position:absolute;left:50%;top:44%;width:min(94%,520px);height:auto;pointer-events:none;z-index:2;
   transform:translate(-50%,-50%);filter:drop-shadow(0 6px 10px #0009)}
 #redAlert.show{animation:redIn 2.6s ease-out forwards}
