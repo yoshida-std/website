@@ -215,7 +215,8 @@ function resize(){
 addEventListener('resize',resize);
 
 // ---------- audio ----------
-let ac=null, sfxOn=true;
+let ac=null, sfxOn=true, guideOn=true;
+try{guideOn=localStorage.getItem('horihori_guide')!=='0';}catch(e){}
 function initAudio(){
   if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
   if(ac&&ac.state==='suspended')ac.resume();
@@ -309,7 +310,7 @@ const STAGE_TABLE=[
   {cam:1.05, robot:1.95, red:3.0, respawn:7.0, R:18},
   {cam:1.20, robot:2.15, red:3.1, respawn:6.2, R:22},
   {cam:1.35, robot:2.35, red:3.2, respawn:5.4, R:26},
-  {cam:1.50, robot:2.55, red:3.4, respawn:4.6, R:30}   // 5: final (fast, short waits, long maze)
+  {cam:1.40, robot:2.55, red:3.4, respawn:4.6, R:30}   // 5: final (fast, short waits, long maze)
 ];
 const stageCfg=n=>STAGE_TABLE[Math.min(Math.max(n,1),STAGE_TABLE.length)-1];
 let st='title', stage=1, score=0, lives=3, best=0, totalGold=0, totalGoldMax=0;
@@ -451,62 +452,58 @@ function arrivePlayer(p){
   }
   if(p.state==='walk'&&digReq>0)tryDig(); // dig right at the tile boundary, even while running
 }
-// Auto-aim: if a robot is within AIM_RANGE tiles (by walking distance), dig toward it
-// (the tile next to the player on the robot's way here); otherwise dig where the player faces.
-const AIM_RANGE=5;
-function aimDir(){
-  if(!flow||pl.moving)return null;
+// ---- What a tap does (planDig), kept narrow and predictable ----
+//  ladder : only within LADDER_WINDOW after pushing the stick into a wall that can take one (not merely "facing" it)
+//  aim    : a robot in a straight, open line (same row or column) within AIM_RANGE tiles -> dig toward it
+//  fill   : for FILL_WINDOW seconds after filling a hole, taps fill the other open holes next to the player
+//  else   : dig / fill the tile you face
+const AIM_RANGE=3, FILL_WINDOW=1;
+// one-handed: pushing the stick into a wall (standing at it) opens a LADDER_WINDOW in which a tap lays the ladder, even after the stick is released
+const LADDER_WINDOW=1.5; let pushT=-99, pushX=-1, pushY=-1;
+function pushedAt(tx,ty){return pushX===tx&&pushY===ty&&tNow-pushT<LADDER_WINDOW;}
+function aimDirAt(cx,cy){
   let best=null,bd=1e9;
   for(const e of ens){
     if(e.state!=='walk'||!e.active||e.cy<camY-1||e.cy>camY+viewRows+1)continue;
-    const d=flow[idx(e.cx,e.cy)];
-    if(d>=1&&d<=AIM_RANGE&&d<bd){bd=d;best=e;}
+    const ex=e.moving&&e.p>=0.5?e.nx:e.cx, ey=e.moving&&e.p>=0.5?e.ny:e.cy, dx=ex-cx, dy=ey-cy;
+    if((dx!==0&&dy!==0)||(dx===0&&dy===0))continue;       // not in a straight line
+    const d=Math.abs(dx)+Math.abs(dy), sx=Math.sign(dx), sy=Math.sign(dy);
+    if(d>AIM_RANGE||d>=bd)continue;
+    let clear=true;
+    for(let k=1;k<=d;k++)if(isWall(cx+sx*k,cy+sy*k)){clear=false;break;}
+    if(clear){bd=d;best=[sx,sy];}
   }
-  if(!best)return null;
-  let x=best.cx,y=best.cy,d=bd;
-  while(d>1){
-    let found=false;
-    for(const [dx,dy] of DIRS){
-      const ax=x+dx,ay=y+dy;
-      if(!isWall(ax,ay)&&flow[idx(ax,ay)]===d-1){x=ax;y=ay;found=true;break;}
-    }
-    if(!found)return null;
-    d--;
-  }
-  return [x-pl.cx,y-pl.cy];
+  return best;
 }
-// After filling a hole, further taps keep filling the other open holes around the player (for a short while)
-// instead of digging new ones.
 let lastFillAt=-99;
-function adjacentHole(aim){
+function adjacentHole(cx,cy,aim){
   const ds=aim?[aim].concat(DIRS):DIRS;
-  for(const d of ds){const x=pl.cx+d[0],y=pl.cy+d[1];if(holes.has(idx(x,y)))return {x,y,kind:'fill'};}
+  for(const d of ds){const x=cx+d[0],y=cy+d[1];if(holes.has(idx(x,y)))return {x,y,kind:'fill'};}
   return null;
 }
-// A wall in the facing direction comes first: the ladder goes up even when a robot is close
-// (if no ladder is left, or the wall can't take one, the robot-aiming below applies as before)
-function ladderInfo(){
-  if(pl.moving)return null;
-  const tx=pl.cx+pl.fx, ty=pl.cy+pl.fy;
-  if(isWall(tx,ty)&&tx>=1&&tx<=COLS-2&&ty>=3&&ty<=H-2&&ladders>0)return {x:tx,y:ty,kind:'ladder'};
-  return null;
-}
-function digInfo(){
-  const lad=ladderInfo(); if(lad)return lad;
-  if(tNow-lastFillAt<2){const h=adjacentHole(aimDir());if(h)return h;}
-  const aim=aimDir(), fx=aim?aim[0]:pl.fx, fy=aim?aim[1]:pl.fy;
-  const tx=pl.cx+fx, ty=pl.cy+fy;
-  if(isWall(tx,ty)){
-    if(tx>=1&&tx<=COLS-2&&ty>=3&&ty<=H-2&&ladders>0)return {x:tx,y:ty,kind:'ladder'};
-    return null;
-  }
-  if(ty<=1||grid[idx(tx,ty)]===2)return null;
+const canLadder=(tx,ty)=>isWall(tx,ty)&&tx>=1&&tx<=COLS-2&&ty>=3&&ty<=H-2;
+function planDig(cx,cy,fx,fy){
+  let tx=cx+fx, ty=cy+fy;
+  if(canLadder(tx,ty)&&ladders>0&&pushedAt(tx,ty))return {x:tx,y:ty,kind:'ladder'};
+  const aim=aimDirAt(cx,cy);
+  if(tNow-lastFillAt<FILL_WINDOW){const h=adjacentHole(cx,cy,aim);if(h)return h;}
+  if(aim){tx=cx+aim[0];ty=cy+aim[1];}
+  if(isWall(tx,ty)||ty<=1||grid[idx(tx,ty)]===2)return null;
   return {x:tx,y:ty,kind:holes.has(idx(tx,ty))?'fill':'dig'};
 }
+function digInfo(){return planDig(pl.cx,pl.cy,pl.fx,pl.fy);}
+let lastHintAt=-99;
 function tryDig(){
   const t=digInfo(); digReq=0;
   if(!t){
-    if(digFresh){SFX.no();if(ladders<=0&&isWall(pl.cx+pl.fx,pl.cy+pl.fy))text(pl.cx+.5,pl.cy-.3,'ハシゴなし','#ff9a9a');}
+    if(digFresh){
+      SFX.no();
+      const wx=pl.cx+pl.fx, wy=pl.cy+pl.fy;
+      if(canLadder(wx,wy)&&tNow-lastHintAt>2.5){
+        lastHintAt=tNow;
+        text(pl.cx+.5,pl.cy-.3,ladders<=0?'ハシゴなし':'かべへ すすんでから タップ','#ffe0a0');
+      }
+    }
     digFresh=false;return;
   }
   pl.fx=t.x-pl.cx;pl.fy=t.y-pl.cy; // face the target while digging
@@ -552,7 +549,8 @@ function updPlayer(dt){
   if(digHeld&&digHeldT>0.5)digReq=0.4; // only a deliberate hold repeats; a slow tap must not dig twice
   if(digReq<=0&&!digHeld)digFresh=false;
   const d=inputDir();
-  if(d&&p.state!=='stuck'){p.fx=d[0];p.fy=d[1];}
+  if(d&&p.state!=='stuck'){p.fx=d[0];p.fy=d[1];
+    if(p.state==='walk'&&!p.moving&&canLadder(p.cx+d[0],p.cy+d[1])){pushT=tNow;pushX=p.cx+d[0];pushY=p.cy+d[1];}}
   if(p.state==='walk'){
     if(!p.moving&&digReq>0)tryDig();
     if(p.state==='walk')advance(p,dt,PSPD,inputDir,enterPlayer,arrivePlayer,!p.forced);
@@ -982,13 +980,22 @@ function drawPlayerVec(){
   }
   ctx.restore();
 }
+// The tile the next tap would act on, drawn big with a label (also while running: the tile ahead of where you are heading)
+const MARKS={dig:['#ffffff','rgba(255,255,255,.22)','ほる'],fill:['#ffb04a','rgba(255,176,74,.32)','うめる'],ladder:['#6fe0ff','rgba(111,224,255,.32)','ハシゴ']};
 function drawDigMark(){
-  if(!pl||pl.state!=='walk'||pl.moving)return;
-  const t=digInfo(); if(!t)return;
-  const px=sxp(t.x), py=sy(t.y), w=sxp(t.x+1)-px, h=sy(t.y+1)-py;
-  ctx.strokeStyle=t.kind==='ladder'?'#6fe0ff':t.kind==='fill'?'#ffb04a':'#ffffffaa';
-  ctx.lineWidth=Math.max(1.5,S*.05);ctx.setLineDash([S*.2,S*.15]);
-  ctx.strokeRect(px+2,py+2,w-4,h-4);ctx.setLineDash([]);
+  if(!guideOn)return;
+  if(!pl||pl.state!=='walk'||st!=='play')return;
+  const t=pl.moving?planDig(pl.nx,pl.ny,pl.dx,pl.dy):digInfo(); if(!t)return;
+  const m=MARKS[t.kind], px=sxp(t.x), w=sxp(t.x+1)-px, h=sy(t.y+1)-sy(t.y), pulse=.75+.25*Math.sin(tNow*8);
+  const py=sy(t.y)-(t.kind==='ladder'?Math.round(S*WALL_H):0); // a ladder goes on the wall's top face, which is drawn raised
+  ctx.save();ctx.globalAlpha=pulse;
+  ctx.fillStyle=m[1];ctx.fillRect(px,py,w,h);
+  ctx.strokeStyle=m[0];ctx.lineWidth=Math.max(2,S*.07);ctx.setLineDash([S*.22,S*.14]);
+  ctx.strokeRect(px+3,py+3,w-6,h-6);ctx.setLineDash([]);
+  ctx.globalAlpha=1;
+  ctx.font=Math.round(S*.3)+'px DotGothic16, sans-serif';ctx.textAlign='center';ctx.lineWidth=Math.max(2,S*.09);ctx.lineJoin='round';
+  ctx.strokeStyle='#0a1630';ctx.strokeText(m[2],px+w/2,py+h*.62);ctx.fillStyle=m[0];ctx.fillText(m[2],px+w/2,py+h*.62);
+  ctx.restore();
 }
 // ---------- sprite sheet (robo.png: 8x6 cells of 128px; white robot / recoloured hero & boss) ----------
 // rows: 0 front idle (0-3) + back (4-7) | 1 walk right | 2 walk left | 3 ladder climb | 4 dig (0 ready, 1-7 dig) | 5 down (0-2), overheat (3), cheer (4-5)
@@ -1087,7 +1094,7 @@ function drawQueueBand(){
 function draw(){
   ctx.fillStyle='#2d7a2d';ctx.fillRect(0,0,cv.width,cv.height);
   if(!grid)return;
-  drawTiles();drawGold();drawWatch();drawHoles();drawDigMark();
+  drawTiles();drawGold();drawWatch();drawHoles();
   const objs=ens.filter(e=>e.state!=='dead'&&e.cy>=camY-3&&e.cy<=camY+viewRows+2).map(e=>({y:ePos(e)[1],f:()=>drawRobot(e)}));
   if(pl)objs.push({y:ePos(pl)[1]+0.01,f:drawPlayer});
   objs.sort((a,b)=>a.y-b.y);
@@ -1098,6 +1105,7 @@ function draw(){
     while(oi<objs.length&&objs[oi].y<y+0.5){objs[oi].f();oi++;}
   }
   while(oi<objs.length){objs[oi].f();oi++;}
+  drawDigMark(); // on top of walls and characters, so it is always readable
   drawQueueBand();
   for(const p of fxP){ctx.globalAlpha=Math.max(0,p.life*2);ctx.fillStyle=p.col;ctx.fillRect(sxp(p.x),sy(p.y),Math.max(2,S*.12),Math.max(2,S*.12));}
   ctx.globalAlpha=1;
@@ -1121,9 +1129,9 @@ function card(body,foot){ov.classList.remove('is-title');ov.innerHTML='<div clas
 function rulesHtml(){
   return '<div class="rules">'+
     '<div><em>▲</em><span><b>全5ステージ</b>。画面は<b>強制スクロール</b>。壁に挟まれる前に、上のゴールをめざせ！</span></div>'+
-    '<div><em>●</em><span><b>スティック以外のどこをタップ</b>しても穴をほる（ロボが近ければその方向に自動で）。もう一度で埋まる</span></div>'+
+    '<div><em>●</em><span><b>スティック以外のどこをタップ</b>しても穴をほる（ロボが一直線に近ければ、その方向に自動で）。光っているマスが、タップで変わるところ。もう一度で埋まる</span></div>'+
     '<div><em>●</em><span>白いロボを穴に落として、<b>頭をふんで</b>わたろう。ふさがるとロボはつぶれる</span></div>'+
-    '<div><em>●</em><span>壁にタップで<b>ハシゴ</b>。<b>金塊10個</b>でパーフェクト！<b>ストップウォッチ</b>でスクロールが10秒止まる</span></div>'+
+    '<div><em>●</em><span><b>壁へ進んでぶつかった直後</b>にタップで<b>ハシゴ</b>。<b>金塊10個</b>でパーフェクト！<b>ストップウォッチ</b>でスクロールが10秒止まる</span></div>'+
     '<div><em>●</em><span>ロボにさわる・挟まれる・穴に埋まるとミス。<b>ミスは3回まで</b>（ステージクリアで1つ回復）</span></div>'+
     '</div>';
 }
@@ -1140,6 +1148,7 @@ function howtoCard(){ // the rules only: they scroll if the screen is short, the
 function pauseCard(){
   card('<h2>PAUSE</h2>','<button class="sp-btn" data-act="resume">つづける</button>'+
     '<button class="sp-btn sub" data-act="sound">おと：'+(sfxOn?'ON':'OFF')+'</button>'+
+    '<button class="sp-btn sub" data-act="guide">ガイド表示：'+(guideOn?'ON':'OFF')+'</button>'+
     '<button class="sp-btn sub" data-act="restart">さいしょから</button>'+
     '<button class="sp-btn sub" data-act="title">タイトルへ</button>');
 }
@@ -1159,6 +1168,7 @@ ov.addEventListener('click',e=>{
   if(a==='start'||a==='retry'||a==='restart')newGame();
   else if(a==='next'){initAudio();stage++;loadStage();bgmStart();}
   else if(a==='resume')resume();
+  else if(a==='guide'){guideOn=!guideOn;try{localStorage.setItem('horihori_guide',guideOn?'1':'0');}catch(e){}pauseCard();}
   else if(a==='sound'){sfxOn=!sfxOn;if(!sfxOn)bgmPause();pauseCard();}
   else if(a==='howto')howtoCard();
   else if(a==='back')titleCard();
@@ -1229,7 +1239,7 @@ function frame(t){
 }
 loadSheets();resize();genStage(1);camY=Math.max(0,H-viewRows);updateHud();titleCard();
 requestAnimationFrame(frame);
-window.__dbg={setLadders:v=>{ladders=v;updateHud();},cfg:()=>({cam:camSpd,cfg:stageCfg(stage),H:H}),setLives:v=>{lives=v;updateHud();},rankOf:rankOf,bgmSeek:sec=>{bgmPause();bgmOff=sec;bgmStart();},watch:()=>watch,freeze:()=>freezeT,missLoaded:()=>!!SAMPLES.miss.buf,clearLoaded:()=>!!SAMPLES.clear.buf,goldLoaded:()=>!!SAMPLES.gold.buf,digLoaded:()=>!!SAMPLES.dig.buf,spawnLoaded:()=>!!SAMPLES.spawn.buf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
+window.__dbg={plan:()=>digInfo(),canLadder:canLadder,setLadders:v=>{ladders=v;updateHud();},cfg:()=>({cam:camSpd,cfg:stageCfg(stage),H:H}),setLives:v=>{lives=v;updateHud();},rankOf:rankOf,bgmSeek:sec=>{bgmPause();bgmOff=sec;bgmStart();},watch:()=>watch,freeze:()=>freezeT,missLoaded:()=>!!SAMPLES.miss.buf,clearLoaded:()=>!!SAMPLES.clear.buf,goldLoaded:()=>!!SAMPLES.gold.buf,digLoaded:()=>!!SAMPLES.dig.buf,spawnLoaded:()=>!!SAMPLES.spawn.buf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
 })();
 </script>
 </body>

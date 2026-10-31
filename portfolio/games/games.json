@@ -1,6 +1,15 @@
 {
   "items": [
     {
+      "id": "horihori-robo",
+      "title": "ホリホリ・ロボバスター",
+      "description": "穴をほって、ロボットを落として、頭をふみつけろ！勝手に進む画面から逃げながら出口をめざす、縦スクロールの迷路アクション。",
+      "path": "../../games/Horihori-Robo/",
+      "image": "../img/games/horihori-robo.jpg",
+      "orientation": "portrait",
+      "published": "2026-10-31"
+    },
+    {
       "id": "judge2",
       "title": "天使と悪魔のジャッジ2",
       "description": "数字が大きいほうは「たたく」、小さいほうは「さける」。ふたりで対戦も、CPU と勝負もできる反射神経ゲーム。",
