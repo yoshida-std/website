@@ -96,11 +96,15 @@ canvas{display:block}
 #banner small{display:block;font-size:14px;color:#fff;text-shadow:1px 1px 0 #7a2a00,-1px -1px 0 #7a2a00,1px -1px 0 #7a2a00,-1px 1px 0 #7a2a00}
 #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(20,70,140,.9);
   padding:12px;box-sizing:border-box}
-.card{width:100%;max-width:340px;max-height:100%;overflow-y:auto;touch-action:pan-y;text-align:center;box-sizing:border-box;padding:4px 2px 10px}
-.logo{height:clamp(210px,40vh,340px);background:#0a1630 url(logo.jpg) center 42%/auto 112% no-repeat}
+.card{width:100%;max-width:340px;max-height:100%;display:flex;flex-direction:column;text-align:center;box-sizing:border-box;padding:4px 2px 4px}
+.cbody{flex:1 1 auto;min-height:0;overflow-y:auto;touch-action:pan-y}   /* may scroll */
+.cfoot{flex:0 0 auto;padding-top:2px}
+.pad.cbody{flex:0 8 auto;min-height:44px}   /* title: the rules shrink first, so the logo stays big */                                   /* the buttons: always in view */
+.cfoot .sp-btn{margin-top:6px}
+.logo{flex:0 1 clamp(210px,40vh,340px);min-height:92px;background:#0a1630 url(logo.jpg) center 42%/auto 112% no-repeat}
 #overlay.is-title{background:#0a1630;padding:0;align-items:flex-start}
-#overlay.is-title .card{max-width:none;padding:0 0 10px}
-.pad{max-width:340px;margin:0 auto;padding:0 14px}
+#overlay.is-title .card{max-width:none;padding:0 0 4px;height:100%}
+.pad{width:100%;max-width:340px;margin:0 auto;padding:0 14px;box-sizing:border-box}
 .card h1{font-weight:400;font-size:clamp(28px,9.5vw,40px);margin:6px 0 0;line-height:1.15;color:var(--fg);text-shadow:3px 3px 0 #c4521e}
 .card h2{font-weight:400;font-size:28px;margin:4px 0;color:var(--fg);text-shadow:3px 3px 0 #c4521e}
 .card .tag{margin:6px 0 0;font-size:11px;letter-spacing:.3em;color:var(--green)}
@@ -120,6 +124,11 @@ canvas{display:block}
 .sp-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #8a4a00}
 .sp-btn.sub{background:#2f8fe6;color:#fff;border-color:#ffd84a;box-shadow:0 4px 0 #14457f;font-size:15px}
 .copy{font-size:10px!important;color:#cfe6ff!important;letter-spacing:.04em;margin-top:14px!important}
+@media (max-height:640px){ /* short phones: tighten the cards so the text and the buttons both fit */
+  .card h2{font-size:22px;margin:2px 0}.big{font-size:18px;margin:2px 0}.card p{margin:3px 0;line-height:1.4}
+  .sp-btn{padding:8px 0;font-size:16px}.sp-btn.sub{font-size:14px}.cfoot .sp-btn{margin-top:5px}
+}
+#copyright{flex:0 0 auto;margin:0;text-align:center;font-size:10px;line-height:1.2;letter-spacing:.04em;color:#cfe6ff;text-shadow:0 1px 2px #0a1630aa}
 #ctrl{flex:0 0 auto;height:clamp(154px,21vh,182px);display:flex;justify-content:space-between;align-items:center;padding:0 14px 0 28px}
 #stick{position:relative;width:112px;height:112px;border-radius:50%;background:#2f8fe6aa;border:3px solid #ffd84a}
 #stick::after{content:"";position:absolute;inset:-20px;border-radius:50%;z-index:-1;pointer-events:none;
@@ -158,6 +167,7 @@ canvas{display:block}
     <div id="stick"><div id="knob"></div><span id="ringLabel">この外側タップで ホル</span></div>
     <div id="digBtn">ホル<small>あなをほる</small></div>
   </div>
+  <p id="copyright"><b>©YoshidaStudio, ©PANICPUMPKIN</b></p>
 </div>
 
 <script>
@@ -182,7 +192,6 @@ document.addEventListener('touchmove',e=>{if(!e.target.closest('.scrollable'))e.
 const COLS=13, PSPD=3.9, HOLE_LIFE=5.5, HOLE_OPEN=0.3, DIRS=[[1,0],[-1,0],[0,1],[0,-1]];
 const $=id=>document.getElementById(id);
 const cv=$('cv'), ctx=cv.getContext('2d'), ov=$('overlay'), banner=$('banner');
-const COPY='<p class="copy"><b>©YoshidaStudio, ©PANICPUMPKIN</b></p>';
 const rnd=n=>Math.floor(Math.random()*n);
 
 // ---------- canvas sizing (all drawing in device pixels) ----------
@@ -698,14 +707,14 @@ function stageClear(){
   if(st!=='play')return;
   st='clear'; bgmPause(); SFX.clear();
   const bonus=1000+lives*500, perfect=goldGot>=golds.length&&golds.length>0; score+=bonus+(perfect?PERFECT_PTS:0); saveBest();
-  card('<div class="cast"><i class="spr cheer" style="--u:88px;background-image:var(--hero-sheet)"></i></div><h2>STAGE '+stage+' CLEAR!</h2><p class="big">ボーナス +'+bonus+'</p><p>金 '+goldGot+' / '+golds.length+'</p>'+(perfect?'<p class="big">PERFECT! +'+PERFECT_PTS+'</p>':'')+'<p>SCORE '+score+'</p>'+
+  card('<div class="cast"><i class="spr cheer" style="--u:clamp(48px,11vh,88px);background-image:var(--hero-sheet)"></i></div><h2>STAGE '+stage+' CLEAR!</h2><p class="big">ボーナス +'+bonus+'</p><p>金 '+goldGot+' / '+golds.length+'</p>'+(perfect?'<p class="big">PERFECT! +'+PERFECT_PTS+'</p>':'')+'<p>SCORE '+score+'</p>',
     '<button class="sp-btn" data-act="next">つぎのステージへ</button>');
   updateHud();
 }
 function gameOver(){
   st='over'; bgmStop(); saveBest();
-  card('<div class="cast"><i class="spr" style="--u:88px;--r:5;background-image:var(--hero-sheet)"></i></div><h2>GAME OVER</h2><p class="big">SCORE '+score+'</p><p>BEST '+best+'　到達 STAGE '+stage+'</p>'+
-    '<button class="sp-btn" data-act="retry">もういちど</button><button class="sp-btn sub" data-act="title">タイトルへ</button>'+COPY);
+  card('<div class="cast"><i class="spr" style="--u:clamp(48px,11vh,88px);--r:5;background-image:var(--hero-sheet)"></i></div><h2>GAME OVER</h2><p class="big">SCORE '+score+'</p><p>BEST '+best+'　到達 STAGE '+stage+'</p>',
+    '<button class="sp-btn" data-act="retry">もういちど</button><button class="sp-btn sub" data-act="title">タイトルへ</button>');
   updateHud();
 }
 function saveBest(){if(score>best){best=score;try{localStorage.setItem('horihori_best',String(best));}catch(e){}}}
@@ -1054,22 +1063,24 @@ function draw(){
 }
 
 // ---------- overlay cards ----------
-function card(html){ov.classList.remove('is-title');ov.innerHTML='<div class="card scrollable">'+html+'</div>';ov.hidden=false;}
-function titleCard(){
+// card(body, foot): body may scroll if the screen is short; foot (the buttons) stays in view
+function card(body,foot){ov.classList.remove('is-title');ov.innerHTML='<div class="card"><div class="cbody scrollable">'+body+'</div>'+(foot?'<div class="cfoot">'+foot+'</div>':'')+'</div>';ov.hidden=false;}
+function titleCard(){ // logo (shrinks on short screens) / BEST + start button (always in view) / rules (may scroll)
   st='title';banner.hidden=true;hideRedAlert();
-  card('<div class="logo" role="img" aria-label="ホリホリ ロボバスター"></div><div class="pad">'+
-    '<p>BEST '+best+'</p><button class="sp-btn" data-act="start">スタート</button>'+
+  ov.innerHTML='<div class="card"><div class="logo" role="img" aria-label="ホリホリ ロボバスター"></div>'+
+    '<div class="pad cfoot"><p>BEST '+best+'</p><button class="sp-btn" data-act="start">スタート</button></div>'+
+    '<div class="pad cbody scrollable">'+
     '<div class="rules">'+
     '<div><em>▲</em><span>画面は<b>強制スクロール</b>。壁に挟まれる前に、上のゴールをめざせ！</span></div>'+
     '<div><em>●</em><span><b>スティック以外のどこをタップ</b>しても穴をほる（ロボが近ければその方向に自動で）。もう一度で埋まる</span></div>'+
     '<div><em>●</em><span>白いロボを穴に落として、<b>頭をふんで</b>わたろう。ふさがるとロボはつぶれる</span></div>'+
     '<div><em>●</em><span>壁にタップで<b>ハシゴ</b>。<b>金塊10個</b>でパーフェクト！<b>ストップウォッチ</b>でスクロールが10秒止まる</span></div>'+
     '<div><em>●</em><span>ロボにさわる・挟まれる・穴に埋まるとミス。<b>ミスは3回まで</b></span></div>'+
-    '</div>'+COPY+'</div>');
-  ov.classList.add('is-title');
+    '</div></div></div>';
+  ov.hidden=false;ov.classList.add('is-title');
 }
 function pauseCard(){
-  card('<h2>PAUSE</h2><button class="sp-btn" data-act="resume">つづける</button>'+
+  card('<h2>PAUSE</h2>','<button class="sp-btn" data-act="resume">つづける</button>'+
     '<button class="sp-btn sub" data-act="sound">おと：'+(sfxOn?'ON':'OFF')+'</button>'+
     '<button class="sp-btn sub" data-act="restart">さいしょから</button>'+
     '<button class="sp-btn sub" data-act="title">タイトルへ</button>');
