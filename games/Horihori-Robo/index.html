@@ -71,35 +71,39 @@ canvas{display:block}
 #cv{position:absolute;inset:0;width:100%;height:100%}
 #banner{position:absolute;left:0;right:0;top:32%;text-align:center;pointer-events:none;font-size:34px;color:#fff6a0;
   text-shadow:2px 2px 0 #7a2a00,-2px -2px 0 #7a2a00,2px -2px 0 #7a2a00,-2px 2px 0 #7a2a00,0 4px 0 #7a2a00;line-height:1.4}
-#stopTimer{position:absolute;left:50%;top:56px;transform:translateX(-50%);display:flex;align-items:baseline;gap:8px;padding:3px 14px;
-  background:#2f6fd0;border:3px solid #ffd84a;border-radius:99px;color:#fff;pointer-events:none;z-index:2;box-shadow:0 3px 0 #14457f}
-#stopTimer b{font-weight:400;font-size:12px;letter-spacing:.08em;color:#bfe4ff}
+#stopTimer{position:absolute;left:50%;top:36px;transform:translateX(-50%);display:flex;align-items:baseline;gap:8px;padding:2px 14px;
+  background:rgba(12,30,72,.55);border:3px solid rgba(255,216,74,.7);border-radius:99px;color:#fff;pointer-events:none;z-index:2;
+  text-shadow:0 1px 2px #0008}
+#stopTimer b{font-weight:400;font-size:12px;letter-spacing:.08em;color:#d6efff}
 #stopTimer span{font-size:22px;font-variant-numeric:tabular-nums;color:#fff6a0}
-#stopTimer.low{background:#d0402f}#stopTimer.low span{color:#fff}
-#redAlert{position:absolute;left:50%;top:44%;width:min(94%,520px);height:auto;pointer-events:none;z-index:2;
-  transform:translate(-50%,-50%);filter:drop-shadow(0 6px 10px #0009)}
-#redAlert.show{animation:redIn 2.6s ease-out forwards}
+#stopTimer.low{background:rgba(208,64,47,.55)}#stopTimer.low span{color:#fff}
+#redAlert{position:absolute;left:50%;top:40px;width:min(54%,300px);height:auto;pointer-events:none;z-index:2;
+  transform:translate(-50%,0);transform-origin:50% 0;filter:drop-shadow(0 4px 8px #0008)}
+/* small, near the top and a little see-through: the maze stays visible. The game holds still for the first 0.5s (the pop-in and shake), then plays on while the picture fades out (1.2s in all) */
+#redAlert.show{animation:redIn 1.2s ease-out forwards}
 @keyframes redIn{
-  0%{transform:translate(-50%,-50%) scale(.35);opacity:0}
-  12%{transform:translate(-50%,-50%) scale(1.14);opacity:1}
-  20%{transform:translate(-50%,-50%) scale(.97)}
-  27%{transform:translate(-50%,-50%) scale(1)}
-  34%{transform:translate(-47.5%,-50%) scale(1)}
-  38%{transform:translate(-52.5%,-50%) scale(1)}
-  42%{transform:translate(-48.5%,-50%) scale(1)}
-  46%{transform:translate(-50%,-50%) scale(1)}
-  80%{transform:translate(-50%,-50%) scale(1);opacity:1}
-  100%{transform:translate(-50%,-50%) scale(1.06);opacity:0}
+  0%{transform:translate(-50%,0) scale(.45);opacity:0}
+  14%{transform:translate(-50%,0) scale(1.1);opacity:.9}
+  24%{transform:translate(-50%,0) scale(1)}
+  30%{transform:translate(-47%,0) scale(1)}
+  36%{transform:translate(-53%,0) scale(1)}
+  42%{transform:translate(-49%,0) scale(1);opacity:.85}
+  48%{transform:translate(-50%,0) scale(1)}
+  100%{transform:translate(-50%,0) scale(1);opacity:0}
 }
-@media (prefers-reduced-motion:reduce){#redAlert.show{animation:redFade 2.6s linear forwards}@keyframes redFade{0%{opacity:0}10%,80%{opacity:1}100%{opacity:0}}}
+@media (prefers-reduced-motion:reduce){#redAlert.show{animation:redFade 1.2s linear forwards}@keyframes redFade{0%{opacity:0}12%{opacity:.9}100%{opacity:0}}}
 #banner small{display:block;font-size:14px;color:#fff;text-shadow:1px 1px 0 #7a2a00,-1px -1px 0 #7a2a00,1px -1px 0 #7a2a00,-1px 1px 0 #7a2a00}
 #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(20,70,140,.9);
   padding:12px;box-sizing:border-box}
-.card{width:100%;max-width:340px;max-height:100%;overflow-y:auto;touch-action:pan-y;text-align:center;box-sizing:border-box;padding:4px 2px 10px}
-.logo{height:clamp(210px,40vh,340px);background:#0a1630 url(logo.jpg) center 42%/auto 112% no-repeat}
+.card{width:100%;max-width:340px;max-height:100%;display:flex;flex-direction:column;text-align:center;box-sizing:border-box;padding:4px 2px 4px}
+.cbody{flex:1 1 auto;min-height:0;overflow-y:auto;touch-action:pan-y}   /* may scroll */
+.cfoot{flex:0 0 auto;padding-top:2px}
+.pad.cbody{flex:0 8 auto;min-height:44px}   /* title: the rules shrink first, so the logo stays big */                                   /* the buttons: always in view */
+.cfoot .sp-btn{margin-top:6px}
+.logo{flex:0 1 clamp(210px,40vh,340px);min-height:92px;background:#0a1630 url(logo.jpg) center 42%/auto 112% no-repeat}
 #overlay.is-title{background:#0a1630;padding:0;align-items:flex-start}
-#overlay.is-title .card{max-width:none;padding:0 0 10px}
-.pad{max-width:340px;margin:0 auto;padding:0 14px}
+#overlay.is-title .card{max-width:none;padding:0 0 4px;height:100%}
+.pad{width:100%;max-width:340px;margin:0 auto;padding:0 14px;box-sizing:border-box}
 .card h1{font-weight:400;font-size:clamp(28px,9.5vw,40px);margin:6px 0 0;line-height:1.15;color:var(--fg);text-shadow:3px 3px 0 #c4521e}
 .card h2{font-weight:400;font-size:28px;margin:4px 0;color:var(--fg);text-shadow:3px 3px 0 #c4521e}
 .card .tag{margin:6px 0 0;font-size:11px;letter-spacing:.3em;color:var(--green)}
@@ -119,6 +123,11 @@ canvas{display:block}
 .sp-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #8a4a00}
 .sp-btn.sub{background:#2f8fe6;color:#fff;border-color:#ffd84a;box-shadow:0 4px 0 #14457f;font-size:15px}
 .copy{font-size:10px!important;color:#cfe6ff!important;letter-spacing:.04em;margin-top:14px!important}
+@media (max-height:640px){ /* short phones: tighten the cards so the text and the buttons both fit */
+  .card h2{font-size:22px;margin:2px 0}.big{font-size:18px;margin:2px 0}.card p{margin:3px 0;line-height:1.4}
+  .sp-btn{padding:8px 0;font-size:16px}.sp-btn.sub{font-size:14px}.cfoot .sp-btn{margin-top:5px}
+}
+#copyright{flex:0 0 auto;margin:0;text-align:center;font-size:10px;line-height:1.2;letter-spacing:.04em;color:#cfe6ff;text-shadow:0 1px 2px #0a1630aa}
 #ctrl{flex:0 0 auto;height:clamp(154px,21vh,182px);display:flex;justify-content:space-between;align-items:center;padding:0 14px 0 28px}
 #stick{position:relative;width:112px;height:112px;border-radius:50%;background:#2f8fe6aa;border:3px solid #ffd84a}
 #stick::after{content:"";position:absolute;inset:-20px;border-radius:50%;z-index:-1;pointer-events:none;
@@ -157,6 +166,7 @@ canvas{display:block}
     <div id="stick"><div id="knob"></div><span id="ringLabel">この外側タップで ホル</span></div>
     <div id="digBtn">ホル<small>あなをほる</small></div>
   </div>
+  <p id="copyright"><b>©YoshidaStudio, ©PANICPUMPKIN</b></p>
 </div>
 
 <script>
@@ -181,7 +191,6 @@ document.addEventListener('touchmove',e=>{if(!e.target.closest('.scrollable'))e.
 const COLS=13, PSPD=3.9, HOLE_LIFE=5.5, HOLE_OPEN=0.3, DIRS=[[1,0],[-1,0],[0,1],[0,-1]];
 const $=id=>document.getElementById(id);
 const cv=$('cv'), ctx=cv.getContext('2d'), ov=$('overlay'), banner=$('banner');
-const COPY='<p class="copy"><b>©YoshidaStudio, ©PANICPUMPKIN</b></p>';
 const rnd=n=>Math.floor(Math.random()*n);
 
 // ---------- canvas sizing (all drawing in device pixels) ----------
@@ -275,6 +284,11 @@ function bgmPause(){ // keeps the position, so bgmStart() continues from here
   bgmSrc=null;
 }
 function bgmStop(){bgmWant=false;bgmPause();bgmOff=0;}
+// The track has a proper ending. If a stage was cleared two thirds or more of the way through it,
+// the next stage starts the music from the beginning instead of running into the ending.
+const BGM_RESTART_AT=2/3;
+function bgmProgress(){return bgmBuf?(bgmOff%Math.min(BGM_LEN,bgmBuf.duration))/Math.min(BGM_LEN,bgmBuf.duration):0;}
+function bgmRewindIfLate(){if(bgmProgress()>=BGM_RESTART_AT)bgmOff=0;}
 
 // ---------- game state ----------
 let st='title', stage=1, score=0, lives=3, best=0;
@@ -282,7 +296,7 @@ try{best=+localStorage.getItem('horihori_best')||0;}catch(e){}
 let grid=null, H=0, startX=5, startY=0, holes=new Map(), ens=[], pl=null, camY=0, camSpd=1;
 let grace=0, readyT=0, bestRow=0, flow=null, flowKey=-1, tNow=0, digReq=0, digHeld=false, digFresh=false, digHeldT=0;
 const digIds=new Set(); // pointers currently pressing 'dig' (the button, or any tap outside the stick)
-let exitX=1, redDone=false, bannerT=0, redT=0, watch=null, freezeT=0, tickSec=-1, fxP=[], fxT=[], ladders=3, golds=[], goldGot=0;
+let exitX=1, redDone=false, bannerT=0, redT=0, alertFreezeT=0, watch=null, freezeT=0, tickSec=-1, fxP=[], fxT=[], ladders=3, golds=[], goldGot=0;
 const WATCH_STOP=10, RESPAWN_PAUSE=2.0, GOLD_N=10, GOLD_PTS=300, PERFECT_PTS=3000;
 const idx=(x,y)=>y*COLS+x;
 const isWall=(x,y)=>x<0||x>=COLS||y<0||y>=H||grid[idx(x,y)]===1;
@@ -591,10 +605,11 @@ function pickSpawn(x0){
   return null;
 }
 const redAlert=$('redAlert');
-function showRedAlert(){ // the cut-in picture: pops in, shakes, fades out (2.6s)
-  redAlert.hidden=false;redAlert.classList.remove('show');void redAlert.offsetWidth;redAlert.classList.add('show');redT=2.6;
+const ALERT_SHOW=1.2, ALERT_HOLD=0.5;
+function showRedAlert(){ // the cut-in picture: small, at the top, see-through; the game holds still for ALERT_HOLD, then plays on while it fades (ALERT_SHOW)
+  redAlert.hidden=false;redAlert.classList.remove('show');void redAlert.offsetWidth;redAlert.classList.add('show');redT=ALERT_SHOW;alertFreezeT=ALERT_HOLD;
 }
-function hideRedAlert(){redAlert.hidden=true;redAlert.classList.remove('show');redT=0;}
+function hideRedAlert(){redAlert.hidden=true;redAlert.classList.remove('show');redT=0;alertFreezeT=0;}
 function spawnRedRobot(){ // once the forced scroll has stopped, ONE red robot comes up from the bottom of the screen
   const y0=Math.min(H-3,Math.floor(camY+viewRows)+1);
   for(let y=y0;y>=y0-4;y--){
@@ -695,16 +710,16 @@ function loadStage(){
 }
 function stageClear(){
   if(st!=='play')return;
-  st='clear'; bgmPause(); SFX.clear();
+  st='clear'; bgmPause(); bgmRewindIfLate(); SFX.clear();
   const bonus=1000+lives*500, perfect=goldGot>=golds.length&&golds.length>0; score+=bonus+(perfect?PERFECT_PTS:0); saveBest();
-  card('<div class="cast"><i class="spr cheer" style="--u:88px;background-image:var(--hero-sheet)"></i></div><h2>STAGE '+stage+' CLEAR!</h2><p class="big">ボーナス +'+bonus+'</p><p>金 '+goldGot+' / '+golds.length+'</p>'+(perfect?'<p class="big">PERFECT! +'+PERFECT_PTS+'</p>':'')+'<p>SCORE '+score+'</p>'+
+  card('<div class="cast"><i class="spr cheer" style="--u:clamp(48px,11vh,88px);background-image:var(--hero-sheet)"></i></div><h2>STAGE '+stage+' CLEAR!</h2><p class="big">ボーナス +'+bonus+'</p><p>金 '+goldGot+' / '+golds.length+'</p>'+(perfect?'<p class="big">PERFECT! +'+PERFECT_PTS+'</p>':'')+'<p>SCORE '+score+'</p>',
     '<button class="sp-btn" data-act="next">つぎのステージへ</button>');
   updateHud();
 }
 function gameOver(){
   st='over'; bgmStop(); saveBest();
-  card('<div class="cast"><i class="spr" style="--u:88px;--r:5;background-image:var(--hero-sheet)"></i></div><h2>GAME OVER</h2><p class="big">SCORE '+score+'</p><p>BEST '+best+'　到達 STAGE '+stage+'</p>'+
-    '<button class="sp-btn" data-act="retry">もういちど</button><button class="sp-btn sub" data-act="title">タイトルへ</button>'+COPY);
+  card('<div class="cast"><i class="spr" style="--u:clamp(48px,11vh,88px);--r:5;background-image:var(--hero-sheet)"></i></div><h2>GAME OVER</h2><p class="big">SCORE '+score+'</p><p>BEST '+best+'　到達 STAGE '+stage+'</p>',
+    '<button class="sp-btn" data-act="retry">もういちど</button><button class="sp-btn sub" data-act="title">タイトルへ</button>');
   updateHud();
 }
 function saveBest(){if(score>best){best=score;try{localStorage.setItem('horihori_best',String(best));}catch(e){}}}
@@ -733,6 +748,9 @@ function update(dt){
     return;
   }
   if(st!=='play'){updFx(dt);return;}
+  if(alertFreezeT>0){ // the red robot's entrance: everything holds still for a moment
+    alertFreezeT=Math.max(0,alertFreezeT-dt);redT=Math.max(0,redT-dt);if(redT<=0)hideRedAlert();updFx(dt);return;
+  }
   updateFlow();
   updPlayer(dt);
   if(st!=='play')return;
@@ -1053,22 +1071,29 @@ function draw(){
 }
 
 // ---------- overlay cards ----------
-function card(html){ov.classList.remove('is-title');ov.innerHTML='<div class="card scrollable">'+html+'</div>';ov.hidden=false;}
-function titleCard(){
-  st='title';banner.hidden=true;hideRedAlert();
-  card('<div class="logo" role="img" aria-label="ホリホリ ロボバスター"></div><div class="pad">'+
-    '<p>BEST '+best+'</p><button class="sp-btn" data-act="start">スタート</button>'+
-    '<div class="rules">'+
+// card(body, foot): body may scroll if the screen is short; foot (the buttons) stays in view
+function card(body,foot){ov.classList.remove('is-title');ov.innerHTML='<div class="card"><div class="cbody scrollable">'+body+'</div>'+(foot?'<div class="cfoot">'+foot+'</div>':'')+'</div>';ov.hidden=false;}
+function rulesHtml(){
+  return '<div class="rules">'+
     '<div><em>▲</em><span>画面は<b>強制スクロール</b>。壁に挟まれる前に、上のゴールをめざせ！</span></div>'+
     '<div><em>●</em><span><b>スティック以外のどこをタップ</b>しても穴をほる（ロボが近ければその方向に自動で）。もう一度で埋まる</span></div>'+
     '<div><em>●</em><span>白いロボを穴に落として、<b>頭をふんで</b>わたろう。ふさがるとロボはつぶれる</span></div>'+
     '<div><em>●</em><span>壁にタップで<b>ハシゴ</b>。<b>金塊10個</b>でパーフェクト！<b>ストップウォッチ</b>でスクロールが10秒止まる</span></div>'+
     '<div><em>●</em><span>ロボにさわる・挟まれる・穴に埋まるとミス。<b>ミスは3回まで</b></span></div>'+
-    '</div>'+COPY+'</div>');
-  ov.classList.add('is-title');
+    '</div>';
+}
+function titleCard(){ // logo (shrinks on short screens) / BEST + the two buttons (always in view)
+  st='title';banner.hidden=true;hideRedAlert();
+  ov.innerHTML='<div class="card"><div class="logo" role="img" aria-label="ホリホリ ロボバスター"></div>'+
+    '<div class="pad cfoot"><p>BEST '+best+'</p><button class="sp-btn" data-act="start">スタート</button>'+
+    '<button class="sp-btn sub" data-act="howto">あそびかた</button></div></div>';
+  ov.hidden=false;ov.classList.add('is-title');
+}
+function howtoCard(){ // the rules only: they scroll if the screen is short, the button stays in view
+  card('<h2>あそびかた</h2>'+rulesHtml(),'<button class="sp-btn" data-act="back">もどる</button>');
 }
 function pauseCard(){
-  card('<h2>PAUSE</h2><button class="sp-btn" data-act="resume">つづける</button>'+
+  card('<h2>PAUSE</h2>','<button class="sp-btn" data-act="resume">つづける</button>'+
     '<button class="sp-btn sub" data-act="sound">おと：'+(sfxOn?'ON':'OFF')+'</button>'+
     '<button class="sp-btn sub" data-act="restart">さいしょから</button>'+
     '<button class="sp-btn sub" data-act="title">タイトルへ</button>');
@@ -1090,6 +1115,8 @@ ov.addEventListener('click',e=>{
   else if(a==='next'){initAudio();stage++;loadStage();bgmStart();}
   else if(a==='resume')resume();
   else if(a==='sound'){sfxOn=!sfxOn;if(!sfxOn)bgmPause();pauseCard();}
+  else if(a==='howto')howtoCard();
+  else if(a==='back')titleCard();
   else if(a==='title'){bgmStop();pausedFrom=null;genStage(1);pl=null;camY=Math.max(0,H-viewRows);updateHud();titleCard();}
 });
 $('pauseBtn').addEventListener('click',()=>{if(st==='pause')resume();else pause();});
@@ -1152,7 +1179,7 @@ function frame(t){
 }
 loadSheets();resize();genStage(1);camY=Math.max(0,H-viewRows);updateHud();titleCard();
 requestAnimationFrame(frame);
-window.__dbg={watch:()=>watch,freeze:()=>freezeT,missLoaded:()=>!!SAMPLES.miss.buf,clearLoaded:()=>!!SAMPLES.clear.buf,goldLoaded:()=>!!SAMPLES.gold.buf,digLoaded:()=>!!SAMPLES.dig.buf,spawnLoaded:()=>!!SAMPLES.spawn.buf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
+window.__dbg={bgmSeek:sec=>{bgmPause();bgmOff=sec;bgmStart();},watch:()=>watch,freeze:()=>freezeT,missLoaded:()=>!!SAMPLES.miss.buf,clearLoaded:()=>!!SAMPLES.clear.buf,goldLoaded:()=>!!SAMPLES.gold.buf,digLoaded:()=>!!SAMPLES.dig.buf,spawnLoaded:()=>!!SAMPLES.spawn.buf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
 })();
 </script>
 </body>
