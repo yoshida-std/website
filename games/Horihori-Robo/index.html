@@ -547,7 +547,7 @@ function spawnRedRobot(){ // once the forced scroll has stopped, ONE red robot c
     const xs=[];for(let x=1;x<COLS-1;x++)if(!isWall(x,y)&&!ens.some(o=>o.state!=='dead'&&o.cx===x&&o.cy===y))xs.push(x);
     if(xs.length){
       const e=mkEnt(xs[rnd(xs.length)],y,true,true);ens.push(e);redDone=true;
-      banner.innerHTML='あかいロボが きた！<small>したから おいかけてくる！</small>';banner.hidden=false;bannerT=2;SFX.alarm();
+      banner.innerHTML='あかいロボが きた！<small>したから おいかけてくる！</small>';banner.hidden=false;bannerT=2;SFX.spawn();SFX.alarm();
       return;
     }
   }
