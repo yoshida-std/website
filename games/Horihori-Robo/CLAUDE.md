@@ -3,9 +3,9 @@
 スマホ縦画面向けの縦スクロール穴ほりアクション（仮題。名前・フォルダ名は変えてよい）。公開URL: `https://yoshida-std.github.io/website/games/Horihori-Robo/`
 リポジトリ全体の作業ルール（ブランチ・PR・確認方法・コピーライト表記）はルートの `CLAUDE.md` を参照。
 
-プッシュ前の確認用 Artifact: `https://claude.ai/artifact/1JWDnmdpVxVJC3r7oNmZKN`（変更のたびにこの URL を更新する。`index.html` と、`files` で `robo.png` `bgm.mp3` `dig.wav` `spawn.wav` を同じパスに載せる。`Artifact` ツールが使えないときは `publish_files`（`mcp__claude-artifacts`）で、リポジトリのファイルをそのまま公開する）
+プッシュ前の確認用 Artifact: `https://claude.ai/artifact/1JWDnmdpVxVJC3r7oNmZKN`（変更のたびにこの URL を更新する。`index.html` と、`files` で `robo.png` `bgm.mp3` `dig.wav` `spawn.wav` `gold.wav` を同じパスに載せる。`Artifact` ツールが使えないときは `publish_files`（`mcp__claude-artifacts`）で、リポジトリのファイルをそのまま公開する）
 
-`index.html` と、キャラのスプライトシート `robo.png`（1024×768、128px のコマ 8×6）と、BGM `bgm.mp3`、穴を掘る音 `dig.wav`、ロボが配置される音 `spawn.wav` で完結（ほかの効果音は WebAudio の合成）。`games.json`（ポートフォリオの一覧）にはまだ載せていない。
+`index.html` と、キャラのスプライトシート `robo.png`（1024×768、128px のコマ 8×6）と、BGM `bgm.mp3`、穴を掘る音 `dig.wav`、ロボが配置される音 `spawn.wav`、金塊を取る音 `gold.wav` で完結（ほかの効果音は WebAudio の合成）。`games.json`（ポートフォリオの一覧）にはまだ載せていない。
 
 ## 概要と操作
 
@@ -37,6 +37,7 @@
 - **BGM** `bgm.mp3`（ユーザー提供。PANICPUMPKIN の曲「ちんけなくらし」、約2分25秒、2.9MB。コピーライト表記の PANICPUMPKIN はこの曲）。音量は小さめ（`BGM_VOL`=0.2。効果音より控えめ）。`fetch` → `decodeAudioData` → `AudioBufferSource` のループ（iOS でも音量が効くように WebAudio）。末尾の約1.5秒の無音はループに含めない（`BGM_LEN`=143.7）。ゲーム中だけ鳴る: スタート（`newGame`）で頭から、ポーズ・画面を離れる・ステージクリアで一時停止（位置を覚えて続きから）、つぎのステージ・つづけるで再開、ゲームオーバー・タイトルへで止める（頭に戻す）。ポーズ画面の「おと」OFF では鳴らさない
 - **穴を掘る音** `dig.wav`（ユーザー提供、0.08秒、13KB）。穴をほるとき・埋めるときに鳴る（`SFX.dig`、音量 0.55）
 - **ロボが配置される音** `spawn.wav`（ユーザー提供、0.26秒、46KB）。待機の列から降りてきたロボがステージ（迷路の上端）に置かれた瞬間に鳴る（`SFX.spawn`、音量 0.5）
+- **金塊を取る音** `gold.wav`（ユーザー提供、1.33秒、235KB、宝箱・アイテム獲得の音）。金塊に触れた瞬間に鳴る（`SFX.coin`、音量 0.6。元の音がやや小さめなので他より少し大きい）
 - 短い効果音の wav は `SAMPLES` にまとめて、最初のタップで読み込む（`loadSamples` → `playSample`）。読み込み前や失敗時は、合成の短い音で代用
 - 穴の見た目はすべて canvas の矩形描画（デバイスピクセル単位で `S`＝1マスのpx）
 - プレイヤーの歩く速さは `PSPD`=3.9マス/秒。ミス・ステージ開始のとき、ホルボタンの入力（`digReq` `digFresh` `digHeld`）を捨てる。`play` 以外の状態で押したホルボタンは無視する（死んだ直後のタップで復活後に掘れてしまう不具合の対策）
