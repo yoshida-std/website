@@ -149,6 +149,7 @@ function cfg(n){return{
 };}
 
 /* ===== ラウンド開始 ===== */
+function EDGE(){return G.stage===STAGES?LEN-90:LEN-12;}   // 行き止まりの位置（最上階は椅子の手前）
 function newPlayer(hp){return{lock:0,low:false,bufT:0,pT:false,pL:false,x:530,z:0,vz:0,hp,face:-1,cd:0,inv:0,hurt:0,kb:0,walk:0,moving:false,throwT:0,dead:false};}
 function startRound(){
   const c=cfg(G.stage);
@@ -284,7 +285,7 @@ function updPlayer(dt){
     if(p.x>190){p.x=Math.max(190,p.x-150*dt);p.walk+=dt;p.moving=true;p.face=-1;}else p.moving=false;
   }else p.moving=false;
   if(p.dead||p.z>0||p.vz>0){p.vz-=GR*dt;p.z+=p.vz*dt;if(!p.dead&&p.z<=0){p.z=0;p.vz=0;}}   // やられたら床も抜けて落ちる
-  p.x=clamp(p.x,camX+14,LEN-26);          // スクロールの終わりで行き止まり
+  p.x=clamp(p.x,camX+14,EDGE()-14);       // スクロールの終わりで行き止まり
 }
 
 /* ===== ナイフ ===== */
@@ -377,7 +378,7 @@ function updEnemy(dt){
       if(e.t<=0){e.st='walk';e.cd=Math.max(e.cd,.3);}
       break;
   }
-  e.x=clamp(e.x,camX-10,LEN-12);
+  e.x=clamp(e.x,camX-10,EDGE()-2);
 }
 
 /* ===== 勝ち負け ===== */
@@ -394,7 +395,7 @@ function endWin(){
   if(G.stage>=STAGES){
     G.state='end';showControls(false);
     G.score+=3000;saveBest();
-    showOverlay(`<h2>全ステージクリア！</h2><p>ナイフマスターの かちだ！</p>
+    showOverlay(`<h2>全ステージクリア！</h2><p>最上階を守りぬいた！ ナイフマスターの かちだ！</p>
     <div class="sc">SCORE ${sc6(G.score)}<br>BEST ${sc6(best)}</div>
     <button class="btn" data-act="retry">もういちど</button>
     <button class="btn sub" data-act="title">タイトルへ</button>${COPY}`);
@@ -440,6 +441,31 @@ function update(dt){
   if(s==='lose'){G.t-=dt;if(G.t<=0)endLose();}
 }
 
+/* ===== 描画：最上階の、椅子に座らされた女性（チャイナドレス）===== */
+function drawCaptive(ox){
+  const X=LEN-84+ox,Y=GY;          // 椅子の左端、足元
+  const wood='#7a3410',wood2='#c8782a',red='#d02030',red2='#9a1020',gold='#f8d820',skin='#f8c8a0',hair='#14141c',rope='#d8c08a';
+  R(LEN-3+ox,83,3,GY-83,'#f87820');                                   // 端の柱
+  // 椅子
+  R(X+26,Y-48,5,48,wood);R(X+26,Y-48,5,3,wood2);                       // 背もたれ
+  R(X,Y-17,30,4,wood);R(X,Y-17,30,1,wood2);                            // 座面
+  R(X+1,Y-13,3,13,wood);R(X+24,Y-13,3,13,wood);                        // 脚
+  // 脚と足（そろえて前へ）
+  R(X+1,Y-21,26,6,red);R(X+1,Y-21,26,1,red2);                          // ふとももからスカート
+  R(X+1,Y-16,5,11,red);R(X+2,Y-6,4,4,skin);R(X,Y-3,7,3,red2);          // ひざ下と足
+  R(X+1,Y-9,6,2,rope);                                                 // 足首のひも
+  // 体（チャイナドレス）
+  R(X+15,Y-44,11,24,red);R(X+15,Y-44,2,24,red2);
+  R(X+15,Y-38,11,2,gold);R(X+15,Y-31,11,2,gold);                      // 金の縁どり
+  R(X+18,Y-44,2,3,gold);R(X+16,Y-47,6,3,gold);                         // 立ちえり
+  R(X+13,Y-40,3,12,red2);                                              // 腕（うしろ手）
+  R(X+14,Y-34,13,2,rope);                                              // 体をしばるひも
+  // 頭
+  R(X+13,Y-60,10,11,skin);
+  R(X+12,Y-62,13,5,hair);R(X+22,Y-60,4,12,hair);R(X+23,Y-67,6,6,hair);R(X+24,Y-65,3,2,gold);   // 髪とおだんご、かんざし
+  R(X+14,Y-55,2,2,'#14141c');R(X+13,Y-51,3,1,'#c04858');               // 目と口
+}
+
 /* ===== 描画：背景 ===== */
 function R(x,y,w,h,c){cx.fillStyle=c;cx.fillRect(Math.round(x),Math.round(y),w,h);}
 function drawBG(){
@@ -465,7 +491,8 @@ function drawBG(){
     R(x,GY+15,20,16,'#f8a030');R(x+2,GY+17,16,12,'#a04800');R(x+4,GY+19,12,8,'#f8a030');R(x+7,GY+22,6,2,'#a04800');
   }
   // ステージの終わり: 上の階へ行く階段
-  if(camX+W>LEN-160){
+  if(camX+W>LEN-160&&G.stage===STAGES)drawCaptive(ox);   // 最上階: 階段のかわりに、椅子に座らされた女性
+  else if(camX+W>LEN-160){
     const x0=LEN-132+ox,n=7,sw=18,sh=12;
     for(let i=0;i<n;i++){
       const x=x0+i*sw,top=GY-(i+1)*sh;
@@ -569,7 +596,7 @@ function draw(){
   }
   cx.restore();
   if(P)drawHUD();
-  if(G.state==='intro'){bigText('STAGE '+G.stage,64,'#fff',20);if(G.t<.8)bigText('FIGHT!',100,'#ffd23c',20);}
+  if(G.state==='intro'){bigText(G.stage===STAGES?'FINAL STAGE':'STAGE '+G.stage,64,'#fff',20);if(G.t<.8)bigText('FIGHT!',100,'#ffd23c',20);}
   if(G.state==='win')bigText('YOU WIN!',76,'#ffd23c',20);
   if(G.state==='lose')bigText(G.msg==='TIME UP'?'TIME UP':'YOU LOSE',76,'#ff5050',20);
 }
