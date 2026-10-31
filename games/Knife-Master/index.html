@@ -25,10 +25,12 @@ canvas,.pad,.pbtn{touch-action:none}
   background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.35)}
 #dpad i{flex:1;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:min(8vh,34px);color:rgba(255,255,255,.7);pointer-events:none}
 #dpad.l i:first-child,#dpad.r i:last-child{color:#ffd23c}
-#acts{right:max(14px,env(safe-area-inset-right,0px));display:flex;gap:12px;align-items:flex-end}
-.pbtn{width:min(24vh,100px);height:min(24vh,100px);border-radius:50%;display:flex;align-items:center;justify-content:center;
+#acts{right:max(14px,env(safe-area-inset-right,0px));display:flex;gap:8px;align-items:flex-end}
+.pbtn{width:min(22vh,92px);height:min(22vh,92px);border-radius:50%;display:flex;align-items:center;justify-content:center;
   background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.4);font-size:min(5.4vh,22px);color:#fff;text-align:center;line-height:1.1}
-#bT{width:min(30vh,124px);height:min(30vh,124px);background:rgba(240,90,40,.35);border-color:rgba(255,160,100,.8)}
+#bJ{font-size:min(3.6vh,14px)}
+#bL,#bT{font-size:min(4.6vh,18px)}
+#bT{width:min(28vh,116px);height:min(28vh,116px);background:rgba(240,90,40,.35);border-color:rgba(255,160,100,.8)}
 .pbtn.on{background:rgba(255,210,60,.55)}
 #pauseBtn{position:absolute;left:50%;bottom:max(10px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:6;
   width:46px;height:34px;border-radius:10px;border:2px solid rgba(255,255,255,.4);background:rgba(0,0,0,.4);color:#fff;font-size:14px;padding:0}
@@ -55,7 +57,8 @@ canvas,.pad,.pbtn{touch-action:none}
   <div id="dpad" class="pad" hidden><i>◀</i><i>▶</i></div>
   <div id="acts" class="pad" hidden>
     <div id="bJ" class="pbtn">ジャンプ</div>
-    <div id="bT" class="pbtn">ナイフ</div>
+    <div id="bL" class="pbtn">下段<br>ナイフ</div>
+    <div id="bT" class="pbtn">上段<br>ナイフ</div>
   </div>
   <button id="pauseBtn" hidden>Ⅱ</button>
   <div id="overlay" class="menu"><div class="card" id="card"></div></div>
@@ -86,7 +89,7 @@ let best=0;
 try{best=+(localStorage.getItem(BEST_KEY)||0);}catch(e){}
 const G={state:'title',score:0,stage:1,time:TIMELIM,t:0,sound:true,shake:0,msg:''};
 let P,E,camX=0,knives=[],parts=[];
-const inp={l:false,r:false,jump:false,throw:false};
+const inp={l:false,r:false,jump:false,throw:false,low:false};
 
 /* ===== 画面サイズ ===== */
 let S=1;
@@ -141,7 +144,7 @@ function cfg(n){return{
 };}
 
 /* ===== ラウンド開始 ===== */
-function newPlayer(hp){return{x:190,z:0,vz:0,hp,face:1,cd:0,inv:0,hurt:0,kb:0,walk:0,moving:false,throwT:0,dead:false};}
+function newPlayer(hp){return{lock:0,low:false,x:190,z:0,vz:0,hp,face:1,cd:0,inv:0,hurt:0,kb:0,walk:0,moving:false,throwT:0,dead:false};}
 function startRound(){
   const c=cfg(G.stage);
   camX=0;knives=[];parts=[];G.time=TIMELIM;G.shake=0;
@@ -158,7 +161,8 @@ function setKey(e,v){
   const k=e.code;let h=true;
   if(k==='ArrowLeft'||k==='KeyA')inp.l=v;
   else if(k==='ArrowRight'||k==='KeyD')inp.r=v;
-  else if(k==='ArrowUp'||k==='KeyW'||k==='KeyX')inp.jump=v;
+  else if(k==='ArrowUp'||k==='KeyW')inp.jump=v;
+  else if(k==='ArrowDown'||k==='KeyX'||k==='KeyK')inp.low=v;
   else if(k==='KeyZ'||k==='Space'||k==='KeyJ')inp.throw=v;
   else h=false;
   if(h)e.preventDefault();
@@ -169,7 +173,7 @@ addEventListener('keydown',e=>{
   setKey(e,true);
 });
 addEventListener('keyup',e=>setKey(e,false));
-addEventListener('blur',()=>{inp.l=inp.r=inp.jump=inp.throw=false;});
+addEventListener('blur',()=>{inp.l=inp.r=inp.jump=inp.throw=inp.low=false;});
 
 (()=>{
   const dp=$('dpad');
@@ -183,7 +187,7 @@ addEventListener('blur',()=>{inp.l=inp.r=inp.jump=inp.throw=false;});
     const up=()=>{inp[key]=false;el.classList.remove('on');};
     ['pointerup','pointercancel','lostpointercapture'].forEach(t=>el.addEventListener(t,up));
   };
-  bind($('bT'),'throw');bind($('bJ'),'jump');
+  bind($('bT'),'throw');bind($('bL'),'low');bind($('bJ'),'jump');
 })();
 function showControls(v){$('dpad').hidden=!v;$('acts').hidden=!v;$('pauseBtn').hidden=!v;}
 
@@ -199,17 +203,18 @@ function showTitle(){
   <div class="rules">
    <div><b>めざせ</b> 主人公をたおせ！ 全${STAGES}ステージ</div>
    <div><b>戦い方</b> ナイフ使いは近づかれると弱い。<b>きょりをとって</b>ナイフを投げよう</div>
-   <div><b>ナイフ</b> 近いと投げるのがおそい。相手がしゃがむ・ジャンプでよけることも</div>
+   <div><b>ナイフ</b> <b>上段</b>（立って投げる）と<b>下段</b>（しゃがんで投げる）。<b>投げている間は動けない</b>。近いと投げるのがおそい</div>
+   <div><b>よけ</b> 相手がしゃがんだら<b>下段</b>。ジャンプでよけたら着地を待とう</div>
    <div><b>ライフ</b> なくなったらゲームオーバー。ステージクリアで少し回復</div>
    <div><b>じかん</b> ${TIMELIM}びょうで決着をつけよう</div>
   </div>
   <button class="btn" data-act="start">ゲームスタート</button>
-  <p style="font-size:11px;color:#9ab">キー: ←→ いどう / ↑ ジャンプ / Z ナイフ / P ポーズ</p>
+  <p style="font-size:11px;color:#9ab">キー: ←→ いどう / ↑ ジャンプ / Z 上段 / X 下段 / P ポーズ</p>
   <p class="copy" style="margin-top:2px">ベストスコア ${sc6(best)}</p>${COPY}`);
 }
 function pause(){
   if(G.state!=='play'&&G.state!=='intro')return;
-  G.prev=G.state;G.state='pause';inp.l=inp.r=inp.jump=inp.throw=false;
+  G.prev=G.state;G.state='pause';inp.l=inp.r=inp.jump=inp.throw=inp.low=false;
   showOverlay(`<h2>ポーズ</h2>
   <button class="btn" data-act="resume">つづける</button>
   <button class="btn sub" data-act="snd">おと: ${G.sound?'ON':'OFF'}</button>
@@ -235,29 +240,33 @@ function eTop(){return E.st==='crouch'||E.st==='wind'?28:46;}
 function spark(x,y,c,n=8){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-.5)*160,vy:-Math.random()*120-20,t:.35+Math.random()*.2,c});}
 
 /* ===== プレイヤー ===== */
-function tryThrow(){
-  if(P.cd>0||knives.filter(k=>k.mine).length>=3)return;
+function tryThrow(low){
+  if(P.cd>0||P.lock>0||knives.filter(k=>k.mine).length>=3)return;
   const close=Math.abs(E.x-P.x)<46;        // 近いとナイフがおそい（近距離に弱い）
-  P.cd=close?1:.38;P.throwT=.18;
-  knives.push({x:P.x+P.face*12,y:GY-P.z-26,vx:P.face*285,d:0,a:0,mine:true,seen:false});
+  P.lock=close?.55:.3;                     // 投げている間は動けない
+  P.cd=P.lock+(close?.4:.1);P.throwT=P.lock;P.low=low;
+  knives.push({x:P.x+P.face*12,y:GY-P.z-(low?10:36),vx:P.face*285,d:0,a:0,mine:true,seen:false});
   SND.throw();
 }
 function hurtPlayer(dmg,dir){
   if(P.inv>0||P.dead)return;
-  P.hp-=dmg;P.inv=1.3;P.hurt=.32;P.kb=dir*150;G.shake=.25;
+  P.hp-=dmg;P.inv=1.3;P.hurt=.32;P.lock=0;P.throwT=0;P.kb=dir*150;G.shake=.25;
   spark(P.x,GY-P.z-28,'#ff6040',10);SND.hurt();
   if(P.hp<=0){P.hp=0;lose('LIFE 0');}
 }
 function updPlayer(dt){
   const p=P;
   p.face=E.x>=p.x?1:-1;
-  p.cd-=dt;p.inv-=dt;p.throwT-=dt;
+  p.cd-=dt;p.inv-=dt;p.throwT-=dt;p.lock-=dt;
   if(p.hurt>0){p.hurt-=dt;p.x+=p.kb*dt;p.kb*=.88;p.moving=false;}
   else if(G.state==='play'&&!p.dead){
-    const mv=(inp.r?1:0)-(inp.l?1:0);
-    p.x+=mv*SPD*dt;p.moving=mv!==0;p.walk+=mv?dt:0;
-    if(inp.jump&&p.z===0){p.vz=JUMP;SND.jump();}
-    if(inp.throw)tryThrow();
+    if(p.lock>0){p.moving=false;}
+    else{
+      const mv=(inp.r?1:0)-(inp.l?1:0);
+      p.x+=mv*SPD*dt;p.moving=mv!==0;p.walk+=mv?dt:0;
+      if(inp.jump&&p.z===0){p.vz=JUMP;SND.jump();}
+      if(inp.low)tryThrow(true);else if(inp.throw)tryThrow(false);
+    }
   }else p.moving=false;
   if(p.z>0||p.vz>0){p.vz-=GR*dt;p.z+=p.vz*dt;if(p.z<=0){p.z=0;p.vz=0;}}
   p.x=Math.max(p.x,camX+14);
@@ -274,7 +283,7 @@ function updKnives(dt){
       if(E.st==='walk'&&E.dodgeCd<=0&&Math.random()<E.c.dodgeP){
         E.dodgeCd=1.3;E.at=0;SND.dodge();
         if(Math.random()<.5){E.st='crouch';E.t=.5;}
-        else{E.st='jump';E.vz=190;E.vx=0;}
+        else{E.st='jump';E.vz=240;E.vx=0;}
       }
     }
     // 命中
@@ -441,7 +450,7 @@ function fighter(o){
   cx.save();cx.translate(sx,by);cx.scale(o.face,1);
   if(pose==='down'){cx.translate(0,-7);cx.rotate(-Math.PI/2);}
   else if(pose==='hurt'){cx.rotate(-.18);}
-  const cr=pose==='crouch'||pose==='wind',u=cr?14:0;
+  const cr=pose==='crouch'||pose==='wind'||pose==='cthrow',u=cr?14:0;
   const sw=pose==='walk'?Math.round(Math.sin(o.walk*14)*3):0;
   const A=(x,y,w,h,c)=>R(x,y,w,h,c);
   // 脚
@@ -459,6 +468,7 @@ function fighter(o){
   // 腕
   if(pose==='punch'){A(6,-31+u,20,4,p.sleeve);A(25,-32+u,5,6,p.skin);A(-9,-30+u,3,11,p.sleeve);}
   else if(pose==='punchw'){A(-13,-31+u,10,4,p.sleeve);A(-14,-32+u,4,6,p.skin);A(6,-30+u,3,10,p.sleeve);}
+  else if(pose==='cthrow'){A(5,-31+u,12,3,p.sleeve);A(16,-32+u,4,5,p.skin);A(20,-31+u,7,2,'#e8e8f0');A(-9,-30+u,3,11,p.sleeve);}
   else if(pose==='throw'){A(5,-41+u,3,13,p.sleeve);A(4,-44+u,4,3,p.skin);A(6,-51+u,2,7,'#e8e8f0');A(-9,-30+u,3,11,p.sleeve);}
   else if(pose==='air'||pose==='kick'||pose==='hurt'){A(6,-37,3,9,p.sleeve);A(-10,-37,3,9,p.sleeve);}
   else{
@@ -467,7 +477,7 @@ function fighter(o){
   cx.restore();
 }
 function playerPose(){
-  if(P.dead)return'down';if(P.hurt>0)return'hurt';if(P.throwT>0)return'throw';
+  if(P.dead)return'down';if(P.hurt>0)return'hurt';if(P.throwT>0)return P.low&&P.z===0?'cthrow':'throw';
   if(P.z>0)return'air';return P.moving?'walk':'idle';
 }
 function enemyPose(){
