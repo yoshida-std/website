@@ -147,7 +147,7 @@ canvas{display:block}
 <body>
 <div id="app">
   <div id="hud">
-    <div class="stat"><b>STAGE</b><span id="vStage">1</span></div>
+    <div class="stat"><b>STAGE</b><span id="vStage">1/5</span></div>
     <div class="stat" id="stLife"><b>MISS</b><span id="vLife"></span></div>
     <div class="stat"><b>ハシゴ</b><span id="vLad">×3</span></div>
     <div class="stat"><b>金</b><span id="vGold">0/10</span></div>
@@ -587,7 +587,8 @@ function updHoles(dt){
 // ---------- robot waiting line ----------
 // Defeated robots queue up in a strip at the top of the screen. After a delay the head of the line
 // slides over and drops into the maze; the rest close up behind it.
-const MAX_ROBOTS=5, SLOT0=0.75, SLOTW=0.95;
+const FINAL_STAGE=5, SLOT0=0.75, SLOTW=0.95;
+const robotPool=()=>3+(stage-1); // white robots: 3 at stage 1, one more each stage
 let queue=[], entering=[];
 const respawnDelay=()=>Math.max(4,7.5-0.4*stage);
 function sendToQueue(e){
@@ -701,19 +702,19 @@ function loadStage(){
   genStage(stage);
   queue=[];entering=[];redDone=false;bannerT=0;hideRedAlert();
   placeGold();placeWatch();freezeT=0;$('stopTimer').hidden=true;
-  for(let i=0;i<MAX_ROBOTS;i++)queue.push({t:2+i*1.4,delay:respawnDelay()+2+i*1.4,x:SLOT0+i*SLOTW,ph:Math.random()*6});
+  for(let i=0;i<robotPool();i++)queue.push({t:2+i*1.4,delay:respawnDelay()+2+i*1.4,x:SLOT0+i*SLOTW,ph:Math.random()*6});
   pl={cx:startX,cy:startY,nx:startX,ny:startY,p:0,moving:false,dx:0,dy:-1,fx:0,fy:-1,state:'walk',t:0,inv:0};
   camY=Math.max(0,H-viewRows); bestRow=pl.cy; digReq=0; digFresh=false; digHeld=false; digHeldT=0; ladders=3;
   st='ready'; readyT=1.4; ov.hidden=true;
-  banner.innerHTML='STAGE '+stage+'<small>つぶされるまえに うえの ゴールへ！</small>'; banner.hidden=false;
+  banner.innerHTML=(stage>=FINAL_STAGE?'FINAL STAGE':'STAGE '+stage)+'<small>つぶされるまえに うえの ゴールへ！</small>'; banner.hidden=false;
   SFX.go(); updateHud();
 }
 function stageClear(){
   if(st!=='play')return;
-  st='clear'; bgmPause(); bgmRewindIfLate(); SFX.clear();
+  st='clear'; const last=stage>=FINAL_STAGE; if(last)bgmStop(); else{bgmPause(); bgmRewindIfLate();} SFX.clear();
   const bonus=1000+lives*500, perfect=goldGot>=golds.length&&golds.length>0; score+=bonus+(perfect?PERFECT_PTS:0); saveBest();
-  card('<div class="cast"><i class="spr cheer" style="--u:clamp(48px,11vh,88px);background-image:var(--hero-sheet)"></i></div><h2>STAGE '+stage+' CLEAR!</h2><p class="big">ボーナス +'+bonus+'</p><p>金 '+goldGot+' / '+golds.length+'</p>'+(perfect?'<p class="big">PERFECT! +'+PERFECT_PTS+'</p>':'')+'<p>SCORE '+score+'</p>',
-    '<button class="sp-btn" data-act="next">つぎのステージへ</button>');
+  card('<div class="cast"><i class="spr cheer" style="--u:clamp(48px,11vh,88px);background-image:var(--hero-sheet)"></i></div><h2>'+(last?'ALL CLEAR!':'STAGE '+stage+' CLEAR!')+'</h2><p class="big">ボーナス +'+bonus+'</p><p>金 '+goldGot+' / '+golds.length+'</p>'+(perfect?'<p class="big">PERFECT! +'+PERFECT_PTS+'</p>':'')+'<p>SCORE '+score+'</p>'+(last?'<p>BEST '+best+'</p>':''),
+    last?'<button class="sp-btn" data-act="retry">もういちど</button><button class="sp-btn sub" data-act="title">タイトルへ</button>':'<button class="sp-btn" data-act="next">つぎのステージへ</button>');
   updateHud();
 }
 function gameOver(){
@@ -801,7 +802,7 @@ function update(dt){
 
 // ---------- HUD ----------
 function updateHud(){
-  $('vStage').textContent=stage;
+  $('vStage').textContent=stage+'/'+FINAL_STAGE;
   $('vScore').textContent=score;$('vLad').textContent='×'+ladders;$('vGold').textContent=goldGot+'/'+golds.length;
   let h='';for(let i=0;i<3;i++)h+='<i class="'+(i<lives?'':'off')+'"></i>';
   $('vLife').innerHTML=h;
@@ -1024,7 +1025,7 @@ function drawQueueBand(){
   ctx.fillStyle='rgba(16,44,96,.9)';ctx.fillRect(0,0,cw,bh);
   ctx.fillStyle='#ffd84a';ctx.fillRect(0,bh-3,cw,3);
   ctx.fillStyle='rgba(255,255,255,.12)';
-  for(let i=0;i<MAX_ROBOTS;i++)ctx.fillRect(sxp(SLOT0+i*SLOTW)-Math.round(S*.4),Math.round(bh*.12),Math.round(S*.8),Math.round(bh*.76));
+  for(let i=0;i<robotPool();i++)ctx.fillRect(sxp(SLOT0+i*SLOTW)-Math.round(S*.4),Math.round(bh*.12),Math.round(S*.8),Math.round(bh*.76));
   ctx.font=Math.round(S*.3)+'px DotGothic16, sans-serif';ctx.textAlign='right';ctx.fillStyle='#bfe4ff';
   ctx.fillText('ロボ待機 ▶',cw-ox-6,Math.round(bh*.6));
   const cy=Math.round(bh*.55);
@@ -1075,7 +1076,7 @@ function draw(){
 function card(body,foot){ov.classList.remove('is-title');ov.innerHTML='<div class="card"><div class="cbody scrollable">'+body+'</div>'+(foot?'<div class="cfoot">'+foot+'</div>':'')+'</div>';ov.hidden=false;}
 function rulesHtml(){
   return '<div class="rules">'+
-    '<div><em>▲</em><span>画面は<b>強制スクロール</b>。壁に挟まれる前に、上のゴールをめざせ！</span></div>'+
+    '<div><em>▲</em><span><b>全5ステージ</b>。画面は<b>強制スクロール</b>。壁に挟まれる前に、上のゴールをめざせ！</span></div>'+
     '<div><em>●</em><span><b>スティック以外のどこをタップ</b>しても穴をほる（ロボが近ければその方向に自動で）。もう一度で埋まる</span></div>'+
     '<div><em>●</em><span>白いロボを穴に落として、<b>頭をふんで</b>わたろう。ふさがるとロボはつぶれる</span></div>'+
     '<div><em>●</em><span>壁にタップで<b>ハシゴ</b>。<b>金塊10個</b>でパーフェクト！<b>ストップウォッチ</b>でスクロールが10秒止まる</span></div>'+
