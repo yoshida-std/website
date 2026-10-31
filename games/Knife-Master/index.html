@@ -82,7 +82,7 @@ canvas,.pad,.pbtn{touch-action:none}
 
 /* ===== 基本設定 ===== */
 const W=480,H=200,GY=212,TOPY=-50;    // 論理サイズ / 地面（足元）のY（世界の座標）/ 世界を上へずらす量。スコア欄はゲーム画面の上に重ねる
-const GR=520, SPD=96, JUMP=215;      // 重力 / 歩く速さ / ジャンプ初速
+const GR=520, SPD=150;                 // 重力 / 歩く速さ（逃げ足は速い）
 const TIMELIM=99, STAGES=5;
 const cv=document.getElementById('cv'), cx=cv.getContext('2d');
 const $=id=>document.getElementById(id);
@@ -142,19 +142,19 @@ const STG=[
   {wall:'#c85050',belt:'#40a0ff'},{wall:'#34345c',belt:'#f83030'}
 ];
 function cfg(n){return{
-  hp:18+5*(n-1), spd:46+6*(n-1), cdBase:1.1-0.12*(n-1),
-  dodgeP:0.3+0.1*(n-1), aggr:0.6+0.3*(n-1), armor:n>=3,
+  hp:8+3*(n-1), spd:46+6*(n-1), cdBase:1.1-0.12*(n-1),
+  dodgeP:0.25+0.08*(n-1), aggr:0.6+0.3*(n-1), armor:n>=3,
   pal:{gi:'#f6f6f6',sleeve:'#1a1a1a',pants:'#f6f6f6',belt:STG[n-1].belt,skin:'#f8b878',hair:'#161616',shoe:'#202020'}
 };}
 
 /* ===== ラウンド開始 ===== */
-function newPlayer(hp){return{lock:0,low:false,x:190,z:0,vz:0,hp,face:-1,cd:0,inv:0,hurt:0,kb:0,walk:0,moving:false,throwT:0,dead:false};}
+function newPlayer(hp){return{lock:0,low:false,bufT:0,pT:false,pL:false,x:530,z:0,vz:0,hp,face:-1,cd:0,inv:0,hurt:0,kb:0,walk:0,moving:false,throwT:0,dead:false};}
 function startRound(){
   const c=cfg(G.stage);
   camX=0;knives=[];parts=[];G.time=TIMELIM;G.shake=0;
   P=newPlayer(1);
   E={x:-75,z:0,vz:0,vx:0,face:1,hp:c.hp,max:c.hp,c,st:'walk',t:0,at:0,cd:1.2,dodgeCd:0,noStun:0,walk:0,hitDone:false,dead:false};
-  G.state='intro';G.t=2.9;G.msg='';
+  G.state='intro';G.t=3;G.msg='';
   hideOverlay();showControls(true);SND.go();
 }
 function startGame(){initAudio();G.score=0;G.stage=1;P=null;startRound();}
@@ -245,14 +245,15 @@ function eTop(){return E.st==='crouch'||E.st==='wind'||(E.st==='combo'&&E.kind==
 function spark(x,y,c,n=8){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-.5)*160,vy:-Math.random()*120-20,t:.35+Math.random()*.2,c});}
 
 /* ===== プレイヤー ===== */
+function canThrow(){return P.cd<=0&&P.lock<=0&&!knives.some(k=>k.mine);}   // ナイフは画面に1本だけ
 function tryThrow(low){
-  if(P.cd>0||P.lock>0||knives.filter(k=>k.mine).length>=3)return;
-  if(P.face!==(E.x>=P.x?1:-1))return;      // 敵の方を向いているときだけ投げられる
-  const close=Math.abs(E.x-P.x)<46;        // 近いとナイフがおそい（近距離に弱い）
-  P.lock=close?.55:.3;                     // 投げている間は動けない
-  P.cd=P.lock+(close?.4:.1);P.throwT=P.lock;P.low=low;
-  knives.push({x:P.x+P.face*12,y:GY-P.z-(low?10:36),vx:P.face*285,d:0,a:0,mine:true,seen:false,low});
-  SND.throw();
+  if(!canThrow())return false;
+  if(P.face!==(E.x>=P.x?1:-1))return false;   // 敵の方を向いているときだけ投げられる
+  const close=Math.abs(E.x-P.x)<46;           // 近いとナイフがおそい（近距離に弱い）
+  P.lock=close?.55:.3;                        // 投げている間は動けない
+  P.cd=P.lock;P.throwT=P.lock;P.low=low;
+  knives.push({x:P.x+P.face*12,y:GY-P.z-(low?10:36),vx:P.face*320,d:0,a:0,mine:true,seen:false,low});
+  SND.throw();return true;
 }
 function hurtPlayer(dmg,dir,heavy){
   if(P.dead)return;
@@ -265,6 +266,10 @@ function hurtPlayer(dmg,dir,heavy){
 function updPlayer(dt){
   const p=P;
   p.cd-=dt;p.inv-=dt;p.throwT-=dt;p.lock-=dt;
+  // 連射はできない: ボタンを押した瞬間だけ受けつける（0.25秒だけ先行入力）
+  const pressL=inp.low&&!p.pL,pressT=inp.throw&&!p.pT;p.pL=inp.low;p.pT=inp.throw;
+  if(pressL||pressT){p.bufT=.25;p.bufLow=pressL;}
+  p.bufT-=dt;
   if(p.hurt>0){p.hurt-=dt;p.x+=p.kb*dt;p.kb*=Math.pow(.04,dt);p.moving=false;}
   else if(G.state==='play'&&!p.dead){
     if(p.lock>0){p.moving=false;}
@@ -272,8 +277,10 @@ function updPlayer(dt){
       const mv=((inp.r?1:0)-(inp.l?1:0))*(mirror()?-1:1);   // 反転ステージでは画面の左右が逆
       p.x+=mv*SPD*dt;p.moving=mv!==0;p.walk+=mv?dt:0;
       if(mv)p.face=mv;                      // 向きは左右キーで決まる
-      if(inp.low)tryThrow(true);else if(inp.throw)tryThrow(false);
+      if(p.bufT>0&&tryThrow(p.bufLow))p.bufT=0;
     }
+  }else if(G.state==='intro'){                // 画面の外から走って入ってくる
+    if(p.x>190){p.x=Math.max(190,p.x-150*dt);p.walk+=dt;p.moving=true;p.face=-1;}else p.moving=false;
   }else p.moving=false;
   if(p.dead||p.z>0||p.vz>0){p.vz-=GR*dt;p.z+=p.vz*dt;if(!p.dead&&p.z<=0){p.z=0;p.vz=0;}}   // やられたら床も抜けて落ちる
   p.x=Math.max(p.x,camX+14);
@@ -314,7 +321,7 @@ function vOverlap(aBot,aTop,bBot,bTop){return aBot<bTop&&aTop>bBot;}
 function updEnemy(dt){
   const e=E,c=e.c,dx=P.x-e.x,ad=Math.abs(dx);
   e.cd-=dt;e.dodgeCd-=dt;e.noStun-=dt;e.t-=dt;
-  if(e.dead){return;}
+  if(e.dead){e.x+=e.kbv*dt;e.vz-=GR*dt;e.z+=e.vz*dt;return;}
   const airborne=e.z>0||e.vz>0;
   if(airborne){e.vz-=GR*dt;e.z+=e.vz*dt;if(e.z<=0){e.z=0;e.vz=0;}}
   if(e.st!=='dash'&&e.st!=='hurt')e.face=dx>=0?1:-1;
@@ -374,7 +381,7 @@ function updEnemy(dt){
 
 /* ===== 勝ち負け ===== */
 function win(){
-  G.state='win';G.t=2.2;E.dead=true;E.st='down';E.z=0;E.vz=0;knives=[];
+  G.state='win';G.t=2.2;E.dead=true;E.st='down';E.vz=230;E.kbv=-E.face*120;knives=[];   // はね飛ばされて画面の下へ落ちる
   G.score+=Math.floor(G.time)*10+G.stage*500;G.shake=.2;SND.win();
 }
 function lose(why){
@@ -422,7 +429,7 @@ function update(dt){
   if(s==='play'||s==='intro'||s==='win'||s==='lose'){
     updPlayer(dt);updEnemy(dt);
     if(s==='play'||s==='intro')updKnives(dt);
-    camX=Math.max(camX,P.x-250);
+    if(s!=='intro')camX=Math.max(camX,P.x-250);
   }
   if(G.state==='play'){
     G.time-=dt;
@@ -503,7 +510,7 @@ function playerPose(){
   if(P.z>0)return'air';return P.moving?'walk':'idle';
 }
 function enemyPose(){
-  if(E.dead)return'down';
+  if(E.dead)return'hurt';
   switch(E.st){
     case 'combo':return E.kind==='jab'?(E.at>.24?'punch':'punchw'):(E.at>.3?'sweep':'crouch');
     case 'wind':return'wind';case 'dash':return E.vz<120?'kick':'air';case 'jump':return'air';
@@ -543,7 +550,7 @@ function draw(){
   drawBG();
   if(P){
     // 奥にいる方を先に描く（足元の高さが同じなので、ジャンプ中でない方を先に）
-    fighter({x:E.x,z:E.z,face:E.face,pal:E.c.pal,pose:enemyPose(),walk:E.walk,kind:'hero',inv:0});
+    fighter({x:E.x,z:E.z,face:E.face,pal:E.c.pal,pose:enemyPose(),walk:E.walk,kind:'hero',inv:0,dead:E.dead});
     fighter({x:P.x,z:P.z,face:P.face,pal:PAL_P,pose:playerPose(),walk:P.walk,kind:'thrower',inv:P.inv,dead:P.dead});
     knives.forEach(drawKnife);
     for(const q of parts)R(q.x-camX,q.y,3,3,q.c);
