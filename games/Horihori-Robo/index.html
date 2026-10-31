@@ -157,7 +157,7 @@ function initAudio(){
   loadSamples();
 }
 // short sound samples (wav). Until one is decoded (or if it fails) a synthesized blip stands in
-const SAMPLES={dig:{file:'dig.wav',vol:.55},spawn:{file:'spawn.wav',vol:.5},gold:{file:'gold.wav',vol:.6}};
+const SAMPLES={dig:{file:'dig.wav',vol:.55},spawn:{file:'spawn.wav',vol:.5},gold:{file:'gold.wav',vol:.6},clear:{file:'clear.wav',vol:.5}};
 function loadSamples(){
   if(!ac)return;
   for(const k in SAMPLES){
@@ -191,7 +191,7 @@ const SFX={
   stomp:()=>{tone(330,.07,'square',.06);tone(660,.1,'square',.06,0,.07);},
   crush:()=>{tone(150,.2,'sawtooth',.06,-90);tone(90,.2,'square',.05,-40,.05);},
   miss:()=>{tone(440,.5,'sawtooth',.07,-380);},
-  clear:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.16,'square',.06,0,i*.12)),
+  clear:()=>playSample('clear',()=>[523,659,784,1047].forEach((f,i)=>tone(f,.16,'square',.06,0,i*.12))),
   ladder:()=>[392,523,659].forEach((f,i)=>tone(f,.08,'square',.05,0,i*.06)),
   coin:()=>playSample('gold',()=>{tone(988,.07,'square',.05);tone(1319,.14,'square',.05,0,.07);}),
   alarm:()=>[880,660,880,660].forEach((f,i)=>tone(f,.12,'square',.05,0,i*.14)),
@@ -1056,7 +1056,7 @@ function frame(t){
 }
 loadSheets();resize();genStage(1);camY=Math.max(0,H-viewRows);updateHud();titleCard();
 requestAnimationFrame(frame);
-window.__dbg={goldLoaded:()=>!!SAMPLES.gold.buf,digLoaded:()=>!!SAMPLES.dig.buf,spawnLoaded:()=>!!SAMPLES.spawn.buf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
+window.__dbg={clearLoaded:()=>!!SAMPLES.clear.buf,goldLoaded:()=>!!SAMPLES.gold.buf,digLoaded:()=>!!SAMPLES.dig.buf,spawnLoaded:()=>!!SAMPLES.spawn.buf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
 })();
 </script>
 </body>
