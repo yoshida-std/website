@@ -609,7 +609,7 @@ function updHoles(dt){
 // Defeated robots queue up in a strip at the top of the screen. After a delay the head of the line
 // slides over and drops into the maze; the rest close up behind it.
 const FINAL_STAGE=5, SLOT0=0.75, SLOTW=0.95;
-const robotPool=()=>3+(stage-1); // white robots: 3 at stage 1, one more each stage
+const robotPool=()=>stage; // white robots: 1 at stage 1, one more each stage (1,2,3,4,5)
 let queue=[], entering=[];
 const respawnDelay=()=>stageCfg(stage).respawn;
 function sendToQueue(e){
