@@ -28,7 +28,6 @@ canvas,.pad,.pbtn{touch-action:none}
 #acts{right:max(14px,env(safe-area-inset-right,0px));display:flex;gap:8px;align-items:flex-end}
 .pbtn{width:min(22vh,92px);height:min(22vh,92px);border-radius:50%;display:flex;align-items:center;justify-content:center;
   background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.4);font-size:min(5.4vh,22px);color:#fff;text-align:center;line-height:1.1}
-#bJ{font-size:min(3.6vh,14px)}
 #bL,#bT{font-size:min(4.6vh,18px)}
 #bT{width:min(28vh,116px);height:min(28vh,116px);background:rgba(240,90,40,.35);border-color:rgba(255,160,100,.8)}
 .pbtn.on{background:rgba(255,210,60,.55)}
@@ -56,7 +55,6 @@ canvas,.pad,.pbtn{touch-action:none}
   <canvas id="cv"></canvas>
   <div id="dpad" class="pad" hidden><i>◀</i><i>▶</i></div>
   <div id="acts" class="pad" hidden>
-    <div id="bJ" class="pbtn">ジャンプ</div>
     <div id="bL" class="pbtn">下段<br>ナイフ</div>
     <div id="bT" class="pbtn">上段<br>ナイフ</div>
   </div>
@@ -139,18 +137,18 @@ const STG=[
 ];
 function cfg(n){return{
   hp:18+5*(n-1), spd:46+6*(n-1), cdBase:1.1-0.12*(n-1),
-  dodgeP:0.3+0.1*(n-1), aggr:0.6+0.3*(n-1), armor:n>=2,
+  dodgeP:0.3+0.1*(n-1), aggr:0.6+0.3*(n-1), armor:n>=3,
   pal:{gi:'#f6f6f6',sleeve:'#1a1a1a',pants:'#f6f6f6',belt:STG[n-1].belt,skin:'#f8b878',hair:'#161616',shoe:'#202020'}
 };}
 
 /* ===== ラウンド開始 ===== */
-function newPlayer(hp){return{lock:0,low:false,x:190,z:0,vz:0,hp,face:1,cd:0,inv:0,hurt:0,kb:0,walk:0,moving:false,throwT:0,dead:false};}
+function newPlayer(hp){return{lock:0,low:false,x:190,z:0,vz:0,hp,face:-1,cd:0,inv:0,hurt:0,kb:0,walk:0,moving:false,throwT:0,dead:false};}
 function startRound(){
   const c=cfg(G.stage);
   camX=0;knives=[];parts=[];G.time=TIMELIM;G.shake=0;
   P=newPlayer(P?P.hp:MAXLIFE);
-  E={x:30,z:0,vz:0,vx:0,face:1,hp:c.hp,max:c.hp,c,st:'walk',t:0,at:0,cd:1.2,dodgeCd:0,noStun:0,walk:0,hitDone:false,dead:false};
-  G.state='intro';G.t=1.7;G.msg='';
+  E={x:-75,z:0,vz:0,vx:0,face:1,hp:c.hp,max:c.hp,c,st:'walk',t:0,at:0,cd:1.2,dodgeCd:0,noStun:0,walk:0,hitDone:false,dead:false};
+  G.state='intro';G.t=2.9;G.msg='';
   hideOverlay();showControls(true);SND.go();
 }
 function startGame(){initAudio();G.score=0;G.stage=1;P=null;startRound();}
@@ -161,7 +159,6 @@ function setKey(e,v){
   const k=e.code;let h=true;
   if(k==='ArrowLeft'||k==='KeyA')inp.l=v;
   else if(k==='ArrowRight'||k==='KeyD')inp.r=v;
-  else if(k==='ArrowUp'||k==='KeyW')inp.jump=v;
   else if(k==='ArrowDown'||k==='KeyX'||k==='KeyK')inp.low=v;
   else if(k==='KeyZ'||k==='Space'||k==='KeyJ')inp.throw=v;
   else h=false;
@@ -187,7 +184,7 @@ addEventListener('blur',()=>{inp.l=inp.r=inp.jump=inp.throw=inp.low=false;});
     const up=()=>{inp[key]=false;el.classList.remove('on');};
     ['pointerup','pointercancel','lostpointercapture'].forEach(t=>el.addEventListener(t,up));
   };
-  bind($('bT'),'throw');bind($('bL'),'low');bind($('bJ'),'jump');
+  bind($('bT'),'throw');bind($('bL'),'low');
 })();
 function showControls(v){$('dpad').hidden=!v;$('acts').hidden=!v;$('pauseBtn').hidden=!v;}
 
@@ -202,7 +199,8 @@ function showTitle(){
   <p style="letter-spacing:.3em;color:#7cf08a;margin:4px 0">KNIFE MASTER</p>
   <div class="rules">
    <div><b>めざせ</b> 主人公をたおせ！ 全${STAGES}ステージ</div>
-   <div><b>戦い方</b> ナイフ使いは近づかれると弱い。<b>きょりをとって</b>ナイフを投げよう</div>
+   <div><b>戦い方</b> ナイフ使いは近づかれると弱い。<b>きょりをとって</b>ナイフを投げよう（ジャンプはなし）</div>
+   <div><b>むき</b> 左右キーで自分の向きがかわる。<b>敵の方を向いているときだけ</b>ナイフを投げられる</div>
    <div><b>ナイフ</b> <b>上段</b>（立って投げる）と<b>下段</b>（しゃがんで投げる）。<b>投げている間は動けない</b>。近いと投げるのがおそい</div>
    <div><b>むき</b> ステージによって、敵が来る向き（左／右）がかわる</div>
    <div><b>よけ</b> 相手がしゃがんだら<b>下段</b>。ジャンプでよけたら着地を待とう</div>
@@ -210,7 +208,7 @@ function showTitle(){
    <div><b>じかん</b> ${TIMELIM}びょうで決着をつけよう</div>
   </div>
   <button class="btn" data-act="start">ゲームスタート</button>
-  <p style="font-size:11px;color:#9ab">キー: ←→ いどう / ↑ ジャンプ / Z 上段 / X 下段 / P ポーズ</p>
+  <p style="font-size:11px;color:#9ab">キー: ←→ いどう・むき / Z 上段 / X 下段 / P ポーズ</p>
   <p class="copy" style="margin-top:2px">ベストスコア ${sc6(best)}</p>${COPY}`);
 }
 function pause(){
@@ -243,6 +241,7 @@ function spark(x,y,c,n=8){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-
 /* ===== プレイヤー ===== */
 function tryThrow(low){
   if(P.cd>0||P.lock>0||knives.filter(k=>k.mine).length>=3)return;
+  if(P.face!==(E.x>=P.x?1:-1))return;      // 敵の方を向いているときだけ投げられる
   const close=Math.abs(E.x-P.x)<46;        // 近いとナイフがおそい（近距離に弱い）
   P.lock=close?.55:.3;                     // 投げている間は動けない
   P.cd=P.lock+(close?.4:.1);P.throwT=P.lock;P.low=low;
@@ -257,7 +256,6 @@ function hurtPlayer(dmg,dir){
 }
 function updPlayer(dt){
   const p=P;
-  p.face=E.x>=p.x?1:-1;
   p.cd-=dt;p.inv-=dt;p.throwT-=dt;p.lock-=dt;
   if(p.hurt>0){p.hurt-=dt;p.x+=p.kb*dt;p.kb*=.88;p.moving=false;}
   else if(G.state==='play'&&!p.dead){
@@ -265,7 +263,7 @@ function updPlayer(dt){
     else{
       const mv=((inp.r?1:0)-(inp.l?1:0))*(mirror()?-1:1);   // 反転ステージでは画面の左右が逆
       p.x+=mv*SPD*dt;p.moving=mv!==0;p.walk+=mv?dt:0;
-      if(inp.jump&&p.z===0){p.vz=JUMP;SND.jump();}
+      if(mv)p.face=mv;                      // 向きは左右キーで決まる
       if(inp.low)tryThrow(true);else if(inp.throw)tryThrow(false);
     }
   }else p.moving=false;
@@ -312,6 +310,10 @@ function updEnemy(dt){
   const airborne=e.z>0||e.vz>0;
   if(airborne){e.vz-=GR*dt;e.z+=e.vz*dt;if(e.z<=0){e.z=0;e.vz=0;}}
   if(e.st!=='dash'&&e.st!=='hurt')e.face=dx>=0?1:-1;
+  if(G.state==='intro'){            // 画面の外から歩いて入ってくる
+    if(e.x<30){e.x=Math.min(30,e.x+62*dt);e.walk+=dt*1.6;e.face=1;}
+    return;
+  }
   if(G.state!=='play'||P.dead){return;}
   switch(e.st){
     case 'walk':{
@@ -321,7 +323,7 @@ function updEnemy(dt){
       }
       if(e.cd<=0){
         if(ad<36){e.st='punch';e.at=0;e.hitDone=false;}
-        else if(ad>70&&ad<175&&Math.random()<dt*2.8*c.aggr){e.st='wind';e.t=.3;SND.wind();}
+        else if(ad>70&&ad<175&&Math.random()<dt*2.8*c.aggr){e.st='wind';e.t=.42;SND.wind();}
       }
       break;}
     case 'punch':
@@ -330,11 +332,11 @@ function updEnemy(dt){
       if(e.at>.6){e.st='walk';e.cd=c.cdBase;}
       break;
     case 'wind':
-      if(e.t<=0){e.st='dash';e.vz=175;e.vx=e.face*215;e.hitDone=false;}
+      if(e.t<=0){e.st='dash';e.vz=175;e.vx=e.face*190;e.hitDone=false;}
       break;
     case 'dash':
       e.x+=e.vx*dt;
-      if(!e.hitDone&&Math.abs(e.x+e.face*14-P.x)<15&&vOverlap(P.z,P.z+44,e.z+3,e.z+26)){e.hitDone=true;hurtPlayer(3,e.face);}
+      if(!e.hitDone&&Math.abs(e.x+e.face*14-P.x)<15&&vOverlap(P.z,P.z+44,e.z+3,e.z+26)){e.hitDone=true;hurtPlayer(2,e.face);}
       if(e.z<=0&&e.vz===0){e.st='rest';e.t=.4;e.vx=0;}
       break;
     case 'jump':
@@ -530,7 +532,7 @@ function draw(){
   }
   cx.restore();
   if(P)drawHUD();else R(0,0,W,58,'#000');
-  if(G.state==='intro'){bigText('STAGE '+G.stage,110,'#fff',20);if(G.t<.9)bigText('FIGHT!',148,'#ffd23c',20);}
+  if(G.state==='intro'){bigText('STAGE '+G.stage,110,'#fff',20);if(G.t<.8)bigText('FIGHT!',148,'#ffd23c',20);}
   if(G.state==='win')bigText('YOU WIN!',112,'#ffd23c',20);
   if(G.state==='lose')bigText(G.msg==='TIME UP'?'TIME UP':'YOU LOSE',112,'#ff5050',20);
 }
