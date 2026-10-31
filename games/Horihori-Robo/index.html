@@ -153,21 +153,26 @@ let ac=null, sfxOn=true;
 function initAudio(){
   if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
   if(ac&&ac.state==='suspended')ac.resume();
-  loadDigSound();
+  loadSamples();
 }
-// dig.wav: the digging sound (0.08s). Falls back to a synthesized blip until it is decoded
-let digBuf=null, digLoading=false;
-function loadDigSound(){
-  if(digBuf||digLoading||!ac)return;
-  digLoading=true;
-  fetch('dig.wav').then(r=>r.arrayBuffer()).then(a=>new Promise((ok,ng)=>ac.decodeAudioData(a,ok,ng)))
-    .then(b=>{digBuf=b;}).catch(()=>{digLoading=false;});
+// short sound samples (wav). Until one is decoded (or if it fails) a synthesized blip stands in
+const SAMPLES={dig:{file:'dig.wav',vol:.55},spawn:{file:'spawn.wav',vol:.5}};
+function loadSamples(){
+  if(!ac)return;
+  for(const k in SAMPLES){
+    const m=SAMPLES[k];
+    if(m.buf||m.loading)continue;
+    m.loading=true;
+    fetch(m.file).then(r=>r.arrayBuffer()).then(a=>new Promise((ok,ng)=>ac.decodeAudioData(a,ok,ng)))
+      .then(b=>{m.buf=b;}).catch(()=>{m.loading=false;});
+  }
 }
-function playDigSound(){
+function playSample(k,fallback){
   if(!ac||!sfxOn)return;
-  if(!digBuf){tone(200,.09,'square',.05,-100);return;}
+  const m=SAMPLES[k];
+  if(!m.buf){fallback();return;}
   const s=ac.createBufferSource(),g=ac.createGain();
-  s.buffer=digBuf;g.gain.value=0.55;s.connect(g);g.connect(ac.destination);s.start();
+  s.buffer=m.buf;g.gain.value=m.vol;s.connect(g);g.connect(ac.destination);s.start();
 }
 function tone(f,d,type,vol,slide,delay){
   if(!ac||!sfxOn)return;
@@ -178,7 +183,7 @@ function tone(f,d,type,vol,slide,delay){
   o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t+d+.02);
 }
 const SFX={
-  dig:()=>playDigSound(),
+  dig:()=>playSample('dig',()=>tone(200,.09,'square',.05,-100)),
   no:()=>tone(110,.08,'square',.04),
   fall:()=>tone(520,.35,'triangle',.07,-420),
   trap:()=>tone(420,.2,'triangle',.05,-300),
@@ -190,6 +195,7 @@ const SFX={
   coin:()=>{tone(988,.07,'square',.05);tone(1319,.14,'square',.05,0,.07);},
   alarm:()=>[880,660,880,660].forEach((f,i)=>tone(f,.12,'square',.05,0,i*.14)),
   pop:()=>tone(300,.12,'square',.04,300),
+  spawn:()=>playSample('spawn',()=>tone(300,.12,'square',.04,300)),
   go:()=>tone(660,.2,'square',.05)
 };
 
@@ -551,14 +557,14 @@ function updQueue(dt){
   const h=queue[0];
   if(h&&h.t<=0&&camY>=3){
     const sp=pickSpawn(1+rnd(COLS-2));
-    if(sp){queue.shift();entering.push({x:h.x,x1:sp.x+.5,p:0,ph:h.ph});SFX.pop();}
+    if(sp){queue.shift();entering.push({x:h.x,x1:sp.x+.5,p:0,ph:h.ph});}
   }
   for(const en of entering){
     en.p+=dt/0.4;en.x+=(en.x1-en.x)*Math.min(1,dt*10);
     if(en.p>=1&&!en.done){
       en.done=true;
       const sp=pickSpawn(en.x1-.5);
-      if(sp){ens.push(mkEnt(sp.x,sp.y,true));burst(sp.x+.5,sp.y+1,'#fff',8);}
+      if(sp){ens.push(mkEnt(sp.x,sp.y,true));burst(sp.x+.5,sp.y+1,'#fff',8);SFX.spawn();}
       else queue.unshift({t:0.3,delay:respawnDelay(),x:en.x,ph:en.ph});
     }
   }
@@ -1067,7 +1073,7 @@ function frame(t){
 }
 loadSheets();resize();genStage(1);camY=Math.max(0,H-viewRows);updateHud();titleCard();
 requestAnimationFrame(frame);
-window.__dbg={digLoaded:()=>!!digBuf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
+window.__dbg={digLoaded:()=>!!SAMPLES.dig.buf,spawnLoaded:()=>!!SAMPLES.spawn.buf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
 })();
 </script>
 </body>
