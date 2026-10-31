@@ -204,6 +204,7 @@ function showTitle(){
    <div><b>めざせ</b> 主人公をたおせ！ 全${STAGES}ステージ</div>
    <div><b>戦い方</b> ナイフ使いは近づかれると弱い。<b>きょりをとって</b>ナイフを投げよう</div>
    <div><b>ナイフ</b> <b>上段</b>（立って投げる）と<b>下段</b>（しゃがんで投げる）。<b>投げている間は動けない</b>。近いと投げるのがおそい</div>
+   <div><b>むき</b> ステージによって、敵が来る向き（左／右）がかわる</div>
    <div><b>よけ</b> 相手がしゃがんだら<b>下段</b>。ジャンプでよけたら着地を待とう</div>
    <div><b>ライフ</b> なくなったらゲームオーバー。ステージクリアで少し回復</div>
    <div><b>じかん</b> ${TIMELIM}びょうで決着をつけよう</div>
@@ -262,7 +263,7 @@ function updPlayer(dt){
   else if(G.state==='play'&&!p.dead){
     if(p.lock>0){p.moving=false;}
     else{
-      const mv=(inp.r?1:0)-(inp.l?1:0);
+      const mv=((inp.r?1:0)-(inp.l?1:0))*(mirror()?-1:1);   // 反転ステージでは画面の左右が逆
       p.x+=mv*SPD*dt;p.moving=mv!==0;p.walk+=mv?dt:0;
       if(inp.jump&&p.z===0){p.vz=JUMP;SND.jump();}
       if(inp.low)tryThrow(true);else if(inp.throw)tryThrow(false);
@@ -387,6 +388,9 @@ function endLose(){
   <button class="btn" data-act="retry">もういちど</button>
   <button class="btn sub" data-act="title">タイトルへ</button>`);
 }
+
+/* 奇数ステージ＝自分は画面左・敵は右から来て左へ進む（画面全体を左右反転して描く）。偶数ステージはその逆 */
+function mirror(){return G.stage%2===1;}
 
 /* ===== 更新 ===== */
 function update(dt){
@@ -515,6 +519,7 @@ function draw(){
   cx.setTransform(S,0,0,S,0,0);cx.imageSmoothingEnabled=false;
   cx.save();
   if(G.shake>0)cx.translate(Math.round((Math.random()-.5)*5),Math.round((Math.random()-.5)*4));
+  if(mirror()){cx.translate(W,0);cx.scale(-1,1);}
   drawBG();
   if(P){
     // 奥にいる方を先に描く（足元の高さが同じなので、ジャンプ中でない方を先に）
