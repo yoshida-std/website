@@ -81,7 +81,7 @@ canvas,.pad,.pbtn{touch-action:none}
 })();
 
 /* ===== 基本設定 ===== */
-const W=480,H=270,GY=212;            // 論理サイズ / 地面（足元）のY
+const W=480,H=200,GY=212,TOPY=-50;    // 論理サイズ / 地面（足元）のY（世界の座標）/ 世界を上へずらす量。スコア欄はゲーム画面の上に重ねる
 const GR=520, SPD=96, JUMP=215;      // 重力 / 歩く速さ / ジャンプ初速
 const TIMELIM=99, STAGES=5;
 const cv=document.getElementById('cv'), cx=cv.getContext('2d');
@@ -436,7 +436,7 @@ function update(dt){
 function R(x,y,w,h,c){cx.fillStyle=c;cx.fillRect(Math.round(x),Math.round(y),w,h);}
 function drawBG(){
   const st=STG[G.stage-1]||STG[0],ox=-Math.round(camX);
-  R(0,0,W,H,'#000');
+  R(0,TOPY,W,H-TOPY,'#000');
   // 屋根
   for(let x=-(Math.round(camX)%12)-12;x<W;x+=12){R(x,58,12,6,'#58d854');R(x+3,60,6,2,'#a8f0a0');R(x,64,12,2,'#00a800');}
   R(0,66,W,3,'#f87820');R(0,69,W,14,'#f87820');R(0,69,W,2,'#fcbc60');R(0,81,W,2,'#c04800');
@@ -457,7 +457,7 @@ function drawBG(){
     R(x,GY+15,20,16,'#f8a030');R(x+2,GY+17,16,12,'#a04800');R(x+4,GY+19,12,8,'#f8a030');R(x+7,GY+22,6,2,'#a04800');
   }
   // 床下の水と柱
-  R(0,GY+31,W,H-GY-31,'#103090');
+  R(0,GY+31,W,H-TOPY-GY-31,'#103090');
   for(let x=-(Math.round(camX)%4)-4;x<W;x+=4){R(x,GY+36,2,2,'#40a0ff');R(x+2,GY+44,2,2,'#40a0ff');}
   const c0=Math.floor(camX/80)-1;
   for(let k=c0;k<c0+8;k++){const x=k*80+ox+20;R(x,GY+31,8,26,'#f87820');R(x-5,GY+31,18,4,'#fcbc60');}
@@ -521,15 +521,16 @@ function drawKnife(k){
 const FONT='"Press Start 2P",monospace';
 function txt(s,x,y,c,size=8,align='left'){cx.font=size+'px '+FONT;cx.textAlign=align;cx.textBaseline='top';cx.fillStyle=c;cx.fillText(s,x,y);}
 function drawHUD(){
-  R(0,0,W,58,'#000');
-  txt('1-'+sc6(G.score),12,8,'#7cf08a');txt('TOP-'+sc6(Math.max(best,G.score)),178,8,'#f87820');
-  txt('STAGE '+G.stage,W-12,8,'#7cf08a',8,'right');
-  txt('PLAYER',12,24,'#f87820');txt('ENEMY',12,40,'#f87820');
-  R(78,23,12,10,'#f87820');txt('ONE HIT = OUT',98,24,'#ff5050',8);
-  const w=140*(E.hp/E.max);R(78,39,140,10,'#3a2010');R(78,39,Math.round(w),10,'#f87820');
-  for(let i=1;i<=STAGES;i++){R(262+(i-1)*22,28,14,12,i<=G.stage?'#2060ff':'#102050');if(i<STAGES)R(276+(i-1)*22,33,8,2,'#f87820');}
-  txt('TIME',W-12,28,'#f87820',8,'right');
-  txt(String(Math.ceil(G.time)),W-12,42,G.time<15?'#ff5050':'#fff',8,'right');
+  const g=cx.createLinearGradient(0,0,0,50);g.addColorStop(0,'rgba(0,0,0,.88)');g.addColorStop(.8,'rgba(0,0,0,.8)');g.addColorStop(1,'rgba(0,0,0,0)');
+  cx.fillStyle=g;cx.fillRect(0,0,W,50);
+  txt('1-'+sc6(G.score),10,4,'#7cf08a');txt('TOP-'+sc6(Math.max(best,G.score)),150,4,'#f87820');
+  txt('TIME',W-50,4,'#f87820',8,'right');
+  txt(String(Math.ceil(G.time)).padStart(2,' '),W-10,4,G.time<15?'#ff5050':'#fff',8,'right');
+  txt('PLAYER',10,18,'#f87820');R(76,17,10,9,'#f87820');txt('ONE HIT',92,18,'#ff5050',8);
+  txt('ENEMY',10,32,'#f87820');
+  const w=130*(E.hp/E.max);R(76,31,130,9,'#3a2010');R(76,31,Math.round(w),9,'#f87820');
+  for(let i=1;i<=STAGES;i++){R(300+(i-1)*34,20,24,10,i<=G.stage?'#2060ff':'#102050');if(i<STAGES)R(324+(i-1)*34,24,10,2,'#f87820');}
+  txt('STAGE '+G.stage,300,34,'#7cf08a',8);
 }
 function bigText(s,y,c,size){txt(s,W/2+2,y+2,'#000',size,'center');txt(s,W/2,y,c,size,'center');}
 
@@ -537,6 +538,7 @@ function draw(){
   cx.setTransform(S,0,0,S,0,0);cx.imageSmoothingEnabled=false;
   cx.save();
   if(G.shake>0)cx.translate(Math.round((Math.random()-.5)*5),Math.round((Math.random()-.5)*4));
+  cx.translate(0,TOPY);
   if(mirror()){cx.translate(W,0);cx.scale(-1,1);}
   drawBG();
   if(P){
@@ -547,10 +549,10 @@ function draw(){
     for(const q of parts)R(q.x-camX,q.y,3,3,q.c);
   }
   cx.restore();
-  if(P)drawHUD();else R(0,0,W,58,'#000');
-  if(G.state==='intro'){bigText('STAGE '+G.stage,110,'#fff',20);if(G.t<.8)bigText('FIGHT!',148,'#ffd23c',20);}
-  if(G.state==='win')bigText('YOU WIN!',112,'#ffd23c',20);
-  if(G.state==='lose')bigText(G.msg==='TIME UP'?'TIME UP':'YOU LOSE',112,'#ff5050',20);
+  if(P)drawHUD();
+  if(G.state==='intro'){bigText('STAGE '+G.stage,64,'#fff',20);if(G.t<.8)bigText('FIGHT!',100,'#ffd23c',20);}
+  if(G.state==='win')bigText('YOU WIN!',76,'#ffd23c',20);
+  if(G.state==='lose')bigText(G.msg==='TIME UP'?'TIME UP':'YOU LOSE',76,'#ff5050',20);
 }
 
 /* ===== ループ ===== */
