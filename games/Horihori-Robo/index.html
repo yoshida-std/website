@@ -153,6 +153,21 @@ let ac=null, sfxOn=true;
 function initAudio(){
   if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
   if(ac&&ac.state==='suspended')ac.resume();
+  loadDigSound();
+}
+// dig.wav: the digging sound (0.08s). Falls back to a synthesized blip until it is decoded
+let digBuf=null, digLoading=false;
+function loadDigSound(){
+  if(digBuf||digLoading||!ac)return;
+  digLoading=true;
+  fetch('dig.wav').then(r=>r.arrayBuffer()).then(a=>new Promise((ok,ng)=>ac.decodeAudioData(a,ok,ng)))
+    .then(b=>{digBuf=b;}).catch(()=>{digLoading=false;});
+}
+function playDigSound(){
+  if(!ac||!sfxOn)return;
+  if(!digBuf){tone(200,.09,'square',.05,-100);return;}
+  const s=ac.createBufferSource(),g=ac.createGain();
+  s.buffer=digBuf;g.gain.value=0.55;s.connect(g);g.connect(ac.destination);s.start();
 }
 function tone(f,d,type,vol,slide,delay){
   if(!ac||!sfxOn)return;
@@ -163,7 +178,7 @@ function tone(f,d,type,vol,slide,delay){
   o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t+d+.02);
 }
 const SFX={
-  dig:()=>tone(200,.09,'square',.05,-100),
+  dig:()=>playDigSound(),
   no:()=>tone(110,.08,'square',.04),
   fall:()=>tone(520,.35,'triangle',.07,-420),
   trap:()=>tone(420,.2,'triangle',.05,-300),
@@ -1052,7 +1067,7 @@ function frame(t){
 }
 loadSheets();resize();genStage(1);camY=Math.max(0,H-viewRows);updateHud();titleCard();
 requestAnimationFrame(frame);
-window.__dbg={bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
+window.__dbg={digLoaded:()=>!!digBuf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
 })();
 </script>
 </body>
