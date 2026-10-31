@@ -241,7 +241,7 @@ function bgmLoad(){
 }
 function bgmStart(){
   bgmWant=true;
-  if(!ac||!sfxOn)return;
+  if(!ac||!sfxOn||freezeT>0)return; // not while the stopwatch holds the game still
   if(!bgmBuf){bgmLoad();return;}
   if(bgmSrc)return;
   if(!bgmGain){bgmGain=ac.createGain();bgmGain.connect(ac.destination);}
@@ -648,7 +648,7 @@ function collectWatch(){
   if(!watch||watch.got)return;
   const [px,py]=ePos(pl);
   if(Math.abs(watch.x-px)>0.6||Math.abs(watch.y-py)>0.6)return;
-  watch.got=true;freezeT=WATCH_STOP;tickSec=-1;SFX.watch();
+  watch.got=true;freezeT=WATCH_STOP;tickSec=-1;bgmPause();SFX.watch();
   text(watch.x+.5,watch.y-.2,'ストップ！','#9ee6ff');burst(watch.x+.5,watch.y+.5,'#9ee6ff',12);
 }
 function collectGold(){
@@ -726,6 +726,7 @@ function update(dt){
     freezeT=Math.max(0,freezeT-dt);
     const sec=Math.ceil(freezeT);
     if(sec!==tickSec){tickSec=sec;if(sec>0&&sec<=3)SFX.tick();if(sec===0)SFX.watchEnd();}
+    if(freezeT===0)bgmStart(); // the music continues from where it stopped
   }
   if(grace>0)grace-=dt;
   else if(freezeT>0){/* held */}
