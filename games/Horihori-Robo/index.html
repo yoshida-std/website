@@ -10,6 +10,7 @@
 <style>
 /* Layout: HUD / progress bar / scrolling maze canvas / controls (stick + dig button). Famicom-like palette */
 :root{
+  --hero-sheet:url(hero.png); --boss-sheet:url(boss.png);
   --bg:#1a4a8c; --panel:#2f8fe6; --line:#ffd84a; --fg:#eaff8f; --dim:#d6efff; --ink:#ffffff;
   --red:#ff5d5d; --green:#7dff6a; --orange:#ff9f2e;
   --font:"DotGothic16","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
@@ -153,6 +154,26 @@ let ac=null, sfxOn=true;
 function initAudio(){
   if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
   if(ac&&ac.state==='suspended')ac.resume();
+  loadSamples();
+}
+// short sound samples (wav). Until one is decoded (or if it fails) a synthesized blip stands in
+const SAMPLES={dig:{file:'dig.wav',vol:.55},spawn:{file:'spawn.wav',vol:.5},gold:{file:'gold.wav',vol:.6},clear:{file:'clear.wav',vol:.5},miss:{file:'miss.wav',vol:.55}};
+function loadSamples(){
+  if(!ac)return;
+  for(const k in SAMPLES){
+    const m=SAMPLES[k];
+    if(m.buf||m.loading)continue;
+    m.loading=true;
+    fetch(m.file).then(r=>r.arrayBuffer()).then(a=>new Promise((ok,ng)=>ac.decodeAudioData(a,ok,ng)))
+      .then(b=>{m.buf=b;}).catch(()=>{m.loading=false;});
+  }
+}
+function playSample(k,fallback){
+  if(!ac||!sfxOn)return;
+  const m=SAMPLES[k];
+  if(!m.buf){fallback();return;}
+  const s=ac.createBufferSource(),g=ac.createGain();
+  s.buffer=m.buf;g.gain.value=m.vol;s.connect(g);g.connect(ac.destination);s.start();
 }
 function tone(f,d,type,vol,slide,delay){
   if(!ac||!sfxOn)return;
@@ -163,20 +184,49 @@ function tone(f,d,type,vol,slide,delay){
   o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t+d+.02);
 }
 const SFX={
-  dig:()=>tone(200,.09,'square',.05,-100),
+  dig:()=>playSample('dig',()=>tone(200,.09,'square',.05,-100)),
   no:()=>tone(110,.08,'square',.04),
   fall:()=>tone(520,.35,'triangle',.07,-420),
   trap:()=>tone(420,.2,'triangle',.05,-300),
   stomp:()=>{tone(330,.07,'square',.06);tone(660,.1,'square',.06,0,.07);},
   crush:()=>{tone(150,.2,'sawtooth',.06,-90);tone(90,.2,'square',.05,-40,.05);},
-  miss:()=>{tone(440,.5,'sawtooth',.07,-380);},
-  clear:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.16,'square',.06,0,i*.12)),
+  miss:()=>playSample('miss',()=>tone(440,.5,'sawtooth',.07,-380)),
+  clear:()=>playSample('clear',()=>[523,659,784,1047].forEach((f,i)=>tone(f,.16,'square',.06,0,i*.12))),
   ladder:()=>[392,523,659].forEach((f,i)=>tone(f,.08,'square',.05,0,i*.06)),
-  coin:()=>{tone(988,.07,'square',.05);tone(1319,.14,'square',.05,0,.07);},
+  coin:()=>playSample('gold',()=>{tone(988,.07,'square',.05);tone(1319,.14,'square',.05,0,.07);}),
   alarm:()=>[880,660,880,660].forEach((f,i)=>tone(f,.12,'square',.05,0,i*.14)),
   pop:()=>tone(300,.12,'square',.04,300),
+  spawn:()=>playSample('spawn',()=>tone(300,.12,'square',.04,300)),
   go:()=>tone(660,.2,'square',.05)
 };
+
+// ---------- BGM (bgm.mp3, quiet; looped through WebAudio so it works on iOS too) ----------
+const BGM_VOL=0.2, BGM_LEN=143.7; // the file ends with ~1.5s of silence, which is left out of the loop
+let bgmBuf=null, bgmGain=null, bgmSrc=null, bgmWant=false, bgmOff=0, bgmAt=0, bgmLoading=false;
+function bgmLoad(){
+  if(bgmBuf||bgmLoading||!ac)return;
+  bgmLoading=true;
+  fetch('bgm.mp3').then(r=>r.arrayBuffer()).then(a=>new Promise((ok,ng)=>ac.decodeAudioData(a,ok,ng)))
+    .then(b=>{bgmBuf=b;if(bgmWant)bgmStart();}).catch(()=>{bgmLoading=false;});
+}
+function bgmStart(){
+  bgmWant=true;
+  if(!ac||!sfxOn)return;
+  if(!bgmBuf){bgmLoad();return;}
+  if(bgmSrc)return;
+  if(!bgmGain){bgmGain=ac.createGain();bgmGain.connect(ac.destination);}
+  bgmGain.gain.cancelScheduledValues(ac.currentTime);bgmGain.gain.value=BGM_VOL;
+  const s=ac.createBufferSource();
+  s.buffer=bgmBuf;s.loop=true;s.loopStart=0;s.loopEnd=Math.min(BGM_LEN,bgmBuf.duration);
+  s.connect(bgmGain);s.start(0,bgmOff%s.loopEnd);bgmAt=ac.currentTime-bgmOff;bgmSrc=s;
+}
+function bgmPause(){ // keeps the position, so bgmStart() continues from here
+  if(!bgmSrc)return;
+  bgmOff=(ac.currentTime-bgmAt)%bgmSrc.loopEnd;
+  try{bgmSrc.stop();}catch(e){}
+  bgmSrc=null;
+}
+function bgmStop(){bgmWant=false;bgmPause();bgmOff=0;}
 
 // ---------- game state ----------
 let st='title', stage=1, score=0, lives=3, best=0;
@@ -498,7 +548,7 @@ function spawnRedRobot(){ // once the forced scroll has stopped, ONE red robot c
     const xs=[];for(let x=1;x<COLS-1;x++)if(!isWall(x,y)&&!ens.some(o=>o.state!=='dead'&&o.cx===x&&o.cy===y))xs.push(x);
     if(xs.length){
       const e=mkEnt(xs[rnd(xs.length)],y,true,true);ens.push(e);redDone=true;
-      banner.innerHTML='あかいロボが きた！<small>したから おいかけてくる！</small>';banner.hidden=false;bannerT=2;SFX.alarm();
+      banner.innerHTML='あかいロボが きた！<small>したから おいかけてくる！</small>';banner.hidden=false;bannerT=2;SFX.spawn();SFX.alarm();
       return;
     }
   }
@@ -508,14 +558,14 @@ function updQueue(dt){
   const h=queue[0];
   if(h&&h.t<=0&&camY>=3){
     const sp=pickSpawn(1+rnd(COLS-2));
-    if(sp){queue.shift();entering.push({x:h.x,x1:sp.x+.5,p:0,ph:h.ph});SFX.pop();}
+    if(sp){queue.shift();entering.push({x:h.x,x1:sp.x+.5,p:0,ph:h.ph});}
   }
   for(const en of entering){
     en.p+=dt/0.4;en.x+=(en.x1-en.x)*Math.min(1,dt*10);
     if(en.p>=1&&!en.done){
       en.done=true;
       const sp=pickSpawn(en.x1-.5);
-      if(sp){ens.push(mkEnt(sp.x,sp.y,true));burst(sp.x+.5,sp.y+1,'#fff',8);}
+      if(sp){ens.push(mkEnt(sp.x,sp.y,true));burst(sp.x+.5,sp.y+1,'#fff',8);SFX.spawn();}
       else queue.unshift({t:0.3,delay:respawnDelay(),x:en.x,ph:en.ph});
     }
   }
@@ -574,14 +624,14 @@ function loadStage(){
 }
 function stageClear(){
   if(st!=='play')return;
-  st='clear'; SFX.clear();
+  st='clear'; bgmPause(); SFX.clear();
   const bonus=1000+lives*500, perfect=goldGot>=golds.length&&golds.length>0; score+=bonus+(perfect?PERFECT_PTS:0); saveBest();
   card('<div class="cast"><i class="spr cheer" style="--u:88px;background-image:var(--hero-sheet)"></i></div><h2>STAGE '+stage+' CLEAR!</h2><p class="big">ボーナス +'+bonus+'</p><p>金 '+goldGot+' / '+golds.length+'</p>'+(perfect?'<p class="big">PERFECT! +'+PERFECT_PTS+'</p>':'')+'<p>SCORE '+score+'</p>'+
     '<button class="sp-btn" data-act="next">つぎのステージへ</button>');
   updateHud();
 }
 function gameOver(){
-  st='over'; saveBest();
+  st='over'; bgmStop(); saveBest();
   card('<div class="cast"><i class="spr" style="--u:88px;--r:5;background-image:var(--hero-sheet)"></i></div><h2>GAME OVER</h2><p class="big">SCORE '+score+'</p><p>BEST '+best+'　到達 STAGE '+stage+'</p>'+
     '<button class="sp-btn" data-act="retry">もういちど</button><button class="sp-btn sub" data-act="title">タイトルへ</button>'+COPY);
   updateHud();
@@ -787,32 +837,14 @@ function drawDigMark(){
 // rows: 0 front idle (0-3) + back (4-7) | 1 walk right | 2 walk left | 3 ladder climb | 4 dig (0 ready, 1-7 dig) | 5 down (0-2), overheat (3), cheer (4-5)
 const SPR=128;
 let SHEETS=null;
-function recolor(img,mode){
-  const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
-  const x=c.getContext('2d');x.drawImage(img,0,0);
-  if(mode==='white')return c;
-  const d=x.getImageData(0,0,c.width,c.height),p=d.data, body=mode==='hero'?[255,226,112]:[255,132,132];
-  for(let i=0;i<p.length;i+=4){
-    if(!p[i+3])continue;
-    const r=p[i],g=p[i+1],b=p[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(r+g+b)/3,sat=mx?(mx-mn)/mx:0;
-    if(b>r+30&&b>g&&sat>.35&&l>70){ // blue parts (ears, panel) -> warm colours
-      if(mode==='hero'){p[i]=b;p[i+1]=(r+g)*.45;p[i+2]=r*.7;}else{p[i]=b;p[i+1]=r*.6;p[i+2]=r*.6;}
-    }else if(sat<.3&&l>90){p[i]=r*body[0]/255;p[i+1]=g*body[1]/255;p[i+2]=b*body[2]/255;} // white / grey body
+function loadSheets(){ // robo.png (white), hero.png (yellow), boss.png (red): the colour variants are made ahead of time, so nothing reads pixels at run time
+  const names={white:'robo.png',hero:'hero.png',boss:'boss.png'}, out={};
+  let left=3;
+  for(const k in names){
+    const img=new Image();
+    img.onload=()=>{out[k]=img;if(--left===0){SHEETS=out;if(st==='title')titleCard();}};
+    img.src=names[k];
   }
-  x.putImageData(d,0,0);return c;
-}
-function loadSheets(){
-  const img=new Image();
-  img.onload=()=>{
-    try{
-      SHEETS={white:recolor(img,'white'),hero:recolor(img,'hero'),boss:recolor(img,'boss')};
-      const st=document.documentElement.style;
-      st.setProperty('--hero-sheet','url('+SHEETS.hero.toDataURL()+')');
-      st.setProperty('--boss-sheet','url('+SHEETS.boss.toDataURL()+')');
-      if(st==='title')titleCard();
-    }catch(e){SHEETS=null;}
-  };
-  img.src='robo.png';
 }
 function drawCell(sh,col,row,X,Y,D,flip){
   const dy=Y+S*.46-D*.945, dx=X-D/2;
@@ -948,21 +980,21 @@ function pauseCard(){
 let pausedFrom=null;
 function pause(){
   if(pausedFrom||(st!=='play'&&st!=='ready'))return;
-  pausedFrom=st;st='pause';pauseCard();if(ac)ac.suspend();
+  pausedFrom=st;st='pause';pauseCard();bgmPause();if(ac)ac.suspend();
 }
 function resume(){
   if(!pausedFrom)return;
-  st=pausedFrom;pausedFrom=null;ov.hidden=true;if(ac&&sfxOn)ac.resume();
+  st=pausedFrom;pausedFrom=null;ov.hidden=true;if(ac&&sfxOn)ac.resume();bgmStart();
 }
-function newGame(){initAudio();stage=1;score=0;lives=3;pausedFrom=null;loadStage();}
+function newGame(){initAudio();bgmStop();stage=1;score=0;lives=3;pausedFrom=null;loadStage();bgmStart();}
 ov.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act;
   if(a==='start'||a==='retry'||a==='restart')newGame();
-  else if(a==='next'){initAudio();stage++;loadStage();}
+  else if(a==='next'){initAudio();stage++;loadStage();bgmStart();}
   else if(a==='resume')resume();
-  else if(a==='sound'){sfxOn=!sfxOn;pauseCard();}
-  else if(a==='title'){pausedFrom=null;genStage(1);pl=null;camY=Math.max(0,H-viewRows);updateHud();titleCard();}
+  else if(a==='sound'){sfxOn=!sfxOn;if(!sfxOn)bgmPause();pauseCard();}
+  else if(a==='title'){bgmStop();pausedFrom=null;genStage(1);pl=null;camY=Math.max(0,H-viewRows);updateHud();titleCard();}
 });
 $('pauseBtn').addEventListener('click',()=>{if(st==='pause')resume();else pause();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
@@ -1024,7 +1056,7 @@ function frame(t){
 }
 loadSheets();resize();genStage(1);camY=Math.max(0,H-viewRows);updateHud();titleCard();
 requestAnimationFrame(frame);
-window.__dbg={setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
+window.__dbg={missLoaded:()=>!!SAMPLES.miss.buf,clearLoaded:()=>!!SAMPLES.clear.buf,goldLoaded:()=>!!SAMPLES.gold.buf,digLoaded:()=>!!SAMPLES.dig.buf,spawnLoaded:()=>!!SAMPLES.spawn.buf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
 })();
 </script>
 </body>
