@@ -83,7 +83,7 @@ canvas,.pad,.pbtn{touch-action:none}
 
 /* ===== 基本設定 ===== */
 const W=480,H=200,GY=212,TOPY=-50;    // 論理サイズ / 地面（足元）のY（世界の座標）/ 世界を上へずらす量。スコア欄はゲーム画面の上に重ねる
-const LEN=1300;                        // ステージの長さ（世界の幅）。右（論理上）の端に上の階への階段がある
+const LEN=900;                         // ステージの長さ（世界の幅）。右（論理上）の端に上の階への階段がある
 const GR=520, SPD=150;                 // 重力 / 歩く速さ（逃げ足は速い）
 const TIMELIM=99, STAGES=5;
 const cv=document.getElementById('cv'), cx=cv.getContext('2d');
@@ -144,7 +144,7 @@ const STG=[
   {wall:'#c85050',belt:'#40a0ff'},{wall:'#34345c',belt:'#f83030'}
 ];
 function cfg(n){return{
-  hp:6+2*(n-1), spd:44+6*(n-1), cdBase:1.1-0.12*(n-1),
+  hp:6+2*(n-1), spd:110+7*(n-1), cdBase:1.1-0.12*(n-1),
   dodgeP:0.2+0.1*(n-1), aggr:0.6+0.3*(n-1), armor:n>=3,
   pal:{gi:'#f6f6f6',sleeve:'#1a1a1a',pants:'#f6f6f6',belt:STG[n-1].belt,skin:'#f8b878',hair:'#161616',shoe:'#202020'}
 };}
