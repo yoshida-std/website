@@ -235,7 +235,7 @@ $('pauseBtn').addEventListener('click',pause);
 
 /* ===== 判定ヘルパー ===== */
 // 主人公（敵）の当たり：しゃがむと頭の位置がさがる
-function eTop(){return E.st==='crouch'||E.st==='wind'?28:46;}
+function eTop(){return E.st==='crouch'||E.st==='wind'||(E.st==='combo'&&E.kind==='sweep')?28:46;}
 function spark(x,y,c,n=8){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-.5)*160,vy:-Math.random()*120-20,t:.35+Math.random()*.2,c});}
 
 /* ===== プレイヤー ===== */
@@ -248,16 +248,24 @@ function tryThrow(low){
   knives.push({x:P.x+P.face*12,y:GY-P.z-(low?10:36),vx:P.face*285,d:0,a:0,mine:true,seen:false});
   SND.throw();
 }
-function hurtPlayer(dmg,dir){
-  if(P.inv>0||P.dead)return;
-  P.hp-=dmg;P.inv=1.3;P.hurt=.32;P.lock=0;P.throwT=0;P.kb=dir*150;G.shake=.25;
-  spark(P.x,GY-P.z-28,'#ff6040',10);SND.hurt();
+function hurtPlayer(dmg,dir,heavy){
+  if(P.dead)return;
+  if(P.inv>0&&!heavy)return;
+  P.hp-=dmg;P.lock=0;P.throwT=0;
+  if(heavy){                              // 飛び蹴り: 強烈。後ろへ大きく飛ばされる
+    P.inv=1.4;P.hurt=.6;P.kb=dir*330;P.vz=150;G.shake=.4;
+    spark(P.x,GY-P.z-28,'#ffd23c',12);spark(P.x,GY-P.z-28,'#ff6040',12);
+  }else{                                  // パンチ・足払い: 連打されるので無敵はみじかい
+    P.inv=.2;P.hurt=.12;P.kb=dir*40;G.shake=.1;
+    spark(P.x,GY-P.z-20,'#ff6040',6);
+  }
+  SND.hurt();
   if(P.hp<=0){P.hp=0;lose('LIFE 0');}
 }
 function updPlayer(dt){
   const p=P;
   p.cd-=dt;p.inv-=dt;p.throwT-=dt;p.lock-=dt;
-  if(p.hurt>0){p.hurt-=dt;p.x+=p.kb*dt;p.kb*=.88;p.moving=false;}
+  if(p.hurt>0){p.hurt-=dt;p.x+=p.kb*dt;p.kb*=Math.pow(.04,dt);p.moving=false;}
   else if(G.state==='play'&&!p.dead){
     if(p.lock>0){p.moving=false;}
     else{
@@ -321,23 +329,31 @@ function updEnemy(dt){
         const sp=c.spd*(1+clamp((ad-130)/110,0,1.8));
         e.x+=Math.sign(dx)*sp*dt;e.walk+=dt*sp/40;
       }
-      if(e.cd<=0){
-        if(ad<36){e.st='punch';e.at=0;e.hitDone=false;}
-        else if(ad>70&&ad<175&&Math.random()<dt*2.8*c.aggr){e.st='wind';e.t=.42;SND.wind();}
+      if(e.cd<=0&&ad<56){
+        const r=Math.random(),kk=.22+.04*G.stage;
+        if(ad<36&&r>kk+.3){                       // パンチ連打
+          e.st='combo';e.kind='jab';e.n=2+Math.floor(Math.random()*(1+Math.ceil(G.stage/2)));e.at=0;e.hitDone=false;
+        }else if(r>kk){                           // 足払い連打（しゃがんで下を蹴る）
+          e.st='combo';e.kind='sweep';e.n=1+Math.floor(Math.random()*2)+(G.stage>=3?1:0);e.at=0;e.hitDone=false;
+        }else{e.st='wind';e.t=.34;SND.wind();}   // 真上に飛ぶ飛び蹴り
       }
       break;}
-    case 'punch':
+    case 'combo':{
+      const T=e.kind==='jab'?{w:.1,a:.2,r:.27,reach:40}:{w:.16,a:.3,r:.38,reach:50};
       e.at+=dt;
-      if(e.at>.2&&e.at<.34&&!e.hitDone&&ad<38&&vOverlap(P.z,P.z+44,e.z+18,e.z+36)){e.hitDone=true;hurtPlayer(2,e.face);}
-      if(e.at>.6){e.st='walk';e.cd=c.cdBase;}
-      break;
+      const lo=e.kind==='jab'?[18,36]:[0,9];
+      if(e.at>T.w&&e.at<T.a&&!e.hitDone&&ad<T.reach&&vOverlap(P.z,P.z+(P.low&&P.lock>0?30:44),e.z+lo[0],e.z+lo[1])){e.hitDone=true;hurtPlayer(1,e.face,false);}
+      if(e.at>=T.r){
+        e.n--;e.at=0;e.hitDone=false;
+        if(e.n<=0||ad>T.reach+8){e.st='walk';e.cd=c.cdBase;}
+      }
+      break;}
     case 'wind':
-      if(e.t<=0){e.st='dash';e.vz=175;e.vx=e.face*190;e.hitDone=false;}
+      if(e.t<=0){e.st='dash';e.vz=250;e.vx=0;e.hitDone=false;}
       break;
-    case 'dash':
-      e.x+=e.vx*dt;
-      if(!e.hitDone&&Math.abs(e.x+e.face*14-P.x)<15&&vOverlap(P.z,P.z+44,e.z+3,e.z+26)){e.hitDone=true;hurtPlayer(2,e.face);}
-      if(e.z<=0&&e.vz===0){e.st='rest';e.t=.4;e.vx=0;}
+    case 'dash':   // 真上に飛んで、落ちながら蹴る
+      if(!e.hitDone&&e.vz<40&&e.z<44&&ad<50&&vOverlap(P.z,P.z+44,e.z+6,e.z+34)){e.hitDone=true;hurtPlayer(3,e.face,true);}
+      if(e.z<=0&&e.vz===0){e.st='rest';e.t=.55;}
       break;
     case 'jump':
       if(e.z<=0&&e.vz===0){e.st='walk';e.cd=Math.max(e.cd,.25);}
@@ -456,11 +472,12 @@ function fighter(o){
   cx.save();cx.translate(sx,by);cx.scale(o.face,1);
   if(pose==='down'){cx.translate(0,-7);cx.rotate(-Math.PI/2);}
   else if(pose==='hurt'){cx.rotate(-.18);}
-  const cr=pose==='crouch'||pose==='wind'||pose==='cthrow',u=cr?14:0;
+  const cr=pose==='crouch'||pose==='wind'||pose==='cthrow'||pose==='sweep',u=cr?14:0;
   const sw=pose==='walk'?Math.round(Math.sin(o.walk*14)*3):0;
   const A=(x,y,w,h,c)=>R(x,y,w,h,c);
   // 脚
-  if(cr){A(-8,-8,16,8,p.pants);A(-9,-2,18,2,p.shoe);}
+  if(pose==='sweep'){A(-8,-8,10,8,p.pants);A(2,-5,26,5,p.pants);A(28,-6,4,7,p.shoe);A(-9,-2,8,2,p.shoe);}
+  else if(cr){A(-8,-8,16,8,p.pants);A(-9,-2,18,2,p.shoe);}
   else if(pose==='kick'){A(-6,-14,5,14,p.pants);A(-6,-2,6,2,p.shoe);A(1,-25,24,5,p.pants);A(23,-27,5,8,p.shoe);}
   else if(pose==='air'||pose==='hurt'){A(-6,-14,6,9,p.pants);A(1,-12,7,6,p.pants);A(-6,-6,6,2,p.shoe);A(4,-7,5,2,p.shoe);}
   else{A(-6+sw,-16,5,16,p.pants);A(1-sw,-16,5,16,p.pants);A(-6+sw,-2,6,2,p.shoe);A(1-sw,-2,6,2,p.shoe);}
@@ -489,8 +506,8 @@ function playerPose(){
 function enemyPose(){
   if(E.dead)return'down';
   switch(E.st){
-    case 'punch':return E.at>.2?'punch':'punchw';
-    case 'wind':return'wind';case 'dash':return'kick';case 'jump':return'air';
+    case 'combo':return E.kind==='jab'?(E.at>.1?'punch':'punchw'):(E.at>.16?'sweep':'crouch');
+    case 'wind':return'wind';case 'dash':return E.vz<120?'kick':'air';case 'jump':return'air';
     case 'crouch':return'crouch';case 'hurt':return'hurt';
   }
   return E.vx!==0||E.z>0?'air':'walk';
