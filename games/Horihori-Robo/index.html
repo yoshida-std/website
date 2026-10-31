@@ -53,10 +53,35 @@ canvas{display:block}
 #cv{position:absolute;inset:0;width:100%;height:100%}
 #banner{position:absolute;left:0;right:0;top:32%;text-align:center;pointer-events:none;font-size:34px;color:#fff6a0;
   text-shadow:2px 2px 0 #7a2a00,-2px -2px 0 #7a2a00,2px -2px 0 #7a2a00,-2px 2px 0 #7a2a00,0 4px 0 #7a2a00;line-height:1.4}
+#stopTimer{position:absolute;left:50%;top:56px;transform:translateX(-50%);display:flex;align-items:baseline;gap:8px;padding:3px 14px;
+  background:#2f6fd0;border:3px solid #ffd84a;border-radius:99px;color:#fff;pointer-events:none;z-index:2;box-shadow:0 3px 0 #14457f}
+#stopTimer b{font-weight:400;font-size:12px;letter-spacing:.08em;color:#bfe4ff}
+#stopTimer span{font-size:22px;font-variant-numeric:tabular-nums;color:#fff6a0}
+#stopTimer.low{background:#d0402f}#stopTimer.low span{color:#fff}
+#redAlert{position:absolute;left:50%;top:44%;width:min(94%,520px);height:auto;pointer-events:none;z-index:2;
+  transform:translate(-50%,-50%);filter:drop-shadow(0 6px 10px #0009)}
+#redAlert.show{animation:redIn 2.6s ease-out forwards}
+@keyframes redIn{
+  0%{transform:translate(-50%,-50%) scale(.35);opacity:0}
+  12%{transform:translate(-50%,-50%) scale(1.14);opacity:1}
+  20%{transform:translate(-50%,-50%) scale(.97)}
+  27%{transform:translate(-50%,-50%) scale(1)}
+  34%{transform:translate(-47.5%,-50%) scale(1)}
+  38%{transform:translate(-52.5%,-50%) scale(1)}
+  42%{transform:translate(-48.5%,-50%) scale(1)}
+  46%{transform:translate(-50%,-50%) scale(1)}
+  80%{transform:translate(-50%,-50%) scale(1);opacity:1}
+  100%{transform:translate(-50%,-50%) scale(1.06);opacity:0}
+}
+@media (prefers-reduced-motion:reduce){#redAlert.show{animation:redFade 2.6s linear forwards}@keyframes redFade{0%{opacity:0}10%,80%{opacity:1}100%{opacity:0}}}
 #banner small{display:block;font-size:14px;color:#fff;text-shadow:1px 1px 0 #7a2a00,-1px -1px 0 #7a2a00,1px -1px 0 #7a2a00,-1px 1px 0 #7a2a00}
 #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(20,70,140,.9);
   padding:12px;box-sizing:border-box}
 .card{width:100%;max-width:340px;max-height:100%;overflow-y:auto;touch-action:pan-y;text-align:center;box-sizing:border-box;padding:4px 2px 10px}
+.logo{height:clamp(210px,40vh,340px);background:#0a1630 url(logo.jpg) center 42%/auto 112% no-repeat}
+#overlay.is-title{background:#0a1630;padding:0;align-items:flex-start}
+#overlay.is-title .card{max-width:none;padding:0 0 10px}
+.pad{max-width:340px;margin:0 auto;padding:0 14px}
 .card h1{font-weight:400;font-size:clamp(28px,9.5vw,40px);margin:6px 0 0;line-height:1.15;color:var(--fg);text-shadow:3px 3px 0 #c4521e}
 .card h2{font-weight:400;font-size:28px;margin:4px 0;color:var(--fg);text-shadow:3px 3px 0 #c4521e}
 .card .tag{margin:6px 0 0;font-size:11px;letter-spacing:.3em;color:var(--green)}
@@ -106,6 +131,8 @@ canvas{display:block}
   <div id="stage">
     <canvas id="cv"></canvas>
     <div id="banner" hidden></div>
+    <div id="stopTimer" hidden><b>ストップ</b><span id="stopSec">10.0</span></div>
+    <img id="redAlert" src="redalert.png" alt="あかいロボが きた！" hidden>
     <div id="overlay"></div>
   </div>
   <div id="ctrl">
@@ -195,6 +222,9 @@ const SFX={
   ladder:()=>[392,523,659].forEach((f,i)=>tone(f,.08,'square',.05,0,i*.06)),
   coin:()=>playSample('gold',()=>{tone(988,.07,'square',.05);tone(1319,.14,'square',.05,0,.07);}),
   alarm:()=>[880,660,880,660].forEach((f,i)=>tone(f,.12,'square',.05,0,i*.14)),
+  watch:()=>[784,1047,1319,1568].forEach((f,i)=>tone(f,.09,'triangle',.06,0,i*.06)),
+  tick:()=>tone(1500,.03,'square',.03),
+  watchEnd:()=>tone(330,.18,'triangle',.06,-120),
   pop:()=>tone(300,.12,'square',.04,300),
   spawn:()=>playSample('spawn',()=>tone(300,.12,'square',.04,300)),
   go:()=>tone(660,.2,'square',.05)
@@ -211,7 +241,7 @@ function bgmLoad(){
 }
 function bgmStart(){
   bgmWant=true;
-  if(!ac||!sfxOn)return;
+  if(!ac||!sfxOn||freezeT>0)return; // not while the stopwatch holds the game still
   if(!bgmBuf){bgmLoad();return;}
   if(bgmSrc)return;
   if(!bgmGain){bgmGain=ac.createGain();bgmGain.connect(ac.destination);}
@@ -234,8 +264,8 @@ try{best=+localStorage.getItem('horihori_best')||0;}catch(e){}
 let grid=null, H=0, startX=5, startY=0, holes=new Map(), ens=[], pl=null, camY=0, camSpd=1;
 let grace=0, readyT=0, bestRow=0, flow=null, flowKey=-1, tNow=0, digReq=0, digHeld=false, digFresh=false, digHeldT=0;
 const digIds=new Set(); // pointers currently pressing 'dig' (the button, or any tap outside the stick)
-let exitX=1, redDone=false, bannerT=0, fxP=[], fxT=[], ladders=3, golds=[], goldGot=0;
-const RESPAWN_PAUSE=2.0, GOLD_N=10, GOLD_PTS=300, PERFECT_PTS=3000;
+let exitX=1, redDone=false, bannerT=0, redT=0, watch=null, freezeT=0, tickSec=-1, fxP=[], fxT=[], ladders=3, golds=[], goldGot=0;
+const WATCH_STOP=10, RESPAWN_PAUSE=2.0, GOLD_N=10, GOLD_PTS=300, PERFECT_PTS=3000;
 const idx=(x,y)=>y*COLS+x;
 const isWall=(x,y)=>x<0||x>=COLS||y<0||y>=H||grid[idx(x,y)]===1;
 
@@ -542,13 +572,18 @@ function pickSpawn(x0){
   }
   return null;
 }
+const redAlert=$('redAlert');
+function showRedAlert(){ // the cut-in picture: pops in, shakes, fades out (2.6s)
+  redAlert.hidden=false;redAlert.classList.remove('show');void redAlert.offsetWidth;redAlert.classList.add('show');redT=2.6;
+}
+function hideRedAlert(){redAlert.hidden=true;redAlert.classList.remove('show');redT=0;}
 function spawnRedRobot(){ // once the forced scroll has stopped, ONE red robot comes up from the bottom of the screen
   const y0=Math.min(H-3,Math.floor(camY+viewRows)+1);
   for(let y=y0;y>=y0-4;y--){
     const xs=[];for(let x=1;x<COLS-1;x++)if(!isWall(x,y)&&!ens.some(o=>o.state!=='dead'&&o.cx===x&&o.cy===y))xs.push(x);
     if(xs.length){
       const e=mkEnt(xs[rnd(xs.length)],y,true,true);ens.push(e);redDone=true;
-      banner.innerHTML='あかいロボが きた！<small>したから おいかけてくる！</small>';banner.hidden=false;bannerT=2;SFX.spawn();SFX.alarm();
+      showRedAlert();SFX.spawn();SFX.alarm();
       return;
     }
   }
@@ -603,6 +638,19 @@ function placeGold(){ // 10 piles, one per horizontal band of the maze (spread f
     if(c.length){const p=c[rnd(c.length)];golds.push({x:p[0],y:p[1],got:false});}
   }
 }
+function placeWatch(){ // one stopwatch per stage, somewhere in the middle part of the maze
+  watch=null;
+  const R=(H-9)/2, lo=5+Math.floor((2*R-5)*0.3), hi=5+Math.floor((2*R-5)*0.7), c=[];
+  for(let y=lo;y<=hi;y++)for(let x=1;x<COLS-1;x++)if(grid[idx(x,y)]===0&&!golds.some(g=>g.x===x&&g.y===y))c.push([x,y]);
+  if(c.length){const p=c[rnd(c.length)];watch={x:p[0],y:p[1],got:false};}
+}
+function collectWatch(){
+  if(!watch||watch.got)return;
+  const [px,py]=ePos(pl);
+  if(Math.abs(watch.x-px)>0.6||Math.abs(watch.y-py)>0.6)return;
+  watch.got=true;freezeT=WATCH_STOP;tickSec=-1;bgmPause();SFX.watch();
+  text(watch.x+.5,watch.y-.2,'ストップ！','#9ee6ff');burst(watch.x+.5,watch.y+.5,'#9ee6ff',12);
+}
 function collectGold(){
   const [px,py]=ePos(pl);
   for(const g of golds){
@@ -611,10 +659,15 @@ function collectGold(){
     text(g.x+.5,g.y-.2,'+'+GOLD_PTS,'#ffe27a');burst(g.x+.5,g.y+.5,'#ffd23a',10);
   }
 }
+function updStopUi(){
+  const el=$('stopTimer'), on=freezeT>0&&st==='play';
+  el.hidden=!on;
+  if(on){$('stopSec').textContent=freezeT.toFixed(1);el.classList.toggle('low',freezeT<3);}
+}
 function loadStage(){
   genStage(stage);
-  queue=[];entering=[];redDone=false;bannerT=0;
-  placeGold();
+  queue=[];entering=[];redDone=false;bannerT=0;hideRedAlert();
+  placeGold();placeWatch();freezeT=0;$('stopTimer').hidden=true;
   for(let i=0;i<MAX_ROBOTS;i++)queue.push({t:2+i*1.4,delay:respawnDelay()+2+i*1.4,x:SLOT0+i*SLOTW,ph:Math.random()*6});
   pl={cx:startX,cy:startY,nx:startX,ny:startY,p:0,moving:false,dx:0,dy:-1,fx:0,fy:-1,state:'walk',t:0,inv:0};
   camY=Math.max(0,H-viewRows); bestRow=pl.cy; digReq=0; digFresh=false; digHeld=false; digHeldT=0; ladders=3;
@@ -669,16 +722,25 @@ function update(dt){
   if(st!=='play')return;
   for(const e of ens)updEnemy(e,dt);
   // camera: forced scroll (catch-up when the player is far ahead)
+  if(freezeT>0){ // stopwatch: the forced scroll is held still
+    freezeT=Math.max(0,freezeT-dt);
+    const sec=Math.ceil(freezeT);
+    if(sec!==tickSec){tickSec=sec;if(sec>0&&sec<=3)SFX.tick();if(sec===0)SFX.watchEnd();}
+    if(freezeT===0)bgmStart(); // the music continues from where it stopped
+  }
   if(grace>0)grace-=dt;
+  else if(freezeT>0){/* held */}
   else{
     let sp=camSpd;
     if(pl.cy-camY<viewRows*0.4)sp*=2.4;
     camY=Math.max(0,camY-sp*dt);
   }
   updQueue(dt);
+  updStopUi();
   if(bannerT>0){bannerT-=dt;if(bannerT<=0)banner.hidden=true;}
+  if(redT>0){redT-=dt;if(redT<=0)hideRedAlert();}
   if(camY<=0&&!redDone)spawnRedRobot();
-  if(pl.state!=='dead')collectGold();
+  if(pl.state!=='dead'){collectGold();collectWatch();}
   for(const e of ens)if(e.state!=='dead'&&!e.red&&e.cy>camY+viewRows+1){e.state='dead';sendToQueue(e);}
   if(ens.length>120)ens=ens.filter(e=>e.state!=='dead');
   // collisions
@@ -754,6 +816,20 @@ function drawGold(){
     rect(X-u*.12,Y-u*.3,u*.1,u*.05,'#fff3a0');rect(X-u*.2,Y-u*.18,u*.06,u*.05,'#fff3a0');rect(X+u*.1,Y-u*.04,u*.08,u*.05,'#ffe27a');
     if(Math.floor(tNow*3+g.x+g.y)%4===0){const sx=X+u*.2,sy2=Y-u*.36;rect(sx-u*.02,sy2-u*.1,u*.04,u*.2,'#fff');rect(sx-u*.1,sy2-u*.02,u*.2,u*.04,'#fff');}
   }
+}
+function drawWatch(){
+  if(!watch||watch.got||watch.y<camY-1||watch.y>camY+viewRows+1)return;
+  const u=S, X=sxp(watch.x+.5), Y=sy(watch.y+.55)-Math.abs(Math.sin(tNow*3))*u*.06, r=u*.3;
+  rect(X-u*.28,Y+r*.9,u*.56,u*.09,'#0003');
+  ctx.fillStyle='#2f6fd0';ctx.beginPath();ctx.arc(X,Y,r,0,6.29);ctx.fill();          // body
+  rect(X-u*.05,Y-r-u*.09,u*.1,u*.1,'#9aa7c4');rect(X-u*.09,Y-r-u*.13,u*.18,u*.05,'#c9d2e8'); // crown button
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(X,Y,r*.8,0,6.29);ctx.fill();          // face
+  ctx.strokeStyle='#2a3a6a';ctx.lineWidth=Math.max(1.5,u*.035);
+  for(let i=0;i<4;i++){const a=i*1.5708;ctx.beginPath();ctx.moveTo(X+Math.cos(a)*r*.62,Y+Math.sin(a)*r*.62);ctx.lineTo(X+Math.cos(a)*r*.76,Y+Math.sin(a)*r*.76);ctx.stroke();}
+  const a2=tNow*2.2-1.5708;                                                          // sweeping hand
+  ctx.strokeStyle='#e5483c';ctx.lineWidth=Math.max(2,u*.045);ctx.beginPath();ctx.moveTo(X,Y);ctx.lineTo(X+Math.cos(a2)*r*.6,Y+Math.sin(a2)*r*.6);ctx.stroke();
+  rect(X-u*.025,Y-u*.025,u*.05,u*.05,'#2a3a6a');
+  if(Math.floor(tNow*3+watch.x)%4===1){const sx=X+r*.9,sy2=Y-r*.9;rect(sx-u*.02,sy2-u*.09,u*.04,u*.18,'#fff');rect(sx-u*.09,sy2-u*.02,u*.18,u*.04,'#fff');}
 }
 function drawHoles(){
   for(const h of holes.values()){
@@ -837,7 +913,8 @@ function drawDigMark(){
 // rows: 0 front idle (0-3) + back (4-7) | 1 walk right | 2 walk left | 3 ladder climb | 4 dig (0 ready, 1-7 dig) | 5 down (0-2), overheat (3), cheer (4-5)
 const SPR=128;
 let SHEETS=null;
-function loadSheets(){ // robo.png (white), hero.png (yellow), boss.png (red): the colour variants are made ahead of time, so nothing reads pixels at run time
+function loadSheets(){
+  new Image().src='redalert.png'; // preload the cut-in picture // robo.png (white), hero.png (yellow), boss.png (red): the colour variants are made ahead of time, so nothing reads pixels at run time
   const names={white:'robo.png',hero:'hero.png',boss:'boss.png'}, out={};
   let left=3;
   for(const k in names){
@@ -929,7 +1006,7 @@ function drawQueueBand(){
 function draw(){
   ctx.fillStyle='#2d7a2d';ctx.fillRect(0,0,cv.width,cv.height);
   if(!grid)return;
-  drawTiles();drawGold();drawHoles();drawDigMark();
+  drawTiles();drawGold();drawWatch();drawHoles();drawDigMark();
   const objs=ens.filter(e=>e.state!=='dead'&&e.cy>=camY-3&&e.cy<=camY+viewRows+2).map(e=>({y:ePos(e)[1],f:()=>drawRobot(e)}));
   if(pl)objs.push({y:ePos(pl)[1]+0.01,f:drawPlayer});
   objs.sort((a,b)=>a.y-b.y);
@@ -958,18 +1035,19 @@ function draw(){
 }
 
 // ---------- overlay cards ----------
-function card(html){ov.innerHTML='<div class="card scrollable">'+html+'</div>';ov.hidden=false;}
+function card(html){ov.classList.remove('is-title');ov.innerHTML='<div class="card scrollable">'+html+'</div>';ov.hidden=false;}
 function titleCard(){
-  st='title';banner.hidden=true;
-  card('<div class="cast" style="--u:60px"><i class="spr" style="--u:60px;background-image:var(--hero-sheet)"></i><i class="spr" style="--u:60px;background-image:url(robo.png);--c:1"></i><i class="spr" style="--u:60px;background-image:url(robo.png);--r:5"></i><i class="spr" style="--u:60px;background-image:var(--boss-sheet);--c:3"></i></div><p class="tag">DIG &amp; STOMP ACTION</p><h1>ホリホリ<br>ロボバスター</h1>'+
+  st='title';banner.hidden=true;hideRedAlert();
+  card('<div class="logo" role="img" aria-label="ホリホリ ロボバスター"></div><div class="pad">'+
     '<p>BEST '+best+'</p><button class="sp-btn" data-act="start">スタート</button>'+
     '<div class="rules">'+
     '<div><em>▲</em><span>画面は<b>強制スクロール</b>。壁に挟まれる前に、上のゴールをめざせ！</span></div>'+
     '<div><em>●</em><span><b>スティック以外のどこをタップ</b>しても穴をほる（ロボが近ければその方向に自動で）。もう一度で埋まる</span></div>'+
     '<div><em>●</em><span>白いロボを穴に落として、<b>頭をふんで</b>わたろう。ふさがるとロボはつぶれる</span></div>'+
-    '<div><em>●</em><span>壁にタップで<b>ハシゴ</b>。<b>金塊10個</b>でパーフェクト！</span></div>'+
+    '<div><em>●</em><span>壁にタップで<b>ハシゴ</b>。<b>金塊10個</b>でパーフェクト！<b>ストップウォッチ</b>でスクロールが10秒止まる</span></div>'+
     '<div><em>●</em><span>ロボにさわる・挟まれる・穴に埋まるとミス。<b>ミスは3回まで</b></span></div>'+
-    '</div>'+COPY);
+    '</div>'+COPY+'</div>');
+  ov.classList.add('is-title');
 }
 function pauseCard(){
   card('<h2>PAUSE</h2><button class="sp-btn" data-act="resume">つづける</button>'+
@@ -1056,7 +1134,7 @@ function frame(t){
 }
 loadSheets();resize();genStage(1);camY=Math.max(0,H-viewRows);updateHud();titleCard();
 requestAnimationFrame(frame);
-window.__dbg={missLoaded:()=>!!SAMPLES.miss.buf,clearLoaded:()=>!!SAMPLES.clear.buf,goldLoaded:()=>!!SAMPLES.gold.buf,digLoaded:()=>!!SAMPLES.dig.buf,spawnLoaded:()=>!!SAMPLES.spawn.buf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
+window.__dbg={watch:()=>watch,freeze:()=>freezeT,missLoaded:()=>!!SAMPLES.miss.buf,clearLoaded:()=>!!SAMPLES.clear.buf,goldLoaded:()=>!!SAMPLES.gold.buf,digLoaded:()=>!!SAMPLES.dig.buf,spawnLoaded:()=>!!SAMPLES.spawn.buf,bgm:()=>({want:bgmWant,loaded:!!bgmBuf,playing:!!bgmSrc,vol:bgmGain?bgmGain.gain.value:null,off:bgmOff}),setCam:v=>{camY=v;},golds:()=>golds,goldGot:()=>goldGot,queue:()=>queue,killAll:()=>{for(const e of ens)if(e.state!=='dead')killEnemy(e,0,'#fff');},grace:v=>{grace=v;},sync:()=>{flowKey=-1;},st:()=>st,pl:()=>pl,ens:()=>ens,holes:()=>holes,camY:()=>camY,H:()=>H,grid:()=>grid,lives:()=>lives,score:()=>score,viewRows:()=>viewRows};
 })();
 </script>
 </body>
