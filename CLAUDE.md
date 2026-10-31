@@ -3,7 +3,7 @@
 GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 公開URL: `https://yoshida-std.github.io/website/`
 
-- `games/` … ブラウザゲーム（Aitsu-bom, Taijiros-yan, umi, Mogurush, judge2, Susume-Yusha, Horihori-Robo）
+- `games/` … ブラウザゲーム（Aitsu-bom, Taijiros-yan, umi, Mogurush, judge2, Susume-Yusha, Horihori-Robo, Knife-Master）
 - `tools/` … 制作ツール（ys_*。`ys_spriteSheetEditer` は すすめ！ゆうしゃ のキャラの絵のエディタ）
 - `portfolio/` … ヨシダスタジオのポートフォリオサイト（下の「ポートフォリオ」）
 - `common/line-promo/` … ゲームから LINE スタンプ／絵文字へ誘導する共通部品（下の「LINEスタンプ誘導」）
@@ -82,3 +82,4 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 - `games/judge2/CLAUDE.md` … 天使と悪魔のジャッジ2
 - `games/Horihori-Robo/CLAUDE.md` … ホリホリ・ロボバスター（縦スクロールの穴ほりアクション。ポートフォリオに公開済み）
 - `games/Susume-Yusha/CLAUDE.md` … すすめ！ゆうしゃ
+- `games/Knife-Master/CLAUDE.md` … ナイフマスター（スパルタンXのナイフ使いが主人公の横画面アクション。まだポートフォリオには載せていない）
