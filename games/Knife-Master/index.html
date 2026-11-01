@@ -31,7 +31,8 @@ canvas,.pad,.pbtn{touch-action:none}
 #acts{right:max(14px,env(safe-area-inset-right,0px));display:flex;gap:8px;align-items:flex-end}
 .pbtn{width:min(14vh,58px);height:min(14vh,58px);border-radius:50%;display:flex;align-items:center;justify-content:center;
   background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.4);font-size:min(3.4vh,13px);color:#fff;text-align:center;line-height:1.1}
-#bL,#bT{font-size:min(3.4vh,13px)}
+#bA{left:calc(50% + 46px);border-color:rgba(120,220,255,.7);background:rgba(80,180,240,.25)}   /* ポーズの右。下段ナイフから離す */
+#bA,#bL,#bT{font-size:min(3.4vh,13px)}
 #bT{width:min(16vh,66px);height:min(16vh,66px);background:rgba(240,90,40,.35);border-color:rgba(255,160,100,.8)}
 .pbtn.cool{opacity:.4}
 .pbtn.on{background:rgba(255,210,60,.55)}
@@ -43,6 +44,30 @@ canvas,.pad,.pbtn{touch-action:none}
 .card h1{margin:0;font-size:clamp(28px,9vh,46px);line-height:1.1;color:#ffb030;letter-spacing:.04em;text-shadow:3px 3px 0 #a02000}
 .card h2{margin:0 0 4px;font-size:clamp(24px,8vh,38px);color:#ffb030;text-shadow:3px 3px 0 #a02000}
 .card p{margin:6px 0;font-size:13px;line-height:1.6;color:#dde}
+.card.noscroll{overflow:hidden;touch-action:none}
+.row{display:flex;gap:10px;justify-content:center}
+.row .btn{margin:8px 0 0;width:auto;flex:1;max-width:230px}
+@media (max-height:430px){
+  .card h2{font-size:24px;margin:0 0 2px}
+  .card p{margin:3px 0;font-size:12px;line-height:1.45}
+  .card .sc{font-size:11px;line-height:1.6}
+  .row .btn{padding:8px 8px;font-size:15px;margin-top:6px}
+  .row .btn.sub{font-size:13px}
+  .card .copy{margin-top:6px}
+}
+.card .en{margin:2px 0 0;letter-spacing:.4em;color:#7cf08a;font-size:12px;text-shadow:0 1px 3px #000}
+/* タイトル画面: 画像を全面に敷き、上にタイトル、下にボタン */
+#overlay.title{background:#000 url(title.jpg) center 35%/cover no-repeat;padding:0}
+#overlay.title::before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,0) 30%,rgba(0,0,0,0) 62%,rgba(0,0,0,.78))}
+#overlay.title .card{position:relative;height:100%;max-width:none;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;padding:max(6px,env(safe-area-inset-top,0px)) 14px max(6px,env(safe-area-inset-bottom,0px))}
+.tTop{display:flex;justify-content:center}
+.logo{height:min(38vh,150px);width:auto;max-width:60vw;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.65));-webkit-user-drag:none;pointer-events:none}
+.tBot{display:flex;flex-direction:column;align-items:center}
+.tBtns{display:flex;gap:10px;justify-content:center}
+.tBtns .btn{margin:0;width:auto;padding:6px 18px;font-size:14px;border-width:2px;border-radius:10px;box-shadow:0 3px 0 #8a2a08}
+.tBtns .btn.sub{font-size:12px;padding:6px 14px;box-shadow:0 3px 0 #141a38}
+.tInfo{margin:6px 0 0!important;font-size:10px!important;color:#fff!important;text-shadow:0 1px 3px #000;white-space:nowrap}
+.tCopy{margin-left:12px;color:#ddd}
 .card .sc{font-family:"Press Start 2P",monospace;font-size:13px;color:#7cf08a;line-height:1.9}
 .rules{display:inline-block;text-align:left;font-size:12px;line-height:1.7;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px 12px;margin:8px 0;font-weight:600}
 .rules b{color:#ffd23c}
@@ -59,6 +84,7 @@ canvas,.pad,.pbtn{touch-action:none}
   <div id="stage"><canvas id="cv"></canvas></div>
   <div id="ctl">
   <div id="dpad" class="pad" hidden><i>◀</i><i>▶</i></div>
+  <div id="bA" class="pad pbtn" hidden>仲間<br>を呼ぶ</div>
   <div id="acts" class="pad" hidden>
     <div id="bL" class="pbtn">下段<br>ナイフ</div>
     <div id="bT" class="pbtn">上段<br>ナイフ</div>
@@ -133,9 +159,20 @@ const SND={
   lose:()=>[392,330,262,196].forEach((f,i)=>tone(f,.22,'triangle',.07,0,i*.2)),
   go:()=>{tone(660,.1,'square',.05);tone(880,.18,'square',.05,0,.12);}
 };
+/* ===== BGM（bgm.mp3。ゲーム開始から流れ、ステージをまたいでつづく。ポーズ・ゲームオーバー・クリア・タイトルでは止まる）===== */
+let bgm=null,bgmWanted=false;
+function bgmStart(fromTop){
+  if(!bgm){bgm=new Audio('bgm.mp3');bgm.loop=true;bgm.volume=.5;bgm.preload='auto';}
+  bgm.muted=!G.sound;bgmWanted=true;
+  if(fromTop)try{bgm.currentTime=0;}catch(e){}
+  const pr=bgm.play();if(pr&&pr.catch)pr.catch(()=>{});
+}
+function bgmStop(){bgmWanted=false;if(bgm)bgm.pause();}
+function bgmPauseOnly(){if(bgm)bgm.pause();}
+function bgmResume(){if(bgm&&bgmWanted){bgm.muted=!G.sound;const pr=bgm.play();if(pr&&pr.catch)pr.catch(()=>{});}}
 document.addEventListener('visibilitychange',()=>{
-  if(document.hidden){if(G.state==='play')pause();if(ac)ac.suspend();}
-  else if(ac&&G.sound)ac.resume();
+  if(document.hidden){if(G.state==='play')pause();if(ac)ac.suspend();bgmPauseOnly();}
+  else if(ac&&G.sound){ac.resume();if(G.state!=='pause')bgmResume();}
 });
 
 /* ===== ステージ設定 ===== */
@@ -146,7 +183,7 @@ const STG=[
 ];
 function cfg(n){return{
   hp:6+2*(n-1), spd:110+7*(n-1), cdBase:1.1-0.12*(n-1),
-  dodgeP:0.2+0.1*(n-1), aggr:0.6+0.3*(n-1), armor:n>=3,
+  dodgeP:0.2+0.1*(n-1), swatP:0.3+0.1*(n-1), aggr:0.6+0.3*(n-1), armor:n>=3,
   pal:{gi:'#f6f6f6',sleeve:'#1a1a1a',pants:'#f6f6f6',belt:STG[n-1].belt,skin:'#f8b878',hair:'#161616',shoe:'#202020'}
 };}
 
@@ -155,14 +192,15 @@ function goalX(){return G.stage===STAGES?LEN-100:LEN-140;}   // 敵がここま�
 function EDGE(){return G.stage===STAGES?LEN-90:LEN-12;}   // 行き止まりの位置（最上階は椅子の手前）
 function newPlayer(hp){return{hidden:true,lock:0,low:false,bufT:0,pT:false,pL:false,x:530,z:0,vz:0,hp,face:-1,cd:0,inv:0,hurt:0,kb:0,walk:0,moving:false,throwT:0,dead:false};}
 function startRound(){
+  if(!bgmWanted)bgmStart(false);                    // 2ステージ目以降もBGMはつづく
   const c=cfg(G.stage);
   camX=0;knives=[];parts=[];G.time=TIMELIM;G.shake=0;G.trick=false;G.cap={hits:0,fly:false,x:0,y:0,vx:0,vy:0,hit:0,rs:-1,stand:false,wx:0};
   P=newPlayer(1);
   E={x:-75,z:0,vz:0,vx:0,face:1,hp:G.eHP,max:EHP,c,st:'walk',t:0,at:0,cd:1.2,dodgeCd:0,noStun:0,walk:0,hitDone:false,dead:false};
-  G.state='intro';G.it=0;G.fightT=0;G.msg='';   // 開始演出: 敵が登場 → 敵に合わせてスクロール → 自機が登場 → そのままスタート
+  G.ally=null;G.state='intro';G.it=0;G.fightT=0;G.msg='';   // 開始演出: 敵が登場 → 敵に合わせてスクロール → 自機が登場 → そのままスタート
   hideOverlay();showControls(true);SND.go();
 }
-function startGame(){initAudio();G.score=0;G.stage=1;G.eHP=EHP;P=null;startRound();}
+function startGame(){initAudio();bgmStart(true);G.score=0;G.stage=1;G.eHP=EHP;G.allyUsed=false;P=null;startRound();}
 
 /* ===== 入力 ===== */
 const keys={};
@@ -171,6 +209,7 @@ function setKey(e,v){
   if(k==='ArrowLeft'||k==='KeyA')inp.l=v;
   else if(k==='ArrowRight'||k==='KeyD')inp.r=v;
   else if(k==='ArrowDown'||k==='KeyX'||k==='KeyK')inp.low=v;
+  else if(k==='KeyC'||k==='KeyV'){if(v)callAlly();}
   else if(k==='KeyZ'||k==='Space'||k==='KeyJ')inp.throw=v;
   else h=false;
   if(h)e.preventDefault();
@@ -196,18 +235,27 @@ addEventListener('blur',()=>{inp.l=inp.r=inp.jump=inp.throw=inp.low=false;});
     ['pointerup','pointercancel','lostpointercapture'].forEach(t=>el.addEventListener(t,up));
   };
   bind($('bT'),'throw');bind($('bL'),'low');
+  $('bA').addEventListener('pointerdown',e=>{e.preventDefault();callAlly();});
 })();
-function showControls(v){$('dpad').hidden=!v;$('acts').hidden=!v;$('pauseBtn').hidden=!v;}
+function showControls(v){$('dpad').hidden=!v;$('acts').hidden=!v;$('pauseBtn').hidden=!v;$('bA').hidden=!v;}
 
 /* ===== メニュー ===== */
 const COPY='<p class="copy">©YoshidaStudio, ©PANICPUMPKIN</p>';
-function showOverlay(html){$('card').innerHTML=html;$('overlay').hidden=false;$('card').scrollTop=0;}
+function showOverlay(html,scroll){$('overlay').classList.remove('title');$('card').classList.toggle('noscroll',!scroll);$('card').innerHTML=html;$('overlay').hidden=false;$('card').scrollTop=0;}   // scroll=true の画面（あそびかた）だけスクロールできる
 function hideOverlay(){$('overlay').hidden=true;}
 function sc6(n){return String(n).padStart(6,'0');}
 function showTitle(){
-  G.state='title';showControls(false);
-  showOverlay(`<h1>ナイフマスター</h1>
-  <p style="letter-spacing:.3em;color:#7cf08a;margin:4px 0">KNIFE MASTER</p>
+  G.state='title';showControls(false);bgmStop();
+  showOverlay(`<div class="tTop"><img class="logo" src="logo.webp" alt="ナイフマスター" draggable="false"></div>
+  <div class="tBot">
+   <div class="tBtns"><button class="btn" data-act="start">ゲームスタート</button><button class="btn sub" data-act="howto">あそびかた</button></div>
+   <p class="tInfo">ベストスコア ${sc6(best)}<span class="tCopy">${COPY.replace(/<[^>]+>/g,'')}</span></p>
+  </div>`);
+  $('overlay').classList.add('title');                   // タイトル画像（title.jpg）を背景にする
+}
+function showHowto(){
+  showOverlay(`<h2>あそびかた</h2>
+  <button class="btn sub" data-act="title" style="margin:2px auto 6px">もどる</button>
   <div class="rules">
    <div><b>めざせ</b> 主人公をたおせ！ 追いつめられるのは${STAGES}ステージ目まで</div>
    <div><b>戦い方</b> ナイフ使いは近づかれると弱い。<b>きょりをとって</b>ナイフを投げよう（ジャンプはなし）</div>
@@ -215,33 +263,34 @@ function showTitle(){
    <div><b>ナイフ</b> <b>上段</b>（立って投げる）と<b>下段</b>（しゃがんで投げる）。<b>投げている間は動けない</b>。近いと投げるのがおそい</div>
    <div><b>むき</b> ステージによって、敵が来る向き（左／右）がかわる</div>
    <div><b>よけ</b> 相手がしゃがんだら<b>下段</b>。ジャンプでよけたら着地を待とう</div>
+   <div><b>仲間</b> ゲーム中<b>1回だけ</b>「仲間を呼ぶ」。敵にまとわりついて<b>最大2秒止めて</b>、ライフもへらす。敵にはらわれることも</div>
    <div><b>かち</b> 敵を<b>たおせば</b>ゲームクリア！ 敵のライフはステージをこえて持ち越し</div>
    <div><b>階段</b> 敵が階段にたどりつくと のぼられて次のステージへ（敵のライフは少し回復）</div>
    <div><b>まけ</b> 最上階（ステージ5）で<b>女性</b>にたどりつかれたら負け</div>
    <div><b>やられたら</b> <b>1回あたっただけでアウト</b>！ 画面の下に落とされる。敵にはライフがある</div>
    <div><b>じかん</b> ${TIMELIM}びょうで決着をつけよう</div>
   </div>
-  <button class="btn" data-act="start">ゲームスタート</button>
-  <p style="font-size:11px;color:#9ab">キー: ←→ いどう・むき / Z 上段 / X 下段 / P ポーズ</p>
-  <p class="copy" style="margin-top:2px">ベストスコア ${sc6(best)}</p>${COPY}`);
+  <p style="font-size:11px;color:#9ab">キー: ←→ いどう・むき / Z 上段 / X 下段 / C 仲間 / P ポーズ</p>
+  <button class="btn" data-act="title">もどる</button>`,true);
 }
 function pause(){
   if(G.state!=='play'&&G.state!=='intro')return;
+  bgmPauseOnly();
   G.prev=G.state;G.state='pause';inp.l=inp.r=inp.jump=inp.throw=inp.low=false;
   showOverlay(`<h2>ポーズ</h2>
-  <button class="btn" data-act="resume">つづける</button>
-  <button class="btn sub" data-act="snd">おと: ${G.sound?'ON':'OFF'}</button>
-  <button class="btn sub" data-act="title">タイトルへ</button>`);
+  <div class="row"><button class="btn" data-act="resume">つづける</button></div>
+  <div class="row"><button class="btn sub" data-act="snd">おと: ${G.sound?'ON':'OFF'}</button><button class="btn sub" data-act="title">タイトルへ</button></div>`);
 }
-function resume(){G.state=G.prev||'play';hideOverlay();if(ac&&G.sound)ac.resume();}
+function resume(){G.state=G.prev||'play';hideOverlay();if(ac&&G.sound)ac.resume();bgmResume();}
 function saveBest(){if(G.score>best){best=G.score;try{localStorage.setItem(BEST_KEY,best);}catch(e){}return true;}return false;}
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act;
   if(a==='start')startGame();
   else if(a==='resume')resume();
-  else if(a==='snd'){G.sound=!G.sound;b.textContent='おと: '+(G.sound?'ON':'OFF');if(G.sound)initAudio();}
+  else if(a==='snd'){G.sound=!G.sound;if(bgm)bgm.muted=!G.sound;b.textContent='おと: '+(G.sound?'ON':'OFF');if(G.sound)initAudio();}
   else if(a==='title'){showTitle();}
+  else if(a==='howto'){showHowto();}
   else if(a==='next'){G.stage++;G.eHP=Math.min(EHP,G.eHP+EHP*EREC);startRound();}   // 敵のライフは少し回復
   else if(a==='retry'){startGame();}
 });
@@ -287,6 +336,8 @@ function updPlayer(dt){
       if(mv)p.face=mv;                      // 向きは左右キーで決まる
       if(p.bufT>0&&tryThrow(p.bufLow))p.bufT=0;
     }
+  }else if(G.state==='win'){                  // 勝ったら、その場でバンザイしながらはねる
+    p.moving=false;if(p.z===0&&p.vz===0)p.vz=105;
   }else if(G.state==='intro'){                // 画面の外から走って入ってくる
     if(!p.hidden){p.x-=SPD*dt;p.walk+=dt;p.moving=true;p.face=-1;}else p.moving=false;
   }else p.moving=false;
@@ -314,15 +365,15 @@ function updKnives(dt){
       if(k.y>=top-3&&k.y<=bot+3){
         k.dead=true;E.hp--;G.score+=100;spark(k.x,k.y,'#fff',8);spark(k.x,k.y,'#ffd23c',6);SND.hit();
         if(E.hp<=0){E.hp=0;win();}
-        else if(E.noStun<=0&&!(E.c.armor&&(E.st==='dash'||E.st==='wind'))){
+        else if(E.noStun<=0&&E.st!=='held'&&!(E.c.armor&&(E.st==='dash'||E.st==='wind'))){
           E.st='hurt';E.t=.18;E.noStun=1.4;E.vx=0;
         }
       }
     }
-    // 最上階: ナイフは女性にも当たる（1発で裏技の勝利）
+    // 最上階: ナイフは女性にも当たる（3発で裏技の勝利）
     if(!k.dead&&G.stage===STAGES&&!G.cap.fly&&k.x>LEN-80&&k.x<LEN-52&&GY-k.y>-2&&GY-k.y<44){
       k.dead=true;G.cap.hits++;G.cap.hit=.25;spark(k.x,k.y,'#ffd23c',6);SND.hit();
-      if(G.cap.hits>=1)win(true);
+      if(G.cap.hits>=3)win(true);
     }
     if(k.d>340||k.x<camX-40||k.x>camX+W+40)k.dead=true;
   }
@@ -343,7 +394,8 @@ function updEnemy(dt){
   }
   const airborne=e.z>0||e.vz>0;
   if(airborne){e.vz-=GR*dt;e.z+=e.vz*dt;if(e.z<=0){e.z=0;e.vz=0;}}
-  if(e.st!=='dash'&&e.st!=='hurt')e.face=(ad<90||dx>=0)?(dx>=0?1:-1):1;   // 近くの自分の方を向く。遠ければゴールの方
+  if(e.st!=='dash'&&e.st!=='hurt')e.face=(ad<90||dx>=0)?(dx>=0?1:-1):1;
+  if(G.ally&&((e.st==='combo'&&e.tgtAlly)||e.st==='held'))e.face=G.ally.x>=e.x?1:-1;   // 近くの自分の方を向く。遠ければゴールの方
   if(G.state==='intro'){            // 画面の外から歩いて入ってくる（そのままゴールに向かって歩き続ける）
     e.x+=c.spd*dt;e.walk+=dt*c.spd/22;e.face=1;
     return;
@@ -352,7 +404,13 @@ function updEnemy(dt){
   switch(e.st){
     case 'walk':{
       e.x+=c.spd*dt;e.walk+=dt*c.spd/22;       // 敵はいつも階段（最上階は女性）に向かって進む。自分が前にいても通りぬける
-      if(e.cd<=0&&ad<56){
+      const A=G.ally;                              // 仲間が近づいてきたら、はらいのけようとすることがある
+      if(A&&A.st==='walk'&&e.cd<=0&&Math.abs(A.x-e.x)<54){
+        if(A.swat===undefined)A.swat=Math.random()<c.swatP;
+        if(A.swat){e.st='combo';e.kind=Math.random()<.5?'jab':'sweep';e.n=1;e.at=0;e.hitDone=false;e.tgtAlly=true;A.swat=false;}
+      }
+      if(e.st==='walk'&&e.cd<=0&&ad<56){
+        e.tgtAlly=false;
         const r=Math.random(),kk=.22+.04*G.stage;
         if(ad<36&&r>kk+.3){                       // パンチ連打
           e.st='combo';e.kind='jab';e.n=2+Math.floor(Math.random()*(1+Math.ceil(G.stage/2)));e.at=0;e.hitDone=false;
@@ -365,12 +423,17 @@ function updEnemy(dt){
       const T=e.kind==='jab'?{w:.24,a:.34,r:.46,reach:40}:{w:.3,a:.42,r:.56,reach:50};
       e.at+=dt;
       const lo=e.kind==='jab'?[18,36]:[0,9];
+      if(G.ally&&G.ally.st==='walk'&&e.at>T.w&&e.at<T.a&&Math.abs(G.ally.x-e.x)<T.reach){flingAlly(G.ally.x>=e.x?1:-1);}   // 仲間をはらいのけた
       if(e.at>T.w&&e.at<T.a&&!e.hitDone&&ad<T.reach&&vOverlap(P.z,P.z+(P.low&&P.lock>0?30:44),e.z+lo[0],e.z+lo[1])){e.hitDone=true;hurtPlayer(1,e.face,false);}
       if(e.at>=T.r){
         e.n--;e.at=0;e.hitDone=false;
-        if(e.n<=0||ad>T.reach+8){e.st='walk';e.cd=c.cdBase;}
+        if(e.n<=0||ad>T.reach+8){e.st='walk';e.cd=c.cdBase;e.tgtAlly=false;}
       }
       break;}
+    case 'held':                                       // 仲間にまとわりつかれて動けない。ライフもへっていく
+      e.walk+=dt*10;e.hp-=ALLYDRAIN*dt;
+      if(e.hp<=0){e.hp=0;win();}
+      break;
     case 'wind':
       if(e.t<=0){e.st='dash';e.vz=250;e.vx=0;e.hitDone=false;}
       break;
@@ -400,22 +463,51 @@ function updEnemy(dt){
 }
 
 /* ===== 勝ち負け ===== */
+/* ===== 仲間（ゲーム中1度だけ呼べる）===== */
+const ALLYSPD=230;                         // 仲間の走る速さ（自機の逃げ足150より速い）
+const ALLYDRAIN=.5, ALLYHOLD=2;            // まとわりついている間に敵のライフがへる速さ（/秒）/ まとわりつく最大の秒数
+const PAL_A={gi:'#c63ca8',sleeve:'#c63ca8',pants:'#8cc8f0',belt:'#8cc8f0',skin:'#f8c8a0',hair:'#f8c040',shoe:'#6aa0d0'};
+function callAlly(){
+  if(G.state!=='play'||G.allyUsed||G.ally||!P||P.dead)return;
+  G.allyUsed=true;SND.go();
+  G.ally={x:camX+W+24,z:0,vz:0,vx:0,face:-1,st:'walk',walk:0,t:0,side:1,swat:undefined};   // 自機が登場したのと同じ側（画面のはし）から
+}
+function flingAlly(dir){                     // 画面の下へ飛ばされる
+  const a=G.ally;if(!a||a.st==='fly')return;
+  a.st='fly';a.vz=210;a.vx=dir*90;G.shake=.15;spark(a.x,GY-a.z-24,'#ffd23c',8);SND.hurt();
+}
+function updAlly(dt){
+  const a=G.ally;if(!a)return;
+  if(a.st==='walk'){
+    a.face=E.x>=a.x?1:-1;a.x+=a.face*ALLYSPD*dt;a.walk+=dt*3;   // 足を速く
+    if(Math.abs(E.x-a.x)<16&&!E.dead&&E.z<2&&E.st!=='dash'&&E.st!=='wind'&&E.st!=='combo'){   // 敵にとりついた
+      a.st='cling';a.t=ALLYHOLD;a.side=a.face>0?-1:1;E.st='held';E.vx=0;SND.hit();
+    }
+  }else if(a.st==='cling'){
+    a.t-=dt;a.walk+=dt*8;a.x=E.x+a.side*9;a.face=-a.side;
+    if(a.t<=0||E.st!=='held'){if(E.st==='held'){E.st='walk';E.cd=.8;}flingAlly(a.side);}   // 時間がきたら画面の下へ飛ばされ、敵は自由になる
+  }else{
+    a.vz-=GR*dt;a.z+=a.vz*dt;a.x+=a.vx*dt;if(a.z<-320)G.ally=null;
+  }
+}
 function climb(){
-  G.state='climb';G.t=2.2;G.eHP=E.hp;knives=[];P.lock=0;E.st='walk';
+  G.ally=null;G.state='climb';G.t=2.2;G.eHP=E.hp;knives=[];P.lock=0;E.st='walk';
 }
 function endClimb(){
   G.state='stairs';showControls(false);
   showOverlay(`<h2>階段を のぼられた！</h2><p>敵は ステージ${G.stage+1}へ。ライフは すこし回復する…</p>
   <div class="sc">SCORE ${sc6(G.score)}</div>
-  <button class="btn" data-act="next">つぎのステージへ</button>`);
+  <div class="row"><button class="btn" data-act="next">つぎのステージへ</button></div>`);
 }
 function win(trick){
-  G.state='win';G.t=2.2;knives=[];
-  if(trick){G.trick=true;G.t=2.6;G.cap.fly=true;G.cap.vy=-200;G.cap.vx=-70;}   // 裏技: 女性が画面の下へ飛び出す
+  bgmStop();
+  G.state='win';G.t=2.9;knives=[];
+  if(trick){G.trick=true;G.t=3.2;G.cap.fly=true;G.cap.vy=-200;G.cap.vx=-70;}   // 裏技: 女性が画面の下へ飛び出す
   else{E.dead=true;E.st='down';E.vz=230;E.kbv=-E.face*120;}                  // 敵がはね飛ばされて画面の下へ落ちる
   G.score+=Math.floor(G.time)*10+(STAGES-G.stage+1)*1000;G.shake=.2;SND.win();   // 早く勝つほど高得点
 }
 function lose(why){
+  if(G.state!=='lose'&&G.state!=='win')bgmStop();
   if(G.state==='lose'||G.state==='win')return;
   G.state='lose';G.t=1.7;G.msg=why;SND.lose();
   if(why==='GOAL'){G.t=4;G.cap.rs=0;E.face=1;E.st='walk';}   // 敵が女性を救う: 女性が立ち上がって寄り添う
@@ -425,16 +517,14 @@ function endWin(){
   G.state='end';showControls(false);saveBest();
   showOverlay(`<h2>ゲームクリア！</h2><p>${G.trick?'裏技発見！ 女性が ふっとんでいった…':'主人公をたおした！ ナイフマスターの かちだ！'}${!G.trick&&G.stage<=2?'<br>（ステージ'+G.stage+'で決着）':''}</p>
   <div class="sc">SCORE ${sc6(G.score)}<br>BEST ${sc6(best)}</div>
-  <button class="btn" data-act="retry">もういちど</button>
-  <button class="btn sub" data-act="title">タイトルへ</button>${COPY}`);
+  <div class="row"><button class="btn" data-act="retry">もういちど</button><button class="btn sub" data-act="title">タイトルへ</button></div>${COPY}`);
 }
 function endLose(){
   G.state='over';showControls(false);
   const nb=saveBest();
   showOverlay(`<h2>ゲームオーバー</h2><p>${G.msg==='TIME UP'?'じかんぎれ…':G.msg==='GOAL'?'女性を すくわれてしまった…':'やられてしまった…'}（ステージ${G.stage}）</p>
   <div class="sc">SCORE ${sc6(G.score)}<br>BEST ${sc6(best)}${nb?' NEW!':''}</div>
-  <button class="btn" data-act="retry">もういちど</button>
-  <button class="btn sub" data-act="title">タイトルへ</button>`);
+  <div class="row"><button class="btn" data-act="retry">もういちど</button><button class="btn sub" data-act="title">タイトルへ</button></div>`);
 }
 
 /* 奇数ステージ＝自分は画面左・敵は右から来て左へ進む（画面全体を左右反転して描く）。偶数ステージはその逆 */
@@ -442,7 +532,8 @@ function mirror(){return G.stage%2===1;}
 
 /* ===== 更新 ===== */
 let coolOn=null;
-function showCool(){const on=!!P&&G.state==='play'&&!canThrow();if(on!==coolOn){coolOn=on;$('bT').classList.toggle('cool',on);$('bL').classList.toggle('cool',on);}}
+function showCool(){const on=!!P&&G.state==='play'&&!canThrow();if(on!==coolOn){coolOn=on;$('bT').classList.toggle('cool',on);$('bL').classList.toggle('cool',on);}
+  $('bA').classList.toggle('cool',!P||G.allyUsed||G.state!=='play');}
 function update(dt){
   const portrait=innerHeight>innerWidth;
   if(portrait&&(G.state==='play'||G.state==='intro')){pause();return;}
@@ -461,12 +552,13 @@ function update(dt){
   if(s==='play'||s==='intro'||s==='win'||s==='lose'||s==='climb'){
     updPlayer(dt);updEnemy(dt);
     if(s==='play'||s==='intro')updKnives(dt);
+    if(s==='play')updAlly(dt);
     if(s==='intro'){
       G.it+=dt;
       if(E.x>40)camX=E.x-40;                                   // 敵に合わせてスクロールがはじまる
       if(G.it>=1.6&&P.hidden){P.hidden=false;P.x=camX+520;P.face=-1;SND.go();}   // 自機が画面の外から現れる
       if(!P.hidden&&P.x<=camX+250){                           // 所定の位置まで来たら、止めずにそのままスタート
-        P.x=camX+250;P.moving=false;G.state='play';G.fightT=.9;E.cd=Math.max(E.cd,.8);
+        P.x=camX+250;P.moving=false;G.state='play';G.fightT=.9;G.arrowT=1.8;E.cd=Math.max(E.cd,.8);
       }
     }
     if(s!=='intro')camX=Math.min(LEN-W,Math.max(camX,P.x-250));   // スクロールには限界がある
@@ -476,7 +568,7 @@ function update(dt){
     if(G.time<=0){G.time=0;lose('TIME UP');}
   }
   showCool();
-  G.fightT=Math.max(0,(G.fightT||0)-dt);
+  G.fightT=Math.max(0,(G.fightT||0)-dt);G.arrowT=Math.max(0,(G.arrowT||0)-dt);
   if(s==='win'){G.t-=dt;if(G.t<=0)endWin();}
   if(s==='lose'){G.t-=dt;if(G.t<=0)endLose();}
   if(s==='climb'){G.t-=dt;if(G.t<=0)endClimb();}
@@ -581,11 +673,20 @@ function fighter(o){
   const sx=Math.round(o.x-camX),by=Math.round(GY-o.z),p=o.pal,pose=o.pose;
   if(!o.dead){cx.fillStyle='rgba(0,0,0,.28)';cx.fillRect(sx-10,GY-1,20,3);}
   if(o.inv>0&&Math.floor(o.inv*18)%2)return;
+  if(pose==='banzai'){                                     // 正面を向いて、両手をあげてバンザイ
+    cx.save();cx.translate(sx,by);const p=o.pal,A=(x,y,w,h,c)=>R(x,y,w,h,c);
+    A(-8,-16,6,16,p.pants);A(2,-16,6,16,p.pants);A(-9,-2,7,2,p.shoe);A(2,-2,7,2,p.shoe);   // 足をひらく
+    A(-7,-32,14,16,p.gi);A(-7,-20,14,3,p.belt);A(-1,-32,2,6,p.skin);                       // 胴と帯
+    A(-11,-39,3,11,p.sleeve);A(8,-39,3,11,p.sleeve);A(-11,-43,3,4,p.skin);A(8,-43,3,4,p.skin);   // 両手をあげる
+    A(-5,-44,10,11,p.skin);A(-5,-45,10,4,p.hair);A(-5,-41,10,2,'#fff');A(-9,-41,4,3,'#fff');A(5,-41,4,3,'#fff');   // 頭、はちまき
+    A(-3,-39,2,2,'#000');A(1,-39,2,2,'#000');A(-2,-35,4,2,'#c04858');                       // 目と口（よろこぶ顔）
+    cx.restore();return;
+  }
   cx.save();cx.translate(sx,by);cx.scale(o.face,1);
   if(pose==='down'){cx.translate(0,-7);cx.rotate(-Math.PI/2);}
   else if(pose==='hurt'){cx.rotate(-.18);}
   const cr=pose==='crouch'||pose==='wind'||pose==='cthrow'||pose==='sweep',u=cr?14:0;
-  const sw=pose==='walk'?Math.round(Math.sin(o.walk*14)*3):0;
+  const sw=(pose==='walk'||pose==='raise')?Math.round(Math.sin(o.walk*14)*3):0;
   const A=(x,y,w,h,c)=>R(x,y,w,h,c);
   // 脚
   if(pose==='sweep'){A(-8,-8,10,8,p.pants);A(2,-5,26,5,p.pants);A(28,-6,4,7,p.shoe);A(-9,-2,8,2,p.shoe);}
@@ -597,7 +698,7 @@ function fighter(o){
   A(-7,-32+u,14,16,p.gi);A(-7,-20+u,14,3,p.belt);A(0,-32+u,3,5,p.skin);
   // 頭
   A(-5,-44+u,10,11,p.skin);
-  if(o.kind==='hero'){A(-5,-45+u,10,4,p.hair);A(-6,-44+u,3,10,p.hair);}
+  if(o.kind!=='thrower'){A(-5,-45+u,10,4,p.hair);A(-6,-44+u,3,10,p.hair);}
   else{A(-5,-45+u,10,4,p.hair);A(-5,-41+u,10,2,'#fff');A(-9,-41+u,4,3,'#fff');}
   A(2,-39+u,2,2,'#000');
   // 腕
@@ -605,13 +706,14 @@ function fighter(o){
   else if(pose==='punchw'){A(-13,-31+u,10,4,p.sleeve);A(-14,-32+u,4,6,p.skin);A(6,-30+u,3,10,p.sleeve);}
   else if(pose==='cthrow'){A(5,-31+u,12,3,p.sleeve);A(16,-32+u,4,5,p.skin);A(20,-31+u,7,2,'#e8e8f0');A(-9,-30+u,3,11,p.sleeve);}
   else if(pose==='throw'){A(5,-41+u,3,13,p.sleeve);A(4,-44+u,4,3,p.skin);A(6,-51+u,2,7,'#e8e8f0');A(-9,-30+u,3,11,p.sleeve);}
-  else if(pose==='air'||pose==='kick'||pose==='hurt'){A(6,-37,3,9,p.sleeve);A(-10,-37,3,9,p.sleeve);}
+  else if(pose==='air'||pose==='kick'||pose==='hurt'||pose==='raise'){A(6,-37,3,9,p.sleeve);A(-10,-37,3,9,p.sleeve);}
   else{
     A(-9-sw,-30+u,3,11,p.sleeve);A(6+sw,-30+u,3,11,p.sleeve);A(6+sw,-19+u,3,3,p.skin);
   }
   cx.restore();
 }
 function playerPose(){
+  if(G.state==='win'&&!P.dead)return'banzai';
   if(P.dead||P.hurt>0)return'hurt';if(P.throwT>0)return P.low&&P.z===0?'cthrow':'throw';
   if(P.z>0)return'air';return P.moving?'walk':'idle';
 }
@@ -646,6 +748,27 @@ function drawHUD(){
   for(let i=1;i<=STAGES;i++){R(300+(i-1)*34,20,24,10,i<=G.stage?'#2060ff':'#102050');if(i<STAGES)R(324+(i-1)*34,24,10,2,'#f87820');}
   txt('STAGE '+G.stage,300,34,'#7cf08a',8);
 }
+// 自機の位置をしめす矢印（登場演出で、どれが自分か分かるように。画面の外にいるときは、画面のはしから方向をしめす）
+function drawYou(){
+  if(!P||P.hidden)return;
+  if(!(G.state==='intro'||(G.state==='play'&&G.arrowT>0)))return;
+  if(G.state==='play'&&G.arrowT<.6&&Math.floor(G.arrowT*10)%2)return;   // 消える前にまたたく
+  const raw=mirror()?W-(P.x-camX):(P.x-camX);
+  const bob=Math.round(Math.sin(performance.now()/110)*3);
+  const col='#ffd23c',ol='#000';
+  const down=(x,y,c)=>{for(let j=0;j<6;j++)cx.fillStyle=c,cx.fillRect(x-(5-j),y+j*2,11-2*j,2);};
+  if(raw<8||raw>W-8){                                 // 画面の外: はしに、向きをしめす矢印
+    const right=raw>W-8,x=right?W-12:12,y=GY+TOPY-28+bob*0;
+    const side=(x,y,c,o)=>{for(let j=0;j<6;j++){cx.fillStyle=c;const w=2,h=11-2*j;cx.fillRect(right?x-6+j*2+o:x+6-j*2-w-o,y-(5-j),w,h);}};
+    const off=bob;
+    side(x+(right?off:-off),y+1,ol,0);side(x+(right?off:-off),y,col,0);
+    txt('YOU',right?W-26:26,y-18,col,8,right?'right':'left');
+    return;
+  }
+  const x=clamp(raw,16,W-16),y=100+bob;
+  down(x,y+1,ol);down(x,y,col);
+  txt('YOU',x+1,y-14,ol,8,'center');txt('YOU',x,y-15,col,8,'center');
+}
 function bigText(s,y,c,size){txt(s,W/2+2,y+2,'#000',size,'center');txt(s,W/2,y,c,size,'center');}
 
 function draw(){
@@ -658,6 +781,9 @@ function draw(){
   if(P){
     // 奥にいる方を先に描く（足元の高さが同じなので、ジャンプ中でない方を先に）
     if(!E.hidden)fighter({x:E.x,z:E.z,face:E.face,pal:E.c.pal,pose:enemyPose(),walk:E.walk,kind:'hero',inv:0,dead:E.dead});
+    if(G.ally){const a=G.ally;                                  // 3人が一列にならんで、重なっている（先頭が敵にいちばん近い）
+      for(let i=2;i>=0;i--)fighter({x:a.x-a.face*i*11,z:a.z,face:a.face,pal:PAL_A,pose:a.st==='fly'?'hurt':'raise',walk:a.walk+i*.9,kind:'ally',inv:0,dead:a.st==='fly'});
+    }
     if(!P.hidden)fighter({x:P.x,z:P.z,face:P.face,pal:PAL_P,pose:playerPose(),walk:P.walk,kind:'thrower',inv:P.inv,dead:P.dead});
     if(G.cap.stand){drawWomanStand(G.cap.wx,G.cap.wx>E.x+17.5);if(G.cap.rs>1.5)drawHeart((G.cap.wx+E.x)/2-camX+1,GY-62-Math.min(10,(G.cap.rs-1.5)*8)+Math.sin(G.cap.rs*5)*1.5);}
     knives.forEach(drawKnife);
@@ -665,8 +791,9 @@ function draw(){
   }
   cx.restore();
   if(P)drawHUD();
-  if(G.state==='intro'&&G.it<2.2)bigText(G.stage===STAGES?'FINAL STAGE':'STAGE '+G.stage,64,'#fff',20);
-  if(G.state==='play'&&G.fightT>0)bigText('FIGHT!',64,'#ffd23c',20);
+  drawYou();
+  if(G.state==='intro'&&G.it<2.2)bigText(G.stage===STAGES?'FINAL STAGE':'STAGE '+G.stage,54,'#fff',20);
+  if(G.state==='play'&&G.fightT>0)bigText('FIGHT!',54,'#ffd23c',20);
   if(G.state==='climb')bigText('GOING UP...',76,'#ffd23c',16);
   if(G.state==='win')bigText('YOU WIN!',76,'#ffd23c',20);
   if(G.state==='lose')bigText(G.msg==='TIME UP'?'TIME UP':'YOU LOSE',76,'#ff5050',20);
