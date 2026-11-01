@@ -86,13 +86,14 @@ const W=480,H=200,GY=212,TOPY=-50;    // 論理サイズ / 地面（足元）の
 const LEN=900;                         // ステージの長さ（世界の幅）。右（論理上）の端に上の階への階段がある
 const GR=520, SPD=150;                 // 重力 / 歩く速さ（逃げ足は速い）
 const TIMELIM=99, STAGES=5;
+const EHP=12, EREC=.08;                 // 敵のライフ（全ステージ共通で持ち越し）/ 次のステージへ行くときに回復する割合
 const cv=document.getElementById('cv'), cx=cv.getContext('2d');
 const $=id=>document.getElementById(id);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const BEST_KEY='knifemaster_best';
 let best=0;
 try{best=+(localStorage.getItem(BEST_KEY)||0);}catch(e){}
-const G={state:'title',score:0,stage:1,time:TIMELIM,t:0,sound:true,shake:0,msg:''};
+const G={eHP:EHP,state:'title',score:0,stage:1,time:TIMELIM,t:0,sound:true,shake:0,msg:''};
 let P,E,camX=0,knives=[],parts=[];
 const inp={l:false,r:false,jump:false,throw:false,low:false};
 
@@ -157,11 +158,11 @@ function startRound(){
   const c=cfg(G.stage);
   camX=0;knives=[];parts=[];G.time=TIMELIM;G.shake=0;
   P=newPlayer(1);
-  E={x:-75,z:0,vz:0,vx:0,face:1,hp:c.hp,max:c.hp,c,st:'walk',t:0,at:0,cd:1.2,dodgeCd:0,noStun:0,walk:0,hitDone:false,dead:false};
+  E={x:-75,z:0,vz:0,vx:0,face:1,hp:G.eHP,max:EHP,c,st:'walk',t:0,at:0,cd:1.2,dodgeCd:0,noStun:0,walk:0,hitDone:false,dead:false};
   G.state='intro';G.t=3;G.msg='';
   hideOverlay();showControls(true);SND.go();
 }
-function startGame(){initAudio();G.score=0;G.stage=1;P=null;startRound();}
+function startGame(){initAudio();G.score=0;G.stage=1;G.eHP=EHP;P=null;startRound();}
 
 /* ===== 入力 ===== */
 const keys={};
@@ -208,13 +209,15 @@ function showTitle(){
   showOverlay(`<h1>ナイフマスター</h1>
   <p style="letter-spacing:.3em;color:#7cf08a;margin:4px 0">KNIFE MASTER</p>
   <div class="rules">
-   <div><b>めざせ</b> 主人公をたおせ！ 全${STAGES}ステージ</div>
+   <div><b>めざせ</b> 主人公をたおせ！ 追いつめられるのは${STAGES}ステージ目まで</div>
    <div><b>戦い方</b> ナイフ使いは近づかれると弱い。<b>きょりをとって</b>ナイフを投げよう（ジャンプはなし）</div>
    <div><b>むき</b> 左右キーで自分の向きがかわる。<b>敵の方を向いているときだけ</b>ナイフを投げられる</div>
    <div><b>ナイフ</b> <b>上段</b>（立って投げる）と<b>下段</b>（しゃがんで投げる）。<b>投げている間は動けない</b>。近いと投げるのがおそい</div>
    <div><b>むき</b> ステージによって、敵が来る向き（左／右）がかわる</div>
    <div><b>よけ</b> 相手がしゃがんだら<b>下段</b>。ジャンプでよけたら着地を待とう</div>
-   <div><b>まけ</b> 敵が<b>階段</b>（最上階は<b>女性</b>）にたどりついたら負け！ その前にたおせ</div>
+   <div><b>かち</b> 敵を<b>たおせば</b>ゲームクリア！ 敵のライフはステージをこえて持ち越し</div>
+   <div><b>階段</b> 敵が階段にたどりつくと のぼられて次のステージへ（敵のライフは少し回復）</div>
+   <div><b>まけ</b> 最上階（ステージ5）で<b>女性</b>にたどりつかれたら負け</div>
    <div><b>やられたら</b> <b>1回あたっただけでアウト</b>！ 画面の下に落とされる。敵にはライフがある</div>
    <div><b>じかん</b> ${TIMELIM}びょうで決着をつけよう</div>
   </div>
@@ -239,7 +242,7 @@ document.addEventListener('click',e=>{
   else if(a==='resume')resume();
   else if(a==='snd'){G.sound=!G.sound;b.textContent='おと: '+(G.sound?'ON':'OFF');if(G.sound)initAudio();}
   else if(a==='title'){showTitle();}
-  else if(a==='next'){G.stage++;startRound();}
+  else if(a==='next'){G.stage++;G.eHP=Math.min(EHP,G.eHP+EHP*EREC);startRound();}   // 敵のライフは少し回復
   else if(a==='retry'){startGame();}
 });
 $('pauseBtn').addEventListener('click',pause);
@@ -327,6 +330,12 @@ function updEnemy(dt){
   const e=E,c=e.c,dx=P.x-e.x,ad=Math.abs(dx);
   e.cd-=dt;e.dodgeCd-=dt;e.noStun-=dt;e.t-=dt;
   if(e.dead){e.x+=e.kbv*dt;e.vz-=GR*dt;e.z+=e.vz*dt;return;}
+  if(G.state==='climb'){                       // 階段をのぼって、てっぺんの扉に消える
+    e.face=1;e.x=Math.min(e.x+115*dt,LEN-24);e.walk+=dt*5;
+    const i=clamp(Math.floor((e.x-(LEN-132))/18),-1,6);e.z=i>=0?(i+1)*12:0;e.vz=0;
+    if(e.x>=LEN-26)e.hidden=true;
+    return;
+  }
   const airborne=e.z>0||e.vz>0;
   if(airborne){e.vz-=GR*dt;e.z+=e.vz*dt;if(e.z<=0){e.z=0;e.vz=0;}}
   if(e.st!=='dash'&&e.st!=='hurt')e.face=(ad<90||dx>=0)?(dx>=0?1:-1):1;   // 近くの自分の方を向く。遠ければゴールの方
@@ -379,38 +388,41 @@ function updEnemy(dt){
       break;
   }
   e.x=clamp(e.x,camX-10,EDGE()-2);
-  if(G.state==='play'&&e.x>=GOALX&&!P.dead)lose('GOAL');   // 敵がゴールに着いたら負け
+  if(G.state==='play'&&e.x>=GOALX&&!P.dead){            // 敵がゴールに着いた
+    if(G.stage>=STAGES)lose('GOAL');                     // 最上階: 女性にたどりつかれたら負け
+    else climb();                                         // 階段を使われたら、次のステージへ持ち越し
+  }
 }
 
 /* ===== 勝ち負け ===== */
+function climb(){
+  G.state='climb';G.t=2.2;G.eHP=E.hp;knives=[];P.lock=0;E.st='walk';
+}
+function endClimb(){
+  G.state='stairs';showControls(false);
+  showOverlay(`<h2>階段を のぼられた！</h2><p>敵は ステージ${G.stage+1}へ。ライフは すこし回復する…</p>
+  <div class="sc">SCORE ${sc6(G.score)}</div>
+  <button class="btn" data-act="next">つぎのステージへ</button>`);
+}
 function win(){
   G.state='win';G.t=2.2;E.dead=true;E.st='down';E.vz=230;E.kbv=-E.face*120;knives=[];   // はね飛ばされて画面の下へ落ちる
-  G.score+=Math.floor(G.time)*10+G.stage*500;G.shake=.2;SND.win();
+  G.score+=Math.floor(G.time)*10+(STAGES-G.stage+1)*1000;G.shake=.2;SND.win();   // 早く勝つほど高得点
 }
 function lose(why){
   if(G.state==='lose'||G.state==='win')return;
   G.state='lose';G.t=1.7;G.msg=why;P.dead=true;SND.lose();
 }
 function endWin(){
-  const nb=saveBest();
-  if(G.stage>=STAGES){
-    G.state='end';showControls(false);
-    G.score+=3000;saveBest();
-    showOverlay(`<h2>全ステージクリア！</h2><p>最上階を守りぬいた！ ナイフマスターの かちだ！</p>
-    <div class="sc">SCORE ${sc6(G.score)}<br>BEST ${sc6(best)}</div>
-    <button class="btn" data-act="retry">もういちど</button>
-    <button class="btn sub" data-act="title">タイトルへ</button>${COPY}`);
-  }else{
-    G.state='clear';showControls(false);
-    showOverlay(`<h2>ステージ${G.stage} クリア！</h2><p>つぎの敵は もっと強いぞ</p>
-    <div class="sc">SCORE ${sc6(G.score)}</div>
-    <button class="btn" data-act="next">つぎのステージへ</button>`);
-  }
+  G.state='end';showControls(false);saveBest();
+  showOverlay(`<h2>ゲームクリア！</h2><p>主人公をたおした！ ナイフマスターの かちだ！${G.stage<=2?'<br>（ステージ'+G.stage+'で決着）':''}</p>
+  <div class="sc">SCORE ${sc6(G.score)}<br>BEST ${sc6(best)}</div>
+  <button class="btn" data-act="retry">もういちど</button>
+  <button class="btn sub" data-act="title">タイトルへ</button>${COPY}`);
 }
 function endLose(){
   G.state='over';showControls(false);
   const nb=saveBest();
-  showOverlay(`<h2>ゲームオーバー</h2><p>${G.msg==='TIME UP'?'じかんぎれ…':G.msg==='GOAL'?(G.stage===STAGES?'女性をうばわれてしまった…':'階段まで行かれてしまった…'):'やられてしまった…'}（ステージ${G.stage}）</p>
+  showOverlay(`<h2>ゲームオーバー</h2><p>${G.msg==='TIME UP'?'じかんぎれ…':G.msg==='GOAL'?'女性をうばわれてしまった…':'やられてしまった…'}（ステージ${G.stage}）</p>
   <div class="sc">SCORE ${sc6(G.score)}<br>BEST ${sc6(best)}${nb?' NEW!':''}</div>
   <button class="btn" data-act="retry">もういちど</button>
   <button class="btn sub" data-act="title">タイトルへ</button>`);
@@ -431,7 +443,7 @@ function update(dt){
   if(!P)return;
   const s=G.state;
   if(s==='intro'){G.t-=dt;if(G.t<=0)G.state='play';}
-  if(s==='play'||s==='intro'||s==='win'||s==='lose'){
+  if(s==='play'||s==='intro'||s==='win'||s==='lose'||s==='climb'){
     updPlayer(dt);updEnemy(dt);
     if(s==='play'||s==='intro')updKnives(dt);
     if(s!=='intro')camX=Math.min(LEN-W,Math.max(camX,P.x-250));   // スクロールには限界がある
@@ -443,6 +455,7 @@ function update(dt){
   showCool();
   if(s==='win'){G.t-=dt;if(G.t<=0)endWin();}
   if(s==='lose'){G.t-=dt;if(G.t<=0)endLose();}
+  if(s==='climb'){G.t-=dt;if(G.t<=0)endClimb();}
 }
 
 /* ===== 描画：最上階の、椅子に座らされた女性（チャイナドレス）===== */
@@ -559,6 +572,7 @@ function enemyPose(){
     case 'wind':return'wind';case 'dash':return E.vz<120?'kick':'air';case 'jump':return'air';
     case 'crouch':return'crouch';case 'hurt':return'hurt';
   }
+  if(G.state==='climb')return'walk';
   return E.vx!==0||E.z>0?'air':'walk';
 }
 function drawKnife(k){
@@ -593,7 +607,7 @@ function draw(){
   drawBG();
   if(P){
     // 奥にいる方を先に描く（足元の高さが同じなので、ジャンプ中でない方を先に）
-    fighter({x:E.x,z:E.z,face:E.face,pal:E.c.pal,pose:enemyPose(),walk:E.walk,kind:'hero',inv:0,dead:E.dead});
+    if(!E.hidden)fighter({x:E.x,z:E.z,face:E.face,pal:E.c.pal,pose:enemyPose(),walk:E.walk,kind:'hero',inv:0,dead:E.dead});
     fighter({x:P.x,z:P.z,face:P.face,pal:PAL_P,pose:playerPose(),walk:P.walk,kind:'thrower',inv:P.inv,dead:P.dead});
     knives.forEach(drawKnife);
     for(const q of parts)R(q.x-camX,q.y,3,3,q.c);
@@ -601,6 +615,7 @@ function draw(){
   cx.restore();
   if(P)drawHUD();
   if(G.state==='intro'){bigText(G.stage===STAGES?'FINAL STAGE':'STAGE '+G.stage,64,'#fff',20);if(G.t<.8)bigText('FIGHT!',100,'#ffd23c',20);}
+  if(G.state==='climb')bigText('GOING UP...',76,'#ffd23c',16);
   if(G.state==='win')bigText('YOU WIN!',76,'#ffd23c',20);
   if(G.state==='lose')bigText(G.msg==='TIME UP'?'TIME UP':'YOU LOSE',76,'#ff5050',20);
 }
