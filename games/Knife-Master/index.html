@@ -50,6 +50,9 @@ canvas,.pad,.pbtn{touch-action:none}
 #bA{left:calc(50% + 46px);border-color:rgba(120,220,255,.7);background:rgba(80,180,240,.25)}   /* ポーズの右。下段ナイフから離す */
 #bA,#bL,#bT{font-size:min(3.4vh,13px)}
 #bT{width:min(16vh,66px);height:min(16vh,66px);background:rgba(240,90,40,.35);border-color:rgba(255,160,100,.8)}
+#demoUI{position:absolute;inset:0;display:flex;align-items:center;gap:10px;padding:6px max(14px,env(safe-area-inset-right,0px)) 6px max(14px,env(safe-area-inset-left,0px));z-index:6}
+#demoCap{flex:1;display:flex;align-items:center;justify-content:center;height:100%;box-sizing:border-box;background:rgba(0,0,0,.6);border:2px solid #ffd23c;border-radius:10px;color:#fff;text-align:center;font-size:min(3.8vh,15px);line-height:1.4;padding:2px 10px;font-weight:800}
+#skipBtn{flex:0 0 auto;padding:0 14px;height:min(15vh,56px);border-radius:12px;border:2px solid #8a96d0;background:#2b3560;color:#fff;font-size:min(3.8vh,14px);box-shadow:0 3px 0 #141a38}
 .pbtn.cool{opacity:.4}
 .pbtn.on{background:rgba(255,210,60,.55)}
 #pauseBtn{position:absolute;left:50%;bottom:max(7px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:6;
@@ -107,6 +110,7 @@ canvas,.pad,.pbtn{touch-action:none}
     <div id="bT" class="pbtn">上段<br>ナイフ</div>
   </div>
   <button id="pauseBtn" hidden>Ⅱ</button>
+  <div id="demoUI" hidden><div id="demoCap"></div><button id="skipBtn">スキップ ▶▶</button></div>
   </div>
   <div id="overlay" class="menu"><div class="card" id="card"></div></div>
   <div id="rotate"><div><span>📱↻</span>スマホを横向きにしてね</div></div>
@@ -128,7 +132,7 @@ canvas,.pad,.pbtn{touch-action:none}
 const W=480,H=200,GY=212,TOPY=-50;    // 論理サイズ / 地面（足元）のY（世界の座標）/ 世界を上へずらす量。スコア欄はゲーム画面の上に重ねる
 const LEN=900;                         // ステージの長さ（世界の幅）。右（論理上）の端に上の階への階段がある
 const GR=520, SPD=150;                 // 重力 / 歩く速さ（逃げ足は速い）
-const VERSION='1101-f';                // 版の番号。直したら変える。タイトル画面に小さく出して、古い版が表示されていないか見分ける
+const VERSION='1101-g';                // 版の番号。直したら変える。タイトル画面に小さく出して、古い版が表示されていないか見分ける
 const TIMELIM=99, STAGES=5;
 const EHP=12, EREC=.3;                  // 敵のライフ（全ステージ共通で持ち越し）/ 次のステージへ行くときに回復する割合
 const cv=document.getElementById('cv'), cx=cv.getContext('2d');
@@ -218,7 +222,7 @@ function startRound(){
   G.ally=null;G.state='intro';G.it=0;G.fightT=0;G.msg='';   // 開始演出: 敵が登場 → 敵に合わせてスクロール → 自機が登場 → そのままスタート
   hideOverlay();showControls(true);SND.go();
 }
-function startGame(){initAudio();bgmStart(true);G.score=0;G.stage=1;G.eHP=EHP;G.allyUsed=false;P=null;startRound();}
+function startGame(fromDemo){initAudio();bgmStart(!fromDemo);G.score=0;G.stage=1;G.eHP=EHP;G.allyUsed=false;P=null;startRound();}
 
 /* ===== 入力 ===== */
 const keys={};
@@ -233,6 +237,7 @@ function setKey(e,v){
   if(h)e.preventDefault();
 }
 addEventListener('keydown',e=>{
+  if(G.state==='demo'){if(e.code==='Enter'||e.code==='Space'||e.code==='Escape'){e.preventDefault();endDemo();}return;}   // デモはキーでもスキップできる
   if(e.code==='KeyP'||e.code==='Escape'){if(G.state==='play')pause();else if(G.state==='pause')resume();return;}
   if(e.code==='Enter'){const b=document.querySelector('#card .btn');if(b&&!$('overlay').hidden)b.click();}
   setKey(e,true);
@@ -273,7 +278,7 @@ function showTitle(){
 }
 function showHowto(){
   showOverlay(`<h2>あそびかた</h2>
-  <button class="btn sub" data-act="title" style="margin:2px auto 6px">もどる</button>
+  <div class="row" style="margin-bottom:6px"><button class="btn sub" data-act="title">もどる</button><button class="btn sub" data-act="demo">デモを見る</button></div>
   <div class="rules">
    <div><b>めざせ</b> 主人公をたおせ！ 追いつめられるのは${STAGES}ステージ目まで</div>
    <div><b>戦い方</b> ナイフ使いは近づかれると弱い。<b>きょりをとって</b>ナイフを投げよう（ジャンプはなし）</div>
@@ -304,7 +309,8 @@ function saveBest(){if(G.score>best){best=G.score;try{localStorage.setItem(BEST_
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act;
-  if(a==='start')startGame();
+  if(a==='start'){if(tutoSeen())startGame();else startDemo('start');}   // はじめて遊ぶときは、先にデモ
+  else if(a==='demo')startDemo('title');
   else if(a==='resume')resume();
   else if(a==='snd'){G.sound=!G.sound;if(bgm)bgm.muted=!G.sound;b.textContent='おと: '+(G.sound?'ON':'OFF');if(G.sound)initAudio();}
   else if(a==='title'){showTitle();}
@@ -548,11 +554,120 @@ function endLose(){
 /* 奇数ステージ＝自分は画面左・敵は右から来て左へ進む（画面全体を左右反転して描く）。偶数ステージはその逆 */
 function mirror(){return G.stage%2===1;}
 
+/* ===== チュートリアルのデモ（はじめて遊ぶときに流れる。スキップできる。ルールの説明）===== */
+const TUTO_KEY='knifemaster_tuto', DEMO_END=18.4;
+const DEMO_CAPS=[
+  [0,'敵は 階段をめざして 歩いてくる！'],
+  [2.4,'敵が階段にたどりつくと、のぼられて つぎのステージへ。最上階では 女性をうばわれて 負け！'],
+  [6.2,'そうなる前に、ナイフで たおそう！'],
+  [7,'ナイフを当てて、敵のライフを 0 にしよう！（上段・下段の2種類）'],
+  [10.4,'敵に近づかれて 1回あたると アウト！ きょりをとって 戦おう'],
+  [12.8,'ピンチは「仲間を呼ぶ」（1回だけ）。敵を足止めして、ライフもへらす！'],
+  [16.8,'では、ゲームスタート！']
+];
+function tutoSeen(){try{return localStorage.getItem(TUTO_KEY)==='1';}catch(e){return false;}}
+function tutoMark(){try{localStorage.setItem(TUTO_KEY,'1');}catch(e){}}
+function startDemo(then){
+  initAudio();bgmStart(true);
+  G.stage=1;G.score=0;G.eHP=EHP;G.time=TIMELIM;G.shake=0;G.trick=false;G.msg='';
+  G.cap={hits:0,fly:false,x:0,y:0,vx:0,vy:0,hit:0,rs:-1,stand:false,wx:0};
+  P=newPlayer(1);P.hidden=true;
+  E={x:-75,z:0,vz:0,vx:0,face:1,hp:EHP,max:EHP,c:cfg(1),st:'walk',t:0,at:0,cd:99,dodgeCd:0,noStun:0,walk:0,hitDone:false,dead:false};
+  G.ally=null;knives=[];parts=[];camX=0;
+  G.demo={t:0,then:then||'start',fired:{},cap:-1};G.demoYou=false;G.demoMark=null;G.demoText=null;G.demoWin=false;
+  G.state='demo';hideOverlay();showControls(false);$('demoUI').hidden=false;$('demoCap').textContent='';
+}
+function endDemo(){
+  if(G.state!=='demo')return;
+  tutoMark();$('demoUI').hidden=true;
+  const then=G.demo.then;G.ally=null;knives=[];parts=[];G.demoYou=false;G.demoMark=null;G.demoText=null;G.demoWin=false;
+  if(then==='start')startGame(true);else{bgmStop();P=null;showTitle();}
+}
+function updDemo(dt){
+  const D=G.demo;D.t+=dt;G.shake=Math.max(0,G.shake-dt);
+  demoFrame(D.t);
+  for(const q of parts){q.x+=q.vx*dt;q.y+=q.vy*dt;q.vy+=600*dt;q.t-=dt;}
+  parts=parts.filter(q=>q.t>0);
+  let ci=0;for(let i=0;i<DEMO_CAPS.length;i++)if(D.t>=DEMO_CAPS[i][0])ci=i;
+  if(ci!==D.cap){D.cap=ci;$('demoCap').textContent=DEMO_CAPS[ci][1];}
+  if(D.t>=DEMO_END)endDemo();
+}
+// 時刻 t だけで、登場人物の位置・ポーズをきめる台本（スキップしても、とばしても、こわれない）
+function demoFrame(t){
+  const D=G.demo,ev=(k,f)=>{if(!D.fired[k]){D.fired[k]=1;f();}};
+  P.hidden=false;P.dead=false;P.hurt=0;P.z=0;P.vz=0;P.face=-1;P.x=250;P.moving=false;P.throwT=0;P.low=false;P.inv=0;P.walk=t*6;
+  E.hidden=false;E.dead=false;E.z=0;E.vz=0;E.face=1;E.st='walk';E.walk=t*6;E.hp=EHP;E.kind='jab';E.at=0;
+  G.ally=null;knives=[];G.demoYou=false;G.demoMark=null;G.demoText=null;G.demoWin=false;camX=0;
+  const gx=LEN-140;
+  if(t<2.4){                                                   // ① 敵が階段をめざして歩いてくる
+    P.hidden=true;E.x=-75+110*t;camX=Math.max(0,E.x-40);
+    G.demoMark={x:E.x,label:'ENEMY',col:'#ff7a5a'};
+  }else if(t<6.2){                                             // ② 階段にたどりつくと、のぼられる
+    const u=t-2.4;P.hidden=true;
+    const cam0=Math.max(0,(-75+110*2.4)-40),s=Math.min(1,u/0.8);camX=cam0+(LEN-W-cam0)*(s*s*(3-2*s));
+    const x0=LEN-330,tr=0.4+(gx-x0)/110;
+    if(u<tr){E.x=x0+110*Math.max(0,u-0.4);G.demoMark={x:E.x,label:'ENEMY',col:'#ff7a5a'};}
+    else{E.x=Math.min(gx+115*(u-tr),LEN-16);const i=clamp(Math.floor((E.x-gx)/16),-1,6);E.z=i>=0?(i+1)*12:0;E.hidden=E.x>=LEN-24;G.demoText={s:'GOING UP...',c:'#ffd23c'};}
+  }else if(t<7.0){                                             // ③ そうなる前に…（自機を矢印でしめす）
+    const u=t-6.2;E.x=40+110*u;G.demoYou=true;
+  }else if(t<10.4){                                            // ④ ナイフで敵のライフをへらしてたおす
+    const u=t-7.0,H=[0.65,1.75,2.85],LOW=[false,true,false],ex=k=>128+30*k;
+    E.x=ex(u);
+    for(let i=0;i<3;i++){
+      const th=H[i]-0.32;
+      if(u>=th&&u<H[i]){const f=(u-th)/0.32;knives=[{x:P.x-12+(ex(H[i])-(P.x-12))*f,y:GY-(LOW[i]?10:36),vx:-320,a:u*30,low:LOW[i]}];}
+      if(u>=th&&u<th+0.3){P.throwT=0.1;P.low=LOW[i];}
+      if(u>=th)ev('t'+i,()=>SND.throw());
+      if(u>=H[i])ev('h'+i,()=>{const y=GY-(LOW[i]?10:32);spark(ex(H[i]),y,'#fff',8);spark(ex(H[i]),y,'#ffd23c',6);SND.hit();});
+      if(i<2&&u>=H[i]&&u<H[i]+0.25)E.st='hurt';
+    }
+    E.hp=EHP*[1,2/3,1/3,0][H.filter(h=>u>=h).length];
+    if(u>=H[2]){const tau=u-H[2];E.dead=true;E.x=ex(H[2])+130*tau;E.z=230*tau-260*tau*tau;ev('win',()=>SND.win());}
+    if(u>H[2]+0.2){G.demoWin=true;P.z=Math.max(0,16*Math.abs(Math.sin((u-H[2]-0.2)*7)));}
+  }else if(t<12.8){                                            // ⑤ 近づかれて1回あたると、アウト
+    const u=t-10.4;E.x=P.x-36;E.st='combo';E.kind='jab';E.at=Math.max(0,u-0.1);
+    if(u>=0.5){
+      ev('hit',()=>{spark(P.x,GY-26,'#ffd23c',12);spark(P.x,GY-26,'#ff6040',12);SND.hurt();G.shake=.3;});
+      const tau=u-0.5;P.dead=true;P.x=250+55*tau;P.z=150*tau-260*tau*tau;
+      if(tau>0.25)G.demoText={s:'ONE HIT = OUT!',c:'#ff5a5a'};
+    }
+  }else if(t<16.8){                                            // ⑥ 仲間を呼ぶと、敵をとめてくれる
+    const u=t-12.8,uc=1.67,er=100+30*uc;
+    E.x=100+30*Math.min(u,uc)+(u>uc+2?40*(u-uc-2):0);
+    if(u>=0.2){
+      const a={x:504-230*(u-0.2),z:0,face:-1,st:'walk',walk:u*14};
+      if(u>=uc&&u<uc+2){a.st='cling';a.x=er+9;a.walk=u*8;E.st='held';E.walk=u*10;ev('cl',()=>SND.hit());}
+      else if(u>=uc+2){const tau=u-uc-2;a.st='fly';a.x=er+9+90*tau;a.z=210*tau-260*tau*tau;ev('fl',()=>{SND.hurt();G.shake=.15;});}
+      G.ally=a;
+      if(u<uc)G.demoMark={x:a.x,label:'ALLY',col:'#7fdcff'};
+    }
+    if(u>=uc&&u<uc+2)E.hp=EHP-0.5*(u-uc);else if(u>=uc+2)E.hp=EHP-1;
+    const th=2.3,hh=2.62;                                      // 足止めしている敵にナイフを当てる
+    if(u>=th&&u<hh){const f=(u-th)/(hh-th);knives=[{x:P.x-12+(er-(P.x-12))*f,y:GY-36,vx:-320,a:u*30,low:false}];}
+    if(u>=th&&u<th+0.3)P.throwT=0.1;
+    if(u>=th)ev('t6',()=>SND.throw());
+    if(u>=hh){ev('h6',()=>{spark(er,GY-32,'#fff',8);spark(er,GY-32,'#ffd23c',6);SND.hit();});E.hp-=1;}
+  }else{                                                       // ⑦ ゲームスタート
+    E.hidden=true;
+  }
+}
+// デモで「これが敵／仲間」としめす矢印とラベル
+function drawMark(wx,label,col){
+  const raw=mirror()?W-(wx-camX):(wx-camX);
+  if(raw<8||raw>W-8)return;
+  const bob=Math.round(Math.sin(performance.now()/110)*3),x=clamp(raw,16,W-16),y=100+bob;
+  for(let j=0;j<6;j++){cx.fillStyle='#000';cx.fillRect(x-(5-j),y+1+j*2,11-2*j,2);}
+  for(let j=0;j<6;j++){cx.fillStyle=col;cx.fillRect(x-(5-j),y+j*2,11-2*j,2);}
+  txt(label,x+1,y-14,'#000',8,'center');txt(label,x,y-15,col,8,'center');
+}
+$('skipBtn').addEventListener('click',endDemo);
+
 /* ===== 更新 ===== */
 let coolOn=null;
 function showCool(){const on=!!P&&G.state==='play'&&!canThrow();if(on!==coolOn){coolOn=on;$('bT').classList.toggle('cool',on);$('bL').classList.toggle('cool',on);}
   $('bA').classList.toggle('cool',!P||G.allyUsed||G.state!=='play');}
 function update(dt){
+  if(G.state==='demo'){updDemo(dt);return;}
   const portrait=innerHeight>innerWidth;
   if(portrait&&(G.state==='play'||G.state==='intro')){pause();return;}
   G.shake=Math.max(0,G.shake-dt);
@@ -731,6 +846,7 @@ function fighter(o){
   cx.restore();
 }
 function playerPose(){
+  if(G.state==='demo'&&G.demoWin&&!P.dead)return'banzai';
   if(G.state==='win'&&!P.dead)return'banzai';
   if(P.dead||P.hurt>0)return'hurt';if(P.throwT>0)return P.low&&P.z===0?'cthrow':'throw';
   if(P.z>0)return'air';return P.moving?'walk':'idle';
@@ -769,7 +885,7 @@ function drawHUD(){
 // 自機の位置をしめす矢印（登場演出で、どれが自分か分かるように。画面の外にいるときは、画面のはしから方向をしめす）
 function drawYou(){
   if(!P||P.hidden)return;
-  if(!(G.state==='intro'||(G.state==='play'&&G.arrowT>0)))return;
+  if(G.state==='demo'){if(!G.demoYou)return;}else if(!(G.state==='intro'||(G.state==='play'&&G.arrowT>0)))return;
   if(G.state==='play'&&G.arrowT<.6&&Math.floor(G.arrowT*10)%2)return;   // 消える前にまたたく
   const raw=mirror()?W-(P.x-camX):(P.x-camX);
   const bob=Math.round(Math.sin(performance.now()/110)*3);
@@ -810,6 +926,11 @@ function draw(){
   cx.restore();
   if(P)drawHUD();
   drawYou();
+  if(G.state==='demo'){
+    if(G.demoMark)drawMark(G.demoMark.x,G.demoMark.label,G.demoMark.col);
+    if(G.demoText)bigText(G.demoText.s,76,G.demoText.c,16);
+    if(G.demoWin)bigText('YOU WIN!',76,'#ffd23c',20);
+  }
   if(G.state==='intro'&&G.it<2.2)bigText(G.stage===STAGES?'FINAL STAGE':'STAGE '+G.stage,54,'#fff',20);
   if(G.state==='play'&&G.fightT>0)bigText('FIGHT!',54,'#ffd23c',20);
   if(G.state==='climb')bigText('GOING UP...',76,'#ffd23c',16);
