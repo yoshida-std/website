@@ -1,6 +1,15 @@
 {
   "items": [
     {
+      "id": "knife-master",
+      "title": "ナイフマスター",
+      "description": "敵が階段にたどりつく前に、ナイフを投げてたおせ！距離をとって戦い、仲間を呼んで足止めもできる横スクロールアクション。",
+      "path": "../../games/Knife-Master/",
+      "image": "../img/games/knife-master.jpg",
+      "orientation": "landscape",
+      "published": "2026-11-01"
+    },
+    {
       "id": "horihori-robo",
       "title": "ホリホリ・ロボバスター",
       "description": "穴をほって、ロボットを落として、頭をふみつけろ！勝手に進む画面から逃げながら出口をめざす、縦スクロールの迷路アクション。",
