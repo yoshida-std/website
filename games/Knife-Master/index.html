@@ -31,7 +31,7 @@ canvas,.pad,.pbtn{touch-action:none}
 #acts{right:max(14px,env(safe-area-inset-right,0px));display:flex;gap:8px;align-items:flex-end}
 .pbtn{width:min(14vh,58px);height:min(14vh,58px);border-radius:50%;display:flex;align-items:center;justify-content:center;
   background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.4);font-size:min(3.4vh,13px);color:#fff;text-align:center;line-height:1.1}
-#bA{border-color:rgba(120,220,255,.7);background:rgba(80,180,240,.25)}
+#bA{left:calc(50% + 46px);border-color:rgba(120,220,255,.7);background:rgba(80,180,240,.25)}   /* ポーズの右。下段ナイフから離す */
 #bA,#bL,#bT{font-size:min(3.4vh,13px)}
 #bT{width:min(16vh,66px);height:min(16vh,66px);background:rgba(240,90,40,.35);border-color:rgba(255,160,100,.8)}
 .pbtn.cool{opacity:.4}
@@ -82,8 +82,8 @@ canvas,.pad,.pbtn{touch-action:none}
   <div id="stage"><canvas id="cv"></canvas></div>
   <div id="ctl">
   <div id="dpad" class="pad" hidden><i>◀</i><i>▶</i></div>
+  <div id="bA" class="pad pbtn" hidden>仲間<br>を呼ぶ</div>
   <div id="acts" class="pad" hidden>
-    <div id="bA" class="pbtn">仲間<br>を呼ぶ</div>
     <div id="bL" class="pbtn">下段<br>ナイフ</div>
     <div id="bT" class="pbtn">上段<br>ナイフ</div>
   </div>
@@ -235,7 +235,7 @@ addEventListener('blur',()=>{inp.l=inp.r=inp.jump=inp.throw=inp.low=false;});
   bind($('bT'),'throw');bind($('bL'),'low');
   $('bA').addEventListener('pointerdown',e=>{e.preventDefault();callAlly();});
 })();
-function showControls(v){$('dpad').hidden=!v;$('acts').hidden=!v;$('pauseBtn').hidden=!v;}
+function showControls(v){$('dpad').hidden=!v;$('acts').hidden=!v;$('pauseBtn').hidden=!v;$('bA').hidden=!v;}
 
 /* ===== メニュー ===== */
 const COPY='<p class="copy">©YoshidaStudio, ©PANICPUMPKIN</p>';
@@ -335,6 +335,8 @@ function updPlayer(dt){
       if(mv)p.face=mv;                      // 向きは左右キーで決まる
       if(p.bufT>0&&tryThrow(p.bufLow))p.bufT=0;
     }
+  }else if(G.state==='win'){                  // 勝ったら、その場でバンザイしながらはねる
+    p.moving=false;if(p.z===0&&p.vz===0)p.vz=105;
   }else if(G.state==='intro'){                // 画面の外から走って入ってくる
     if(!p.hidden){p.x-=SPD*dt;p.walk+=dt;p.moving=true;p.face=-1;}else p.moving=false;
   }else p.moving=false;
@@ -498,8 +500,8 @@ function endClimb(){
 }
 function win(trick){
   bgmStop();
-  G.state='win';G.t=2.2;knives=[];
-  if(trick){G.trick=true;G.t=2.6;G.cap.fly=true;G.cap.vy=-200;G.cap.vx=-70;}   // 裏技: 女性が画面の下へ飛び出す
+  G.state='win';G.t=2.9;knives=[];
+  if(trick){G.trick=true;G.t=3.2;G.cap.fly=true;G.cap.vy=-200;G.cap.vx=-70;}   // 裏技: 女性が画面の下へ飛び出す
   else{E.dead=true;E.st='down';E.vz=230;E.kbv=-E.face*120;}                  // 敵がはね飛ばされて画面の下へ落ちる
   G.score+=Math.floor(G.time)*10+(STAGES-G.stage+1)*1000;G.shake=.2;SND.win();   // 早く勝つほど高得点
 }
@@ -670,6 +672,15 @@ function fighter(o){
   const sx=Math.round(o.x-camX),by=Math.round(GY-o.z),p=o.pal,pose=o.pose;
   if(!o.dead){cx.fillStyle='rgba(0,0,0,.28)';cx.fillRect(sx-10,GY-1,20,3);}
   if(o.inv>0&&Math.floor(o.inv*18)%2)return;
+  if(pose==='banzai'){                                     // 正面を向いて、両手をあげてバンザイ
+    cx.save();cx.translate(sx,by);const p=o.pal,A=(x,y,w,h,c)=>R(x,y,w,h,c);
+    A(-8,-16,6,16,p.pants);A(2,-16,6,16,p.pants);A(-9,-2,7,2,p.shoe);A(2,-2,7,2,p.shoe);   // 足をひらく
+    A(-7,-32,14,16,p.gi);A(-7,-20,14,3,p.belt);A(-1,-32,2,6,p.skin);                       // 胴と帯
+    A(-11,-39,3,11,p.sleeve);A(8,-39,3,11,p.sleeve);A(-11,-43,3,4,p.skin);A(8,-43,3,4,p.skin);   // 両手をあげる
+    A(-5,-44,10,11,p.skin);A(-5,-45,10,4,p.hair);A(-5,-41,10,2,'#fff');A(-9,-41,4,3,'#fff');A(5,-41,4,3,'#fff');   // 頭、はちまき
+    A(-3,-39,2,2,'#000');A(1,-39,2,2,'#000');A(-2,-35,4,2,'#c04858');                       // 目と口（よろこぶ顔）
+    cx.restore();return;
+  }
   cx.save();cx.translate(sx,by);cx.scale(o.face,1);
   if(pose==='down'){cx.translate(0,-7);cx.rotate(-Math.PI/2);}
   else if(pose==='hurt'){cx.rotate(-.18);}
@@ -701,6 +712,7 @@ function fighter(o){
   cx.restore();
 }
 function playerPose(){
+  if(G.state==='win'&&!P.dead)return'banzai';
   if(P.dead||P.hurt>0)return'hurt';if(P.throwT>0)return P.low&&P.z===0?'cthrow':'throw';
   if(P.z>0)return'air';return P.moving?'walk':'idle';
 }
