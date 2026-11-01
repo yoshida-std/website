@@ -5,6 +5,21 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ナイフマスター">
+<meta name="description" content="敵と距離をとって、ナイフを投げて戦う横スクロールアクション。仲間を呼んで敵を足止めしよう。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ナイフマスター">
+<meta property="og:description" content="敵と距離をとって、ナイフを投げて戦う横スクロールアクション。仲間を呼んで敵を足止めしよう。">
+<meta property="og:url" content="https://yoshida-std.github.io/website/games/Knife-Master/">
+<meta property="og:image" content="https://yoshida-std.github.io/website/games/Knife-Master/ogp.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://yoshida-std.github.io/website/games/Knife-Master/ogp.jpg">
 <title>ナイフマスター</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
@@ -114,7 +129,7 @@ canvas,.pad,.pbtn{touch-action:none}
 const W=480,H=200,GY=212,TOPY=-50;    // 論理サイズ / 地面（足元）のY（世界の座標）/ 世界を上へずらす量。スコア欄はゲーム画面の上に重ねる
 const LEN=900;                         // ステージの長さ（世界の幅）。右（論理上）の端に上の階への階段がある
 const GR=520, SPD=150;                 // 重力 / 歩く速さ（逃げ足は速い）
-const VERSION='1101-d';                // 版の番号。直したら変える。タイトル画面に小さく出して、古い版が表示されていないか見分ける
+const VERSION='1101-e';                // 版の番号。直したら変える。タイトル画面に小さく出して、古い版が表示されていないか見分ける
 const TIMELIM=99, STAGES=5;
 const EHP=12, EREC=.3;                  // 敵のライフ（全ステージ共通で持ち越し）/ 次のステージへ行くときに回復する割合
 const cv=document.getElementById('cv'), cx=cv.getContext('2d');
