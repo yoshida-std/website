@@ -44,6 +44,17 @@ canvas,.pad,.pbtn{touch-action:none}
 .card h1{margin:0;font-size:clamp(28px,9vh,46px);line-height:1.1;color:#ffb030;letter-spacing:.04em;text-shadow:3px 3px 0 #a02000}
 .card h2{margin:0 0 4px;font-size:clamp(24px,8vh,38px);color:#ffb030;text-shadow:3px 3px 0 #a02000}
 .card p{margin:6px 0;font-size:13px;line-height:1.6;color:#dde}
+.card.noscroll{overflow:hidden;touch-action:none}
+.row{display:flex;gap:10px;justify-content:center}
+.row .btn{margin:8px 0 0;width:auto;flex:1;max-width:230px}
+@media (max-height:430px){
+  .card h2{font-size:24px;margin:0 0 2px}
+  .card p{margin:3px 0;font-size:12px;line-height:1.45}
+  .card .sc{font-size:11px;line-height:1.6}
+  .row .btn{padding:8px 8px;font-size:15px;margin-top:6px}
+  .row .btn.sub{font-size:13px}
+  .card .copy{margin-top:6px}
+}
 .card .en{margin:2px 0 0;letter-spacing:.4em;color:#7cf08a;font-size:12px;text-shadow:0 1px 3px #000}
 /* タイトル画面: 画像を全面に敷き、上にタイトル、下にボタン */
 #overlay.title{background:#000 url(title.jpg) center 35%/cover no-repeat;padding:0}
@@ -216,7 +227,7 @@ function showControls(v){$('dpad').hidden=!v;$('acts').hidden=!v;$('pauseBtn').h
 
 /* ===== メニュー ===== */
 const COPY='<p class="copy">©YoshidaStudio, ©PANICPUMPKIN</p>';
-function showOverlay(html){$('overlay').classList.remove('title');$('card').innerHTML=html;$('overlay').hidden=false;$('card').scrollTop=0;}
+function showOverlay(html,scroll){$('overlay').classList.remove('title');$('card').classList.toggle('noscroll',!scroll);$('card').innerHTML=html;$('overlay').hidden=false;$('card').scrollTop=0;}   // scroll=true の画面（あそびかた）だけスクロールできる
 function hideOverlay(){$('overlay').hidden=true;}
 function sc6(n){return String(n).padStart(6,'0');}
 function showTitle(){
@@ -247,15 +258,14 @@ function showHowto(){
    <div><b>じかん</b> ${TIMELIM}びょうで決着をつけよう</div>
   </div>
   <p style="font-size:11px;color:#9ab">キー: ←→ いどう・むき / Z 上段 / X 下段 / C 仲間 / P ポーズ</p>
-  <button class="btn" data-act="title">もどる</button>`);
+  <button class="btn" data-act="title">もどる</button>`,true);
 }
 function pause(){
   if(G.state!=='play'&&G.state!=='intro')return;
   G.prev=G.state;G.state='pause';inp.l=inp.r=inp.jump=inp.throw=inp.low=false;
   showOverlay(`<h2>ポーズ</h2>
-  <button class="btn" data-act="resume">つづける</button>
-  <button class="btn sub" data-act="snd">おと: ${G.sound?'ON':'OFF'}</button>
-  <button class="btn sub" data-act="title">タイトルへ</button>`);
+  <div class="row"><button class="btn" data-act="resume">つづける</button></div>
+  <div class="row"><button class="btn sub" data-act="snd">おと: ${G.sound?'ON':'OFF'}</button><button class="btn sub" data-act="title">タイトルへ</button></div>`);
 }
 function resume(){G.state=G.prev||'play';hideOverlay();if(ac&&G.sound)ac.resume();}
 function saveBest(){if(G.score>best){best=G.score;try{localStorage.setItem(BEST_KEY,best);}catch(e){}return true;}return false;}
@@ -471,7 +481,7 @@ function endClimb(){
   G.state='stairs';showControls(false);
   showOverlay(`<h2>階段を のぼられた！</h2><p>敵は ステージ${G.stage+1}へ。ライフは すこし回復する…</p>
   <div class="sc">SCORE ${sc6(G.score)}</div>
-  <button class="btn" data-act="next">つぎのステージへ</button>`);
+  <div class="row"><button class="btn" data-act="next">つぎのステージへ</button></div>`);
 }
 function win(trick){
   G.state='win';G.t=2.2;knives=[];
@@ -489,16 +499,14 @@ function endWin(){
   G.state='end';showControls(false);saveBest();
   showOverlay(`<h2>ゲームクリア！</h2><p>${G.trick?'裏技発見！ 女性が ふっとんでいった…':'主人公をたおした！ ナイフマスターの かちだ！'}${!G.trick&&G.stage<=2?'<br>（ステージ'+G.stage+'で決着）':''}</p>
   <div class="sc">SCORE ${sc6(G.score)}<br>BEST ${sc6(best)}</div>
-  <button class="btn" data-act="retry">もういちど</button>
-  <button class="btn sub" data-act="title">タイトルへ</button>${COPY}`);
+  <div class="row"><button class="btn" data-act="retry">もういちど</button><button class="btn sub" data-act="title">タイトルへ</button></div>${COPY}`);
 }
 function endLose(){
   G.state='over';showControls(false);
   const nb=saveBest();
   showOverlay(`<h2>ゲームオーバー</h2><p>${G.msg==='TIME UP'?'じかんぎれ…':G.msg==='GOAL'?'女性を すくわれてしまった…':'やられてしまった…'}（ステージ${G.stage}）</p>
   <div class="sc">SCORE ${sc6(G.score)}<br>BEST ${sc6(best)}${nb?' NEW!':''}</div>
-  <button class="btn" data-act="retry">もういちど</button>
-  <button class="btn sub" data-act="title">タイトルへ</button>`);
+  <div class="row"><button class="btn" data-act="retry">もういちど</button><button class="btn sub" data-act="title">タイトルへ</button></div>`);
 }
 
 /* 奇数ステージ＝自分は画面左・敵は右から来て左へ進む（画面全体を左右反転して描く）。偶数ステージはその逆 */
