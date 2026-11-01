@@ -324,10 +324,10 @@ function updKnives(dt){
         }
       }
     }
-    // 最上階: ナイフは女性にも当たる（1発で裏技の勝利）
+    // 最上階: ナイフは女性にも当たる（3発で裏技の勝利）
     if(!k.dead&&G.stage===STAGES&&!G.cap.fly&&k.x>LEN-80&&k.x<LEN-52&&GY-k.y>-2&&GY-k.y<44){
       k.dead=true;G.cap.hits++;G.cap.hit=.25;spark(k.x,k.y,'#ffd23c',6);SND.hit();
-      if(G.cap.hits>=1)win(true);
+      if(G.cap.hits>=3)win(true);
     }
     if(k.d>340||k.x<camX-40||k.x>camX+W+40)k.dead=true;
   }
@@ -418,6 +418,7 @@ function updEnemy(dt){
 
 /* ===== 勝ち負け ===== */
 /* ===== 仲間（ゲーム中1度だけ呼べる）===== */
+const ALLYSPD=230;                         // 仲間の走る速さ（自機の逃げ足150より速い）
 const ALLYDRAIN=.5, ALLYHOLD=2;            // まとわりついている間に敵のライフがへる速さ（/秒）/ まとわりつく最大の秒数
 const PAL_A={gi:'#c63ca8',sleeve:'#c63ca8',pants:'#8cc8f0',belt:'#8cc8f0',skin:'#f8c8a0',hair:'#f8c040',shoe:'#6aa0d0'};
 function callAlly(){
@@ -432,7 +433,7 @@ function flingAlly(dir){                     // 画面の下へ飛ばされる
 function updAlly(dt){
   const a=G.ally;if(!a)return;
   if(a.st==='walk'){
-    a.face=E.x>=a.x?1:-1;a.x+=a.face*130*dt;a.walk+=dt*1.2;
+    a.face=E.x>=a.x?1:-1;a.x+=a.face*ALLYSPD*dt;a.walk+=dt*3;   // 足を速く
     if(Math.abs(E.x-a.x)<16&&!E.dead&&E.z<2&&E.st!=='dash'&&E.st!=='wind'&&E.st!=='combo'){   // 敵にとりついた
       a.st='cling';a.t=ALLYHOLD;a.side=a.face>0?-1:1;E.st='held';E.vx=0;SND.hit();
     }
@@ -724,7 +725,9 @@ function draw(){
   if(P){
     // 奥にいる方を先に描く（足元の高さが同じなので、ジャンプ中でない方を先に）
     if(!E.hidden)fighter({x:E.x,z:E.z,face:E.face,pal:E.c.pal,pose:enemyPose(),walk:E.walk,kind:'hero',inv:0,dead:E.dead});
-    if(G.ally)fighter({x:G.ally.x,z:G.ally.z,face:G.ally.face,pal:PAL_A,pose:G.ally.st==='fly'?'hurt':'raise',walk:G.ally.walk,kind:'ally',inv:0,dead:G.ally.st==='fly'});
+    if(G.ally){const a=G.ally;                                  // 3人が一列にならんで、重なっている（先頭が敵にいちばん近い）
+      for(let i=2;i>=0;i--)fighter({x:a.x-a.face*i*11,z:a.z,face:a.face,pal:PAL_A,pose:a.st==='fly'?'hurt':'raise',walk:a.walk+i*.9,kind:'ally',inv:0,dead:a.st==='fly'});
+    }
     if(!P.hidden)fighter({x:P.x,z:P.z,face:P.face,pal:PAL_P,pose:playerPose(),walk:P.walk,kind:'thrower',inv:P.inv,dead:P.dead});
     if(G.cap.stand){drawWomanStand(G.cap.wx,G.cap.wx>E.x+17.5);if(G.cap.rs>1.5)drawHeart((G.cap.wx+E.x)/2-camX+1,GY-62-Math.min(10,(G.cap.rs-1.5)*8)+Math.sin(G.cap.rs*5)*1.5);}
     knives.forEach(drawKnife);
