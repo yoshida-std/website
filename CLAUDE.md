@@ -82,4 +82,4 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 - `games/judge2/CLAUDE.md` … 天使と悪魔のジャッジ2
 - `games/Horihori-Robo/CLAUDE.md` … ホリホリ・ロボバスター（縦スクロールの穴ほりアクション。ポートフォリオに公開済み）
 - `games/Susume-Yusha/CLAUDE.md` … すすめ！ゆうしゃ
-- `games/Knife-Master/CLAUDE.md` … ナイフマスター（スパルタンXのナイフ使いが主人公の横画面アクション。まだポートフォリオには載せていない）
+- `games/Knife-Master/CLAUDE.md` … ナイフマスター（某有名なカンフーゲームのナイフ使いが主人公の横画面アクション。まだポートフォリオには載せていない）

@@ -466,7 +466,7 @@ function update(dt){
       if(E.x>40)camX=E.x-40;                                   // 敵に合わせてスクロールがはじまる
       if(G.it>=1.6&&P.hidden){P.hidden=false;P.x=camX+520;P.face=-1;SND.go();}   // 自機が画面の外から現れる
       if(!P.hidden&&P.x<=camX+250){                           // 所定の位置まで来たら、止めずにそのままスタート
-        P.x=camX+250;P.moving=false;G.state='play';G.fightT=.9;E.cd=Math.max(E.cd,.8);
+        P.x=camX+250;P.moving=false;G.state='play';G.fightT=.9;G.arrowT=1.8;E.cd=Math.max(E.cd,.8);
       }
     }
     if(s!=='intro')camX=Math.min(LEN-W,Math.max(camX,P.x-250));   // スクロールには限界がある
@@ -476,7 +476,7 @@ function update(dt){
     if(G.time<=0){G.time=0;lose('TIME UP');}
   }
   showCool();
-  G.fightT=Math.max(0,(G.fightT||0)-dt);
+  G.fightT=Math.max(0,(G.fightT||0)-dt);G.arrowT=Math.max(0,(G.arrowT||0)-dt);
   if(s==='win'){G.t-=dt;if(G.t<=0)endWin();}
   if(s==='lose'){G.t-=dt;if(G.t<=0)endLose();}
   if(s==='climb'){G.t-=dt;if(G.t<=0)endClimb();}
@@ -646,6 +646,27 @@ function drawHUD(){
   for(let i=1;i<=STAGES;i++){R(300+(i-1)*34,20,24,10,i<=G.stage?'#2060ff':'#102050');if(i<STAGES)R(324+(i-1)*34,24,10,2,'#f87820');}
   txt('STAGE '+G.stage,300,34,'#7cf08a',8);
 }
+// 自機の位置をしめす矢印（登場演出で、どれが自分か分かるように。画面の外にいるときは、画面のはしから方向をしめす）
+function drawYou(){
+  if(!P||P.hidden)return;
+  if(!(G.state==='intro'||(G.state==='play'&&G.arrowT>0)))return;
+  if(G.state==='play'&&G.arrowT<.6&&Math.floor(G.arrowT*10)%2)return;   // 消える前にまたたく
+  const raw=mirror()?W-(P.x-camX):(P.x-camX);
+  const bob=Math.round(Math.sin(performance.now()/110)*3);
+  const col='#ffd23c',ol='#000';
+  const down=(x,y,c)=>{for(let j=0;j<6;j++)cx.fillStyle=c,cx.fillRect(x-(5-j),y+j*2,11-2*j,2);};
+  if(raw<8||raw>W-8){                                 // 画面の外: はしに、向きをしめす矢印
+    const right=raw>W-8,x=right?W-12:12,y=GY+TOPY-28+bob*0;
+    const side=(x,y,c,o)=>{for(let j=0;j<6;j++){cx.fillStyle=c;const w=2,h=11-2*j;cx.fillRect(right?x-6+j*2+o:x+6-j*2-w-o,y-(5-j),w,h);}};
+    const off=bob;
+    side(x+(right?off:-off),y+1,ol,0);side(x+(right?off:-off),y,col,0);
+    txt('YOU',right?W-26:26,y-18,col,8,right?'right':'left');
+    return;
+  }
+  const x=clamp(raw,16,W-16),y=100+bob;
+  down(x,y+1,ol);down(x,y,col);
+  txt('YOU',x+1,y-14,ol,8,'center');txt('YOU',x,y-15,col,8,'center');
+}
 function bigText(s,y,c,size){txt(s,W/2+2,y+2,'#000',size,'center');txt(s,W/2,y,c,size,'center');}
 
 function draw(){
@@ -665,8 +686,9 @@ function draw(){
   }
   cx.restore();
   if(P)drawHUD();
-  if(G.state==='intro'&&G.it<2.2)bigText(G.stage===STAGES?'FINAL STAGE':'STAGE '+G.stage,64,'#fff',20);
-  if(G.state==='play'&&G.fightT>0)bigText('FIGHT!',64,'#ffd23c',20);
+  drawYou();
+  if(G.state==='intro'&&G.it<2.2)bigText(G.stage===STAGES?'FINAL STAGE':'STAGE '+G.stage,54,'#fff',20);
+  if(G.state==='play'&&G.fightT>0)bigText('FIGHT!',54,'#ffd23c',20);
   if(G.state==='climb')bigText('GOING UP...',76,'#ffd23c',16);
   if(G.state==='win')bigText('YOU WIN!',76,'#ffd23c',20);
   if(G.state==='lose')bigText(G.msg==='TIME UP'?'TIME UP':'YOU LOSE',76,'#ff5050',20);
