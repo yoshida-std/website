@@ -157,9 +157,20 @@ const SND={
   lose:()=>[392,330,262,196].forEach((f,i)=>tone(f,.22,'triangle',.07,0,i*.2)),
   go:()=>{tone(660,.1,'square',.05);tone(880,.18,'square',.05,0,.12);}
 };
+/* ===== BGM（bgm.mp3。ゲーム開始から流れ、ステージをまたいでつづく。ポーズ・ゲームオーバー・クリア・タイトルでは止まる）===== */
+let bgm=null,bgmWanted=false;
+function bgmStart(fromTop){
+  if(!bgm){bgm=new Audio('bgm.mp3');bgm.loop=true;bgm.volume=.5;bgm.preload='auto';}
+  bgm.muted=!G.sound;bgmWanted=true;
+  if(fromTop)try{bgm.currentTime=0;}catch(e){}
+  const pr=bgm.play();if(pr&&pr.catch)pr.catch(()=>{});
+}
+function bgmStop(){bgmWanted=false;if(bgm)bgm.pause();}
+function bgmPauseOnly(){if(bgm)bgm.pause();}
+function bgmResume(){if(bgm&&bgmWanted){bgm.muted=!G.sound;const pr=bgm.play();if(pr&&pr.catch)pr.catch(()=>{});}}
 document.addEventListener('visibilitychange',()=>{
-  if(document.hidden){if(G.state==='play')pause();if(ac)ac.suspend();}
-  else if(ac&&G.sound)ac.resume();
+  if(document.hidden){if(G.state==='play')pause();if(ac)ac.suspend();bgmPauseOnly();}
+  else if(ac&&G.sound){ac.resume();if(G.state!=='pause')bgmResume();}
 });
 
 /* ===== ステージ設定 ===== */
@@ -179,6 +190,7 @@ function goalX(){return G.stage===STAGES?LEN-100:LEN-140;}   // 敵がここま�
 function EDGE(){return G.stage===STAGES?LEN-90:LEN-12;}   // 行き止まりの位置（最上階は椅子の手前）
 function newPlayer(hp){return{hidden:true,lock:0,low:false,bufT:0,pT:false,pL:false,x:530,z:0,vz:0,hp,face:-1,cd:0,inv:0,hurt:0,kb:0,walk:0,moving:false,throwT:0,dead:false};}
 function startRound(){
+  if(!bgmWanted)bgmStart(false);                    // 2ステージ目以降もBGMはつづく
   const c=cfg(G.stage);
   camX=0;knives=[];parts=[];G.time=TIMELIM;G.shake=0;G.trick=false;G.cap={hits:0,fly:false,x:0,y:0,vx:0,vy:0,hit:0,rs:-1,stand:false,wx:0};
   P=newPlayer(1);
@@ -186,7 +198,7 @@ function startRound(){
   G.ally=null;G.state='intro';G.it=0;G.fightT=0;G.msg='';   // 開始演出: 敵が登場 → 敵に合わせてスクロール → 自機が登場 → そのままスタート
   hideOverlay();showControls(true);SND.go();
 }
-function startGame(){initAudio();G.score=0;G.stage=1;G.eHP=EHP;G.allyUsed=false;P=null;startRound();}
+function startGame(){initAudio();bgmStart(true);G.score=0;G.stage=1;G.eHP=EHP;G.allyUsed=false;P=null;startRound();}
 
 /* ===== 入力 ===== */
 const keys={};
@@ -231,7 +243,7 @@ function showOverlay(html,scroll){$('overlay').classList.remove('title');$('card
 function hideOverlay(){$('overlay').hidden=true;}
 function sc6(n){return String(n).padStart(6,'0');}
 function showTitle(){
-  G.state='title';showControls(false);
+  G.state='title';showControls(false);bgmStop();
   showOverlay(`<div class="tTop"><h1>ナイフマスター</h1><p class="en">KNIFE MASTER</p></div>
   <div class="tBot">
    <button class="btn" data-act="start">ゲームスタート</button>
@@ -262,19 +274,20 @@ function showHowto(){
 }
 function pause(){
   if(G.state!=='play'&&G.state!=='intro')return;
+  bgmPauseOnly();
   G.prev=G.state;G.state='pause';inp.l=inp.r=inp.jump=inp.throw=inp.low=false;
   showOverlay(`<h2>ポーズ</h2>
   <div class="row"><button class="btn" data-act="resume">つづける</button></div>
   <div class="row"><button class="btn sub" data-act="snd">おと: ${G.sound?'ON':'OFF'}</button><button class="btn sub" data-act="title">タイトルへ</button></div>`);
 }
-function resume(){G.state=G.prev||'play';hideOverlay();if(ac&&G.sound)ac.resume();}
+function resume(){G.state=G.prev||'play';hideOverlay();if(ac&&G.sound)ac.resume();bgmResume();}
 function saveBest(){if(G.score>best){best=G.score;try{localStorage.setItem(BEST_KEY,best);}catch(e){}return true;}return false;}
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act;
   if(a==='start')startGame();
   else if(a==='resume')resume();
-  else if(a==='snd'){G.sound=!G.sound;b.textContent='おと: '+(G.sound?'ON':'OFF');if(G.sound)initAudio();}
+  else if(a==='snd'){G.sound=!G.sound;if(bgm)bgm.muted=!G.sound;b.textContent='おと: '+(G.sound?'ON':'OFF');if(G.sound)initAudio();}
   else if(a==='title'){showTitle();}
   else if(a==='howto'){showHowto();}
   else if(a==='next'){G.stage++;G.eHP=Math.min(EHP,G.eHP+EHP*EREC);startRound();}   // 敵のライフは少し回復
@@ -484,12 +497,14 @@ function endClimb(){
   <div class="row"><button class="btn" data-act="next">つぎのステージへ</button></div>`);
 }
 function win(trick){
+  bgmStop();
   G.state='win';G.t=2.2;knives=[];
   if(trick){G.trick=true;G.t=2.6;G.cap.fly=true;G.cap.vy=-200;G.cap.vx=-70;}   // 裏技: 女性が画面の下へ飛び出す
   else{E.dead=true;E.st='down';E.vz=230;E.kbv=-E.face*120;}                  // 敵がはね飛ばされて画面の下へ落ちる
   G.score+=Math.floor(G.time)*10+(STAGES-G.stage+1)*1000;G.shake=.2;SND.win();   // 早く勝つほど高得点
 }
 function lose(why){
+  if(G.state!=='lose'&&G.state!=='win')bgmStop();
   if(G.state==='lose'||G.state==='win')return;
   G.state='lose';G.t=1.7;G.msg=why;SND.lose();
   if(why==='GOAL'){G.t=4;G.cap.rs=0;E.face=1;E.st='walk';}   // 敵が女性を救う: 女性が立ち上がって寄り添う
