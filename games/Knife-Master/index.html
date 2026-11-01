@@ -86,7 +86,7 @@ const W=480,H=200,GY=212,TOPY=-50;    // 論理サイズ / 地面（足元）の
 const LEN=900;                         // ステージの長さ（世界の幅）。右（論理上）の端に上の階への階段がある
 const GR=520, SPD=150;                 // 重力 / 歩く速さ（逃げ足は速い）
 const TIMELIM=99, STAGES=5;
-const EHP=12, EREC=.08;                 // 敵のライフ（全ステージ共通で持ち越し）/ 次のステージへ行くときに回復する割合
+const EHP=12, EREC=.3;                  // 敵のライフ（全ステージ共通で持ち越し）/ 次のステージへ行くときに回復する割合
 const cv=document.getElementById('cv'), cx=cv.getContext('2d');
 const $=id=>document.getElementById(id);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -153,13 +153,13 @@ function cfg(n){return{
 /* ===== ラウンド開始 ===== */
 const GOALX=LEN-100;                    // 敵がここまで来たら負け（階段のふもと／最上階は女性の前）
 function EDGE(){return G.stage===STAGES?LEN-90:LEN-12;}   // 行き止まりの位置（最上階は椅子の手前）
-function newPlayer(hp){return{lock:0,low:false,bufT:0,pT:false,pL:false,x:530,z:0,vz:0,hp,face:-1,cd:0,inv:0,hurt:0,kb:0,walk:0,moving:false,throwT:0,dead:false};}
+function newPlayer(hp){return{hidden:true,lock:0,low:false,bufT:0,pT:false,pL:false,x:530,z:0,vz:0,hp,face:-1,cd:0,inv:0,hurt:0,kb:0,walk:0,moving:false,throwT:0,dead:false};}
 function startRound(){
   const c=cfg(G.stage);
   camX=0;knives=[];parts=[];G.time=TIMELIM;G.shake=0;G.trick=false;G.cap={hits:0,fly:false,x:0,y:0,vx:0,vy:0,hit:0};
   P=newPlayer(1);
   E={x:-75,z:0,vz:0,vx:0,face:1,hp:G.eHP,max:EHP,c,st:'walk',t:0,at:0,cd:1.2,dodgeCd:0,noStun:0,walk:0,hitDone:false,dead:false};
-  G.state='intro';G.t=3;G.msg='';
+  G.state='intro';G.it=0;G.fightT=0;G.msg='';   // 開始演出: 敵が登場 → 敵に合わせてスクロール → 自機が登場 → そのままスタート
   hideOverlay();showControls(true);SND.go();
 }
 function startGame(){initAudio();G.score=0;G.stage=1;G.eHP=EHP;P=null;startRound();}
@@ -288,7 +288,7 @@ function updPlayer(dt){
       if(p.bufT>0&&tryThrow(p.bufLow))p.bufT=0;
     }
   }else if(G.state==='intro'){                // 画面の外から走って入ってくる
-    if(p.x>190){p.x=Math.max(190,p.x-150*dt);p.walk+=dt;p.moving=true;p.face=-1;}else p.moving=false;
+    if(!p.hidden){p.x-=SPD*dt;p.walk+=dt;p.moving=true;p.face=-1;}else p.moving=false;
   }else p.moving=false;
   if(p.dead||p.z>0||p.vz>0){p.vz-=GR*dt;p.z+=p.vz*dt;if(!p.dead&&p.z<=0){p.z=0;p.vz=0;}}   // やられたら床も抜けて落ちる
   p.x=clamp(p.x,camX+14,LEN-26);          // スクロールの終わりで行き止まり（最上階も女性の後ろまでまわりこめる）
@@ -319,10 +319,10 @@ function updKnives(dt){
         }
       }
     }
-    // 最上階: ナイフは女性にも当たる（10回で裏技の勝利）
+    // 最上階: ナイフは女性にも当たる（3回で裏技の勝利）
     if(!k.dead&&G.stage===STAGES&&!G.cap.fly&&k.x>LEN-86&&k.x<LEN-52&&GY-k.y>-2&&GY-k.y<52){
       k.dead=true;G.cap.hits++;G.cap.hit=.25;spark(k.x,k.y,'#ffd23c',6);SND.hit();
-      if(G.cap.hits>=10)win(true);
+      if(G.cap.hits>=3)win(true);
     }
     if(k.d>340||k.x<camX-40||k.x>camX+W+40)k.dead=true;
   }
@@ -344,8 +344,8 @@ function updEnemy(dt){
   const airborne=e.z>0||e.vz>0;
   if(airborne){e.vz-=GR*dt;e.z+=e.vz*dt;if(e.z<=0){e.z=0;e.vz=0;}}
   if(e.st!=='dash'&&e.st!=='hurt')e.face=(ad<90||dx>=0)?(dx>=0?1:-1):1;   // 近くの自分の方を向く。遠ければゴールの方
-  if(G.state==='intro'){            // 画面の外から歩いて入ってくる
-    if(e.x<30){e.x=Math.min(30,e.x+62*dt);e.walk+=dt*1.6;e.face=1;}
+  if(G.state==='intro'){            // 画面の外から歩いて入ってくる（そのままゴールに向かって歩き続ける）
+    e.x+=c.spd*dt;e.walk+=dt*c.spd/22;e.face=1;
     return;
   }
   if(G.state!=='play'||P.dead){return;}
@@ -450,10 +450,17 @@ function update(dt){
   parts=parts.filter(q=>q.t>0);
   if(!P)return;
   const s=G.state;
-  if(s==='intro'){G.t-=dt;if(G.t<=0)G.state='play';}
   if(s==='play'||s==='intro'||s==='win'||s==='lose'||s==='climb'){
     updPlayer(dt);updEnemy(dt);
     if(s==='play'||s==='intro')updKnives(dt);
+    if(s==='intro'){
+      G.it+=dt;
+      if(E.x>40)camX=E.x-40;                                   // 敵に合わせてスクロールがはじまる
+      if(G.it>=1.6&&P.hidden){P.hidden=false;P.x=camX+520;P.face=-1;SND.go();}   // 自機が画面の外から現れる
+      if(!P.hidden&&P.x<=camX+250){                           // 所定の位置まで来たら、止めずにそのままスタート
+        P.x=camX+250;P.moving=false;G.state='play';G.fightT=.9;E.cd=Math.max(E.cd,.8);
+      }
+    }
     if(s!=='intro')camX=Math.min(LEN-W,Math.max(camX,P.x-250));   // スクロールには限界がある
   }
   if(G.state==='play'){
@@ -461,6 +468,7 @@ function update(dt){
     if(G.time<=0){G.time=0;lose('TIME UP');}
   }
   showCool();
+  G.fightT=Math.max(0,(G.fightT||0)-dt);
   if(s==='win'){G.t-=dt;if(G.t<=0)endWin();}
   if(s==='lose'){G.t-=dt;if(G.t<=0)endLose();}
   if(s==='climb'){G.t-=dt;if(G.t<=0)endClimb();}
@@ -475,7 +483,7 @@ function drawCaptive(ox){
   R(X+26,Y-44,5,44,wood);R(X+26,Y-44,5,3,wood2);                       // 背もたれ
   R(X,Y-12,30,3,wood);R(X,Y-12,30,1,wood2);                            // 座面
   R(X+1,Y-9,3,9,wood);R(X+24,Y-9,3,9,wood);                            // 脚
-  // ここから女性（ナイフが当たるとゆれ、10回で画面の下へ飛ぶ）
+  // ここから女性（ナイフが当たるとゆれ、3回で画面の下へ飛ぶ）
   cx.save();
   const c=G.cap,sh=c.hit>0?Math.round((Math.random()-.5)*3):0;
   cx.translate(Math.round(c.x)+sh,Math.round(c.y));
@@ -621,13 +629,14 @@ function draw(){
   if(P){
     // 奥にいる方を先に描く（足元の高さが同じなので、ジャンプ中でない方を先に）
     if(!E.hidden)fighter({x:E.x,z:E.z,face:E.face,pal:E.c.pal,pose:enemyPose(),walk:E.walk,kind:'hero',inv:0,dead:E.dead});
-    fighter({x:P.x,z:P.z,face:P.face,pal:PAL_P,pose:playerPose(),walk:P.walk,kind:'thrower',inv:P.inv,dead:P.dead});
+    if(!P.hidden)fighter({x:P.x,z:P.z,face:P.face,pal:PAL_P,pose:playerPose(),walk:P.walk,kind:'thrower',inv:P.inv,dead:P.dead});
     knives.forEach(drawKnife);
     for(const q of parts)R(q.x-camX,q.y,3,3,q.c);
   }
   cx.restore();
   if(P)drawHUD();
-  if(G.state==='intro'){bigText(G.stage===STAGES?'FINAL STAGE':'STAGE '+G.stage,64,'#fff',20);if(G.t<.8)bigText('FIGHT!',100,'#ffd23c',20);}
+  if(G.state==='intro'&&G.it<2.2)bigText(G.stage===STAGES?'FINAL STAGE':'STAGE '+G.stage,64,'#fff',20);
+  if(G.state==='play'&&G.fightT>0)bigText('FIGHT!',64,'#ffd23c',20);
   if(G.state==='climb')bigText('GOING UP...',76,'#ffd23c',16);
   if(G.state==='win')bigText('YOU WIN!',76,'#ffd23c',20);
   if(G.state==='lose')bigText(G.msg==='TIME UP'?'TIME UP':'YOU LOSE',76,'#ff5050',20);
