@@ -17,26 +17,26 @@ button{touch-action:manipulation;font-family:var(--font);font-weight:800;cursor:
 img{-webkit-user-drag:none}
 canvas,.pad,.pbtn{touch-action:none}
 [hidden]{display:none!important}
-/* 画面を縦に 2:1 に分ける。上 2/3 = ゲーム画面、下 1/3 = ボタン（重ならない） */
+/* 画面を縦に 2:1 に分ける。上 4/5 = ゲーム画面、下 1/5 = ボタン（重ならない） */
 #app{position:fixed;inset:0;display:flex;flex-direction:column}
-#stage{flex:2 1 0;min-height:0;display:flex;align-items:center;justify-content:center;background:#000;overflow:hidden}
+#stage{flex:4 1 0;min-height:0;display:flex;align-items:center;justify-content:center;background:#000;overflow:hidden}
 #ctl{flex:1 1 0;min-height:0;position:relative;background:linear-gradient(#1c1c26,#0b0b10);border-top:2px solid #3a3a4a}
 #cv{display:block;image-rendering:pixelated;background:#000}
 /* 操作パッド */
-.pad{position:absolute;bottom:max(10px,env(safe-area-inset-bottom,0px));z-index:5}
-#dpad{left:max(14px,env(safe-area-inset-left,0px));width:min(40vw,280px);height:min(26vh,108px);display:flex;border-radius:999px;
+.pad{position:absolute;bottom:max(7px,env(safe-area-inset-bottom,0px));z-index:5}
+#dpad{left:max(14px,env(safe-area-inset-left,0px));width:min(40vw,280px);height:min(16vh,64px);display:flex;border-radius:999px;
   background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.35)}
-#dpad i{flex:1;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:min(8vh,34px);color:rgba(255,255,255,.7);pointer-events:none}
+#dpad i{flex:1;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:min(5vh,22px);color:rgba(255,255,255,.7);pointer-events:none}
 #dpad.l i:first-child,#dpad.r i:last-child{color:#ffd23c}
 #acts{right:max(14px,env(safe-area-inset-right,0px));display:flex;gap:8px;align-items:flex-end}
-.pbtn{width:min(22vh,92px);height:min(22vh,92px);border-radius:50%;display:flex;align-items:center;justify-content:center;
-  background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.4);font-size:min(5.4vh,22px);color:#fff;text-align:center;line-height:1.1}
-#bL,#bT{font-size:min(4.6vh,18px)}
-#bT{width:min(28vh,116px);height:min(28vh,116px);background:rgba(240,90,40,.35);border-color:rgba(255,160,100,.8)}
+.pbtn{width:min(14vh,58px);height:min(14vh,58px);border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.4);font-size:min(3.4vh,13px);color:#fff;text-align:center;line-height:1.1}
+#bL,#bT{font-size:min(3.4vh,13px)}
+#bT{width:min(16vh,66px);height:min(16vh,66px);background:rgba(240,90,40,.35);border-color:rgba(255,160,100,.8)}
 .pbtn.cool{opacity:.4}
 .pbtn.on{background:rgba(255,210,60,.55)}
-#pauseBtn{position:absolute;left:50%;bottom:max(10px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:6;
-  width:46px;height:34px;border-radius:10px;border:2px solid rgba(255,255,255,.4);background:rgba(0,0,0,.4);color:#fff;font-size:14px;padding:0}
+#pauseBtn{position:absolute;left:50%;bottom:max(7px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:6;
+  width:42px;height:30px;border-radius:9px;border:2px solid rgba(255,255,255,.4);background:rgba(0,0,0,.4);color:#fff;font-size:14px;padding:0}
 /* 画面（メニュー） */
 #overlay{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.78);padding:10px;box-sizing:border-box}
 .card{max-height:100%;overflow-y:auto;touch-action:pan-y;text-align:center;box-sizing:border-box;padding:6px 14px;max-width:520px;width:100%}
@@ -86,13 +86,14 @@ const W=480,H=200,GY=212,TOPY=-50;    // 論理サイズ / 地面（足元）の
 const LEN=900;                         // ステージの長さ（世界の幅）。右（論理上）の端に上の階への階段がある
 const GR=520, SPD=150;                 // 重力 / 歩く速さ（逃げ足は速い）
 const TIMELIM=99, STAGES=5;
+const EHP=12, EREC=.3;                  // 敵のライフ（全ステージ共通で持ち越し）/ 次のステージへ行くときに回復する割合
 const cv=document.getElementById('cv'), cx=cv.getContext('2d');
 const $=id=>document.getElementById(id);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const BEST_KEY='knifemaster_best';
 let best=0;
 try{best=+(localStorage.getItem(BEST_KEY)||0);}catch(e){}
-const G={state:'title',score:0,stage:1,time:TIMELIM,t:0,sound:true,shake:0,msg:''};
+const G={eHP:EHP,state:'title',score:0,stage:1,time:TIMELIM,t:0,sound:true,shake:0,msg:''};
 let P,E,camX=0,knives=[],parts=[];
 const inp={l:false,r:false,jump:false,throw:false,low:false};
 
@@ -150,18 +151,18 @@ function cfg(n){return{
 };}
 
 /* ===== ラウンド開始 ===== */
-const GOALX=LEN-100;                    // 敵がここまで来たら負け（階段のふもと／最上階は女性の前）
+function goalX(){return G.stage===STAGES?LEN-100:LEN-140;}   // 敵がここまで来たら（階段のふもと／最上階は女性の前）
 function EDGE(){return G.stage===STAGES?LEN-90:LEN-12;}   // 行き止まりの位置（最上階は椅子の手前）
-function newPlayer(hp){return{lock:0,low:false,bufT:0,pT:false,pL:false,x:530,z:0,vz:0,hp,face:-1,cd:0,inv:0,hurt:0,kb:0,walk:0,moving:false,throwT:0,dead:false};}
+function newPlayer(hp){return{hidden:true,lock:0,low:false,bufT:0,pT:false,pL:false,x:530,z:0,vz:0,hp,face:-1,cd:0,inv:0,hurt:0,kb:0,walk:0,moving:false,throwT:0,dead:false};}
 function startRound(){
   const c=cfg(G.stage);
-  camX=0;knives=[];parts=[];G.time=TIMELIM;G.shake=0;
+  camX=0;knives=[];parts=[];G.time=TIMELIM;G.shake=0;G.trick=false;G.cap={hits:0,fly:false,x:0,y:0,vx:0,vy:0,hit:0,rs:-1,stand:false,wx:0};
   P=newPlayer(1);
-  E={x:-75,z:0,vz:0,vx:0,face:1,hp:c.hp,max:c.hp,c,st:'walk',t:0,at:0,cd:1.2,dodgeCd:0,noStun:0,walk:0,hitDone:false,dead:false};
-  G.state='intro';G.t=3;G.msg='';
+  E={x:-75,z:0,vz:0,vx:0,face:1,hp:G.eHP,max:EHP,c,st:'walk',t:0,at:0,cd:1.2,dodgeCd:0,noStun:0,walk:0,hitDone:false,dead:false};
+  G.state='intro';G.it=0;G.fightT=0;G.msg='';   // 開始演出: 敵が登場 → 敵に合わせてスクロール → 自機が登場 → そのままスタート
   hideOverlay();showControls(true);SND.go();
 }
-function startGame(){initAudio();G.score=0;G.stage=1;P=null;startRound();}
+function startGame(){initAudio();G.score=0;G.stage=1;G.eHP=EHP;P=null;startRound();}
 
 /* ===== 入力 ===== */
 const keys={};
@@ -208,13 +209,15 @@ function showTitle(){
   showOverlay(`<h1>ナイフマスター</h1>
   <p style="letter-spacing:.3em;color:#7cf08a;margin:4px 0">KNIFE MASTER</p>
   <div class="rules">
-   <div><b>めざせ</b> 主人公をたおせ！ 全${STAGES}ステージ</div>
+   <div><b>めざせ</b> 主人公をたおせ！ 追いつめられるのは${STAGES}ステージ目まで</div>
    <div><b>戦い方</b> ナイフ使いは近づかれると弱い。<b>きょりをとって</b>ナイフを投げよう（ジャンプはなし）</div>
-   <div><b>むき</b> 左右キーで自分の向きがかわる。<b>敵の方を向いているときだけ</b>ナイフを投げられる</div>
+   <div><b>むき</b> 左右キーで自分の向きがかわる。<b>ナイフボタンを押すと、敵の方向を自動で向いて</b>投げる</div>
    <div><b>ナイフ</b> <b>上段</b>（立って投げる）と<b>下段</b>（しゃがんで投げる）。<b>投げている間は動けない</b>。近いと投げるのがおそい</div>
    <div><b>むき</b> ステージによって、敵が来る向き（左／右）がかわる</div>
    <div><b>よけ</b> 相手がしゃがんだら<b>下段</b>。ジャンプでよけたら着地を待とう</div>
-   <div><b>まけ</b> 敵が<b>階段</b>（最上階は<b>女性</b>）にたどりついたら負け！ その前にたおせ</div>
+   <div><b>かち</b> 敵を<b>たおせば</b>ゲームクリア！ 敵のライフはステージをこえて持ち越し</div>
+   <div><b>階段</b> 敵が階段にたどりつくと のぼられて次のステージへ（敵のライフは少し回復）</div>
+   <div><b>まけ</b> 最上階（ステージ5）で<b>女性</b>にたどりつかれたら負け</div>
    <div><b>やられたら</b> <b>1回あたっただけでアウト</b>！ 画面の下に落とされる。敵にはライフがある</div>
    <div><b>じかん</b> ${TIMELIM}びょうで決着をつけよう</div>
   </div>
@@ -239,7 +242,7 @@ document.addEventListener('click',e=>{
   else if(a==='resume')resume();
   else if(a==='snd'){G.sound=!G.sound;b.textContent='おと: '+(G.sound?'ON':'OFF');if(G.sound)initAudio();}
   else if(a==='title'){showTitle();}
-  else if(a==='next'){G.stage++;startRound();}
+  else if(a==='next'){G.stage++;G.eHP=Math.min(EHP,G.eHP+EHP*EREC);startRound();}   // 敵のライフは少し回復
   else if(a==='retry'){startGame();}
 });
 $('pauseBtn').addEventListener('click',pause);
@@ -253,7 +256,7 @@ function spark(x,y,c,n=8){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-
 function canThrow(){return P.cd<=0&&P.lock<=0&&!knives.some(k=>k.mine);}   // ナイフは画面に1本だけ
 function tryThrow(low){
   if(!canThrow())return false;
-  if(P.face!==(E.x>=P.x?1:-1))return false;   // 敵の方を向いているときだけ投げられる
+  P.face=E.x>=P.x?1:-1;                       // ナイフボタンを押すと、敵の方向を自動で向いて投げる
   const close=Math.abs(E.x-P.x)<46;           // 近いとナイフがおそい（近距離に弱い）
   P.lock=close?.55:.3;                        // 投げている間は動けない
   P.cd=close?1.4:1.0;P.throwT=P.lock;P.low=low;   // 1本投げたら、次を投げられるまで時間がかかる
@@ -285,10 +288,10 @@ function updPlayer(dt){
       if(p.bufT>0&&tryThrow(p.bufLow))p.bufT=0;
     }
   }else if(G.state==='intro'){                // 画面の外から走って入ってくる
-    if(p.x>190){p.x=Math.max(190,p.x-150*dt);p.walk+=dt;p.moving=true;p.face=-1;}else p.moving=false;
+    if(!p.hidden){p.x-=SPD*dt;p.walk+=dt;p.moving=true;p.face=-1;}else p.moving=false;
   }else p.moving=false;
   if(p.dead||p.z>0||p.vz>0){p.vz-=GR*dt;p.z+=p.vz*dt;if(!p.dead&&p.z<=0){p.z=0;p.vz=0;}}   // やられたら床も抜けて落ちる
-  p.x=clamp(p.x,camX+14,EDGE()-14);       // スクロールの終わりで行き止まり
+  p.x=clamp(p.x,camX+14,LEN-26);          // スクロールの終わりで行き止まり（最上階も女性の後ろまでまわりこめる）
 }
 
 /* ===== ナイフ ===== */
@@ -316,6 +319,11 @@ function updKnives(dt){
         }
       }
     }
+    // 最上階: ナイフは女性にも当たる（1発で裏技の勝利）
+    if(!k.dead&&G.stage===STAGES&&!G.cap.fly&&k.x>LEN-80&&k.x<LEN-52&&GY-k.y>-2&&GY-k.y<44){
+      k.dead=true;G.cap.hits++;G.cap.hit=.25;spark(k.x,k.y,'#ffd23c',6);SND.hit();
+      if(G.cap.hits>=1)win(true);
+    }
     if(k.d>340||k.x<camX-40||k.x>camX+W+40)k.dead=true;
   }
   knives=knives.filter(k=>!k.dead);
@@ -327,11 +335,17 @@ function updEnemy(dt){
   const e=E,c=e.c,dx=P.x-e.x,ad=Math.abs(dx);
   e.cd-=dt;e.dodgeCd-=dt;e.noStun-=dt;e.t-=dt;
   if(e.dead){e.x+=e.kbv*dt;e.vz-=GR*dt;e.z+=e.vz*dt;return;}
+  if(G.state==='climb'){                       // 階段をのぼって、てっぺんの扉に消える
+    e.face=1;e.x=Math.min(e.x+115*dt,LEN-16);e.walk+=dt*5;
+    const i=clamp(Math.floor((e.x-(LEN-140))/16),-1,6);e.z=i>=0?(i+1)*12:0;e.vz=0;   // 踏み板の高さ（最上段は踊り場）
+    if(e.x>=LEN-24)e.hidden=true;                                                       // 扉の中へ入って消える
+    return;
+  }
   const airborne=e.z>0||e.vz>0;
   if(airborne){e.vz-=GR*dt;e.z+=e.vz*dt;if(e.z<=0){e.z=0;e.vz=0;}}
   if(e.st!=='dash'&&e.st!=='hurt')e.face=(ad<90||dx>=0)?(dx>=0?1:-1):1;   // 近くの自分の方を向く。遠ければゴールの方
-  if(G.state==='intro'){            // 画面の外から歩いて入ってくる
-    if(e.x<30){e.x=Math.min(30,e.x+62*dt);e.walk+=dt*1.6;e.face=1;}
+  if(G.state==='intro'){            // 画面の外から歩いて入ってくる（そのままゴールに向かって歩き続ける）
+    e.x+=c.spd*dt;e.walk+=dt*c.spd/22;e.face=1;
     return;
   }
   if(G.state!=='play'||P.dead){return;}
@@ -379,38 +393,45 @@ function updEnemy(dt){
       break;
   }
   e.x=clamp(e.x,camX-10,EDGE()-2);
-  if(G.state==='play'&&e.x>=GOALX&&!P.dead)lose('GOAL');   // 敵がゴールに着いたら負け
+  if(G.state==='play'&&e.x>=goalX()&&!P.dead){            // 敵がゴールに着いた
+    if(G.stage>=STAGES)lose('GOAL');                     // 最上階: 女性にたどりつかれたら負け
+    else climb();                                         // 階段を使われたら、次のステージへ持ち越し
+  }
 }
 
 /* ===== 勝ち負け ===== */
-function win(){
-  G.state='win';G.t=2.2;E.dead=true;E.st='down';E.vz=230;E.kbv=-E.face*120;knives=[];   // はね飛ばされて画面の下へ落ちる
-  G.score+=Math.floor(G.time)*10+G.stage*500;G.shake=.2;SND.win();
+function climb(){
+  G.state='climb';G.t=2.2;G.eHP=E.hp;knives=[];P.lock=0;E.st='walk';
+}
+function endClimb(){
+  G.state='stairs';showControls(false);
+  showOverlay(`<h2>階段を のぼられた！</h2><p>敵は ステージ${G.stage+1}へ。ライフは すこし回復する…</p>
+  <div class="sc">SCORE ${sc6(G.score)}</div>
+  <button class="btn" data-act="next">つぎのステージへ</button>`);
+}
+function win(trick){
+  G.state='win';G.t=2.2;knives=[];
+  if(trick){G.trick=true;G.t=2.6;G.cap.fly=true;G.cap.vy=-200;G.cap.vx=-70;}   // 裏技: 女性が画面の下へ飛び出す
+  else{E.dead=true;E.st='down';E.vz=230;E.kbv=-E.face*120;}                  // 敵がはね飛ばされて画面の下へ落ちる
+  G.score+=Math.floor(G.time)*10+(STAGES-G.stage+1)*1000;G.shake=.2;SND.win();   // 早く勝つほど高得点
 }
 function lose(why){
   if(G.state==='lose'||G.state==='win')return;
-  G.state='lose';G.t=1.7;G.msg=why;P.dead=true;SND.lose();
+  G.state='lose';G.t=1.7;G.msg=why;SND.lose();
+  if(why==='GOAL'){G.t=4;G.cap.rs=0;E.face=1;E.st='walk';}   // 敵が女性を救う: 女性が立ち上がって寄り添う
+  else P.dead=true;
 }
 function endWin(){
-  const nb=saveBest();
-  if(G.stage>=STAGES){
-    G.state='end';showControls(false);
-    G.score+=3000;saveBest();
-    showOverlay(`<h2>全ステージクリア！</h2><p>最上階を守りぬいた！ ナイフマスターの かちだ！</p>
-    <div class="sc">SCORE ${sc6(G.score)}<br>BEST ${sc6(best)}</div>
-    <button class="btn" data-act="retry">もういちど</button>
-    <button class="btn sub" data-act="title">タイトルへ</button>${COPY}`);
-  }else{
-    G.state='clear';showControls(false);
-    showOverlay(`<h2>ステージ${G.stage} クリア！</h2><p>つぎの敵は もっと強いぞ</p>
-    <div class="sc">SCORE ${sc6(G.score)}</div>
-    <button class="btn" data-act="next">つぎのステージへ</button>`);
-  }
+  G.state='end';showControls(false);saveBest();
+  showOverlay(`<h2>ゲームクリア！</h2><p>${G.trick?'裏技発見！ 女性が ふっとんでいった…':'主人公をたおした！ ナイフマスターの かちだ！'}${!G.trick&&G.stage<=2?'<br>（ステージ'+G.stage+'で決着）':''}</p>
+  <div class="sc">SCORE ${sc6(G.score)}<br>BEST ${sc6(best)}</div>
+  <button class="btn" data-act="retry">もういちど</button>
+  <button class="btn sub" data-act="title">タイトルへ</button>${COPY}`);
 }
 function endLose(){
   G.state='over';showControls(false);
   const nb=saveBest();
-  showOverlay(`<h2>ゲームオーバー</h2><p>${G.msg==='TIME UP'?'じかんぎれ…':G.msg==='GOAL'?(G.stage===STAGES?'女性をうばわれてしまった…':'階段まで行かれてしまった…'):'やられてしまった…'}（ステージ${G.stage}）</p>
+  showOverlay(`<h2>ゲームオーバー</h2><p>${G.msg==='TIME UP'?'じかんぎれ…':G.msg==='GOAL'?'女性を すくわれてしまった…':'やられてしまった…'}（ステージ${G.stage}）</p>
   <div class="sc">SCORE ${sc6(G.score)}<br>BEST ${sc6(best)}${nb?' NEW!':''}</div>
   <button class="btn" data-act="retry">もういちど</button>
   <button class="btn sub" data-act="title">タイトルへ</button>`);
@@ -426,14 +447,28 @@ function update(dt){
   const portrait=innerHeight>innerWidth;
   if(portrait&&(G.state==='play'||G.state==='intro')){pause();return;}
   G.shake=Math.max(0,G.shake-dt);
+  if(G.cap){const c=G.cap;c.hit-=dt;if(c.fly){c.x+=c.vx*dt;c.vy+=GR*dt;c.y+=c.vy*dt;}
+    if(c.rs>=0){                                   // 救出: 女性が立ち上がり、敵のそばまで歩いて寄り添う
+      c.rs+=dt;
+      if(c.rs>.7&&!c.stand){c.stand=true;c.wx=LEN-62;SND.win();}
+      if(c.stand)c.wx=Math.max(E.x+17,c.wx-42*dt);
+    }
+  }
   for(const q of parts){q.x+=q.vx*dt;q.y+=q.vy*dt;q.vy+=600*dt;q.t-=dt;}
   parts=parts.filter(q=>q.t>0);
   if(!P)return;
   const s=G.state;
-  if(s==='intro'){G.t-=dt;if(G.t<=0)G.state='play';}
-  if(s==='play'||s==='intro'||s==='win'||s==='lose'){
+  if(s==='play'||s==='intro'||s==='win'||s==='lose'||s==='climb'){
     updPlayer(dt);updEnemy(dt);
     if(s==='play'||s==='intro')updKnives(dt);
+    if(s==='intro'){
+      G.it+=dt;
+      if(E.x>40)camX=E.x-40;                                   // 敵に合わせてスクロールがはじまる
+      if(G.it>=1.6&&P.hidden){P.hidden=false;P.x=camX+520;P.face=-1;SND.go();}   // 自機が画面の外から現れる
+      if(!P.hidden&&P.x<=camX+250){                           // 所定の位置まで来たら、止めずにそのままスタート
+        P.x=camX+250;P.moving=false;G.state='play';G.fightT=.9;E.cd=Math.max(E.cd,.8);
+      }
+    }
     if(s!=='intro')camX=Math.min(LEN-W,Math.max(camX,P.x-250));   // スクロールには限界がある
   }
   if(G.state==='play'){
@@ -441,33 +476,54 @@ function update(dt){
     if(G.time<=0){G.time=0;lose('TIME UP');}
   }
   showCool();
+  G.fightT=Math.max(0,(G.fightT||0)-dt);
   if(s==='win'){G.t-=dt;if(G.t<=0)endWin();}
   if(s==='lose'){G.t-=dt;if(G.t<=0)endLose();}
+  if(s==='climb'){G.t-=dt;if(G.t<=0)endClimb();}
 }
 
 /* ===== 描画：最上階の、椅子に座らされた女性（チャイナドレス）===== */
 function drawCaptive(ox){
-  const X=LEN-84+ox,Y=GY;          // 椅子の左端、足元。座った高さがプレイヤーの背丈（約45px）と同じくらい
+  const X=LEN-78+ox,Y=GY;          // 椅子の左端、足元。座った高さは約37px（以前より一回り小さい）
   const wood='#7a3410',wood2='#c8782a',red='#d02030',red2='#9a1020',gold='#f8d820',skin='#f8c8a0',hair='#14141c',rope='#d8c08a';
   R(LEN-3+ox,83,3,GY-83,'#f87820');                                   // 端の柱
   // 椅子
-  R(X+26,Y-44,5,44,wood);R(X+26,Y-44,5,3,wood2);                       // 背もたれ
-  R(X,Y-12,30,3,wood);R(X,Y-12,30,1,wood2);                            // 座面
-  R(X+1,Y-9,3,9,wood);R(X+24,Y-9,3,9,wood);                            // 脚
-  // 脚と足
-  R(X+1,Y-17,26,5,red);R(X+1,Y-17,26,1,red2);                          // ふともも（スカート）
-  R(X+1,Y-12,5,9,red);R(X+2,Y-6,3,3,skin);R(X,Y-3,7,3,red2);           // ひざ下と足
-  R(X+1,Y-8,6,2,rope);                                                 // 足首のひも
-  // 体（チャイナドレス）
-  R(X+15,Y-33,11,17,red);R(X+15,Y-33,2,17,red2);
-  R(X+15,Y-29,11,2,gold);R(X+15,Y-23,11,2,gold);                      // 金の縁どり
-  R(X+16,Y-36,6,3,gold);                                               // 立ちえり
-  R(X+13,Y-31,3,9,red2);                                               // 腕（うしろ手）
-  R(X+14,Y-26,13,2,rope);                                              // 体をしばるひも
-  // 頭
-  R(X+13,Y-46,10,10,skin);
-  R(X+12,Y-48,13,4,hair);R(X+22,Y-46,4,10,hair);R(X+23,Y-52,5,5,hair);R(X+24,Y-50,2,2,gold);   // 髪とおだんご、かんざし
-  R(X+14,Y-42,2,2,'#14141c');R(X+14,Y-38,2,1,'#c04858');               // 目と口
+  R(X+22,Y-36,4,36,wood);R(X+22,Y-36,4,3,wood2);                       // 背もたれ
+  R(X,Y-10,25,3,wood);R(X,Y-10,25,1,wood2);                            // 座面
+  R(X+1,Y-7,3,7,wood);R(X+20,Y-7,3,7,wood);                            // 脚
+  if(G.cap.stand)return;                                               // 立ち上がったあとは椅子だけ
+  // ここから女性（ナイフが当たると飛ぶ）
+  cx.save();
+  const c=G.cap,sh=c.hit>0?Math.round((Math.random()-.5)*3):0;
+  cx.translate(Math.round(c.x)+sh,Math.round(c.y));
+  R(X+1,Y-14,21,4,red);R(X+1,Y-14,21,1,red2);                          // ふともも（スカート）
+  R(X+1,Y-10,4,7,red);R(X+1,Y-6,4,2,rope);R(X+2,Y-4,2,1,skin);R(X,Y-3,6,3,red2);   // ひざ下、足首のひも、足
+  R(X+12,Y-27,9,13,red);R(X+12,Y-27,2,13,red2);                        // 体（チャイナドレス）
+  R(X+12,Y-23,9,2,gold);R(X+12,Y-18,9,2,gold);R(X+13,Y-29,5,2,gold);   // 金の縁どりと立ちえり
+  R(X+10,Y-25,3,7,red2);R(X+11,Y-21,11,2,rope);                        // うしろ手、体をしばるひも
+  R(X+10,Y-37,8,8,skin);                                               // 頭
+  R(X+9,Y-39,11,3,hair);R(X+17,Y-37,3,8,hair);R(X+18,Y-42,4,4,hair);R(X+19,Y-41,2,2,gold);   // 髪とおだんご、かんざし
+  R(X+11,Y-34,2,2,'#14141c');R(X+11,Y-31,2,1,'#c04858');               // 目と口
+  cx.restore();
+}
+// 救出されて立ち上がった女性（敵に寄り添う）
+function drawWomanStand(x,walking){
+  const sx=Math.round(x-camX),Y=GY,red='#d02030',red2='#9a1020',gold='#f8d820',skin='#f8c8a0',hair='#14141c';
+  cx.fillStyle='rgba(0,0,0,.28)';cx.fillRect(sx-8,GY-1,16,3);
+  cx.save();cx.translate(sx,Y);cx.scale(-1,1);                         // 敵の方（論理上の左）を向く
+  const st=walking?Math.round(Math.sin(G.cap.rs*16)*2):0;
+  R(-3+st,-9,2,9,skin);R(1-st,-9,2,9,skin);R(-4+st,-2,4,2,red2);R(0-st,-2,4,2,red2);   // 脚と靴
+  R(-5,-24,10,16,red);R(-5,-24,2,16,red2);R(-5,-19,10,2,gold);R(-5,-13,10,2,gold);      // チャイナドレス（体〜すそ）
+  R(-1,-9,2,8,red2);                                                                    // すそのスリット
+  R(-4,-26,5,2,gold);R(-7,-22,2,9,red);R(5,-22,2,9,red);R(-7,-14,2,2,skin);R(5,-14,2,2,skin);   // 立ちえり、腕
+  R(-4,-34,8,8,skin);R(-5,-36,10,3,hair);R(-6,-34,3,8,hair);R(-5,-40,5,4,hair);R(-4,-39,2,2,gold);   // 頭、髪、おだんご
+  R(1,-31,2,2,'#14141c');R(1,-28,2,1,'#c04858');                                         // 目と口
+  cx.restore();
+}
+function drawHeart(x,y){
+  const rows=['.##.##.','#######','#######','.#####.','..###..','...#...'];
+  cx.fillStyle='#ff6088';
+  rows.forEach((r,j)=>{for(let i=0;i<7;i++)if(r[i]==='#')cx.fillRect(Math.round(x-7+i*2),Math.round(y+j*2),2,2);});
 }
 
 /* ===== 描画：背景 ===== */
@@ -496,15 +552,22 @@ function drawBG(){
   }
   // ステージの終わり: 上の階へ行く階段
   if(camX+W>LEN-160&&G.stage===STAGES)drawCaptive(ox);   // 最上階: 階段のかわりに、椅子に座らされた女性
-  else if(camX+W>LEN-160){
-    const x0=LEN-132+ox,n=7,sw=18,sh=12;
-    for(let i=0;i<n;i++){
-      const x=x0+i*sw,top=GY-(i+1)*sh;
-      R(x,top,sw,GY-top,'#7a3410');R(x,top,sw,3,'#f8b848');R(x,top+3,2,GY-top-3,'#a85018');R(x,top+sh,sw,2,'#5a2208');
+  else if(camX+W>LEN-190){
+    const x0=LEN-140+ox,sw=16,sh=12;
+    const dx=LEN-36+ox,top=GY-7*sh;                  // 踊り場の高さ
+    // 出口: 壁にはめこまれた両開きの扉（踊り場の奥）
+    R(dx-4,top-45,40,47,'#c85a1a');R(dx-4,top-45,40,3,'#f8b848');    // 枠とまぐさ
+    R(dx,top-40,32,40,'#0a0a14');R(dx+2,top-38,28,38,'#181830');     // 扉のあき
+    R(dx+15,top-40,2,40,'#0a0a14');                                   // 合わせ目
+    R(dx+11,top-22,3,5,'#f8d820');R(dx+18,top-22,3,5,'#f8d820');       // 取っ手
+    // 階段（最上段は奥の扉までつづく踊り場）
+    for(let i=0;i<7;i++){
+      const x=x0+i*sw,t=GY-(i+1)*sh,w=i===6?LEN+ox-x:sw;
+      R(x,t,w,GY-t,'#7a3410');R(x,t,w,3,'#f8b848');R(x,t+3,w,1,'#c8782a');R(x,t+sh-1,w,1,'#5a2208');
+      R(x,t+3,2,GY-t-3,'#a85018');
     }
-    const dx=LEN-38+ox,dy=GY-n*sh-54;
-    R(dx-3,dy-4,38,58,'#f87820');R(dx,dy,32,54,'#0c0c18');R(dx+2,dy+2,28,50,'#1c1c34');R(dx+14,dy+20,4,6,'#f8d820');
-    R(LEN-3+ox,83,3,GY-83,'#f87820');                         // 端の柱
+    for(let i=0;i<6;i++){const x=x0+i*sw,t=GY-(i+1)*sh;R(x+6,t-14,2,14,'#f87820');R(x,t-14,sw+2,2,'#f87820');}   // 手すり
+    R(LEN-3+ox,83,3,GY-83,'#f87820');                                // 端の柱
   }
   // 床下の水と柱
   R(0,GY+31,W,H-TOPY-GY-31,'#103090');
@@ -559,6 +622,7 @@ function enemyPose(){
     case 'wind':return'wind';case 'dash':return E.vz<120?'kick':'air';case 'jump':return'air';
     case 'crouch':return'crouch';case 'hurt':return'hurt';
   }
+  if(G.state==='climb')return'walk';
   return E.vx!==0||E.z>0?'air':'walk';
 }
 function drawKnife(k){
@@ -593,14 +657,17 @@ function draw(){
   drawBG();
   if(P){
     // 奥にいる方を先に描く（足元の高さが同じなので、ジャンプ中でない方を先に）
-    fighter({x:E.x,z:E.z,face:E.face,pal:E.c.pal,pose:enemyPose(),walk:E.walk,kind:'hero',inv:0,dead:E.dead});
-    fighter({x:P.x,z:P.z,face:P.face,pal:PAL_P,pose:playerPose(),walk:P.walk,kind:'thrower',inv:P.inv,dead:P.dead});
+    if(!E.hidden)fighter({x:E.x,z:E.z,face:E.face,pal:E.c.pal,pose:enemyPose(),walk:E.walk,kind:'hero',inv:0,dead:E.dead});
+    if(!P.hidden)fighter({x:P.x,z:P.z,face:P.face,pal:PAL_P,pose:playerPose(),walk:P.walk,kind:'thrower',inv:P.inv,dead:P.dead});
+    if(G.cap.stand){drawWomanStand(G.cap.wx,G.cap.wx>E.x+17.5);if(G.cap.rs>1.5)drawHeart((G.cap.wx+E.x)/2-camX+1,GY-62-Math.min(10,(G.cap.rs-1.5)*8)+Math.sin(G.cap.rs*5)*1.5);}
     knives.forEach(drawKnife);
     for(const q of parts)R(q.x-camX,q.y,3,3,q.c);
   }
   cx.restore();
   if(P)drawHUD();
-  if(G.state==='intro'){bigText(G.stage===STAGES?'FINAL STAGE':'STAGE '+G.stage,64,'#fff',20);if(G.t<.8)bigText('FIGHT!',100,'#ffd23c',20);}
+  if(G.state==='intro'&&G.it<2.2)bigText(G.stage===STAGES?'FINAL STAGE':'STAGE '+G.stage,64,'#fff',20);
+  if(G.state==='play'&&G.fightT>0)bigText('FIGHT!',64,'#ffd23c',20);
+  if(G.state==='climb')bigText('GOING UP...',76,'#ffd23c',16);
   if(G.state==='win')bigText('YOU WIN!',76,'#ffd23c',20);
   if(G.state==='lose')bigText(G.msg==='TIME UP'?'TIME UP':'YOU LOSE',76,'#ff5050',20);
 }
