@@ -44,6 +44,17 @@ canvas,.pad,.pbtn{touch-action:none}
 .card h1{margin:0;font-size:clamp(28px,9vh,46px);line-height:1.1;color:#ffb030;letter-spacing:.04em;text-shadow:3px 3px 0 #a02000}
 .card h2{margin:0 0 4px;font-size:clamp(24px,8vh,38px);color:#ffb030;text-shadow:3px 3px 0 #a02000}
 .card p{margin:6px 0;font-size:13px;line-height:1.6;color:#dde}
+.card .en{margin:2px 0 0;letter-spacing:.4em;color:#7cf08a;font-size:12px;text-shadow:0 1px 3px #000}
+/* タイトル画面: 画像を全面に敷き、上にタイトル、下にボタン */
+#overlay.title{background:#000 url(title.jpg) center 35%/cover no-repeat;padding:0}
+#overlay.title::before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,0) 28%,rgba(0,0,0,0) 45%,rgba(0,0,0,.82))}
+#overlay.title .card{position:relative;height:100%;max-width:none;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;padding:max(6px,env(safe-area-inset-top,0px)) 14px max(6px,env(safe-area-inset-bottom,0px))}
+#overlay.title h1{font-size:clamp(26px,9vh,44px)}
+.tBot{display:flex;flex-direction:column;align-items:center}
+.tBot .btn{margin:4px auto 0;padding:9px 10px;font-size:16px}
+.tBot .btn.sub{font-size:13px;padding:6px 10px}
+.tInfo{margin:4px 0 0!important;font-size:11px!important;color:#fff!important;text-shadow:0 1px 3px #000}
+.tBot .copy{margin-top:2px;color:#ddd;text-shadow:0 1px 3px #000;font-size:10px}
 .card .sc{font-family:"Press Start 2P",monospace;font-size:13px;color:#7cf08a;line-height:1.9}
 .rules{display:inline-block;text-align:left;font-size:12px;line-height:1.7;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px 12px;margin:8px 0;font-weight:600}
 .rules b{color:#ffd23c}
@@ -205,13 +216,22 @@ function showControls(v){$('dpad').hidden=!v;$('acts').hidden=!v;$('pauseBtn').h
 
 /* ===== メニュー ===== */
 const COPY='<p class="copy">©YoshidaStudio, ©PANICPUMPKIN</p>';
-function showOverlay(html){$('card').innerHTML=html;$('overlay').hidden=false;$('card').scrollTop=0;}
+function showOverlay(html){$('overlay').classList.remove('title');$('card').innerHTML=html;$('overlay').hidden=false;$('card').scrollTop=0;}
 function hideOverlay(){$('overlay').hidden=true;}
 function sc6(n){return String(n).padStart(6,'0');}
 function showTitle(){
   G.state='title';showControls(false);
-  showOverlay(`<h1>ナイフマスター</h1>
-  <p style="letter-spacing:.3em;color:#7cf08a;margin:4px 0">KNIFE MASTER</p>
+  showOverlay(`<div class="tTop"><h1>ナイフマスター</h1><p class="en">KNIFE MASTER</p></div>
+  <div class="tBot">
+   <button class="btn" data-act="start">ゲームスタート</button>
+   <button class="btn sub" data-act="howto">あそびかた</button>
+   <p class="tInfo">ベストスコア ${sc6(best)}</p>${COPY}
+  </div>`);
+  $('overlay').classList.add('title');                   // タイトル画像（title.jpg）を背景にする
+}
+function showHowto(){
+  showOverlay(`<h2>あそびかた</h2>
+  <button class="btn sub" data-act="title" style="margin:2px auto 6px">もどる</button>
   <div class="rules">
    <div><b>めざせ</b> 主人公をたおせ！ 追いつめられるのは${STAGES}ステージ目まで</div>
    <div><b>戦い方</b> ナイフ使いは近づかれると弱い。<b>きょりをとって</b>ナイフを投げよう（ジャンプはなし）</div>
@@ -226,9 +246,8 @@ function showTitle(){
    <div><b>やられたら</b> <b>1回あたっただけでアウト</b>！ 画面の下に落とされる。敵にはライフがある</div>
    <div><b>じかん</b> ${TIMELIM}びょうで決着をつけよう</div>
   </div>
-  <button class="btn" data-act="start">ゲームスタート</button>
-  <p style="font-size:11px;color:#9ab">キー: ←→ いどう・むき / Z 上段 / X 下段 / P ポーズ</p>
-  <p class="copy" style="margin-top:2px">ベストスコア ${sc6(best)}</p>${COPY}`);
+  <p style="font-size:11px;color:#9ab">キー: ←→ いどう・むき / Z 上段 / X 下段 / C 仲間 / P ポーズ</p>
+  <button class="btn" data-act="title">もどる</button>`);
 }
 function pause(){
   if(G.state!=='play'&&G.state!=='intro')return;
@@ -247,6 +266,7 @@ document.addEventListener('click',e=>{
   else if(a==='resume')resume();
   else if(a==='snd'){G.sound=!G.sound;b.textContent='おと: '+(G.sound?'ON':'OFF');if(G.sound)initAudio();}
   else if(a==='title'){showTitle();}
+  else if(a==='howto'){showHowto();}
   else if(a==='next'){G.stage++;G.eHP=Math.min(EHP,G.eHP+EHP*EREC);startRound();}   // 敵のライフは少し回復
   else if(a==='retry'){startGame();}
 });
