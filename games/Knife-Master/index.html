@@ -156,7 +156,7 @@ function EDGE(){return G.stage===STAGES?LEN-90:LEN-12;}   // 行き止まりの�
 function newPlayer(hp){return{lock:0,low:false,bufT:0,pT:false,pL:false,x:530,z:0,vz:0,hp,face:-1,cd:0,inv:0,hurt:0,kb:0,walk:0,moving:false,throwT:0,dead:false};}
 function startRound(){
   const c=cfg(G.stage);
-  camX=0;knives=[];parts=[];G.time=TIMELIM;G.shake=0;
+  camX=0;knives=[];parts=[];G.time=TIMELIM;G.shake=0;G.trick=false;G.cap={hits:0,fly:false,x:0,y:0,vx:0,vy:0,hit:0};
   P=newPlayer(1);
   E={x:-75,z:0,vz:0,vx:0,face:1,hp:G.eHP,max:EHP,c,st:'walk',t:0,at:0,cd:1.2,dodgeCd:0,noStun:0,walk:0,hitDone:false,dead:false};
   G.state='intro';G.t=3;G.msg='';
@@ -211,7 +211,7 @@ function showTitle(){
   <div class="rules">
    <div><b>めざせ</b> 主人公をたおせ！ 追いつめられるのは${STAGES}ステージ目まで</div>
    <div><b>戦い方</b> ナイフ使いは近づかれると弱い。<b>きょりをとって</b>ナイフを投げよう（ジャンプはなし）</div>
-   <div><b>むき</b> 左右キーで自分の向きがかわる。<b>敵の方を向いているときだけ</b>ナイフを投げられる</div>
+   <div><b>むき</b> 左右キーで自分の向きがかわる。<b>ナイフボタンを押すと、敵の方向を自動で向いて</b>投げる</div>
    <div><b>ナイフ</b> <b>上段</b>（立って投げる）と<b>下段</b>（しゃがんで投げる）。<b>投げている間は動けない</b>。近いと投げるのがおそい</div>
    <div><b>むき</b> ステージによって、敵が来る向き（左／右）がかわる</div>
    <div><b>よけ</b> 相手がしゃがんだら<b>下段</b>。ジャンプでよけたら着地を待とう</div>
@@ -256,7 +256,7 @@ function spark(x,y,c,n=8){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-
 function canThrow(){return P.cd<=0&&P.lock<=0&&!knives.some(k=>k.mine);}   // ナイフは画面に1本だけ
 function tryThrow(low){
   if(!canThrow())return false;
-  if(P.face!==(E.x>=P.x?1:-1))return false;   // 敵の方を向いているときだけ投げられる
+  P.face=E.x>=P.x?1:-1;                       // ナイフボタンを押すと、敵の方向を自動で向いて投げる
   const close=Math.abs(E.x-P.x)<46;           // 近いとナイフがおそい（近距離に弱い）
   P.lock=close?.55:.3;                        // 投げている間は動けない
   P.cd=close?1.4:1.0;P.throwT=P.lock;P.low=low;   // 1本投げたら、次を投げられるまで時間がかかる
@@ -291,7 +291,7 @@ function updPlayer(dt){
     if(p.x>190){p.x=Math.max(190,p.x-150*dt);p.walk+=dt;p.moving=true;p.face=-1;}else p.moving=false;
   }else p.moving=false;
   if(p.dead||p.z>0||p.vz>0){p.vz-=GR*dt;p.z+=p.vz*dt;if(!p.dead&&p.z<=0){p.z=0;p.vz=0;}}   // やられたら床も抜けて落ちる
-  p.x=clamp(p.x,camX+14,EDGE()-14);       // スクロールの終わりで行き止まり
+  p.x=clamp(p.x,camX+14,LEN-26);          // スクロールの終わりで行き止まり（最上階も女性の後ろまでまわりこめる）
 }
 
 /* ===== ナイフ ===== */
@@ -318,6 +318,11 @@ function updKnives(dt){
           E.st='hurt';E.t=.18;E.noStun=1.4;E.vx=0;
         }
       }
+    }
+    // 最上階: ナイフは女性にも当たる（10回で裏技の勝利）
+    if(!k.dead&&G.stage===STAGES&&!G.cap.fly&&k.x>LEN-86&&k.x<LEN-52&&GY-k.y>-2&&GY-k.y<52){
+      k.dead=true;G.cap.hits++;G.cap.hit=.25;spark(k.x,k.y,'#ffd23c',6);SND.hit();
+      if(G.cap.hits>=10)win(true);
     }
     if(k.d>340||k.x<camX-40||k.x>camX+W+40)k.dead=true;
   }
@@ -404,8 +409,10 @@ function endClimb(){
   <div class="sc">SCORE ${sc6(G.score)}</div>
   <button class="btn" data-act="next">つぎのステージへ</button>`);
 }
-function win(){
-  G.state='win';G.t=2.2;E.dead=true;E.st='down';E.vz=230;E.kbv=-E.face*120;knives=[];   // はね飛ばされて画面の下へ落ちる
+function win(trick){
+  G.state='win';G.t=2.2;knives=[];
+  if(trick){G.trick=true;G.t=2.6;G.cap.fly=true;G.cap.vy=-200;G.cap.vx=-70;}   // 裏技: 女性が画面の下へ飛び出す
+  else{E.dead=true;E.st='down';E.vz=230;E.kbv=-E.face*120;}                  // 敵がはね飛ばされて画面の下へ落ちる
   G.score+=Math.floor(G.time)*10+(STAGES-G.stage+1)*1000;G.shake=.2;SND.win();   // 早く勝つほど高得点
 }
 function lose(why){
@@ -414,7 +421,7 @@ function lose(why){
 }
 function endWin(){
   G.state='end';showControls(false);saveBest();
-  showOverlay(`<h2>ゲームクリア！</h2><p>主人公をたおした！ ナイフマスターの かちだ！${G.stage<=2?'<br>（ステージ'+G.stage+'で決着）':''}</p>
+  showOverlay(`<h2>ゲームクリア！</h2><p>${G.trick?'裏技発見！ 女性が ふっとんでいった…':'主人公をたおした！ ナイフマスターの かちだ！'}${!G.trick&&G.stage<=2?'<br>（ステージ'+G.stage+'で決着）':''}</p>
   <div class="sc">SCORE ${sc6(G.score)}<br>BEST ${sc6(best)}</div>
   <button class="btn" data-act="retry">もういちど</button>
   <button class="btn sub" data-act="title">タイトルへ</button>${COPY}`);
@@ -438,6 +445,7 @@ function update(dt){
   const portrait=innerHeight>innerWidth;
   if(portrait&&(G.state==='play'||G.state==='intro')){pause();return;}
   G.shake=Math.max(0,G.shake-dt);
+  if(G.cap){const c=G.cap;c.hit-=dt;if(c.fly){c.x+=c.vx*dt;c.vy+=GR*dt;c.y+=c.vy*dt;}}
   for(const q of parts){q.x+=q.vx*dt;q.y+=q.vy*dt;q.vy+=600*dt;q.t-=dt;}
   parts=parts.filter(q=>q.t>0);
   if(!P)return;
@@ -467,6 +475,10 @@ function drawCaptive(ox){
   R(X+26,Y-44,5,44,wood);R(X+26,Y-44,5,3,wood2);                       // 背もたれ
   R(X,Y-12,30,3,wood);R(X,Y-12,30,1,wood2);                            // 座面
   R(X+1,Y-9,3,9,wood);R(X+24,Y-9,3,9,wood);                            // 脚
+  // ここから女性（ナイフが当たるとゆれ、10回で画面の下へ飛ぶ）
+  cx.save();
+  const c=G.cap,sh=c.hit>0?Math.round((Math.random()-.5)*3):0;
+  cx.translate(Math.round(c.x)+sh,Math.round(c.y));
   // 脚と足
   R(X+1,Y-17,26,5,red);R(X+1,Y-17,26,1,red2);                          // ふともも（スカート）
   R(X+1,Y-12,5,9,red);R(X+2,Y-6,3,3,skin);R(X,Y-3,7,3,red2);           // ひざ下と足
@@ -481,6 +493,7 @@ function drawCaptive(ox){
   R(X+13,Y-46,10,10,skin);
   R(X+12,Y-48,13,4,hair);R(X+22,Y-46,4,10,hair);R(X+23,Y-52,5,5,hair);R(X+24,Y-50,2,2,gold);   // 髪とおだんご、かんざし
   R(X+14,Y-42,2,2,'#14141c');R(X+14,Y-38,2,1,'#c04858');               // 目と口
+  cx.restore();
 }
 
 /* ===== 描画：背景 ===== */
