@@ -58,14 +58,16 @@ canvas,.pad,.pbtn{touch-action:none}
 .card .en{margin:2px 0 0;letter-spacing:.4em;color:#7cf08a;font-size:12px;text-shadow:0 1px 3px #000}
 /* タイトル画面: 画像を全面に敷き、上にタイトル、下にボタン */
 #overlay.title{background:#000 url(title.jpg) center 35%/cover no-repeat;padding:0}
-#overlay.title::before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,0) 28%,rgba(0,0,0,0) 45%,rgba(0,0,0,.82))}
+#overlay.title::before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,0) 30%,rgba(0,0,0,0) 62%,rgba(0,0,0,.78))}
 #overlay.title .card{position:relative;height:100%;max-width:none;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;padding:max(6px,env(safe-area-inset-top,0px)) 14px max(6px,env(safe-area-inset-bottom,0px))}
-#overlay.title h1{font-size:clamp(26px,9vh,44px)}
+.tTop{display:flex;justify-content:center}
+.logo{height:min(38vh,150px);width:auto;max-width:60vw;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.65));-webkit-user-drag:none;pointer-events:none}
 .tBot{display:flex;flex-direction:column;align-items:center}
-.tBot .btn{margin:4px auto 0;padding:9px 10px;font-size:16px}
-.tBot .btn.sub{font-size:13px;padding:6px 10px}
-.tInfo{margin:4px 0 0!important;font-size:11px!important;color:#fff!important;text-shadow:0 1px 3px #000}
-.tBot .copy{margin-top:2px;color:#ddd;text-shadow:0 1px 3px #000;font-size:10px}
+.tBtns{display:flex;gap:10px;justify-content:center}
+.tBtns .btn{margin:0;width:auto;padding:6px 18px;font-size:14px;border-width:2px;border-radius:10px;box-shadow:0 3px 0 #8a2a08}
+.tBtns .btn.sub{font-size:12px;padding:6px 14px;box-shadow:0 3px 0 #141a38}
+.tInfo{margin:6px 0 0!important;font-size:10px!important;color:#fff!important;text-shadow:0 1px 3px #000;white-space:nowrap}
+.tCopy{margin-left:12px;color:#ddd}
 .card .sc{font-family:"Press Start 2P",monospace;font-size:13px;color:#7cf08a;line-height:1.9}
 .rules{display:inline-block;text-align:left;font-size:12px;line-height:1.7;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px 12px;margin:8px 0;font-weight:600}
 .rules b{color:#ffd23c}
@@ -244,11 +246,10 @@ function hideOverlay(){$('overlay').hidden=true;}
 function sc6(n){return String(n).padStart(6,'0');}
 function showTitle(){
   G.state='title';showControls(false);bgmStop();
-  showOverlay(`<div class="tTop"><h1>ナイフマスター</h1><p class="en">KNIFE MASTER</p></div>
+  showOverlay(`<div class="tTop"><img class="logo" src="logo.webp" alt="ナイフマスター" draggable="false"></div>
   <div class="tBot">
-   <button class="btn" data-act="start">ゲームスタート</button>
-   <button class="btn sub" data-act="howto">あそびかた</button>
-   <p class="tInfo">ベストスコア ${sc6(best)}</p>${COPY}
+   <div class="tBtns"><button class="btn" data-act="start">ゲームスタート</button><button class="btn sub" data-act="howto">あそびかた</button></div>
+   <p class="tInfo">ベストスコア ${sc6(best)}<span class="tCopy">${COPY.replace(/<[^>]+>/g,'')}</span></p>
   </div>`);
   $('overlay').classList.add('title');                   // タイトル画像（title.jpg）を背景にする
 }
