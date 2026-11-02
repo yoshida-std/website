@@ -5,8 +5,9 @@
 - authors.json の作者ごとに、スタンプと絵文字の一覧ページ（日本語）を全ページ巡回する。着せ替えは対象外。
 - キーは商品ID。items 以外の設定（title, button, pixelArt, autoShow など）は既存のカタログから引き継ぐ。
 - 各商品に英語名 nameEn も付ける（英語版の作者ページ /en を同じ要領で巡回して、商品IDで突き合わせる）。
+- 各商品に日本語の説明文 description も付ける（商品ページ /product/ID/ja を読む）。すでに持っている商品は読み直さず、新商品と未取得の商品だけ読む。全件巡回（FULL_RUN=1）のときは全商品を読み直す。
 - 差分の判定: 日本語版の一覧の1ページ目（新しい順）だけを読み、カタログの先頭と同じなら「更新なし」で終わる。
-  新しい商品・名前の変更があるとき、nameEn がまだ無いとき、環境変数 FULL_RUN=1 のときは全ページ巡回する（週1回の全件巡回で、古い商品の変更・販売終了も拾う）。
+  新しい商品・名前の変更があるとき、nameEn・description がまだ無いとき、環境変数 FULL_RUN=1 のときは全ページ巡回する（週1回の全件巡回で、古い商品の変更・販売終了も拾う）。
 - 取得に失敗したと思われるとき（ページを読めない、0件、前回より大きく減った）は書き換えずに異常終了する。
 """
 import json
@@ -147,9 +148,28 @@ def fetch_author_items(author_id, item_type, lang="ja", first_page_only=False):
     return items
 
 
+def fetch_description(item_id, item_type):
+    """商品ページ（日本語）から説明文を取り出す。ページが無ければ空文字"""
+    soup = get_soup(f"{STORE}/{SHOPS[item_type]}/product/{item_id}/ja?country=JP")
+    if soup is None:
+        return ""
+    # ページ内の説明欄（data-test が description で終わるもの）を優先し、無ければ og:description
+    for tag in soup.find_all(attrs={"data-test": re.compile("description$")}):
+        text = clean_multiline(tag.get_text("\n"))
+        if text:
+            return text
+    meta = soup.find("meta", attrs={"property": "og:description"})
+    return clean_multiline(meta.get("content")) if meta else ""
+
+
+def clean_multiline(text):
+    lines = [line.strip() for line in (text or "").replace("\r", "").split("\n")]
+    return "\n".join(line for line in lines if line).strip()
+
+
 def is_unchanged(authors, old_items):
     """日本語版の1ページ目が、カタログの内容・並びと同じか調べる（同じなら更新不要）"""
-    if not old_items or any("nameEn" not in v for v in old_items.values()):
+    if not old_items or any("nameEn" not in v or "description" not in v for v in old_items.values()):
         return False
     old_ids = list(old_items)
     for author in authors:
@@ -204,6 +224,20 @@ def main():
                     for item_id, en in fetch_author_items(author_id, item_type, "en").items():
                         if item_id in items and en["name"]:
                             items[item_id]["nameEn"] = en["name"]
+        full = os.environ.get("FULL_RUN") == "1"
+        old_items = catalog.get("items") or {}
+        for item_id, item in items.items():
+            old = old_items.get(item_id) or {}
+            if "description" in old and not full:
+                item["description"] = old["description"]
+                continue
+            try:
+                item["description"] = fetch_description(item_id, item["type"])
+            except FetchError as e:
+                # 1商品の失敗では止めない。説明文は付けず、次回また読む
+                print(f"  説明文を読めませんでした（ID: {item_id}）: {e}")
+                if "description" in old:
+                    item["description"] = old["description"]
         for item in items.values():
             item.setdefault("nameEn", "")  # 英語名が無い商品も印を付ける（差分判定のため）
     except FetchError as e:
