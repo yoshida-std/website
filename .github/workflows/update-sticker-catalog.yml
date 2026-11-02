@@ -31,7 +31,14 @@ jobs:
         run: pip install requests beautifulsoup4
 
       - name: Build catalog from LINE STORE
-        run: python .github/scripts/build_sticker_catalog.py .github/scripts/authors.json "$CATALOG"
+        # 日曜の定期実行と手動実行は全ページ巡回。それ以外の日は1ページ目に差分があるときだけ
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ] || [ "$(TZ=Asia/Tokyo date +%u)" = "7" ]; then
+            export FULL_RUN=1
+          fi
+          python .github/scripts/build_sticker_catalog.py .github/scripts/authors.json "$CATALOG"
 
       - name: Commit if changed
         run: |

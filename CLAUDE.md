@@ -36,6 +36,8 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 - `sticker-catalog.json` … カタログ。キーは LINE STORE の商品ID（スタンプは数字、絵文字は英数字24桁）。着せ替えは対象外。手で編集しない
 - カタログは `.github/workflows/update-sticker-catalog.yml` が毎日 9:00（日本時間）に作り直し、`main` にコミットする。Actions の画面から手動でも実行できる
   - `.github/scripts/build_sticker_catalog.py` が LINE STORE の作者ページ（日本語）を巡回する（旧 generate_list の処理を移したもの。CSV は作らない）
+  - 各商品に英語名 `nameEn` も付く（英語版の作者ページ `/en` も巡回して商品IDで突き合わせる。無い商品は空文字）。`portfolio/line/` の絞り込みは英語名も対象
+  - 差分判定: 日本語版の一覧の1ページ目だけ読み、カタログの先頭と名前・並びが同じなら更新しない。新商品・名前の変更・`nameEn` が無い項目があるときは全ページ巡回する。日曜（日本時間）の定期実行と手動実行は常に全ページ巡回（環境変数 `FULL_RUN=1`）
   - 巡回する作者は `.github/scripts/authors.json`（`sticker_id` と `emoji_id` を使う。`theme_id` は使わない）
   - ページを読めない、0件、前回より2割以上減った、のどれかなら取得失敗とみなして更新しない（Actions は失敗になる）
   - この作業環境からは LINE STORE に接続できない。動作確認はテスト用のサーバーを立て、環境変数 `LINE_STORE_BASE` と `REQUEST_INTERVAL=0` を指定して行う

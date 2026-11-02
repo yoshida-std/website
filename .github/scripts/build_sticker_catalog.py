@@ -4,6 +4,9 @@
 
 - authors.json の作者ごとに、スタンプと絵文字の一覧ページ（日本語）を全ページ巡回する。着せ替えは対象外。
 - キーは商品ID。items 以外の設定（title, button, pixelArt, autoShow など）は既存のカタログから引き継ぐ。
+- 各商品に英語名 nameEn も付ける（英語版の作者ページ /en を同じ要領で巡回して、商品IDで突き合わせる）。
+- 差分の判定: 日本語版の一覧の1ページ目（新しい順）だけを読み、カタログの先頭と同じなら「更新なし」で終わる。
+  新しい商品・名前の変更があるとき、nameEn がまだ無いとき、環境変数 FULL_RUN=1 のときは全ページ巡回する（週1回の全件巡回で、古い商品の変更・販売終了も拾う）。
 - 取得に失敗したと思われるとき（ページを読めない、0件、前回より大きく減った）は書き換えずに異常終了する。
 """
 import json
@@ -125,11 +128,11 @@ def product_url(item_type, item_id):
     return f"https://line.me/S/emoji/?id={item_id}"
 
 
-def fetch_author_items(author_id, item_type):
-    """作者の一覧を全ページ巡回する"""
-    base = f"{STORE}/{SHOPS[item_type]}/author/{author_id}/ja"
+def fetch_author_items(author_id, item_type, lang="ja", first_page_only=False):
+    """作者の一覧を全ページ巡回する（first_page_only なら1ページ目だけ）"""
+    base = f"{STORE}/{SHOPS[item_type]}/author/{author_id}/{lang}"
     items = {}
-    for page in range(1, MAX_PAGES + 1):
+    for page in range(1, (1 if first_page_only else MAX_PAGES) + 1):
         url = f"{base}?page={page}&country=JP"
         soup = get_soup(url)
         if soup is None:
@@ -140,8 +143,31 @@ def fetch_author_items(author_id, item_type):
         if not new:
             break
         items.update(new)
-    print(f"  {SHOPS[item_type]} の作者ページ (ID: {author_id}): {len(items)} 件")
+    print(f"  {SHOPS[item_type]} {lang} の作者ページ (ID: {author_id}): {len(items)} 件")
     return items
+
+
+def is_unchanged(authors, old_items):
+    """日本語版の1ページ目が、カタログの内容・並びと同じか調べる（同じなら更新不要）"""
+    if not old_items or any("nameEn" not in v for v in old_items.values()):
+        return False
+    old_ids = list(old_items)
+    for author in authors:
+        for item_type, key in (("sticker", "sticker_id"), ("emoji", "emoji_id")):
+            author_id = valid_id(author.get(key))
+            if not author_id:
+                continue
+            page = fetch_author_items(author_id, item_type, "ja", first_page_only=True)
+            last = -1
+            for item_id, item in page.items():
+                old = old_items.get(item_id)
+                if not old or old.get("name") != item["name"] or old.get("type") != item["type"]:
+                    return False
+                pos = old_ids.index(item_id)
+                if pos <= last:
+                    return False
+                last = pos
+    return True
 
 
 def valid_id(value):
@@ -164,6 +190,9 @@ def main():
 
     items = {}
     try:
+        if os.environ.get("FULL_RUN") != "1" and is_unchanged(authors, catalog.get("items") or {}):
+            print("1ページ目に変更はありません。カタログは更新しません。")
+            return
         for author in authors:
             print(f"作者: {author.get('author_name', '')}")
             for item_type, key in (("sticker", "sticker_id"), ("emoji", "emoji_id")):
@@ -171,6 +200,12 @@ def main():
                 if author_id:
                     for item_id, item in fetch_author_items(author_id, item_type).items():
                         items.setdefault(item_id, item)
+                    # 英語名（日本語版にある商品だけ付ける）
+                    for item_id, en in fetch_author_items(author_id, item_type, "en").items():
+                        if item_id in items and en["name"]:
+                            items[item_id]["nameEn"] = en["name"]
+        for item in items.values():
+            item.setdefault("nameEn", "")  # 英語名が無い商品も印を付ける（差分判定のため）
     except FetchError as e:
         sys.exit(f"取得に失敗しました。カタログは更新しません: {e}")
 
