@@ -275,7 +275,7 @@
       var map = JSON.parse(text).items || {};
       items = catalogOrder(text, map).map(function (id) {
         var v = map[id];
-        return { id: id, type: v.type, name: v.name, url: v.url, image: v.image, key: norm(v.name) };
+        return { id: id, type: v.type, name: v.name, url: v.url, image: v.image, key: norm(v.name + " " + (v.nameEn || "")) };
       });
       ["sticker", "emoji"].forEach(function (t) {
         var n = items.filter(function (it) { return it.type === t; }).length;
