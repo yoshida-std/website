@@ -4,7 +4,7 @@
 
 ROWS      = 31          ; 迷路の行数(1行=16px)
 START_CAM = 256         ; 開始時のカメラ(世界座標で画面の一番上のy) = 31*16-240
-NROBMAX   = 5           ; ロボの最大数(ステージ5で5体)
+NROBMAX   = 5           ; 白いロボの最大数(ステージ5で5体)。番号5は赤いロボ
 STAGES    = 5
 TRAP_T    = 105         ; 穴から這い出るまで(2フレーム単位 ≒ 3.5秒)
 INVINC    = 150         ; ミス後の無敵(フレーム)
@@ -107,6 +107,9 @@ swcy:   .res 1
 swon:   .res 1
 freezes:.res 1          ; スクロールが止まっている残り秒
 freezef:.res 1
+rspr:   .res 1          ; 赤いロボの速さ
+redsp:  .res 1          ; 1=赤いロボは出た
+soff:   .res 1          ; 出現位置: 画面の上端からの行数
 face:   .res 1          ; 向いている方向(1=右 2=左 4=下 8=上)
 digbuf: .res 1          ; 掘るボタンの入力をためておく(フレーム)
 digheld:.res 1
@@ -134,15 +137,15 @@ sx:     .res 96         ; 迷路生成のスタック(部屋のx)。ゲーム中
 sy:     .res 96
 cand:   .res 4
 dist:   .res 256        ; 主人公までの歩数。(行&15)*16+列。bit7=世代、下位7bit=歩数
-rpx:    .res 5          ; ロボ: x
-rpl:    .res 5          ; y下位
-rph:    .res 5          ; y上位
-rmd:    .res 5          ; 進む向き(1=右 2=左 4=下 8=上、0=止まり)
-rst:    .res 5          ; 0=待機中 1=歩く 2=穴にはまっている
-rtm:    .res 5          ; 待機・這い出るまでの残り(2フレーム単位)
-racc:   .res 5          ; 速さの小数
-rimm:   .res 5          ; 1=這い出た直後(その穴では落ちない)
-rstp:   .res 5          ; 1=頭を踏まれた
+rpx:    .res 6          ; ロボ: x
+rpl:    .res 6          ; y下位
+rph:    .res 6          ; y上位
+rmd:    .res 6          ; 進む向き(1=右 2=左 4=下 8=上、0=止まり)
+rst:    .res 6          ; 0=待機中 1=歩く 2=穴にはまっている
+rtm:    .res 6          ; 待機・這い出るまでの残り(2フレーム単位)
+racc:   .res 6          ; 速さの小数
+rimm:   .res 6          ; 1=這い出た直後(その穴では落ちない)
+rstp:   .res 6          ; 1=頭を踏まれた
 hx:     .res 8          ; 穴(最大8): マスの列・行・残り時間(2フレーム単位。0=なし)
 hy:     .res 8
 ht:     .res 8
@@ -328,6 +331,7 @@ newgame:
 
 stg_cam:  .byte 61, 72, 82, 92, 96          ; スクロール速度(1/256px/フレーム)=0.90〜1.40マス/秒
 stg_rspd: .byte 116, 133, 147, 160, 174     ; ロボの速さ=1.70〜2.55マス/秒
+stg_red:  .byte 198, 205, 212, 218, 232     ; 赤いロボの速さ=2.9〜3.4マス/秒
 stg_resp: .byte 240, 210, 186, 162, 138     ; やられたロボの復活待ち(2フレーム単位)=8.0〜4.6秒
 
 
@@ -404,12 +408,16 @@ start_game:
     sta rspd
     lda stg_resp,x
     sta rrsp
+    lda stg_red,x
+    sta rspr
+    lda #0
+    sta redsp
     lda stage           ; ロボの数 = ステージ番号
     sta nrob
     sec
     sbc #1
     sta nrobm1
-    ldx #NROBMAX-1      ; ロボは待機から(2秒+1.4秒ずつずらして出る)
+    ldx #5              ; ロボは待機から(番号5は赤いロボ=スクロールが止まるまで出ない)(2秒+1.4秒ずつずらして出る)
 :   lda #0
     sta rst,x
     sta rmd,x
@@ -1658,7 +1666,31 @@ update_robots:
     dec invinc
 :   lda #0
     sta rc
-@r: ldx rc
+@l: jsr robot_one
+    inc rc
+    lda rc
+    cmp nrob
+    bne @l
+    lda #5              ; 赤いロボ
+    sta rc
+    jsr robot_one
+    lda redsp           ; スクロールが止まったら、画面の下から赤いロボが1体登場する
+    bne @r
+    lda camlo
+    ora camhi
+    bne @r
+    lda #13
+    sta soff
+    lda #5
+    sta rc
+    jsr spawn_robot
+    lda #1
+    sta redsp
+@r: rts
+
+; ロボ(rc番)を1体ぶん動かす
+robot_one:
+    ldx rc
     lda rst,x
     beq @wait
     lda rpl,x           ; 画面の下に流れたロボは待機に戻る
@@ -1675,7 +1707,11 @@ update_robots:
 @drop:
     lda #0
     sta rst,x
-    lda rrsp
+    cpx #5
+    bne :+
+    sta redsp           ; 赤いロボは画面の外に出たら、また下から出し直す
+    jmp @next
+:   lda rrsp
     sta rtm,x
     jmp @next
 @inscr:
@@ -1685,6 +1721,11 @@ update_robots:
     jsr robot_walk
     jmp @next
 @wait:
+    cpx #5              ; 赤いロボはここでは出さない
+    beq @next
+    lda camlo           ; スクロールが止まったあとは白いロボは出ない
+    ora camhi
+    beq @next
     lda fc
     and #1
     bne @next
@@ -1693,6 +1734,8 @@ update_robots:
     dec rtm,x
     jmp @next
 @spawn:
+    lda #1
+    sta soff
     jsr spawn_robot
     jmp @next
 @trap:
@@ -1707,12 +1750,7 @@ update_robots:
     lda #0
     sta rmd,x
 @next:
-    jsr robot_hero
-    inc rc
-    lda rc
-    cmp nrob
-    bne @r
-    rts
+    jmp robot_hero
 
 ; 画面の上のほうの空いた部屋に出す(rc番)
 spawn_robot:
@@ -1737,8 +1775,8 @@ spawn_robot:
     asl
     ora u
     clc
-    adc #1
-    ora #1              ; 画面の上端の少し下の奇数行
+    adc soff
+    ora #1              ; 画面の上端から soff 行下の奇数行
     cmp #30
     bcc :+
     lda #29
@@ -1788,9 +1826,12 @@ rcell:
 
 robot_walk:
     ldx rc
-    lda racc,x
-    clc
-    adc rspd
+    lda rspd
+    cpx #5
+    bne :+
+    lda rspr            ; 赤いロボはもっと速い
+:   clc
+    adc racc,x
     sta racc,x
     bcs @go
     rts
@@ -1990,7 +2031,7 @@ near:
 
 ; 主人公のいるマスに、穴にはまったロボがいたらC=1(頭の上は歩ける)
 trapped_here:
-    ldx nrobm1
+    ldx #5
 @t: lda rst,x
     cmp #2
     bne @n
@@ -2032,7 +2073,7 @@ crush_cell:
     lsr
     lsr
     sta tmp             ; y上位
-    ldx nrobm1
+    ldx #5
 @c: lda rst,x
     cmp #2
     bne @n
@@ -2050,8 +2091,11 @@ crush_cell:
     lda rrsp
     sta rtm,x
     stx hidx2
-    lda #3
-    jsr addscore
+    lda #3              ; 白いロボ +300
+    cpx #5
+    bne :+
+    lda #10             ; 赤いロボ +1000
+:   jsr addscore
     ldx hidx2
 @n: dex
     bpl @c
@@ -2600,7 +2644,11 @@ draw_all:
     lda #0
     sta cfl
     sta chalf
-    sta cat             ; パレット0=白
+    ldx rc
+    cpx #5
+    bne :+
+    lda #2              ; 赤いロボはパレット2
+:   sta cat
     lda rst,x
     cmp #2
     bne :+
@@ -2651,9 +2699,15 @@ draw_all:
     inc rc
     lda rc
     cmp nrob
-    beq :+
+    beq @dred
+    cmp #6
+    beq @ddone
     jmp @dr
-:
+@dred:
+    lda #5              ; 最後に赤いロボ
+    sta rc
+    jmp @dr
+@ddone:
     ; 残機(左上に縦3つ。主人公の頭のタイル)
     ldy #112
     ldx #1
