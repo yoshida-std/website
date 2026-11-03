@@ -4,10 +4,9 @@
 
 ROWS      = 31          ; 迷路の行数(1行=16px)
 START_CAM = 256         ; 開始時のカメラ(世界座標で画面の一番上のy) = 31*16-240
-NROB      = 2           ; ロボの数(最大4)。ブラウザ版はステージ1が1体、以降1体ずつ増える
-RSPEED    = 116         ; ロボの速さ: 1フレームに進む量(1/256px)。116/256*60/16 ≒ 1.7マス/秒
+NROBMAX   = 5           ; ロボの最大数(ステージ5で5体)
+STAGES    = 5
 TRAP_T    = 105         ; 穴から這い出るまで(2フレーム単位 ≒ 3.5秒)
-RESP_T    = 240         ; やられたロボが戻るまで(2フレーム単位 = 8秒)
 INVINC    = 150         ; ミス後の無敵(フレーム)
 HOLE_T    = 165         ; 穴がふさがるまで(2フレーム単位 = 約5.5秒)
 HOLE_SMALL= 45          ; この残りで小さくなる
@@ -15,7 +14,6 @@ HOLE_SMALL= 45          ; この残りで小さくなる
 LIVES0    = 3           ; 最初の残機(ミスは3回まで)
 .endif
 PAUSE_FR  = 120         ; 復活後にスクロールが止まるフレーム数(2秒)
-CAM_SPEED = 61          ; 1フレームに上へ進む量(1/256px単位)。61/256*60 ≒ 14.3px/秒 ≒ 0.9マス/秒
 
 .segment "HEADER"
     .byte "NES", $1A
@@ -93,6 +91,13 @@ bc:     .res 1
 bd:     .res 1
 kk:     .res 1
 dg:     .res 5          ; スコア(10000,1000,100,10,1の位)
+stage:  .res 1          ; 1〜5
+clear:  .res 1          ; 1=ステージクリア(Start待ち)
+camspd: .res 1          ; このステージの変数(表から)
+rspd:   .res 1
+rrsp:   .res 1
+nrob:   .res 1
+nrobm1: .res 1
 face:   .res 1          ; 向いている方向(1=右 2=左 4=下 8=上)
 digbuf: .res 1          ; 掘るボタンの入力をためておく(フレーム)
 digheld:.res 1
@@ -119,15 +124,15 @@ sx:     .res 96         ; 迷路生成のスタック(部屋のx)。ゲーム中
 sy:     .res 96
 cand:   .res 4
 dist:   .res 256        ; 主人公までの歩数。(行&15)*16+列。bit7=世代、下位7bit=歩数
-rpx:    .res 4          ; ロボ: x
-rpl:    .res 4          ; y下位
-rph:    .res 4          ; y上位
-rmd:    .res 4          ; 進む向き(1=右 2=左 4=下 8=上、0=止まり)
-rst:    .res 4          ; 0=待機中 1=歩く 2=穴にはまっている
-rtm:    .res 4          ; 待機・這い出るまでの残り(2フレーム単位)
-racc:   .res 4          ; 速さの小数
-rimm:   .res 4          ; 1=這い出た直後(その穴では落ちない)
-rstp:   .res 4          ; 1=頭を踏まれた
+rpx:    .res 5          ; ロボ: x
+rpl:    .res 5          ; y下位
+rph:    .res 5          ; y上位
+rmd:    .res 5          ; 進む向き(1=右 2=左 4=下 8=上、0=止まり)
+rst:    .res 5          ; 0=待機中 1=歩く 2=穴にはまっている
+rtm:    .res 5          ; 待機・這い出るまでの残り(2フレーム単位)
+racc:   .res 5          ; 速さの小数
+rimm:   .res 5          ; 1=這い出た直後(その穴では落ちない)
+rstp:   .res 5          ; 1=頭を踏まれた
 hx:     .res 8          ; 穴(最大8): マスの列・行・残り時間(2フレーム単位。0=なし)
 hy:     .res 8
 ht:     .res 8
@@ -220,10 +225,15 @@ main:
     bne :+
     inc seed+1
 :   lda title
-    bne @title
-    lda gover
-    bne @over
-    jsr update_hero
+    beq :+
+    jmp @title
+:   lda clear
+    beq :+
+    jmp @clear
+:   lda gover
+    beq :+
+    jmp @over
+:   jsr update_hero
     jsr update_holes
     jsr update_robots
     jsr bfs_step
@@ -235,7 +245,7 @@ main:
     lda pad
     and #$10            ; Start で開始
     beq :+
-    jsr start_game
+    jsr newgame
     jmp main
 :   lda #<txt_push1
     sta tp
@@ -247,7 +257,7 @@ main:
     sta cx
     lda #104
     sta cy
-    lda #96
+    lda #112
     sta to
     jsr draw_text
     lda #<txt_push2
@@ -260,18 +270,56 @@ main:
     sta cx
     lda #120
     sta cy
-    lda #112
+    lda #132
     sta to
     jsr draw_text
+    jmp main
+@clear:
+    lda pad
+    and #$10            ; Start で次のステージ(5面のあとは最初から)
+    beq :+
+    lda stage
+    cmp #STAGES
+    bcs @again
+    inc stage
+    lda lives           ; ステージクリアで残機が1つ回復(上限3)
+    cmp #LIVES0
+    bcs @go
+    inc lives
+@go:
+    jsr start_game
+    jmp main
+@again:
+    jsr newgame
+    jmp main
+:   jsr draw_all
     jmp main
 @over:
     lda pad
     and #$10            ; Start でやり直し(新しい迷路)
     beq :+
-    jsr start_game
+    jsr newgame
     jmp main
 :   jsr draw_all
     jmp main
+
+; 最初から(1面・残機・スコアを戻して開始)
+newgame:
+    lda #1
+    sta stage
+    lda #LIVES0
+    sta lives
+    lda #0
+    ldx #4
+:   sta dg,x
+    dex
+    bpl :-
+    jmp start_game
+
+stg_cam:  .byte 61, 72, 82, 92, 96          ; スクロール速度(1/256px/フレーム)=0.90〜1.40マス/秒
+stg_rspd: .byte 116, 133, 147, 160, 174     ; ロボの速さ=1.70〜2.55マス/秒
+stg_resp: .byte 240, 210, 186, 162, 138     ; やられたロボの復活待ち(2フレーム単位)=8.0〜4.6秒
+
 
 ; ---------------------------------------------------------------- 開始
 ; 描画を止めて、新しい迷路を作り、最初の状態にして、描画を再開する
@@ -327,13 +375,23 @@ start_game:
     sta chalf
     sta bfs_on
     sta epoch
-    ldx #4
-:   dex
-    sta dg,x
-    bne :-
-    ldx #3              ; ロボは待機から(2秒+1.4秒ずつずらして出る)
-    lda #0
-:   sta rst,x
+    sta clear
+    ldx stage           ; このステージの速さなど(表は0始まり)
+    dex
+    lda stg_cam,x
+    sta camspd
+    lda stg_rspd,x
+    sta rspd
+    lda stg_resp,x
+    sta rrsp
+    lda stage           ; ロボの数 = ステージ番号
+    sta nrob
+    sec
+    sbc #1
+    sta nrobm1
+    ldx #NROBMAX-1      ; ロボは待機から(2秒+1.4秒ずつずらして出る)
+:   lda #0
+    sta rst,x
     sta rmd,x
     sta racc,x
     sta rimm,x
@@ -348,6 +406,8 @@ start_game:
     sta rtm+2
     lda #186
     sta rtm+3
+    lda #228
+    sta rtm+4
     ldx #0              ; 距離マップは「遠い」で埋める
     lda #$7F
 :   sta dist,x
@@ -355,8 +415,6 @@ start_game:
     bne :-
     lda #8
     sta face
-    lda #LIVES0
-    sta lives
     jsr gen_maze
     ; 画面に最初から出る行(マス行16〜30)を背景に書いておく
     lda #(START_CAM / 16)
@@ -612,6 +670,19 @@ gen_maze:
     jsr opencell
 @ne:dec cur
     bne @e
+    ; 出口: 一番上の行(行0)の、奇数列のどれか1か所。下の部屋は必ず空いている
+    lda #6
+    sta md
+    jsr rand
+    jsr rmod
+    asl
+    clc
+    adc #1
+    tay
+    lda #3
+    sta sd
+    lda #0
+    jsr setcell
     ; 一番下の通路(行29)は全部あける
     ldy #1
 @b: lda #29
@@ -756,7 +827,7 @@ update_cam:
     beq @fin
     lda camf
     sec
-    sbc #CAM_SPEED
+    sbc camspd
     sta camf
     lda camlo
     sbc #0
@@ -834,7 +905,11 @@ build_row:
     beq @fl
     lda (ptr),y
     beq @fl
+    cmp #3
+    beq @gl
     lda #2              ; 壁
+    bne @st
+@gl:lda #11             ; ゴール
     bne @st
 @fl:lda #1              ; 床
 @st:sta rowbuf,x
@@ -1403,6 +1478,25 @@ update_robots:
 @r: ldx rc
     lda rst,x
     beq @wait
+    lda rpl,x           ; 画面の下に流れたロボは待機に戻る
+    sec
+    sbc camlo
+    sta u
+    lda rph,x
+    sbc camhi
+    bmi @inscr
+    bne @drop
+    lda u
+    cmp #240
+    bcc @inscr
+@drop:
+    lda #0
+    sta rst,x
+    lda rrsp
+    sta rtm,x
+    jmp @next
+@inscr:
+    lda rst,x
     cmp #2
     beq @trap
     jsr robot_walk
@@ -1433,7 +1527,7 @@ update_robots:
     jsr robot_hero
     inc rc
     lda rc
-    cmp #NROB
+    cmp nrob
     bne @r
     rts
 
@@ -1513,7 +1607,7 @@ robot_walk:
     ldx rc
     lda racc,x
     clc
-    adc #RSPEED
+    adc rspd
     sta racc,x
     bcs @go
     rts
@@ -1713,7 +1807,7 @@ near:
 
 ; 主人公のいるマスに、穴にはまったロボがいたらC=1(頭の上は歩ける)
 trapped_here:
-    ldx #NROB-1
+    ldx nrobm1
 @t: lda rst,x
     cmp #2
     bne @n
@@ -1755,7 +1849,7 @@ crush_cell:
     lsr
     lsr
     sta tmp             ; y上位
-    ldx #NROB-1
+    ldx nrobm1
 @c: lda rst,x
     cmp #2
     bne @n
@@ -1770,7 +1864,7 @@ crush_cell:
     bne @n
     lda #0
     sta rst,x
-    lda #RESP_T
+    lda rrsp
     sta rtm,x
     stx hidx2
     lda #3
@@ -1881,7 +1975,7 @@ do_miss:
     sta campause
     lda #INVINC
     sta invinc
-    ldx #NROB-1         ; 復活した場所の近く(3マス以内)にいたロボだけ、いったん待機に戻る(3秒)
+    ldx nrobm1          ; 復活した場所の近く(3マス以内)にいたロボだけ、いったん待機に戻る(3秒)
 :   lda rst,x
     beq @nx
     lda #48
@@ -1927,6 +2021,28 @@ update_hero:
 @center:
     lda #0              ; --- マスの中心
     sta mdir
+    lda pylo            ; ゴールのマスなら ステージクリア
+    sta u
+    lda pyhi
+    sta v
+    jsr tocell
+    tax
+    lda px
+    jsr mapat
+    cmp #3
+    bne @notgoal
+    lda lives           ; ボーナス: 1000点 + 残機x500点
+    asl
+    asl
+    clc
+    adc lives
+    clc
+    adc #10
+    jsr addscore
+    lda #1
+    sta clear
+    rts
+@notgoal:
     lda hstate          ; 穴に落ちている間は動けない(1秒で這い出る)
     cmp #1
     bne @notstuck
@@ -2282,12 +2398,12 @@ draw_all:
 @dn:
     inc rc
     lda rc
-    cmp #NROB
+    cmp nrob
     beq :+
     jmp @dr
 :
     ; 残機(左上に縦3つ。主人公の頭のタイル)
-    ldy #80
+    ldy #96
     ldx #1
 @lv:
     stx tmp
@@ -2332,7 +2448,7 @@ draw_all:
     sta cx
     lda #104
     sta cy
-    lda #96
+    lda #112
     sta to
     jsr draw_text
     lda #<goover2
@@ -2343,12 +2459,12 @@ draw_all:
     sta cx
     lda #120
     sta cy
-    lda #112
+    lda #132
     sta to
     jsr draw_text
 @nogo:
-    ldx #0              ; スコア: 左の余白に縦に5桁(OAM 136〜)
-    ldy #136
+    ldx #0              ; スコア: 左の余白に縦に5桁(OAM 152〜)
+    ldy #152
 @sc:
     txa
     asl
@@ -2372,6 +2488,60 @@ draw_all:
     inx
     cpx #5
     bne @sc
+    lda #103            ; ステージ番号(スコアの下)
+    sta oam,y
+    lda stage
+    clc
+    adc #36
+    sta oam+1,y
+    lda #3
+    sta oam+2,y
+    lda #8
+    sta oam+3,y
+    ; ステージクリア
+    lda clear
+    beq @nocl
+    lda stage
+    cmp #STAGES
+    bcs @all
+    lda #<clr1          ; STAGE
+    sta tp
+    lda #>clr1
+    sta tp+1
+    lda #5
+    sta tn
+    lda #108
+    sta cx
+    jmp @cl2
+@all:
+    lda #<all1          ; ALL
+    sta tp
+    lda #>all1
+    sta tp+1
+    lda #3
+    sta tn
+    lda #116
+    sta cx
+@cl2:
+    lda #104
+    sta cy
+    lda #112
+    sta to
+    jsr draw_text
+    lda #<clr2          ; CLEAR
+    sta tp
+    lda #>clr2
+    sta tp+1
+    lda #5
+    sta tn
+    lda #108
+    sta cx
+    lda #120
+    sta cy
+    lda #132
+    sta to
+    jsr draw_text
+@nocl:
     rts
 
 ; 16x16キャラを4スプライトで描く。Y=OAMオフセット(呼ぶたび16進む)。cy=$FFなら隠す
@@ -2498,6 +2668,12 @@ palette:
     .byte $29,$09,$17,$27,  $29,$09,$17,$27,  $29,$09,$17,$27,  $29,$09,$17,$27
     ; スプライト0=白 1=黄 2=赤 3=予備(ふち,からだ,アクセント)
     .byte $29,$01,$30,$21,  $29,$01,$38,$27,  $29,$01,$16,$27,  $29,$01,$30,$21
+clr1:
+    .byte 33,35,25,24,27      ; S T A G E
+clr2:
+    .byte 46,47,27,25,30      ; C L E A R
+all1:
+    .byte 25,47,47            ; A L L
 goover1:
     .byte 24,25,26,27         ; G A M E
 goover2:
