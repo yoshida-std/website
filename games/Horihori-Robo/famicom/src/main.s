@@ -30,6 +30,8 @@ t2:     .res 1
 t3:     .res 1
 at:     .res 1
 tmp:    .res 1
+mdir:   .res 1          ; 移動中の向き(1=右 2=左 4=下 8=上、0=止まり)。パッドのビットと同じ
+sd:     .res 1
 bx0:    .res 1
 bx1:    .res 1
 by0:    .res 1
@@ -217,63 +219,81 @@ blocked:
     sec
     rts
 
+; マス単位で歩く(ブラウザ版と同じ)。マスの中心に来たときだけ向きを決め、
+; 次のマスまで1フレーム1pxずつ進む。途中で逆向きを押すと即座に戻れる。
 update_hero:
-    lda #0
-    sta moving
+    lda px
+    and #15
+    cmp #8              ; x座標はマス中心なら 24+16n → 下位4bitが8
+    bne @mid
+    lda py
+    and #15             ; y座標はマス中心なら 16n
+    bne @mid
+    lda #0              ; --- マスの中心: 向きを選ぶ
+    sta mdir
+    lda #1
+    jsr try_dir
+    lda mdir
+    bne @fin
+    lda #2
+    jsr try_dir
+    lda mdir
+    bne @fin
+    lda #4
+    jsr try_dir
+    lda mdir
+    bne @fin
+    lda #8
+    jsr try_dir
+    jmp @fin
+@mid:                   ; --- マスの途中: 逆向きなら反転、そのまま進む
+    lda mdir
+    and #3
+    beq @vert
+    eor #3
+    jmp @chk
+@vert:
+    lda mdir
+    eor #12
+@chk:
+    sta tmp
     lda pad
-    and #$01            ; 右
-    beq @noR
-    inc px
-    jsr blocked
-    bcc @okR
-    dec px
-@okR:
+    and tmp
+    beq @cont
+    lda tmp
+    sta mdir
+@cont:
+    lda mdir
+    jsr step_a
+@fin:
+    ; 見た目の向き
+    lda mdir
+    beq @idle
+    lsr
+    bcc :+
     lda #2
     sta dir
     lda #0
     sta flip
-    inc moving
-@noR:
-    lda pad
-    and #$02            ; 左
-    beq @noL
-    dec px
-    jsr blocked
-    bcc @okL
-    inc px
-@okL:
+    jmp @walk
+:   lda mdir
+    and #2
+    beq :+
     lda #2
     sta dir
     lda #1
     sta flip
-    inc moving
-@noL:
-    lda pad
-    and #$08            ; 上
-    beq @noU
-    dec py
-    jsr blocked
-    bcc @okU
-    inc py
-@okU:
-    lda #1
-    sta dir
-    inc moving
-@noU:
-    lda pad
-    and #$04            ; 下
-    beq @noD
-    inc py
-    jsr blocked
-    bcc @okD
-    dec py
-@okD:
+    jmp @walk
+:   lda mdir
+    and #4
+    beq :+
     lda #0
     sta dir
-    inc moving
-@noD:
-    lda moving
-    bne @walk
+    jmp @walk
+:   lda #1
+    sta dir
+    jmp @walk
+@idle:
     lda #0
     sta anim
     sta atimer
@@ -291,6 +311,70 @@ update_hero:
     and #3
     sta anim
 @done:
+    rts
+
+; A=向きのビット。押されていて、となりのマスが壁でなければ最初の1歩を進めて mdir に入れる
+; (当たり判定は内側2px引きなので、3px先まで試してとなりのマスに掛かるか見る)
+try_dir:
+    sta sd
+    lda pad
+    and sd
+    beq @no
+    lda sd
+    jsr step_a
+    lda sd
+    jsr step_a
+    lda sd
+    jsr step_a
+    jsr blocked
+    bcc @ok
+    lda sd
+    jsr unstep_a
+    lda sd
+    jsr unstep_a
+    lda sd
+    jsr unstep_a
+    rts
+@ok:
+    lda sd
+    jsr unstep_a
+    lda sd
+    jsr unstep_a
+    lda sd
+    sta mdir
+@no:
+    rts
+
+step_a:                 ; A=向きのビット(1,2,4,8)の向きに1px
+    lsr
+    bcc @a
+    inc px
+    rts
+@a: lsr
+    bcc @b
+    dec px
+    rts
+@b: lsr
+    bcc @c
+    inc py
+    rts
+@c: dec py
+    rts
+
+unstep_a:               ; step_a の逆
+    lsr
+    bcc @a
+    dec px
+    rts
+@a: lsr
+    bcc @b
+    inc px
+    rts
+@b: lsr
+    bcc @c
+    dec py
+    rts
+@c: inc py
     rts
 
 draw_all:

@@ -23,4 +23,5 @@ for (const step of script.split(',').filter(Boolean)) {
   for (let i = 0; i < +f; i++) nes.frame();
   nes.buttonUp(1, keys[k]);
   dump(`s${++n}_${k}`);
+  console.log(k, f, 'px=', nes.cpu.mem[1], 'py=', nes.cpu.mem[2], 'mdir=', nes.cpu.mem[0x0a]);
 }
