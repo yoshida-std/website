@@ -22,7 +22,9 @@ function dump(name) {
 for (let i = 0; i < 30; i++) nes.frame();
 dump('start');
 let n = 0;
+// ステップ: "キー:フレーム数" か、"poke=名前;オフセット;値"(RAMを書き換えてテスト状況を作る)
 for (const step of script.split(',').filter(Boolean)) {
+  if (step.startsWith('poke=')) { const [nm, off, val] = step.slice(5).split(';'); nes.cpu.mem[sym[nm] + +off] = +val; continue; }
   const [k, f] = step.split(':');
   if (keys[k] !== undefined) nes.buttonDown(1, keys[k]);
   for (let i = 0; i < +f; i++) nes.frame();

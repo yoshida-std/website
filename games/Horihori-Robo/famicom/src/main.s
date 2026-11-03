@@ -4,6 +4,11 @@
 
 ROWS      = 31          ; 迷路の行数(1行=16px)
 START_CAM = 256         ; 開始時のカメラ(世界座標で画面の一番上のy) = 31*16-240
+NROB      = 2           ; ロボの数(最大4)。ブラウザ版はステージ1が1体、以降1体ずつ増える
+RSPEED    = 116         ; ロボの速さ: 1フレームに進む量(1/256px)。116/256*60/16 ≒ 1.7マス/秒
+TRAP_T    = 105         ; 穴から這い出るまで(2フレーム単位 ≒ 3.5秒)
+RESP_T    = 240         ; やられたロボが戻るまで(2フレーム単位 = 8秒)
+INVINC    = 150         ; ミス後の無敵(フレーム)
 HOLE_T    = 165         ; 穴がふさがるまで(2フレーム単位 = 約5.5秒)
 HOLE_SMALL= 45          ; この残りで小さくなる
 .ifndef LIVES0
@@ -76,6 +81,18 @@ ny:     .res 1
 ncand:  .res 1
 tp:     .res 2          ; draw_text の文字表
 tn:     .res 1
+invinc: .res 1
+chalf:  .res 1          ; 1=上半分だけ描く(穴にはまったロボ)
+rc:     .res 1          ; 処理中のロボの番号
+epoch:  .res 1          ; 距離マップの世代($00/$80)
+bfs_on: .res 1
+bqh:    .res 1
+bqt:    .res 1
+btop:   .res 1          ; 距離マップが覆う一番上のマス行(16行分)
+bc:     .res 1
+bd:     .res 1
+kk:     .res 1
+dg:     .res 5          ; スコア(10000,1000,100,10,1の位)
 face:   .res 1          ; 向いている方向(1=右 2=左 4=下 8=上)
 digbuf: .res 1          ; 掘るボタンの入力をためておく(フレーム)
 digheld:.res 1
@@ -83,6 +100,7 @@ hstate: .res 1          ; 0=ふつう 1=穴に落ちて動けない 2=這い出�
 fallt:  .res 1
 fc:     .res 1
 hidx:   .res 1
+hidx2:  .res 1
 dcx:    .res 1
 dcy:    .res 1
 qhead:  .res 1
@@ -96,9 +114,20 @@ oam:    .res 256
 .segment "BSS"
 rowbuf: .res 32
 mapram: .res 512        ; 迷路(1行16バイト x 31行。1=壁)
-sx:     .res 96         ; 迷路生成のスタック(部屋のx)
+bq:
+sx:     .res 96         ; 迷路生成のスタック(部屋のx)。ゲーム中は距離マップのキューに使い回す
 sy:     .res 96
 cand:   .res 4
+dist:   .res 256        ; 主人公までの歩数。(行&15)*16+列。bit7=世代、下位7bit=歩数
+rpx:    .res 4          ; ロボ: x
+rpl:    .res 4          ; y下位
+rph:    .res 4          ; y上位
+rmd:    .res 4          ; 進む向き(1=右 2=左 4=下 8=上、0=止まり)
+rst:    .res 4          ; 0=待機中 1=歩く 2=穴にはまっている
+rtm:    .res 4          ; 待機・這い出るまでの残り(2フレーム単位)
+racc:   .res 4          ; 速さの小数
+rimm:   .res 4          ; 1=這い出た直後(その穴では落ちない)
+rstp:   .res 4          ; 1=頭を踏まれた
 hx:     .res 8          ; 穴(最大8): マスの列・行・残り時間(2フレーム単位。0=なし)
 hy:     .res 8
 ht:     .res 8
@@ -196,6 +225,8 @@ main:
     bne @over
     jsr update_hero
     jsr update_holes
+    jsr update_robots
+    jsr bfs_step
     jsr check_squeeze
     jsr update_cam
     jsr draw_all
@@ -216,7 +247,7 @@ main:
     sta cx
     lda #104
     sta cy
-    lda #64
+    lda #96
     sta to
     jsr draw_text
     lda #<txt_push2
@@ -229,7 +260,7 @@ main:
     sta cx
     lda #120
     sta cy
-    lda #80
+    lda #112
     sta to
     jsr draw_text
     jmp main
@@ -292,6 +323,36 @@ start_game:
 :   sta ht,x
     dex
     bpl :-
+    sta invinc
+    sta chalf
+    sta bfs_on
+    sta epoch
+    ldx #4
+:   dex
+    sta dg,x
+    bne :-
+    ldx #3              ; ロボは待機から(2秒+1.4秒ずつずらして出る)
+    lda #0
+:   sta rst,x
+    sta rmd,x
+    sta racc,x
+    sta rimm,x
+    sta rstp,x
+    dex
+    bpl :-
+    lda #60
+    sta rtm
+    lda #102
+    sta rtm+1
+    lda #144
+    sta rtm+2
+    lda #186
+    sta rtm+3
+    ldx #0              ; 距離マップは「遠い」で埋める
+    lda #$7F
+:   sta dist,x
+    inx
+    bne :-
     lda #8
     sta face
     lda #LIVES0
@@ -1000,7 +1061,8 @@ do_dig:
     ldy dcx
     lda dcy
     jsr setcell
-    jmp qfloor
+    jsr qfloor
+    jmp crush_cell
 
 ; A=y, Y=x に sd の値を書く
 setcell:
@@ -1099,6 +1161,7 @@ update_holes:
     lda dcy
     jsr setcell
     jsr qfloor
+    jsr crush_cell
     lda hstate          ; 中に落ちている主人公がいたらミス
     cmp #1
     bne @n
@@ -1125,6 +1188,596 @@ update_holes:
     dex
     bpl @h
 @done:
+    rts
+
+; ---------------------------------------------------------------- スコア
+; A=百点の数(1=100点) をスコアに足す
+addscore:
+    clc
+    adc dg+2
+    sta dg+2
+@a: lda dg+2
+    cmp #10
+    bcc @b
+    sbc #10
+    sta dg+2
+    inc dg+1
+    jmp @a
+@b: lda dg+1
+    cmp #10
+    bcc @c
+    sbc #10
+    sta dg+1
+    inc dg
+    jmp @b
+@c: lda dg
+    cmp #10
+    bcc @d
+    lda #9              ; 上限
+    sta dg
+    sta dg+1
+    sta dg+2
+    sta dg+3
+    sta dg+4
+@d: rts
+
+; ---------------------------------------------------------------- 主人公までの距離(幅優先探索)
+; 16フレームごとに主人公の居るマスから始めて、1フレームに24マスずつ広げる。
+; 結果は dist に(行&15)*16+列で入る。壁は通らない(穴は通る)。
+bfs_step:
+    lda bfs_on
+    bne @run
+    lda fc
+    and #15
+    bne @ret
+    lda epoch           ; 新しい世代
+    eor #$80
+    sta epoch
+    lda camlo
+    lsr
+    lsr
+    lsr
+    lsr
+    sta u
+    lda camhi
+    asl
+    asl
+    asl
+    asl
+    ora u
+    sta btop
+    lda px              ; 主人公の中心のマス
+    clc
+    adc #8
+    sec
+    sbc #24
+    lsr
+    lsr
+    lsr
+    lsr
+    sta dcx
+    lda pylo
+    clc
+    adc #8
+    sta u
+    lda pyhi
+    adc #0
+    sta v
+    jsr tocell
+    sta dcy
+    sec
+    sbc btop
+    cmp #16
+    bcs @ret            ; 範囲外ならやめておく
+    asl
+    asl
+    asl
+    asl
+    ora dcx
+    sta bq              ; キューの先頭=(オフセット<<4|列)
+    lda dcy
+    and #15
+    asl
+    asl
+    asl
+    asl
+    ora dcx
+    tax
+    lda epoch
+    sta dist,x          ; 歩数0
+    lda #0
+    sta bqh
+    lda #1
+    sta bqt
+    sta bfs_on
+@ret:
+    rts
+@run:
+    lda #24
+    sta bc
+@pop:
+    lda bqh
+    cmp bqt
+    bne @has
+    jmp @done
+@has:
+    tax
+    inc bqh
+    lda bq,x
+    sta v
+    and #15
+    sta gx              ; 列
+    lda v
+    lsr
+    lsr
+    lsr
+    lsr
+    sta gy              ; オフセット(btopからの行数)
+    lda btop
+    clc
+    adc gy
+    and #15
+    asl
+    asl
+    asl
+    asl
+    ora gx
+    tax
+    lda dist,x
+    and #$7F
+    clc
+    adc #1
+    cmp #$7F
+    bcc :+
+    lda #$7E
+:   sta bd
+    lda #0
+    sta kk
+@nb:
+    ldx kk
+    lda gx
+    clc
+    adc dxm,x
+    sta nx
+    lda gy
+    clc
+    adc dym,x
+    sta ny
+    cmp #16
+    bcs @skip
+    lda btop
+    clc
+    adc ny
+    ldy nx
+    jsr getcell
+    cmp #1
+    beq @skip           ; 壁
+    lda btop
+    clc
+    adc ny
+    and #15
+    asl
+    asl
+    asl
+    asl
+    ora nx
+    tax
+    lda dist,x
+    and #$80
+    cmp epoch
+    beq @skip           ; この世代でもう届いている
+    lda epoch
+    ora bd
+    sta dist,x
+    lda ny
+    asl
+    asl
+    asl
+    asl
+    ora nx
+    ldx bqt
+    sta bq,x
+    inc bqt
+@skip:
+    inc kk
+    lda kk
+    cmp #4
+    bne @nb
+    dec bc
+    beq @quit
+    jmp @pop
+@quit:
+    rts
+@done:
+    lda #0
+    sta bfs_on
+    rts
+
+; ---------------------------------------------------------------- ロボ
+update_robots:
+    lda invinc
+    beq :+
+    dec invinc
+:   lda #0
+    sta rc
+@r: ldx rc
+    lda rst,x
+    beq @wait
+    cmp #2
+    beq @trap
+    jsr robot_walk
+    jmp @next
+@wait:
+    lda fc
+    and #1
+    bne @next
+    lda rtm,x
+    beq @spawn
+    dec rtm,x
+    jmp @next
+@spawn:
+    jsr spawn_robot
+    jmp @next
+@trap:
+    lda fc
+    and #1
+    bne @next
+    dec rtm,x
+    bne @next
+    lda #1              ; 這い出る
+    sta rst,x
+    sta rimm,x
+    lda #0
+    sta rmd,x
+@next:
+    jsr robot_hero
+    inc rc
+    lda rc
+    cmp #NROB
+    bne @r
+    rts
+
+; 画面の上のほうの空いた部屋に出す(rc番)
+spawn_robot:
+    lda #6
+    sta md
+    jsr rand
+    jsr rmod
+    asl
+    clc
+    adc #1
+    sta dcx             ; 奇数列 1〜11
+    lda camlo
+    lsr
+    lsr
+    lsr
+    lsr
+    sta u
+    lda camhi
+    asl
+    asl
+    asl
+    asl
+    ora u
+    clc
+    adc #1
+    ora #1              ; 画面の上端の少し下の奇数行
+    cmp #30
+    bcc :+
+    lda #29
+:   sta dcy
+    ldx rc
+    lda dcx
+    asl
+    asl
+    asl
+    asl
+    clc
+    adc #24
+    sta rpx,x
+    lda dcy
+    asl
+    asl
+    asl
+    asl
+    sta rpl,x
+    lda dcy
+    lsr
+    lsr
+    lsr
+    lsr
+    sta rph,x
+    lda #1
+    sta rst,x
+    lda #0
+    sta rmd,x
+    sta racc,x
+    sta rimm,x
+    sta rstp,x
+    rts
+
+; ロボのいるマスの値(rc番)
+rcell:
+    ldx rc
+    lda rpl,x
+    sta u
+    lda rph,x
+    sta v
+    jsr tocell
+    tax
+    ldy rc
+    lda rpx,y
+    jmp mapat
+
+robot_walk:
+    ldx rc
+    lda racc,x
+    clc
+    adc #RSPEED
+    sta racc,x
+    bcs @go
+    rts
+@go:
+    lda rpx,x
+    and #15
+    cmp #8
+    bne @unal
+    lda rpl,x
+    and #15
+    bne @unal
+    ; --- マスの中心
+    jsr rcell
+    ldx rc
+    cmp #2
+    bne @nohole
+    lda rimm,x
+    bne @decide
+    lda #2              ; 穴に落ちる
+    sta rst,x
+    lda #TRAP_T
+    sta rtm,x
+    lda #0
+    sta rstp,x
+    sta rmd,x
+    rts
+@nohole:
+    lda #0
+    sta rimm,x
+@decide:
+    jsr robot_choose
+    jmp @mv
+@unal:
+    lda #0
+    sta rimm,x
+@mv:
+    ldx rc
+    lda rmd,x
+    beq @out
+    lsr
+    bcc :+
+    inc rpx,x
+    rts
+:   lda rmd,x
+    and #2
+    beq :+
+    dec rpx,x
+    rts
+:   lda rmd,x
+    and #4
+    beq :+
+    inc rpl,x
+    bne @out
+    inc rph,x
+    rts
+:   lda rpl,x
+    bne :+
+    dec rph,x
+:   dec rpl,x
+@out:
+    rts
+
+; となりのマスのうち、主人公までの歩数が一番小さい方へ向く(rc番)
+robot_choose:
+    ldx rc
+    lda rpx,x
+    sec
+    sbc #24
+    lsr
+    lsr
+    lsr
+    lsr
+    sta gx
+    lda rpl,x
+    sta u
+    lda rph,x
+    sta v
+    jsr tocell
+    sta gy
+    lda #$FF
+    sta bd              ; これまでで一番小さい歩数
+    lda #0
+    sta cur             ; 選んだ向き
+    sta kk
+@k: ldx kk
+    lda gx
+    clc
+    adc dxm,x
+    sta nx
+    lda gy
+    clc
+    adc dym,x
+    sta ny
+    sec
+    sbc btop
+    cmp #16
+    bcs @skip
+    lda ny
+    ldy nx
+    jsr getcell
+    cmp #1
+    beq @skip
+    lda ny
+    and #15
+    asl
+    asl
+    asl
+    asl
+    ora nx
+    tax
+    lda dist,x
+    and #$7F
+    cmp bd
+    bcs @skip
+    sta bd
+    ldx kk
+    lda dbit,x
+    sta cur
+@skip:
+    inc kk
+    lda kk
+    cmp #4
+    bne @k
+    lda bd
+    cmp #$7F
+    bcc :+
+    lda #0              ; 行き先がわからなければ止まる
+    sta cur
+:   ldx rc
+    lda cur
+    sta rmd,x
+    rts
+
+dbit: .byte 1, 2, 4, 8
+
+; ロボ(rc番)と主人公の当たり。さわったらミス、穴の中の頭は踏める(+200)
+robot_hero:
+    ldx rc
+    lda rst,x
+    beq @r
+    cmp #2
+    beq @trap
+    lda invinc
+    bne @r
+    lda #12
+    jsr near
+    bcc @r
+    jmp do_miss
+@trap:
+    lda rstp,x
+    bne @r
+    lda #8
+    jsr near
+    bcc @r
+    ldx rc
+    lda #1
+    sta rstp,x
+    lda #2
+    jmp addscore
+@r: rts
+
+; ロボ(X番)と主人公のズレが、x・yとも A 未満ならC=1
+near:
+    sta u
+    lda rpx,x
+    sec
+    sbc px
+    bcs :+
+    eor #$FF
+    adc #1
+:   cmp u
+    bcs @no
+    lda rpl,x
+    sec
+    sbc pylo
+    sta v
+    lda rph,x
+    sbc pyhi
+    beq @pos
+    cmp #$FF
+    bne @no
+    lda v
+    beq @no
+    eor #$FF
+    clc
+    adc #1
+    jmp @c
+@pos:
+    lda v
+@c: cmp u
+    bcs @no
+    sec
+    rts
+@no:
+    clc
+    rts
+
+; 主人公のいるマスに、穴にはまったロボがいたらC=1(頭の上は歩ける)
+trapped_here:
+    ldx #NROB-1
+@t: lda rst,x
+    cmp #2
+    bne @n
+    lda rpx,x
+    cmp px
+    bne @n
+    lda rpl,x
+    cmp pylo
+    bne @n
+    lda rph,x
+    cmp pyhi
+    bne @n
+    sec
+    rts
+@n: dex
+    bpl @t
+    clc
+    rts
+
+; (dcx,dcy)の穴の中にいるロボをつぶす(+300)
+crush_cell:
+    lda dcx
+    asl
+    asl
+    asl
+    asl
+    clc
+    adc #24
+    sta u               ; そのマスの中心x
+    lda dcy
+    asl
+    asl
+    asl
+    asl
+    sta v               ; y下位
+    lda dcy
+    lsr
+    lsr
+    lsr
+    lsr
+    sta tmp             ; y上位
+    ldx #NROB-1
+@c: lda rst,x
+    cmp #2
+    bne @n
+    lda rpx,x
+    cmp u
+    bne @n
+    lda rpl,x
+    cmp v
+    bne @n
+    lda rph,x
+    cmp tmp
+    bne @n
+    lda #0
+    sta rst,x
+    lda #RESP_T
+    sta rtm,x
+    stx hidx2
+    lda #3
+    jsr addscore
+    ldx hidx2
+@n: dex
+    bpl @c
     rts
 
 ; ---------------------------------------------------------------- 下辺・ミス
@@ -1226,6 +1879,15 @@ do_miss:
     sta digbuf
     lda #PAUSE_FR
     sta campause
+    lda #INVINC
+    sta invinc
+    ldx #3              ; ロボは全員いったん待機に戻る(3秒)
+:   lda #0
+    sta rst,x
+    lda #90
+    sta rtm,x
+    dex
+    bpl :-
     rts
 
 ; ---------------------------------------------------------------- 主人公
@@ -1282,6 +1944,8 @@ update_hero:
     jsr mapat
     cmp #2
     bne @nofall
+    jsr trapped_here
+    bcs @nofall
     lda #1
     sta hstate
     lda #60
@@ -1508,7 +2172,12 @@ draw_all:
     ldx pyhi
     jsr w2s
     sta cy
-    lda dir
+    lda invinc
+    and #4
+    beq :+
+    lda #$FF
+    sta cy
+:   lda dir
     cmp #2
     bne :+
     lda anim
@@ -1523,34 +2192,97 @@ draw_all:
     sta cat
     ldy #0
     jsr draw_char
-    ; 白いロボ(止まり絵。マス(5,27))
-    lda #104
+    ; ロボ(待機中は隠す)
+    lda #0
+    sta rc
+@dr:
+    ldx rc
+    txa
+    asl
+    asl
+    asl
+    asl
+    clc
+    adc #16
+    tay                 ; Y = このロボの OAM 位置
+    lda rst,x
+    bne @rshow
+    lda #$FF
+    sta oam,y
+    sta oam+4,y
+    sta oam+8,y
+    sta oam+12,y
+    jmp @dn
+@rshow:
+    lda rpx,x
     sta cx
-    lda #<432
-    ldx #>432
+    lda rpl,x
+    pha
+    lda rph,x
+    tax
+    pla
     jsr w2s
     sta cy
+    ldx rc
+    lda #0
+    sta cfl
+    sta chalf
+    sta cat             ; パレット0=白
+    lda rst,x
+    cmp #2
+    bne :+
+    lda #1              ; 穴にはまっている: 頭だけ
+    sta chalf
     lda #0
     sta cfr
-    sta cfl
-    sta cat             ; パレット0=白
-    jsr draw_char
-    ; 赤いロボ(止まり絵・左向き。マス(9,23))
-    lda #168
-    sta cx
-    lda #<368
-    ldx #>368
-    jsr w2s
-    sta cy
-    lda #2
+    jmp @go
+:   lda rmd,x
+    lsr
+    bcc :+
+    lda fc              ; 右
+    lsr
+    lsr
+    lsr
+    and #3
+    clc
+    adc #2
     sta cfr
-    lda #1
+    jmp @go
+:   lda rmd,x
+    and #2
+    beq :+
+    lda #1              ; 左(右向きを反転)
     sta cfl
-    lda #2              ; パレット2=赤
-    sta cat
+    lda fc
+    lsr
+    lsr
+    lsr
+    and #3
+    clc
+    adc #2
+    sta cfr
+    jmp @go
+:   lda rmd,x
+    and #8
+    beq :+
+    lda #1              ; 上=背面
+    sta cfr
+    jmp @go
+:   lda #0              ; 下・止まり=正面
+    sta cfr
+@go:
     jsr draw_char
+    lda #0
+    sta chalf
+@dn:
+    inc rc
+    lda rc
+    cmp #NROB
+    beq :+
+    jmp @dr
+:
     ; 残機(左上に縦3つ。主人公の頭のタイル)
-    ldy #48
+    ldy #80
     ldx #1
 @lv:
     stx tmp
@@ -1595,7 +2327,7 @@ draw_all:
     sta cx
     lda #104
     sta cy
-    lda #64
+    lda #96
     sta to
     jsr draw_text
     lda #<goover2
@@ -1606,10 +2338,35 @@ draw_all:
     sta cx
     lda #120
     sta cy
-    lda #80
+    lda #112
     sta to
     jsr draw_text
 @nogo:
+    ldx #0              ; スコア: 左の余白に縦に5桁(OAM 136〜)
+    ldy #136
+@sc:
+    txa
+    asl
+    asl
+    asl
+    clc
+    adc #47
+    sta oam,y           ; y = 48 + 8*桁 - 1
+    lda dg,x
+    clc
+    adc #36
+    sta oam+1,y
+    lda #3
+    sta oam+2,y
+    lda #8
+    sta oam+3,y
+    iny
+    iny
+    iny
+    iny
+    inx
+    cpx #5
+    bne @sc
     rts
 
 ; 16x16キャラを4スプライトで描く。Y=OAMオフセット(呼ぶたび16進む)。cy=$FFなら隠す
@@ -1723,7 +2480,12 @@ draw_char:
     adc #8
     sta oam,y
     iny
-    rts
+    lda chalf
+    beq :+
+    lda #$FF
+    sta oam-8,y         ; 下の2つ(左下・右下)を隠す
+    sta oam-4,y
+:   rts
 
 .segment "RODATA"
 palette:
