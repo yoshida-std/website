@@ -1881,12 +1881,17 @@ do_miss:
     sta campause
     lda #INVINC
     sta invinc
-    ldx #3              ; ロボは全員いったん待機に戻る(3秒)
-:   lda #0
+    ldx #NROB-1         ; 復活した場所の近く(3マス以内)にいたロボだけ、いったん待機に戻る(3秒)
+:   lda rst,x
+    beq @nx
+    lda #48
+    jsr near
+    bcc @nx
+    lda #0
     sta rst,x
     lda #90
     sta rtm,x
-    dex
+@nx:dex
     bpl :-
     rts
 
