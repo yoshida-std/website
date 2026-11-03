@@ -61,12 +61,30 @@ v:      .res 1
 lives:  .res 1
 gover:  .res 1          ; 1=ゲームオーバー
 campause:.res 1         ; >0 の間はスクロールを止める(復活直後)
+rng:    .res 2          ; 乱数(16bit LFSR)
+seed:   .res 2          ; Startを押すまでのフレーム数 = 乱数の種
+title:  .res 1          ; 1=タイトル画面
+md:     .res 1          ; 剰余の割る数
+ssz:    .res 1          ; 迷路生成のスタックの数
+cur:    .res 1
+gx:     .res 1
+gy:     .res 1
+nx:     .res 1
+ny:     .res 1
+ncand:  .res 1
+tp:     .res 2          ; draw_text の文字表
+tn:     .res 1
+to:     .res 1          ; draw_text の書き込み先(OAMのオフセット)
 
 .segment "OAM"
 oam:    .res 256
 
 .segment "BSS"
 rowbuf: .res 32
+mapram: .res 512        ; 迷路(1行16バイト x 31行。1=壁)
+sx:     .res 96         ; 迷路生成のスタック(部屋のx)
+sy:     .res 96
+cand:   .res 4
 
 .segment "CODE"
 
@@ -115,7 +133,110 @@ reset:
     cpx #32
     bne :-
 
-    ; 初期状態
+    ; 背景(ネームテーブル)をゼロで埋める
+    lda $2002
+    lda #$20
+    sta $2006
+    lda #0
+    sta $2006
+    ldy #16
+    ldx #0
+@cl:sta $2007
+    inx
+    bne @cl
+    dey
+    bne @cl
+
+    ; タイトル画面
+    lda #1
+    sta title
+    sta seed
+    lda #$88
+    sta ctrl
+    sta $2000
+    lda #%00011110
+    sta $2001
+
+main:
+    lda nmiflag
+    beq main
+    lda #0
+    sta nmiflag
+
+    jsr read_pad
+    inc seed            ; 乱数の種(遊んでいる間もずっと進める)
+    bne :+
+    inc seed+1
+:   lda title
+    bne @title
+    lda gover
+    bne @over
+    jsr update_hero
+    jsr check_squeeze
+    jsr update_cam
+    jsr draw_all
+    jmp main
+@title:
+    lda pad
+    and #$10            ; Start で開始
+    beq :+
+    jsr start_game
+    jmp main
+:   lda #<txt_push1
+    sta tp
+    lda #>txt_push1
+    sta tp+1
+    lda #4
+    sta tn
+    lda #112
+    sta cx
+    lda #104
+    sta cy
+    lda #64
+    sta to
+    jsr draw_text
+    lda #<txt_push2
+    sta tp
+    lda #>txt_push2
+    sta tp+1
+    lda #5
+    sta tn
+    lda #108
+    sta cx
+    lda #120
+    sta cy
+    lda #80
+    sta to
+    jsr draw_text
+    jmp main
+@over:
+    lda pad
+    and #$10            ; Start でやり直し(新しい迷路)
+    beq :+
+    jsr start_game
+    jmp main
+:   jsr draw_all
+    jmp main
+
+; ---------------------------------------------------------------- 開始
+; 描画を止めて、新しい迷路を作り、最初の状態にして、描画を再開する
+start_game:
+    lda #0
+    sta $2000
+    sta $2001
+    lda seed
+    sta rng
+    lda seed+1
+    sta rng+1
+    ora rng
+    bne :+
+    lda #1
+    sta rng
+:   ldx #0
+    lda #$FF
+:   sta oam,x
+    inx
+    bne :-
     lda #40             ; 左から2マス目(マス1)
     sta px
     lda #<464           ; 下から2行目(マス行29)
@@ -132,10 +253,15 @@ reset:
     sta flip
     sta gover
     sta campause
+    sta mdir
+    sta anim
+    sta atimer
+    sta pending
+    sta title
     lda #LIVES0
     sta lives
-
-    ; 画面に最初から出る行(マス行16〜30)を背景に書いておく(描画オフのうちに)
+    jsr gen_maze
+    ; 画面に最初から出る行(マス行16〜30)を背景に書いておく
     lda #(START_CAM / 16)
     sta ltop
     sta rr
@@ -147,34 +273,299 @@ reset:
     cmp #ROWS
     bne :-
     jsr set_scroll
-
-    lda $2002
+    bit $2002
+:   bit $2002
+    bpl :-
     lda ctrl
     sta $2000
     lda #%00011110
     sta $2001
-
-main:
-    lda nmiflag
-    beq main
     lda #0
     sta nmiflag
+    rts
 
-    jsr read_pad
-    lda gover
-    bne @over
-    jsr update_hero
-    jsr check_squeeze
-    jsr update_cam
-    jsr draw_all
-    jmp main
-@over:
-    lda pad
-    and #$10            ; Start でやり直し(最初から)
-    beq :+
-    jmp reset
-:   jsr draw_all
-    jmp main
+; ---------------------------------------------------------------- 乱数・迷路生成
+; 16bit LFSR(ガロア型)を3歩進めて下位バイトを返す
+rand:
+    ldx #3
+:   lsr rng+1
+    ror rng
+    bcc :+
+    lda rng+1
+    eor #$B4
+    sta rng+1
+:   dex
+    bne :--
+    lda rng
+    rts
+
+; A mod md → A
+rmod:
+:   cmp md
+    bcc :+
+    sbc md
+    jmp :-
+:   rts
+
+; A=y → ptr = mapram + y*16
+cellptr:
+    sta ptr
+    lsr
+    lsr
+    lsr
+    lsr
+    sta ptr+1
+    lda ptr
+    asl
+    asl
+    asl
+    asl
+    clc
+    adc #<mapram
+    sta ptr
+    lda ptr+1
+    adc #>mapram
+    sta ptr+1
+    rts
+
+; A=y, Y=x → A=その場所の値(1=壁)
+getcell:
+    jsr cellptr
+    lda (ptr),y
+    rts
+
+; A=y, Y=x → 床にする
+opencell:
+    jsr cellptr
+    lda #0
+    sta (ptr),y
+    rts
+
+; growing tree 方式で迷路を作る。部屋は奇数x奇数の 6x15 個。スタートは一番下の左(1,29)。
+gen_maze:
+    ldx #0
+    lda #1
+:   sta mapram,x
+    sta mapram+256,x
+    inx
+    bne :-
+    lda #1
+    sta gx
+    lda #29
+    sta gy
+    tay
+    ldy gx
+    jsr opencell
+    lda #1
+    sta sx
+    lda #29
+    sta sy
+    lda #1
+    sta ssz
+@loop:
+    lda ssz
+    bne @go
+    jmp @extra
+@go:
+    ; 半分は一番新しい部屋、半分はスタックの中からランダム
+    jsr rand
+    bmi @rnd
+    ldx ssz
+    dex
+    jmp @pick
+@rnd:
+    lda ssz
+    sta md
+    jsr rand
+    jsr rmod
+    tax
+@pick:
+    stx cur
+    lda sx,x
+    sta gx
+    lda sy,x
+    sta gy
+    ; となり(2マス先)で、まだ掘っていない部屋を数える
+    lda #0
+    sta ncand
+    lda gx              ; 右
+    clc
+    adc #2
+    cmp #12
+    bcs @nR
+    tay
+    lda gy
+    jsr getcell
+    beq @nR
+    lda #0
+    jsr addcand
+@nR:
+    lda gx              ; 左
+    cmp #3
+    bcc @nL
+    sec
+    sbc #2
+    tay
+    lda gy
+    jsr getcell
+    beq @nL
+    lda #1
+    jsr addcand
+@nL:
+    lda gy              ; 下
+    clc
+    adc #2
+    cmp #30
+    bcs @nD
+    sta u
+    ldy gx
+    lda u
+    jsr getcell
+    beq @nD
+    lda #2
+    jsr addcand
+@nD:
+    lda gy              ; 上
+    cmp #3
+    bcc @nU
+    sec
+    sbc #2
+    sta u
+    ldy gx
+    lda u
+    jsr getcell
+    beq @nU
+    lda #3
+    jsr addcand
+@nU:
+    lda ncand
+    bne @carve
+    ; 行き止まり: この部屋をスタックから外す(最後の要素をここへ)
+    dec ssz
+    ldx ssz
+    lda sx,x
+    ldy cur
+    sta sx,y
+    lda sy,x
+    sta sy,y
+    jmp @loop
+@carve:
+    sta md
+    jsr rand
+    jsr rmod
+    tax
+    lda cand,x
+    tax
+    ; 間のマスと次の部屋を床にする
+    lda gx
+    clc
+    adc dxm,x
+    tay
+    lda gy
+    clc
+    adc dym,x
+    stx u
+    jsr opencell
+    ldx u
+    lda gx
+    clc
+    adc dxm,x
+    clc
+    adc dxm,x
+    sta nx
+    tay
+    lda gy
+    clc
+    adc dym,x
+    clc
+    adc dym,x
+    sta ny
+    jsr opencell
+    ldx ssz
+    lda nx
+    sta sx,x
+    lda ny
+    sta sy,x
+    inc ssz
+    jmp @loop
+@extra:
+    ; 壁をランダムに45か所抜いて、行き止まりを減らす
+    ldx #45
+    stx cur
+@e: lda #11
+    sta md
+    jsr rand
+    jsr rmod
+    clc
+    adc #1
+    sta gx
+    lda #29
+    sta md
+    jsr rand
+    jsr rmod
+    clc
+    adc #1
+    sta gy
+    lda gx
+    eor gy
+    and #1
+    beq @ne             ; 偶奇が同じ(部屋または柱)はそのまま
+    ldy gx
+    lda gy
+    jsr opencell
+@ne:dec cur
+    bne @e
+    ; 一番下の通路(行29)は全部あける
+    ldy #1
+@b: lda #29
+    sty u
+    jsr opencell
+    ldy u
+    iny
+    cpy #12
+    bne @b
+    rts
+
+; A=向き(0=右 1=左 2=下 3=上)を候補に足す
+addcand:
+    ldx ncand
+    sta cand,x
+    inc ncand
+    rts
+
+dxm: .byte 1, $FF, 0, 0
+dym: .byte 0, 0, 1, $FF
+
+; tp の文字表(tn個、$FFは空白)を、x=cx、y=cy から横に並べて描く(OAMの to〜)
+; 1行に並べられるスプライトは8個まで
+draw_text:
+    ldx to
+    ldy #0
+@l: lda (tp),y
+    cmp #$FF
+    beq @sp
+    sta oam+1,x
+    lda cy
+    sec
+    sbc #1
+    sta oam,x
+    lda #3
+    sta oam+2,x
+    tya
+    asl
+    asl
+    asl
+    clc
+    adc cx
+    sta oam+3,x
+@sp:inx
+    inx
+    inx
+    inx
+    iny
+    cpy tn
+    bne @l
+    rts
 
 nmi:
     pha
@@ -300,10 +691,10 @@ build_row:
     sta ptr
     clc
     lda ptr
-    adc #<map
+    adc #<mapram
     sta ptr
     lda ptr+1
-    adc #>map
+    adc #>mapram
     sta ptr+1
     ldx #0
 @l: ldy colcell,x
@@ -374,10 +765,10 @@ mapat:
     sta ptr
     clc
     lda ptr
-    adc #<map
+    adc #<mapram
     sta ptr
     lda ptr+1
-    adc #>map
+    adc #>mapram
     sta ptr+1
     lda (ptr),y
     rts
@@ -821,32 +1212,30 @@ draw_all:
     ; GAME OVER
     lda gover
     beq @nogo
-    ldx #0
-    ldy #64
-@go:
-    lda goover,x
-    cmp #$FF
-    beq @sp
-    sta oam+1,y
-    lda #111
-    sta oam,y
-    lda #3
-    sta oam+2,y
-    txa
-    asl
-    asl
-    asl
-    clc
-    adc #88
-    sta oam+3,y
-@sp:
-    iny
-    iny
-    iny
-    iny
-    inx
-    cpx #9
-    bne @go
+    lda #<goover1
+    sta tp
+    lda #>goover1
+    sta tp+1
+    lda #4
+    sta tn
+    lda #112
+    sta cx
+    lda #104
+    sta cy
+    lda #64
+    sta to
+    jsr draw_text
+    lda #<goover2
+    sta tp
+    lda #>goover2
+    sta tp+1
+    lda #112
+    sta cx
+    lda #120
+    sta cy
+    lda #80
+    sta to
+    jsr draw_text
 @nogo:
     rts
 
@@ -969,10 +1358,14 @@ palette:
     .byte $29,$19,$17,$27,  $29,$19,$17,$27,  $29,$19,$17,$27,  $29,$19,$17,$27
     ; スプライト0=白 1=黄 2=赤 3=予備(ふち,からだ,アクセント)
     .byte $29,$01,$30,$21,  $29,$01,$38,$27,  $29,$01,$16,$27,  $29,$01,$30,$21
-goover:
-    .byte 24,25,26,27,$FF,28,29,27,30   ; G A M E _ O V E R
-map:
-    .incbin "../assets/map.bin"
+goover1:
+    .byte 24,25,26,27         ; G A M E
+goover2:
+    .byte 28,29,27,30         ; O V E R
+txt_push1:
+    .byte 31,32,33,34         ; P U S H
+txt_push2:
+    .byte 33,35,25,30,35      ; S T A R T
 colcell:
     .incbin "../assets/colcell.bin"
 rowlo:

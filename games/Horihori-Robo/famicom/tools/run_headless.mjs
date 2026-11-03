@@ -30,3 +30,11 @@ for (const step of script.split(',').filter(Boolean)) {
   dump(`s${++n}_${k}`);
   console.log(k, f, ...SYMS.map(n => `${n}=${nes.cpu.mem[sym[n]] + (n.endsWith('lo') ? 256 * nes.cpu.mem[sym[n.replace('lo', 'hi')]] : 0)}`));
 }
+
+// DUMP=シンボル:バイト数 でRAMの一部をファイルに書き出す(確認用)
+if (process.env.DUMP) {
+  const [name, len] = process.env.DUMP.split(':');
+  const out = Buffer.alloc(+len);
+  for (let i = 0; i < +len; i++) out[i] = nes.cpu.mem[sym[name] + i];
+  fs.writeFileSync(`${prefix}_${name}.bin`, out);
+}
