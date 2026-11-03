@@ -24,11 +24,12 @@ dump('start');
 let n = 0;
 for (const step of script.split(',').filter(Boolean)) {
   const [k, f] = step.split(':');
-  nes.buttonDown(1, keys[k]);
+  if (keys[k] !== undefined) nes.buttonDown(1, keys[k]);
   for (let i = 0; i < +f; i++) nes.frame();
-  nes.buttonUp(1, keys[k]);
+  if (keys[k] !== undefined) nes.buttonUp(1, keys[k]);
   dump(`s${++n}_${k}`);
-  console.log(k, f, ...SYMS.map(n => `${n}=${nes.cpu.mem[sym[n]] + (n.endsWith('lo') ? 256 * nes.cpu.mem[sym[n.replace('lo', 'hi')]] : 0)}`));
+  if (process.env.VRAM) console.log('  vram', process.env.VRAM.split(',').map(a => nes.ppu.vramMem[parseInt(a, 16)]).join(' '));
+  console.log(k, f, ...SYMS.map(n => { const [nm, off = '0'] = n.split(':'); return `${n}=${nes.cpu.mem[sym[nm] + +off] + (nm.endsWith('lo') ? 256 * nes.cpu.mem[sym[nm.replace('lo', 'hi')] + +off] : 0)}`; }));
 }
 
 // DUMP=シンボル:バイト数 でRAMの一部をファイルに書き出す(確認用)

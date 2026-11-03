@@ -80,12 +80,26 @@ BG_WALL = pat(["22222222", "33332333", "33332333", "22222222",
                "32333333", "32333333", "32333333", "22222222"])
 BG_BLANK = pat(["00000000"] * 8)
 
+def pit16(rx, ry):
+    # 16x16の穴。ふち=色2(茶)、中=色1(こい色)、まわり=0(床)
+    px = [[0] * 16 for _ in range(16)]
+    for y in range(16):
+        for x in range(16):
+            d = ((x - 7.5) / rx) ** 2 + ((y - 8.0) / ry) ** 2
+            di = ((x - 7.5) / (rx - 1.6)) ** 2 + ((y - 8.0) / (ry - 1.6)) ** 2
+            if di <= 1: px[y][x] = 1
+            elif d <= 1: px[y][x] = 2
+    return px
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     sheet = Image.open(SRC).convert('RGBA')
     chr_bg = bytearray()
     for t in (BG_BLANK, BG_FLOOR, BG_WALL):
         chr_bg += tile_bytes(t)
+    for rx, ry in ((7.4, 5.6), (4.6, 3.6)):          # タイル3〜6=大、7〜10=小(左上,右上,左下,右下)
+        for t in sprite_tiles(pit16(rx, ry)):
+            chr_bg += t
     chr_bg += bytes(4096 - len(chr_bg))
     chr_sp = bytearray()
     sprites = []

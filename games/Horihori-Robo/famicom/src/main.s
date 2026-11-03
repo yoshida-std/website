@@ -4,6 +4,8 @@
 
 ROWS      = 31          ; 迷路の行数(1行=16px)
 START_CAM = 256         ; 開始時のカメラ(世界座標で画面の一番上のy) = 31*16-240
+HOLE_T    = 165         ; 穴がふさがるまで(2フレーム単位 = 約5.5秒)
+HOLE_SMALL= 45          ; この残りで小さくなる
 .ifndef LIVES0
 LIVES0    = 3           ; 最初の残機(ミスは3回まで)
 .endif
@@ -74,6 +76,18 @@ ny:     .res 1
 ncand:  .res 1
 tp:     .res 2          ; draw_text の文字表
 tn:     .res 1
+face:   .res 1          ; 向いている方向(1=右 2=左 4=下 8=上)
+digbuf: .res 1          ; 掘るボタンの入力をためておく(フレーム)
+digheld:.res 1
+hstate: .res 1          ; 0=ふつう 1=穴に落ちて動けない 2=這い出た直後(この穴では落ちない)
+fallt:  .res 1
+fc:     .res 1
+hidx:   .res 1
+dcx:    .res 1
+dcy:    .res 1
+qhead:  .res 1
+qtail:  .res 1
+qn:     .res 1
 to:     .res 1          ; draw_text の書き込み先(OAMのオフセット)
 
 .segment "OAM"
@@ -85,6 +99,15 @@ mapram: .res 512        ; 迷路(1行16バイト x 31行。1=壁)
 sx:     .res 96         ; 迷路生成のスタック(部屋のx)
 sy:     .res 96
 cand:   .res 4
+hx:     .res 8          ; 穴(最大8): マスの列・行・残り時間(2フレーム単位。0=なし)
+hy:     .res 8
+ht:     .res 8
+qlo:    .res 8          ; 背景の書き換えキュー(1マス=タイル2x2)
+qhi:    .res 8
+qtl:    .res 8
+qtr:    .res 8
+qbl:    .res 8
+qbr:    .res 8
 
 .segment "CODE"
 
@@ -172,6 +195,7 @@ main:
     lda gover
     bne @over
     jsr update_hero
+    jsr update_holes
     jsr check_squeeze
     jsr update_cam
     jsr draw_all
@@ -258,6 +282,18 @@ start_game:
     sta atimer
     sta pending
     sta title
+    sta hstate
+    sta digbuf
+    sta digheld
+    sta qhead
+    sta qtail
+    sta fc
+    ldx #7
+:   sta ht,x
+    dex
+    bpl :-
+    lda #8
+    sta face
     lda #LIVES0
     sta lives
     jsr gen_maze
@@ -578,7 +614,42 @@ nmi:
     jsr write_row
     lda #0
     sta pending
-:   lda #0
+:   lda #2              ; 穴の絵の書き換え(1フレームに2マスまで)
+    sta qn
+@q: lda qn
+    beq @qd
+    ldx qhead
+    cpx qtail
+    beq @qd
+    lda $2002
+    lda qhi,x
+    sta $2006
+    lda qlo,x
+    sta $2006
+    lda qtl,x
+    sta $2007
+    lda qtr,x
+    sta $2007
+    lda qlo,x
+    clc
+    adc #32
+    tay
+    lda qhi,x
+    adc #0
+    sta $2006
+    sty $2006
+    lda qbl,x
+    sta $2007
+    lda qbr,x
+    sta $2007
+    inx
+    txa
+    and #7
+    sta qhead
+    dec qn
+    jmp @q
+@qd:
+    lda #0
     sta $2003
     lda #>oam
     sta $4014
@@ -820,23 +891,240 @@ blocked:
     lda bx0
     ldx cya
     jsr mapat
-    bne @yes
+    cmp #1
+    beq @yes
     lda bx1
     ldx cya
     jsr mapat
-    bne @yes
+    cmp #1
+    beq @yes
     lda bx0
     ldx cyb
     jsr mapat
-    bne @yes
+    cmp #1
+    beq @yes
     lda bx1
     ldx cyb
     jsr mapat
-    bne @yes
+    cmp #1
+    beq @yes
     clc
     rts
 @yes:
     sec
+    rts
+
+; ---------------------------------------------------------------- 穴
+; 向いている先のマスが床なら穴を掘り、穴ならうめる(壁は何もしない)
+do_dig:
+    lda px
+    sec
+    sbc #24
+    lsr
+    lsr
+    lsr
+    lsr
+    sta dcx
+    lda pylo
+    sta u
+    lda pyhi
+    sta v
+    jsr tocell
+    sta dcy
+    lda face
+    lsr
+    bcc :+
+    inc dcx
+    jmp @t
+:   lsr
+    bcc :+
+    dec dcx
+    jmp @t
+:   lsr
+    bcc :+
+    inc dcy
+    jmp @t
+:   dec dcy
+@t: lda dcx
+    cmp #12
+    bcs @no
+    lda dcy
+    cmp #31
+    bcs @no
+    ldy dcx
+    lda dcy
+    jsr getcell
+    beq @dig
+    cmp #2
+    beq @fill
+@no:
+    rts
+@dig:
+    ldx #7              ; あいている穴の番号を探す
+:   lda ht,x
+    beq @free
+    dex
+    bpl :-
+    rts
+@free:
+    lda dcx
+    sta hx,x
+    lda dcy
+    sta hy,x
+    lda #HOLE_T
+    sta ht,x
+    lda #2
+    sta sd
+    ldy dcx
+    lda dcy
+    jsr setcell
+    lda #3              ; 大きい穴のタイル
+    jmp qcell
+@fill:
+    ldx #7              ; その場所の穴を探して消す
+:   lda ht,x
+    beq @nx
+    lda hx,x
+    cmp dcx
+    bne @nx
+    lda hy,x
+    cmp dcy
+    beq @found
+@nx:dex
+    bpl :-
+    rts
+@found:
+    lda #0
+    sta ht,x
+    sta sd
+    ldy dcx
+    lda dcy
+    jsr setcell
+    jmp qfloor
+
+; A=y, Y=x に sd の値を書く
+setcell:
+    jsr cellptr
+    lda sd
+    sta (ptr),y
+    rts
+
+; (dcx,dcy)のマスを、A番から始まる2x2のタイルで書き換える予約をする(NMIで書く)
+qcell:
+    sta t0
+    clc
+    adc #1
+    sta t1
+    adc #1
+    sta t2
+    adc #1
+    sta t3
+    jmp qpush
+qfloor:
+    lda #1
+    sta t0
+    sta t1
+    sta t2
+    sta t3
+qpush:
+    lda dcy             ; 輪の中の行 = 行 mod 30
+    cmp #30
+    bcc :+
+    sbc #30
+:   tay
+    lda rowlo,y
+    sta wrlo
+    lda rowhi,y
+    sta wrhi
+    lda dcx             ; タイルの列 = 3 + 2*列
+    asl
+    clc
+    adc #3
+    clc
+    adc wrlo
+    sta wrlo
+    bcc :+
+    inc wrhi
+:   ldx qtail
+    lda wrlo
+    sta qlo,x
+    lda wrhi
+    sta qhi,x
+    lda t0
+    sta qtl,x
+    lda t1
+    sta qtr,x
+    lda t2
+    sta qbl,x
+    lda t3
+    sta qbr,x
+    inx
+    txa
+    and #7
+    sta qtail
+    rts
+
+; 毎フレーム: 穴の残り時間を進める(2フレームに1回)。小さくなり、ふさがる
+update_holes:
+    inc fc
+    lda fc
+    and #1
+    bne @done
+    ldx #7
+@h: stx hidx
+    lda ht,x
+    beq @n
+    dec ht,x
+    lda ht,x
+    cmp #HOLE_SMALL
+    bne @c0
+    lda hx,x
+    sta dcx
+    lda hy,x
+    sta dcy
+    lda #7              ; 小さい穴のタイル
+    jsr qcell
+    jmp @n
+@c0:
+    cmp #0
+    bne @n
+    ldx hidx
+    lda hx,x
+    sta dcx
+    lda hy,x
+    sta dcy
+    lda #0
+    sta sd
+    ldy dcx
+    lda dcy
+    jsr setcell
+    jsr qfloor
+    lda hstate          ; 中に落ちている主人公がいたらミス
+    cmp #1
+    bne @n
+    lda px
+    sec
+    sbc #24
+    lsr
+    lsr
+    lsr
+    lsr
+    cmp dcx
+    bne @n
+    lda pylo
+    sta u
+    lda pyhi
+    sta v
+    jsr tocell
+    cmp dcy
+    bne @n
+    lda #0
+    sta hstate
+    jsr do_miss
+@n: ldx hidx
+    dex
+    bpl @h
+@done:
     rts
 
 ; ---------------------------------------------------------------- 下辺・ミス
@@ -934,6 +1222,8 @@ do_miss:
     sta pylo
     lda #0
     sta mdir
+    sta hstate
+    sta digbuf
     lda #PAUSE_FR
     sta campause
     rts
@@ -942,16 +1232,93 @@ do_miss:
 ; マス単位で歩く(ブラウザ版と同じ)。マスの中心に来たときだけ向きを決め、
 ; 次のマスまで1フレーム1pxずつ進む。途中で逆向きを押すと即座に戻れる。
 update_hero:
+    ; 掘るボタン(A/B)の押した瞬間を 0.4秒ためておく
+    lda digbuf
+    beq :+
+    dec digbuf
+:   lda pad
+    and #$C0
+    bne :+
+    sta digheld
+    jmp @nodig
+:   lda digheld
+    bne @nodig
+    lda #1
+    sta digheld
+    lda #24
+    sta digbuf
+@nodig:
     lda px
     and #15
     cmp #8              ; x座標はマス中心なら 24+16n → 下位4bitが8
-    bne @mid
+    bne @tomid
     lda pylo
     and #15             ; y座標はマス中心なら 16n
-    bne @mid
-    lda #0              ; --- マスの中心: 向きを選ぶ
+    beq @center
+@tomid:
+    jmp @mid
+@center:
+    lda #0              ; --- マスの中心
     sta mdir
+    lda hstate          ; 穴に落ちている間は動けない(1秒で這い出る)
+    cmp #1
+    bne @notstuck
+    dec fallt
+    bne @stuckfin
+    lda #2
+    sta hstate
+@stuckfin:
+    jmp @fin
+@notstuck:
+    cmp #0              ; 穴のマスの中心に来たら落ちる
+    bne @nofall
+    lda pylo
+    sta u
+    lda pyhi
+    sta v
+    jsr tocell
+    tax
+    lda px
+    jsr mapat
+    cmp #2
+    bne @nofall
     lda #1
+    sta hstate
+    lda #60
+    sta fallt
+    jmp @fin
+@nofall:
+    ; 向き(押している方向。壁に向かっても向きだけ変わる)
+    lda pad
+    and #$0F
+    beq @nof
+    lsr
+    bcc :+
+    lda #1
+    sta face
+    jmp @nof
+:   lda pad
+    and #2
+    beq :+
+    lda #2
+    sta face
+    jmp @nof
+:   lda pad
+    and #4
+    beq :+
+    lda #4
+    sta face
+    jmp @nof
+:   lda #8
+    sta face
+@nof:
+    lda digbuf          ; ためてある掘る入力を、マスの中心でここに使う
+    beq @nd
+    lda #0
+    sta digbuf
+    jsr do_dig
+@nd:
+    lda #1              ; 向きを選ぶ
     jsr try_dir
     lda mdir
     bne @fin
@@ -967,7 +1334,12 @@ update_hero:
     jsr try_dir
     jmp @fin
 @mid:                   ; --- マスの途中: 逆向きなら反転、そのまま進む
-    lda mdir
+    lda hstate
+    cmp #2
+    bne :+
+    lda #0
+    sta hstate
+:   lda mdir
     and #3
     beq @vert
     eor #3
@@ -989,6 +1361,7 @@ update_hero:
     ; 見た目の向き
     lda mdir
     beq @idle
+    sta face
     lsr
     bcc :+
     lda #2
@@ -1355,7 +1728,7 @@ draw_char:
 .segment "RODATA"
 palette:
     ; 背景: 床(緑)・こい緑・茶・うす橙
-    .byte $29,$19,$17,$27,  $29,$19,$17,$27,  $29,$19,$17,$27,  $29,$19,$17,$27
+    .byte $29,$09,$17,$27,  $29,$09,$17,$27,  $29,$09,$17,$27,  $29,$09,$17,$27
     ; スプライト0=白 1=黄 2=赤 3=予備(ふち,からだ,アクセント)
     .byte $29,$01,$30,$21,  $29,$01,$38,$27,  $29,$01,$16,$27,  $29,$01,$30,$21
 goover1:
