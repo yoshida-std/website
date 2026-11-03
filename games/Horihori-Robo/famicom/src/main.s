@@ -4,6 +4,10 @@
 
 ROWS      = 31          ; 迷路の行数(1行=16px)
 START_CAM = 256         ; 開始時のカメラ(世界座標で画面の一番上のy) = 31*16-240
+.ifndef LIVES0
+LIVES0    = 3           ; 最初の残機(ミスは3回まで)
+.endif
+PAUSE_FR  = 120         ; 復活後にスクロールが止まるフレーム数(2秒)
 CAM_SPEED = 61          ; 1フレームに上へ進む量(1/256px単位)。61/256*60 ≒ 14.3px/秒 ≒ 0.9マス/秒
 
 .segment "HEADER"
@@ -54,6 +58,9 @@ cya:    .res 1
 cyb:    .res 1
 u:      .res 1
 v:      .res 1
+lives:  .res 1
+gover:  .res 1          ; 1=ゲームオーバー
+campause:.res 1         ; >0 の間はスクロールを止める(復活直後)
 
 .segment "OAM"
 oam:    .res 256
@@ -123,6 +130,10 @@ reset:
     sta camf
     sta dir
     sta flip
+    sta gover
+    sta campause
+    lda #LIVES0
+    sta lives
 
     ; 画面に最初から出る行(マス行16〜30)を背景に書いておく(描画オフのうちに)
     lda #(START_CAM / 16)
@@ -150,9 +161,19 @@ main:
     sta nmiflag
 
     jsr read_pad
+    lda gover
+    bne @over
     jsr update_hero
+    jsr check_squeeze
     jsr update_cam
     jsr draw_all
+    jmp main
+@over:
+    lda pad
+    and #$10            ; Start でやり直し(最初から)
+    beq :+
+    jmp reset
+:   jsr draw_all
     jmp main
 
 nmi:
@@ -203,7 +224,11 @@ read_pad:
 ; ---------------------------------------------------------------- カメラ
 ; カメラを上へ少しずつ進め(0で止まる)、新しく画面の上端に出るマス行を背景に書く
 update_cam:
-    lda camlo
+    lda campause
+    beq :+
+    dec campause
+    jmp set_scroll
+:   lda camlo
     ora camhi
     beq @fin
     lda camf
@@ -421,6 +446,105 @@ blocked:
     rts
 @yes:
     sec
+    rts
+
+; ---------------------------------------------------------------- 下辺・ミス
+; マスの中心に止まっているとき、画面の下辺に触れていたら(下端が240pxを越える)1マス上へ押し上げる。
+; 上が壁ならミス。
+check_squeeze:
+    lda px
+    and #15
+    cmp #8
+    bne @no
+    lda pylo
+    and #15
+    bne @no
+    lda pylo
+    sec
+    sbc camlo
+    sta u
+    lda pyhi
+    sbc camhi
+    bne @no
+    lda u
+    cmp #225
+    bcc @no
+    lda #0
+    sta mdir
+    lda pad
+    pha
+    lda #8
+    sta pad
+    lda #8
+    jsr try_dir         ; 上のマスが空いていれば1歩進んで mdir=8
+    pla
+    sta pad
+    lda mdir
+    bne @no
+    jmp do_miss
+@no:
+    rts
+
+; ミス: 残機を1つ減らす。0ならゲームオーバー。それ以外は画面の中ほどで復活し、2秒スクロールが止まる
+do_miss:
+    dec lives
+    bne @re
+    lda #1
+    sta gover
+    rts
+@re:
+    lda px
+    sec
+    sbc #24
+    lsr
+    lsr
+    lsr
+    lsr
+    ora #1              ; 奇数列(部屋)にそろえる
+    cmp #12
+    bcc :+
+    lda #11
+:   asl
+    asl
+    asl
+    asl
+    clc
+    adc #24
+    sta px
+    lda camlo
+    lsr
+    lsr
+    lsr
+    lsr
+    sta u
+    lda camhi
+    asl
+    asl
+    asl
+    asl
+    ora u               ; 画面の一番上のマス行
+    clc
+    adc #7
+    ora #1              ; 奇数行(部屋)にそろえる
+    cmp #30
+    bcc :+
+    lda #29
+:   sta u
+    lsr
+    lsr
+    lsr
+    lsr
+    sta pyhi
+    lda u
+    asl
+    asl
+    asl
+    asl
+    sta pylo
+    lda #0
+    sta mdir
+    lda #PAUSE_FR
+    sta campause
     rts
 
 ; ---------------------------------------------------------------- 主人公
@@ -661,6 +785,69 @@ draw_all:
     lda #2              ; パレット2=赤
     sta cat
     jsr draw_char
+    ; 残機(左上に縦3つ。主人公の頭のタイル)
+    ldy #48
+    ldx #1
+@lv:
+    stx tmp
+    lda lives
+    cmp tmp
+    bcs @show
+    lda #$FF
+    sta oam,y
+    jmp @nx
+@show:
+    txa
+    asl
+    asl
+    asl
+    sec
+    sbc #1
+    sta oam,y           ; y = 8*番号 - 1
+    lda #0
+    sta oam+1,y
+    lda #1
+    sta oam+2,y
+    lda #8
+    sta oam+3,y
+@nx:
+    iny
+    iny
+    iny
+    iny
+    inx
+    cpx #4
+    bne @lv
+    ; GAME OVER
+    lda gover
+    beq @nogo
+    ldx #0
+    ldy #64
+@go:
+    lda goover,x
+    cmp #$FF
+    beq @sp
+    sta oam+1,y
+    lda #111
+    sta oam,y
+    lda #3
+    sta oam+2,y
+    txa
+    asl
+    asl
+    asl
+    clc
+    adc #88
+    sta oam+3,y
+@sp:
+    iny
+    iny
+    iny
+    iny
+    inx
+    cpx #9
+    bne @go
+@nogo:
     rts
 
 ; 16x16キャラを4スプライトで描く。Y=OAMオフセット(呼ぶたび16進む)。cy=$FFなら隠す
@@ -782,6 +969,8 @@ palette:
     .byte $29,$19,$17,$27,  $29,$19,$17,$27,  $29,$19,$17,$27,  $29,$19,$17,$27
     ; スプライト0=白 1=黄 2=赤 3=予備(ふち,からだ,アクセント)
     .byte $29,$01,$30,$21,  $29,$01,$38,$27,  $29,$01,$16,$27,  $29,$01,$30,$21
+goover:
+    .byte 24,25,26,27,$FF,28,29,27,30   ; G A M E _ O V E R
 map:
     .incbin "../assets/map.bin"
 colcell:

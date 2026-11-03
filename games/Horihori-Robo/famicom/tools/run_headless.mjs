@@ -4,6 +4,11 @@ import fs from 'fs';
 import NES from '/tmp/jsnes/src/nes.js';
 import Controller from '/tmp/jsnes/src/controller.js';
 const [rom, prefix, script = ''] = process.argv.slice(2);
+// ラベルファイル(ld65 -Ln)から変数のアドレスを読む。SYMS=lives,gover,camlo,pylo,px で表示する値を選ぶ
+const sym = {};
+const lbl = rom.replace(/\.nes$/, '.lbl');
+if (fs.existsSync(lbl)) for (const l of fs.readFileSync(lbl, 'utf8').split('\n')) { const m = l.match(/^al ([0-9A-F]+) \.(\w+)/); if (m) sym[m[2]] = parseInt(m[1], 16); }
+const SYMS = (process.env.SYMS || 'lives,gover,camlo,pylo,px').split(',');
 let frame = null;
 const nes = new NES({ onFrame: b => { frame = b.slice(); }, onAudioSample: () => {} });
 nes.loadROM(fs.readFileSync(rom).toString('binary'));
@@ -23,5 +28,5 @@ for (const step of script.split(',').filter(Boolean)) {
   for (let i = 0; i < +f; i++) nes.frame();
   nes.buttonUp(1, keys[k]);
   dump(`s${++n}_${k}`);
-  console.log(k, f, 'px=', nes.cpu.mem[1], 'py=', nes.cpu.mem[3]*256+nes.cpu.mem[2], 'cam=', nes.cpu.mem[12]*256+nes.cpu.mem[11], 'ltop=', nes.cpu.mem[14]);
+  console.log(k, f, ...SYMS.map(n => `${n}=${nes.cpu.mem[sym[n]] + (n.endsWith('lo') ? 256 * nes.cpu.mem[sym[n.replace('lo', 'hi')]] : 0)}`));
 }

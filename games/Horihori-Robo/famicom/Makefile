@@ -13,7 +13,7 @@ build/main.o: src/main.s assets/chr.bin assets/map.bin assets/colcell.bin assets
 	$(CA65) -g -o $@ src/main.s
 
 $(ROM): build/main.o nes.cfg
-	$(LD65) -o $@ -C nes.cfg build/main.o
+	$(LD65) -o $@ -C nes.cfg -Ln build/horihori.lbl build/main.o
 
 clean:
 	rm -rf build
