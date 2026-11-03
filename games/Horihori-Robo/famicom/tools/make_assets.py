@@ -95,6 +95,16 @@ FONT['N'] = ["1...1", "11..1", "11..1", "1.1.1", "1..11", "1..11", "1...1"]
 FONT['K'] = ["1...1", "1..1.", "1.1..", "11...", "1.1..", "1..1.", "1...1"]
 FONT['©'] = [".111.", "1...1", "1.11.", "1.1.1", "1.11.", "1...1", ".111."]
 FONT['D'] = ["1111.", "1...1", "1...1", "1...1", "1...1", "1...1", "1111."]
+FONT['B'] = ["1111.", "1...1", "1...1", "1111.", "1...1", "1...1", "1111."]
+FONT['J'] = ["..111", "...1.", "...1.", "...1.", "...1.", "1..1.", ".11.."]
+FONT['Q'] = [".111.", "1...1", "1...1", "1...1", "1.1.1", "1..1.", ".11.1"]
+FONT['W'] = ["1...1", "1...1", "1...1", "1.1.1", "1.1.1", "11.11", "1...1"]
+FONT['X'] = ["1...1", "1...1", ".1.1.", "..1..", ".1.1.", "1...1", "1...1"]
+FONT['Z'] = ["11111", "....1", "...1.", "..1..", ".1...", "1....", "11111"]
+FONT['!'] = ["..1..", "..1..", "..1..", "..1..", "..1..", ".....", "..1.."]
+FONT['+'] = [".....", "..1..", "..1..", "11111", "..1..", "..1..", "....."]
+FONT['/'] = ["....1", "....1", "...1.", "..1..", ".1...", "1....", "1...."]
+ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 HUD_LETTERS = 'SCOREL' + 'IFTPAGD' + 'YNKHUM'   # 背景タイル 32〜50 の並び(51=©)
 HUD_TILE = {c: 22 + i for i, c in enumerate('0123456789')}
 HUD_TILE.update({c: 32 + i for i, c in enumerate(HUD_LETTERS)})
@@ -172,6 +182,11 @@ def main():
     for ch in '0123456789' + HUD_LETTERS + '©':
         g = FONT[ch]
         chr_bg += tile_bytes([[2 if c == '1' else 1 for c in (row + '000')[:8]] for row in g] + [[1] * 8])
+    assert len(chr_bg) == 52 * 16
+    # クリア画面用の全文字(背景パレットの色1=黒、色2=文字色)。52〜77=A〜Z、78='!'、79='+'、80='/'
+    for ch in ALPHA + '!+/':
+        g = FONT[ch]
+        chr_bg += tile_bytes([[2 if c == '1' else 1 for c in (row + '000')[:8]] for row in g] + [[1] * 8])
     chr_bg += bytes(4096 - len(chr_bg))
     chr_sp = bytearray()
     sprites = []
@@ -182,9 +197,11 @@ def main():
         for t in sprite_tiles(s):
             chr_sp += t
     # 文字(GAME OVER・PUSH START用)。色2(=パレットの「からだ」色)だけで描く。タイル24〜35(G A M E O V R P U S H T)、36〜45(数字0〜9)、46=C 47=L 48=F、52〜55=ストップウォッチ
+    # 黒い四角の中に白い文字(ゲーム画面の上でも読める)。左に1ドットの余白。色1=黒、色2=文字色
     for g in GLYPHS:
-        chr_sp += tile_bytes([[2 if c == '1' else 0 for c in (row + '000')[:8]] for row in g] + [[0] * 8])
-    chr_sp += bytes(16 * 3)                            # タイル49〜51は空き
+        chr_sp += tile_bytes([[2 if c == '1' else 1 for c in ('0' + row + '00')[:8]] for row in g] + [[1] * 8])
+    chr_sp += tile_bytes([[1] * 8 for _ in range(8)])  # タイル49=黒いだけ(文字の余白・空白)
+    chr_sp += bytes(16 * 2)                            # タイル50〜51は空き
     for t in sprite_tiles(watch16()): chr_sp += t     # タイル52〜55=ストップウォッチ(4の倍数から)
     chr_sp += bytes(8) + bytes([0xFF]) + bytes(7)      # タイル56=スプライト0(一番上の1行だけ白。表示帯の区切り線と重なって見えない)
     chr_sp += bytes(4096 - len(chr_sp))
@@ -250,6 +267,19 @@ def main():
     for i in range(32):
         if row[i] == 0: row[i] = 20
     open(os.path.join(OUT, 'title.bin'), 'wb').write(bytes(row) + bytes([0x55] * 8))
+
+    # クリア画面(画面B)の属性: 16x16px(2タイル行)ごとのパレット。1=白 2=点滅(PUSH START) 3=黄
+    # 文字を置く行(タイル行): 4,6=黄(見出し・ランク) 8,10=白 12=黄(PERFECT) 14,18=白 24=点滅
+    qpal = [1] * 16
+    for r, p in ((4, 3), (6, 3), (12, 3), (24, 2)):
+        qpal[r // 2] = p
+    rattr = bytearray(64)
+    for qr in range(16):
+        half = qpal[qr] * 5                            # 左右2マスとも同じパレット
+        for bc in range(8):
+            if (qr >> 1) * 8 + bc < 64:
+                rattr[(qr >> 1) * 8 + bc] |= half << ((qr & 1) * 4)
+    open(os.path.join(OUT, 'resattr.bin'), 'wb').write(bytes(rattr))
 
     # 確認用の拡大プレビュー(白・黄・赤の3パレット)
     pals = [{1: (16, 16, 80), 2: (255, 255, 255), 3: (120, 190, 255)},

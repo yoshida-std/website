@@ -2,6 +2,21 @@
 ; 第4段階: 縦長の迷路(31行)を強制スクロールで下から上へ。画面に出る行だけ背景に書く。
 .setcpu "6502"
 
+; 文字の表 tab を cnt 個、(xx, yy) から横に並べる(OAMは to から続けて使う)
+.macro LINE tab, cnt, xx, yy
+    lda #<tab
+    sta tp
+    lda #>tab
+    sta tp+1
+    lda #cnt
+    sta tn
+    lda #xx
+    sta cx
+    lda #yy
+    sta cy
+    jsr draw_text
+.endmacro
+
 ROWS      = 31          ; 迷路の行数(1行=16px)
 START_CAM = 288         ; 開始時のカメラ(世界座標で迷路窓の一番上のy) = 31*16-208
 HUDBLANK  = 20          ; 表示帯の背景タイル: 黒
@@ -9,6 +24,7 @@ HUDD0     = 22          ; 数字0のタイル
 HUD_H     = 32          ; 画面上部の表示帯の高さ(px)。迷路はその下の208px
 NROBMAX   = 5           ; 白いロボの最大数(ステージ5で5体)。番号5は赤いロボ
 STAGES    = 5
+INTRO_FR  = 180         ; ステージ開始時の「STAGE x」を出すフレーム数(3秒)
 TRAP_T    = 105         ; 穴から這い出るまで(2フレーム単位 ≒ 3.5秒)
 INVINC    = 150         ; ミス後の無敵(フレーム)
 HOLE_T    = 165         ; 穴がふさがるまで(2フレーム単位 = 約5.5秒)
@@ -152,6 +168,14 @@ to:     .res 1          ; draw_text の書き込み先(OAMのオフセット)
 oam:    .res 256
 
 .segment "BSS"
+intro:  .res 1          ; >0 の間は「STAGE x」を出して止まっている(残りフレーム)
+cscr:   .res 1          ; 1=黒いクリア画面を出している
+cblink: .res 1          ; PUSH START の点滅用カウンタ
+pcol:   .res 1          ; 点滅する色(背景パレット2の色2)
+bon:    .res 1          ; クリアボーナス(100点単位)
+tgold:  .res 1          ; 通しで取った金塊の数
+healed: .res 1          ; 1=クリアで残機が回復する
+tbuf:   .res 8          ; 文字の表(実行時に作るもの)
 hudbuf: .res 12         ; 表示帯の数字のタイル(スコア5・残機・ストップウォッチ2・ステージ・金塊2・ハシゴ)
 rowbuf: .res 32         ; 背景1マス行の上のタイル行
 rowbuf2:.res 32         ; 同じ、下のタイル行
@@ -286,6 +310,7 @@ main:
     lda #0
     sta nmiflag
     lda title
+    ora cscr
     bne :+
     jsr do_split        ; 表示帯の下端で、迷路のスクロールに切り替える
     jsr update_hud
@@ -302,6 +327,9 @@ main:
 :   lda gover
     beq :+
     jmp @over
+:   lda intro
+    beq :+
+    jmp @intro
 :   jsr update_hero
     jsr update_holes
     jsr update_robots
@@ -316,37 +344,33 @@ main:
     beq :+
     jsr newgame
     jmp main
-:   lda #<txt_push1
-    sta tp
-    lda #>txt_push1
-    sta tp+1
-    lda #4
-    sta tn
-    lda #112
-    sta cx
-    lda #104
-    sta cy
-    lda #128
+:   lda #4              ; 黒い四角の中に PUSH / START
     sta to
-    jsr draw_text
-    lda #<txt_push2
-    sta tp
-    lda #>txt_push2
-    sta tp+1
-    lda #5
-    sta tn
-    lda #108
-    sta cx
-    lda #120
-    sta cy
-    lda #148
-    sta to
-    jsr draw_text
+    LINE padtab, 6, 104, 96
+    LINE txt_push1, 6, 104, 104
+    LINE padtab, 7, 100, 112
+    LINE txt_push2, 7, 100, 120
+    LINE padtab, 7, 100, 128
     jmp main
 @clear:
+    lda cscr
+    bne @cs
+    jsr enter_clear     ; 黒いクリア画面を作る
+    jmp main
+@cs:
+    inc cblink          ; PUSH START の点滅(32フレームごと)
+    lda cblink
+    and #$20
+    beq :+
+    lda #$0F
+    bne @cc
+:   lda #$30
+@cc:sta pcol
     lda pad
     and #$10            ; Start で次のステージ(5面のあとは最初から)
-    beq :+
+    bne @cgo
+    jmp main
+@cgo:
     lda stage
     cmp #STAGES
     bcs @again
@@ -361,7 +385,13 @@ main:
 @again:
     jsr newgame
     jmp main
-:   jsr draw_all
+@intro:
+    dec intro           ; 「STAGE x」を出している間は止まる
+    bne @ib
+    jsr clear_textoam   ; 終わったら文字を消して、BGMとともに開始
+    jsr bgm_start
+@ib:
+    jsr draw_all
     jmp main
 @over:
     lda pad
@@ -376,6 +406,8 @@ main:
 newgame:
     lda #1
     sta stage
+    lda #0
+    sta tgold
     lda #LIVES0
     sta lives
     lda #0
@@ -431,6 +463,7 @@ start_game:
     sta atimer
     sta pending
     sta title
+    sta cscr
     sta hstate
     sta digbuf
     sta digheld
@@ -450,6 +483,8 @@ start_game:
     sta clear
     sta golds
     sta pushtimer
+    lda #INTRO_FR       ; 開始前に「STAGE x」を3秒出す
+    sta intro
     lda #3
     sta ladders
     lda #0
@@ -562,7 +597,6 @@ start_game:
     sta hudflag
     lda #$89            ; 画面Bから(スプライトは$1000)
     sta ctrl
-    jsr bgm_start
     bit $2002
 :   bit $2002
     bpl :-
@@ -1335,8 +1369,9 @@ draw_text:
     ldy #0
 @l: lda (tp),y
     cmp #$FF
-    beq @sp
-    sta oam+1,x
+    bne @g
+    lda #49             ; 空白は黒い四角
+@g: sta oam+1,x
     lda cy
     sec
     sbc #1
@@ -1350,13 +1385,55 @@ draw_text:
     clc
     adc cx
     sta oam+3,x
-@sp:inx
+    inx
     inx
     inx
     inx
     iny
     cpy tn
     bne @l
+    stx to              ; 次の行はこの続きに
+    rts
+
+; 文字用のスプライト(OAM 116〜235)を消す
+clear_textoam:
+    ldx #116
+    lda #$FF
+:   sta oam,x
+    inx
+    inx
+    inx
+    inx
+    cpx #236
+    bne :-
+    rts
+
+; ゲーム画面の上に出す文字(黒い四角の中に白い文字。上下の余白の行つき)
+draw_intro:
+    ldx #5              ; S T A G E _ x
+:   lda txt_stage,x
+    sta tbuf,x
+    dex
+    bpl :-
+    lda stage
+    clc
+    adc #36
+    sta tbuf+6
+    lda #116
+    sta to
+    LINE padtab, 7, 100, 120
+    LINE tbuf, 7, 100, 128
+    LINE padtab, 7, 100, 136
+    rts
+
+draw_gameover:
+    lda #116
+    sta to
+    LINE padtab, 6, 104, 116
+    LINE goover1, 6, 104, 124
+    LINE padtab, 6, 104, 132
+    LINE goover2, 6, 104, 140
+    LINE padtab, 6, 104, 148
     rts
 
 nmi:
@@ -1417,6 +1494,16 @@ nmi:
     sta $2003
     lda #>oam
     sta $4014
+    lda cscr            ; クリア画面: PUSH START の点滅(背景パレット2の色2)
+    beq @nocs
+    lda $2002
+    lda #$3F
+    sta $2006
+    lda #$0A
+    sta $2006
+    lda pcol
+    sta $2007
+@nocs:
     lda #0              ; 画面の一番上は表示帯(画面B)。迷路の窓は do_split で切り替える
     sta $2005
     sta $2005
@@ -2821,6 +2908,7 @@ update_hero:
     adc lives
     clc
     adc #10
+    sta bon
     jsr addscore
     lda golds           ; 金塊ぜんぶ(10個)でさらに3000点
     cmp #10
@@ -3278,30 +3366,7 @@ draw_all:
     ; GAME OVER
     lda gover
     beq @nogo
-    lda #<goover1
-    sta tp
-    lda #>goover1
-    sta tp+1
-    lda #4
-    sta tn
-    lda #112
-    sta cx
-    lda #104
-    sta cy
-    lda #128
-    sta to
-    jsr draw_text
-    lda #<goover2
-    sta tp
-    lda #>goover2
-    sta tp+1
-    lda #112
-    sta cx
-    lda #120
-    sta cy
-    lda #148
-    sta to
-    jsr draw_text
+    jsr draw_gameover
 @nogo:
     ldy #236            ; ストップウォッチ(取るまで)
     lda swon
@@ -3345,66 +3410,227 @@ draw_all:
     sta cat
     jsr draw_char
 @wd:
-    ; ステージクリア
-    lda clear
-    beq @nocl
+    lda intro           ; ステージ開始の「STAGE x」
+    beq @noin
+    jsr draw_intro
+@noin:
+    rts
+
+; ---------------------------------------------------------------- 黒いクリア画面
+.macro PPUADDR row, col
+    lda #>($2400 + (row) * 32 + (col))
+    sta $2006
+    lda #<($2400 + (row) * 32 + (col))
+    sta $2006
+.endmacro
+
+.macro PUTS lbl
+    lda #<lbl
+    sta ptr
+    lda #>lbl
+    sta ptr+1
+    jsr put_str
+.endmacro
+
+; ptr の文字(タイル番号。$FFで終わり)を PPU に続けて書く
+put_str:
+    ldy #0
+:   lda (ptr),y
+    cmp #$FF
+    beq @d
+    sta $2007
+    iny
+    bne :-
+@d: rts
+
+; A(0〜99) → X=十の位、A=一の位
+div10:
+    ldx #0
+:   cmp #10
+    bcc @d
+    sbc #10
+    inx
+    bne :-
+@d: rts
+
+; ステージクリア(5面のあとは ALL CLEAR)の画面を画面B($2400)に作って出す
+enter_clear:
+    lda #0
+    sta $2001
+    sta $2000
+    sta hudflag
+    sta pending
+    jsr bgm_stop
+    lda #SFX_CLEAR
+    sta sfx_req
+    ldx #0              ; スプライトは全部隠す
+    lda #$FF
+:   sta oam,x
+    inx
+    bne :-
+    lda golds           ; 通しの金塊
+    clc
+    adc tgold
+    sta tgold
+    lda #0              ; 残機が回復するか(5面のあとは回復しない)
+    sta healed
     lda stage
     cmp #STAGES
-    bcs @all
-    lda #<clr1          ; STAGE
-    sta tp
-    lda #>clr1
-    sta tp+1
-    lda #5
-    sta tn
-    lda #108
-    sta cx
-    jmp @cl2
+    bcs @nh
+    lda lives
+    cmp #LIVES0
+    bcs @nh
+    inc healed
+@nh:
+    lda $2002           ; 画面Bを黒で埋める(タイル20)
+    lda #$24
+    sta $2006
+    lda #0
+    sta $2006
+    ldy #4
+    ldx #0
+    lda #HUDBLANK
+:   sta $2007
+    inx
+    bne :-
+    dey
+    bne :-
+    lda #$27            ; 属性(行ごとのパレット: 白・黄・点滅)
+    sta $2006
+    lda #$C0
+    sta $2006
+    ldx #0
+:   lda resattr,x
+    sta $2007
+    inx
+    cpx #64
+    bne :-
+    lda stage           ; --- 見出し
+    cmp #STAGES
+    bcc :+
+    jmp @all
+:   PPUADDR 4, 9
+    PUTS s_stage
+    lda stage
+    clc
+    adc #HUDD0
+    sta $2007
+    PUTS s_clr
+    PPUADDR 8, 8       ; --- ボーナス
+    PUTS s_bonus
+    lda bon             ; 15/20/25 → 1500/2000/2500
+    jsr div10
+    pha
+    txa
+    clc
+    adc #HUDD0
+    sta $2007
+    pla
+    clc
+    adc #HUDD0
+    sta $2007
+    lda #HUDD0
+    sta $2007
+    sta $2007
+    PPUADDR 10, 8      ; --- 金塊
+    PUTS s_gold
+    lda golds
+    jsr div10
+    jsr put_two
+    PUTS s_of10
+    jmp @perf
 @all:
-    lda #<all1          ; ALL
-    sta tp
-    lda #>all1
-    sta tp+1
-    lda #3
-    sta tn
-    lda #116
-    sta cx
-@cl2:
-    lda #104
-    sta cy
-    lda #128
-    sta to
-    jsr draw_text
-    lda #<clr2          ; CLEAR
-    sta tp
-    lda #>clr2
-    sta tp+1
-    lda #5
-    sta tn
-    lda #108
-    sta cx
-    lda #120
-    sta cy
-    lda #148
-    sta to
-    jsr draw_text
-    lda golds           ; 金塊を10個ぜんぶ取っていたら PERFECT!
+    PPUADDR 4, 11
+    PUTS s_allclr
+    PPUADDR 6, 13      ; --- ランク(30000 S / 22000 A / 16000 B / それ未満 C)
+    PUTS s_rank
+    lda dg
+    cmp #3
+    bcs @rs
+    cmp #2
+    bcs @r2
+    cmp #1
+    bcc @rc
+    lda dg+1            ; 1xxxx
+    cmp #6
+    bcs @rb
+    jmp @rc
+@r2:lda dg+1            ; 2xxxx
+    cmp #2
+    bcs @ra
+    jmp @rb
+@rs:lda #52 + 'S' - 'A'
+    bne @rw
+@ra:lda #52
+    bne @rw
+@rb:lda #53
+    bne @rw
+@rc:lda #54
+@rw:sta $2007
+    PPUADDR 10, 8      ; --- 金塊の合計
+    PUTS s_gold
+    lda tgold
+    jsr div10
+    jsr put_two
+    PUTS s_of50
+@perf:
+    lda golds           ; --- PERFECT!
     cmp #10
-    bne @nocl
-    lda #<perf1
-    sta tp
-    lda #>perf1
-    sta tp+1
-    lda #7
-    sta tn
-    lda #100
-    sta cx
-    lda #140
-    sta cy
-    lda #168
-    sta to
-    jsr draw_text
-@nocl:
+    bne @np
+    PPUADDR 12, 9
+    PUTS s_perf
+@np:
+    lda healed          ; --- 残機の回復
+    beq @nr
+    PPUADDR 14, 8
+    PUTS s_heal
+@nr:
+    PPUADDR 18, 8      ; --- スコア
+    PUTS s_score
+    ldx #0
+:   lda dg,x
+    clc
+    adc #HUDD0
+    sta $2007
+    inx
+    cpx #5
+    bne :-
+    PPUADDR 24, 11     ; --- PUSH START(点滅)
+    PUTS s_push
+    lda #$30
+    sta pcol
+    lda #0
+    sta cblink
+    lda #1
+    sta cscr
+    lda #$89
+    sta ctrl
+    bit $2002
+:   bit $2002
+    bpl :-
+    lda ctrl
+    sta $2000
+    lda #%00011110
+    sta $2001
+    lda #0
+    sta nmiflag
+    rts
+
+; X=十の位、A=一の位 を2桁で書く(十の位が0なら黒)
+put_two:
+    pha
+    cpx #0
+    bne @nz
+    lda #HUDBLANK
+    bne @w
+@nz:txa
+    clc
+    adc #HUDD0
+@w: sta $2007
+    pla
+    clc
+    adc #HUDD0
+    sta $2007
     rts
 
 ; 16x16キャラを4スプライトで描く。Y=OAMオフセット(呼ぶたび16進む)。cy=$FFなら隠す
@@ -3527,26 +3753,23 @@ draw_char:
 
 .segment "RODATA"
 palette:
-    ; 背景: 床(緑)・こい緑・茶・うす橙
-    .byte $29,$09,$17,$27,  $29,$0F,$30,$0F,  $29,$09,$17,$27,  $29,$09,$17,$27
-    ; スプライト0=白 1=黄 2=赤 3=予備(ふち,からだ,アクセント)
-    .byte $29,$01,$30,$21,  $29,$01,$38,$27,  $29,$01,$16,$27,  $29,$01,$30,$21
-perf1:
-    .byte 31,27,30,48,27,46,35  ; P E R F E C T
-clr1:
-    .byte 33,35,25,24,27      ; S T A G E
-clr2:
-    .byte 46,47,27,25,30      ; C L E A R
-all1:
-    .byte 25,47,47            ; A L L
+    ; 背景0: 床(緑)・こい緑・茶・うす橙
+    ; 1=表示帯・クリア画面(黒地に白) 2=クリア画面の点滅(色2をNMIで切り替え) 3=クリア画面の黄色
+    .byte $29,$09,$17,$27,  $29,$0F,$30,$0F,  $29,$0F,$30,$0F,  $29,$0F,$28,$0F
+    ; スプライト0=白 1=黄 2=赤 3=文字(黒い四角に白)・ストップウォッチ
+    .byte $29,$01,$30,$21,  $29,$01,$38,$27,  $29,$01,$16,$27,  $29,$0F,$30,$21
+padtab:                         ; 黒い四角だけの行(文字の上下の余白)
+    .byte $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+txt_stage:
+    .byte 33,35,25,24,27,$FF  ; S T A G E _
 goover1:
-    .byte 24,25,26,27         ; G A M E
+    .byte $FF,24,25,26,27,$FF ; _ G A M E _
 goover2:
-    .byte 28,29,27,30         ; O V E R
+    .byte $FF,28,29,27,30,$FF ; _ O V E R _
 txt_push1:
-    .byte 31,32,33,34         ; P U S H
+    .byte $FF,31,32,33,34,$FF ; _ P U S H _
 txt_push2:
-    .byte 33,35,25,30,35      ; S T A R T
+    .byte $FF,33,35,25,30,35,$FF ; _ S T A R T _
 titlent:
     .incbin "../assets/title.bin"
 hudnt:
@@ -3557,6 +3780,63 @@ rowlo:
     .incbin "../assets/rowlo.bin"
 rowhi:
     .incbin "../assets/rowhi.bin"
+
+resattr:
+    .incbin "../assets/resattr.bin"
+
+; クリア画面の文字(背景タイル: A〜Z=52〜77, !=78, +=79, /=80, 数字=22〜31, 空白=20(黒))
+.charmap 32, 20
+.charmap 65, 52
+.charmap 66, 53
+.charmap 67, 54
+.charmap 68, 55
+.charmap 69, 56
+.charmap 70, 57
+.charmap 71, 58
+.charmap 72, 59
+.charmap 73, 60
+.charmap 74, 61
+.charmap 75, 62
+.charmap 76, 63
+.charmap 77, 64
+.charmap 78, 65
+.charmap 79, 66
+.charmap 80, 67
+.charmap 81, 68
+.charmap 82, 69
+.charmap 83, 70
+.charmap 84, 71
+.charmap 85, 72
+.charmap 86, 73
+.charmap 87, 74
+.charmap 88, 75
+.charmap 89, 76
+.charmap 90, 77
+.charmap 48, 22
+.charmap 49, 23
+.charmap 50, 24
+.charmap 51, 25
+.charmap 52, 26
+.charmap 53, 27
+.charmap 54, 28
+.charmap 55, 29
+.charmap 56, 30
+.charmap 57, 31
+.charmap 33, 78
+.charmap 43, 79
+.charmap 47, 80
+s_stage:  .byte "STAGE ", $FF
+s_clr:    .byte " CLEAR!", $FF
+s_allclr: .byte "ALL CLEAR!", $FF
+s_rank:   .byte "RANK ", $FF
+s_bonus:  .byte "BONUS  +", $FF
+s_gold:   .byte "GOLD    ", $FF
+s_of10:   .byte "/10", $FF
+s_of50:   .byte "/50", $FF
+s_perf:   .byte "PERFECT! +3000", $FF
+s_heal:   .byte "LIFE RECOVER +1", $FF
+s_score:  .byte "SCORE   ", $FF
+s_push:   .byte "PUSH START", $FF
 
 .include "../assets/sound.inc"
 
