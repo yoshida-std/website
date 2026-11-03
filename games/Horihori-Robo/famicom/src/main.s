@@ -110,9 +110,27 @@ freezef:.res 1
 rspr:   .res 1          ; 赤いロボの速さ
 redsp:  .res 1          ; 1=赤いロボは出た
 soff:   .res 1          ; 出現位置: 画面の上端からの行数
+bgm_on: .res 1          ; 1=BGMを鳴らす
+m1p:    .res 2          ; BGM 矩形波1(メロディ)の読み出し位置・残りフレーム・経過・音
+m1c:    .res 1
+m1t:    .res 1
+m1n:    .res 1
+m2p:    .res 2          ; BGM 三角波(ベース)
+m2c:    .res 1
+m2n:    .res 1
+spp:    .res 2          ; 効果音(矩形波2)の曲
+spc:    .res 1
+spt:    .res 1
+spn:    .res 1
+spon:   .res 1
+snc:    .res 1          ; 効果音(ノイズ)の残りフレーム・音量
+snv:    .res 1
+sfx_req:.res 1          ; 鳴らしたい効果音の番号(NMIが受け取って0に戻す)
 face:   .res 1          ; 向いている方向(1=右 2=左 4=下 8=上)
 digbuf: .res 1          ; 掘るボタンの入力をためておく(フレーム)
 digheld:.res 1
+ladbuf: .res 1          ; Bボタン(ハシゴ)の入力をためておく
+ladheld:.res 1
 hstate: .res 1          ; 0=ふつう 1=穴に落ちて動けない 2=這い出た直後(この穴では落ちない)
 fallt:  .res 1
 fc:     .res 1
@@ -190,6 +208,14 @@ reset:
 :   bit $2002
     bpl :-
 
+    lda #$0F            ; APU: 矩形波2つ・三角波・ノイズを有効に
+    sta $4015
+    lda #$30
+    sta $4000
+    sta $4004
+    sta $400C
+    lda #$80
+    sta $4008
     ; パレット
     lda $2002
     lda #$3F
@@ -378,6 +404,8 @@ start_game:
     sta hstate
     sta digbuf
     sta digheld
+    sta ladbuf
+    sta ladheld
     sta qhead
     sta qtail
     sta fc
@@ -457,6 +485,7 @@ start_game:
     cmp #ROWS
     bne :-
     jsr set_scroll
+    jsr bgm_start
     bit $2002
 :   bit $2002
     bpl :-
@@ -503,6 +532,246 @@ place_watch:
 @ok:
     lda #1
     sta swon
+    rts
+
+; ---------------------------------------------------------------- 音
+; BGM: 矩形波1(メロディ)+三角波(ベース)。効果音: 矩形波2+ノイズ。毎フレームNMIで進める。
+; 曲のデータは「音符,長さ(フレーム)」の並び(tools/make_sound.py が作る)。
+bgm_start:
+    lda #<bgm_mel
+    sta m1p
+    lda #>bgm_mel
+    sta m1p+1
+    lda #<bgm_bass
+    sta m2p
+    lda #>bgm_bass
+    sta m2p+1
+    lda #0
+    sta m1c
+    sta m2c
+    lda #1
+    sta bgm_on
+    rts
+
+bgm_stop:
+    lda #0
+    sta bgm_on
+    lda #$30
+    sta $4000
+    lda #$80
+    sta $4008
+    rts
+
+sound_update:
+    ; --- 効果音の要求
+    lda sfx_req
+    beq @norq
+    tax
+    dex
+    lda #0
+    sta sfx_req
+    lda sfxlo,x
+    ora sfxhi,x
+    beq @nopulse
+    lda sfxlo,x
+    sta spp
+    lda sfxhi,x
+    sta spp+1
+    lda #1
+    sta spon
+    lda #0
+    sta spc
+@nopulse:
+    lda nzlen,x
+    beq @norq
+    sta snc
+    lda nzvol,x
+    sta snv
+    lda nzper,x
+    sta $400E
+    lda #$08
+    sta $400F
+@norq:
+    ; --- ノイズ(だんだん小さくなる)
+    lda snc
+    beq @nzoff
+    dec snc
+    and #1
+    bne :+
+    lda snv
+    beq :+
+    dec snv
+:   lda snv
+    ora #$30
+    sta $400C
+    jmp @nzdone
+@nzoff:
+    lda #$30
+    sta $400C
+@nzdone:
+    ; --- 効果音の矩形波(矩形波2)
+    lda spon
+    beq @spdone
+    lda spc
+    bne @sptick
+    ldy #0
+    lda (spp),y
+    cmp #$FE
+    bne @spn
+    lda #0              ; 曲の終わり
+    sta spon
+    lda #$30
+    sta $4004
+    jmp @spdone
+@spn:
+    sta spn
+    iny
+    lda (spp),y
+    sta spc
+    lda spp
+    clc
+    adc #2
+    sta spp
+    bcc :+
+    inc spp+1
+:   lda #0
+    sta spt
+    ldx spn
+    beq @sptick
+    lda perlo-1,x
+    sta $4006
+    lda perhi-1,x
+    sta $4007
+@sptick:
+    dec spc
+    inc spt
+    lda spn
+    beq @spsil
+    lda spt             ; 音量: 12から2フレームで1ずつ下がる(下限3)
+    lsr
+    sta tmp
+    lda #12
+    sec
+    sbc tmp
+    bcs :+
+    lda #0
+:   cmp #3
+    bcs :+
+    lda #3
+:   ora #$70            ; デューティ25%・音量固定
+    sta $4004
+    jmp @spdone
+@spsil:
+    lda #$30
+    sta $4004
+@spdone:
+    ; --- BGM
+    lda bgm_on
+    bne :+
+    rts
+:   lda freezes         ; ストップウォッチで止まっている間はBGMもとめる
+    beq @bgmrun
+    lda #$30
+    sta $4000
+    lda #$80
+    sta $4008
+    jmp @bgmdone
+@bgmrun:
+    lda m1c             ; メロディ
+    bne @m1tick
+@m1f:
+    ldy #0
+    lda (m1p),y
+    cmp #$FF
+    bne @m1n
+    lda #<bgm_mel       ; 曲の頭へ
+    sta m1p
+    lda #>bgm_mel
+    sta m1p+1
+    jmp @m1f
+@m1n:
+    sta m1n
+    iny
+    lda (m1p),y
+    sta m1c
+    lda m1p
+    clc
+    adc #2
+    sta m1p
+    bcc :+
+    inc m1p+1
+:   lda #0
+    sta m1t
+    ldx m1n
+    beq @m1tick
+    lda perlo-1,x
+    sta $4002
+    lda perhi-1,x
+    sta $4003
+@m1tick:
+    dec m1c
+    inc m1t
+    lda m1n
+    beq @m1sil
+    lda m1t             ; 音量: 11から4フレームで1ずつ下がる(下限5)
+    lsr
+    lsr
+    sta tmp
+    lda #11
+    sec
+    sbc tmp
+    bcs :+
+    lda #0
+:   cmp #5
+    bcs :+
+    lda #5
+:   ora #$B0            ; デューティ50%・音量固定
+    sta $4000
+    jmp @m2
+@m1sil:
+    lda #$30
+    sta $4000
+@m2:
+    lda m2c             ; ベース
+    bne @m2tick
+@m2f:
+    ldy #0
+    lda (m2p),y
+    cmp #$FF
+    bne @m2n
+    lda #<bgm_bass
+    sta m2p
+    lda #>bgm_bass
+    sta m2p+1
+    jmp @m2f
+@m2n:
+    sta m2n
+    iny
+    lda (m2p),y
+    sta m2c
+    lda m2p
+    clc
+    adc #2
+    sta m2p
+    bcc :+
+    inc m2p+1
+:   ldx m2n
+    beq @m2tick
+    lda trilo-1,x
+    sta $400A
+    lda trihi-1,x
+    sta $400B
+@m2tick:
+    dec m2c
+    lda m2n
+    beq @m2sil
+    lda #$FF
+    sta $4008
+    jmp @bgmdone
+@m2sil:
+    lda #$80
+    sta $4008
+@bgmdone:
     rts
 
 ; ---------------------------------------------------------------- 乱数・迷路生成
@@ -910,6 +1179,7 @@ nmi:
     sta $2005
     lda ctrl
     sta $2000
+    jsr sound_update
     lda #1
     sta nmiflag
     pla
@@ -1208,7 +1478,8 @@ blocked:
 
 ; ---------------------------------------------------------------- 穴
 ; 向いている先のマスが床なら穴を掘り、穴ならうめる(壁は何もしない)
-do_dig:
+; 向いている先のマスを (dcx,dcy) に求める。範囲外ならC=1
+calc_target:
     lda px
     sec
     sbc #24
@@ -1239,25 +1510,30 @@ do_dig:
 :   dec dcy
 @t: lda dcx
     cmp #12
-    bcs @no
+    bcs @out
     lda dcy
     cmp #31
-    bcs @no
-    ldy dcx
-    lda dcy
-    jsr getcell
-    beq @dig
-    cmp #2
-    beq @fill
-    cmp #1
-    beq @lad
-@no:
+    bcs @out
+    clc
     rts
-@lad:                   ; 壁に向かって止まったあとにボタン → ハシゴ(外周とゴール行は除く)
+@out:
+    sec
+    rts
+
+; Bボタン: 壁に向かって止まったあと(1.5秒以内)なら、向いている壁をハシゴにする
+; (外周とゴールの行は除く。ハシゴは1ステージに3本)
+do_ladder:
     lda ladders
     beq @no
     lda pushtimer
     beq @no
+    jsr calc_target
+    bcs @no
+    ldy dcx
+    lda dcy
+    jsr getcell
+    cmp #1
+    bne @no
     lda dcx
     beq @no
     lda dcy
@@ -1271,8 +1547,25 @@ do_dig:
     dec ladders
     lda #0
     sta pushtimer
+    lda #SFX_LADDER
+    sta sfx_req
     lda #16             ; ハシゴのタイル
     jmp qcell
+@no:
+    rts
+
+; Aボタン: 向いている先のマスが床なら穴を掘り、穴ならうめる(壁は何もしない)。自動ねらいはしない
+do_dig:
+    jsr calc_target
+    bcs @no
+    ldy dcx
+    lda dcy
+    jsr getcell
+    beq @dig
+    cmp #2
+    beq @fill
+@no:
+    rts
 @dig:
     ldx #7              ; あいている穴の番号を探す
 :   lda ht,x
@@ -1281,6 +1574,8 @@ do_dig:
     bpl :-
     rts
 @free:
+    lda #SFX_DIG
+    sta sfx_req
     lda dcx
     sta hx,x
     lda dcy
@@ -1308,6 +1603,8 @@ do_dig:
     bpl :-
     rts
 @found:
+    lda #SFX_DIG
+    sta sfx_req
     lda #0
     sta ht,x
     sta sd
@@ -1809,6 +2106,11 @@ spawn_robot:
     sta racc,x
     sta rimm,x
     sta rstp,x
+    lda #SFX_SPAWN
+    cpx #5
+    bne :+
+    lda #SFX_ALERT
+:   sta sfx_req
     rts
 
 ; ロボのいるマスの値(rc番)
@@ -1989,6 +2291,8 @@ robot_hero:
     ldx rc
     lda #1
     sta rstp,x
+    lda #SFX_STOMP
+    sta sfx_req
     lda #2
     jmp addscore
 @r: rts
@@ -2091,6 +2395,8 @@ crush_cell:
     lda rrsp
     sta rtm,x
     stx hidx2
+    lda #SFX_CRUSH
+    sta sfx_req
     lda #3              ; 白いロボ +300
     cpx #5
     bne :+
@@ -2140,11 +2446,13 @@ check_squeeze:
 
 ; ミス: 残機を1つ減らす。0ならゲームオーバー。それ以外は画面の中ほどで復活し、2秒スクロールが止まる
 do_miss:
+    lda #SFX_MISS
+    sta sfx_req
     dec lives
     bne @re
     lda #1
     sta gover
-    rts
+    jmp bgm_stop
 @re:
     lda px
     sec
@@ -2198,6 +2506,7 @@ do_miss:
     sta mdir
     sta hstate
     sta digbuf
+    sta ladbuf
     lda #PAUSE_FR
     sta campause
     lda #INVINC
@@ -2223,21 +2532,36 @@ update_hero:
     lda pushtimer
     beq :+
     dec pushtimer
-:   ; 掘るボタン(A/B)の押した瞬間を 0.4秒ためておく
+:   ; Aボタン(掘る/うめる)・Bボタン(ハシゴ)の押した瞬間を、それぞれ0.4秒ためておく
     lda digbuf
     beq :+
     dec digbuf
+:   lda ladbuf
+    beq :+
+    dec ladbuf
 :   lda pad
-    and #$C0
+    and #$80            ; A
     bne :+
     sta digheld
-    jmp @nodig
+    jmp @noa
 :   lda digheld
-    bne @nodig
+    bne @noa
     lda #1
     sta digheld
     lda #24
     sta digbuf
+@noa:
+    lda pad
+    and #$40            ; B
+    bne :+
+    sta ladheld
+    jmp @nodig
+:   lda ladheld
+    bne @nodig
+    lda #1
+    sta ladheld
+    lda #24
+    sta ladbuf
 @nodig:
     lda px
     and #15
@@ -2314,6 +2638,8 @@ update_hero:
     jsr setcell
     jsr qfloor
     inc golds
+    lda #SFX_GOLD
+    sta sfx_req
     lda #3
     jsr addscore
 @nogold:
@@ -2331,6 +2657,8 @@ update_hero:
     sta freezes
     lda #60
     sta freezef
+    lda #SFX_WATCH
+    sta sfx_req
 @nowatch:
     lda hstate          ; 穴に落ちている間は動けない(1秒で這い出る)
     cmp #1
@@ -2356,6 +2684,8 @@ update_hero:
     bne @nofall
     jsr trapped_here
     bcs @nofall
+    lda #SFX_FALL
+    sta sfx_req
     lda #1
     sta hstate
     lda #60
@@ -2392,6 +2722,12 @@ update_hero:
     sta digbuf
     jsr do_dig
 @nd:
+    lda ladbuf          ; ためてあるハシゴの入力
+    beq @nl
+    lda #0
+    sta ladbuf
+    jsr do_ladder
+@nl:
     lda #1              ; 向きを選ぶ
     jsr try_dir
     lda mdir
@@ -3123,6 +3459,8 @@ rowlo:
     .incbin "../assets/rowlo.bin"
 rowhi:
     .incbin "../assets/rowhi.bin"
+
+.include "../assets/sound.inc"
 
 .segment "VECTORS"
     .word nmi, reset, irq
