@@ -105,6 +105,7 @@ FONT['!'] = ["..1..", "..1..", "..1..", "..1..", "..1..", ".....", "..1.."]
 FONT['+'] = [".....", "..1..", "..1..", "11111", "..1..", "..1..", "....."]
 FONT['/'] = ["....1", "....1", "...1.", "..1..", ".1...", "1....", "1...."]
 ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+ARROW = ["1....", "11...", "111..", "1111.", "111..", "11...", "1...."]
 HUD_LETTERS = 'SCOREL' + 'IFTPAGD' + 'YNKHUM'   # 背景タイル 32〜50 の並び(51=©)
 HUD_TILE = {c: 22 + i for i, c in enumerate('0123456789')}
 HUD_TILE.update({c: 32 + i for i, c in enumerate(HUD_LETTERS)})
@@ -201,7 +202,8 @@ def main():
     for g in GLYPHS:
         chr_sp += tile_bytes([[2 if c == '1' else 1 for c in ('0' + row + '00')[:8]] for row in g] + [[1] * 8])
     chr_sp += tile_bytes([[1] * 8 for _ in range(8)])  # タイル49=黒いだけ(文字の余白・空白)
-    chr_sp += bytes(16 * 2)                            # タイル50〜51は空き
+    for g in (FONT['I'], ARROW):                       # タイル50=I、51=矢印(ポーズの選択)
+        chr_sp += tile_bytes([[2 if c == '1' else 1 for c in ('0' + row + '00')[:8]] for row in g] + [[1] * 8])
     for t in sprite_tiles(watch16()): chr_sp += t     # タイル52〜55=ストップウォッチ(4の倍数から)
     chr_sp += bytes(8) + bytes([0xFF]) + bytes(7)      # タイル56=スプライト0(一番上の1行だけ白。表示帯の区切り線と重なって見えない)
     chr_sp += bytes(4096 - len(chr_sp))

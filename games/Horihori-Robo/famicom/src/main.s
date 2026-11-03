@@ -168,6 +168,11 @@ to:     .res 1          ; draw_text の書き込み先(OAMのオフセット)
 oam:    .res 256
 
 .segment "BSS"
+padold: .res 1          ; 前のフレームのボタン
+padnew: .res 1          ; このフレームに押したボタン
+paused: .res 1          ; 1=ポーズ中
+pmenu:  .res 1          ; ポーズ画面の選んでいる項目(0〜2)
+bgmwas: .res 1          ; ポーズに入る前の bgm_on
 intro:  .res 1          ; >0 の間は「STAGE x」を出して止まっている(残りフレーム)
 cscr:   .res 1          ; 1=黒いクリア画面を出している
 cblink: .res 1          ; PUSH START の点滅用カウンタ
@@ -259,50 +264,7 @@ reset:
     cpx #32
     bne :-
 
-    ; 背景(ネームテーブル)をゼロで埋める
-    lda $2002
-    lda #$20
-    sta $2006
-    lda #0
-    sta $2006
-    ldy #16
-    ldx #0
-@cl:sta $2007
-    inx
-    bne @cl
-    dey
-    bne @cl
-
-    ; タイトル画面のクレジット(画面Aの26行目。黒地に白)
-    lda $2002
-    lda #$23
-    sta $2006
-    lda #$40
-    sta $2006
-    ldx #0
-:   lda titlent,x
-    sta $2007
-    inx
-    cpx #32
-    bne :-
-    lda #$23
-    sta $2006
-    lda #$F0
-    sta $2006
-:   lda titlent,x
-    sta $2007
-    inx
-    cpx #40
-    bne :-
-    ; タイトル画面
-    lda #1
-    sta title
-    sta seed
-    lda #$88
-    sta ctrl
-    sta $2000
-    lda #%00011110
-    sta $2001
+    jsr show_title
 
 main:
     lda nmiflag
@@ -315,6 +277,12 @@ main:
     jsr do_split        ; 表示帯の下端で、迷路のスクロールに切り替える
     jsr update_hud
 :   jsr read_pad
+    lda padold          ; このフレームに押したボタン
+    eor #$FF
+    and pad
+    sta padnew
+    lda pad
+    sta padold
     inc seed            ; 乱数の種(遊んでいる間もずっと進める)
     bne :+
     inc seed+1
@@ -330,6 +298,14 @@ main:
 :   lda intro
     beq :+
     jmp @intro
+:   lda paused
+    beq :+
+    jmp @pause
+:   lda padnew
+    and #$10            ; Start でポーズ
+    beq :+
+    jsr enter_pause
+    jmp main
 :   jsr update_hero
     jsr update_holes
     jsr update_robots
@@ -385,6 +361,51 @@ main:
 @again:
     jsr newgame
     jmp main
+@pause:
+    lda padnew
+    and #$08            ; 上
+    beq @pnu
+    lda pmenu
+    bne :+
+    lda #3
+:   sec
+    sbc #1
+    sta pmenu
+@pnu:
+    lda padnew
+    and #$04            ; 下
+    beq @pnd
+    ldx pmenu
+    inx
+    cpx #3
+    bcc :+
+    ldx #0
+:   stx pmenu
+@pnd:
+    lda padnew
+    and #$10            ; Start でも戻れる
+    beq :+
+    jsr leave_pause
+    jmp main
+:   lda padnew
+    and #$80            ; A で決定
+    beq @pdraw
+    lda pmenu
+    beq @presume
+    cmp #1
+    beq @pretire
+    jsr leave_pause     ; 2 = TITLE
+    jmp to_title
+@pretire:
+    jsr leave_pause     ; 1 = RETIRE(わざとミス)
+    jsr do_miss
+    jmp main
+@presume:
+    jsr leave_pause
+    jmp main
+@pdraw:
+    jsr draw_pause
+    jmp main
 @intro:
     dec intro           ; 「STAGE x」を出している間は止まる
     bne @ib
@@ -401,6 +422,172 @@ main:
     jmp main
 :   jsr draw_all
     jmp main
+
+; ---------------------------------------------------------------- ポーズ
+; ポーズに入る: 主人公・ロボのスプライトを後ろへずらし、前(OAM 4〜)をウィンドウに使う
+; (スプライトは若い番号が手前・優先なので、ウィンドウが敵に隠れず、1行8個の制限でも欠けない)
+enter_pause:
+    ldx #0
+:   lda oam+4,x
+    sta oam+144,x
+    inx
+    cpx #112
+    bne :-
+    lda bgm_on
+    sta bgmwas
+    jsr bgm_stop
+    lda #0
+    sta pmenu
+    lda #1
+    sta paused
+    jmp draw_pause
+
+; ポーズをやめる: ウィンドウを消してスプライトを描き直す(押しっぱなしのA/Bでは掘らない)
+leave_pause:
+    lda #0
+    sta paused
+    ldx #4              ; 主人公・ロボ・ウィンドウの跡を全部消す(使っていないロボの枠は draw_all が描かない)
+    lda #$FF
+:   sta oam,x
+    inx
+    bne :-
+    lda bgmwas
+    sta bgm_on
+    lda #0
+    sta digbuf
+    sta ladbuf
+    lda #1
+    sta digheld
+    sta ladheld
+    jmp draw_all
+
+; コマンドウィンドウ: 黒い四角に RESUME / RETIRE / TITLE と選択中の矢印(OAM 4〜143)
+draw_pause:
+    lda #4
+    sta to
+    LINE padtab, 7, 100, 116
+    lda #<tbuf
+    sta tp
+    lda #>tbuf
+    sta tp+1
+    lda #7
+    sta tn
+    lda #100
+    sta cx
+    ldx #0
+@row:
+    stx t3              ; 行番号
+    lda #$FF
+    cpx pmenu
+    bne :+
+    lda #51             ; 矢印
+:   sta tbuf
+    txa                 ; ラベル = pause_lbl + 行 x 6
+    asl
+    sta u
+    asl
+    clc
+    adc u
+    tay
+    ldx #0
+:   lda pause_lbl,y
+    sta tbuf+1,x
+    iny
+    inx
+    cpx #6
+    bne :-
+    lda t3
+    asl
+    asl
+    asl
+    clc
+    adc #124
+    sta cy
+    jsr draw_text
+    ldx t3
+    inx
+    cpx #3
+    bne @row
+    LINE padtab, 7, 100, 148
+    rts
+
+pause_lbl:
+    .byte 30,27,33,32,26,27         ; R E S U M E
+    .byte 30,27,35,50,30,27         ; R E T I R E
+    .byte 35,50,35,47,27,$FF        ; T I T L E
+
+; タイトルへ戻る(BGMを止め、状態を全部初期化してタイトル画面を出す)
+to_title:
+    jsr bgm_stop
+    lda #0
+    sta hudflag
+    sta pending
+    sta qhead
+    sta qtail
+    sta intro
+    sta paused
+    sta cscr
+    sta clear
+    sta gover
+    sta freezes
+    ldx #0
+    lda #$FF
+:   sta oam,x
+    inx
+    bne :-
+    jsr show_title
+    jmp main
+
+; タイトル画面を出す(描画を止めて画面を作り直し、描画を再開する)
+show_title:
+    lda #0
+    sta $2000
+    sta $2001
+    ; 背景(ネームテーブル)をゼロで埋める
+    lda $2002
+    lda #$20
+    sta $2006
+    lda #0
+    sta $2006
+    ldy #16
+    ldx #0
+@cl:sta $2007
+    inx
+    bne @cl
+    dey
+    bne @cl
+
+    ; タイトル画面のクレジット(画面Aの26行目。黒地に白)
+    lda $2002
+    lda #$23
+    sta $2006
+    lda #$40
+    sta $2006
+    ldx #0
+:   lda titlent,x
+    sta $2007
+    inx
+    cpx #32
+    bne :-
+    lda #$23
+    sta $2006
+    lda #$F0
+    sta $2006
+:   lda titlent,x
+    sta $2007
+    inx
+    cpx #40
+    bne :-
+    ; タイトル画面
+    lda #1
+    sta title
+    sta seed
+    lda #$88
+    sta ctrl
+    sta $2000
+    lda #%00011110
+    sta $2001
+    rts
 
 ; 最初から(1面・残機・スコアを戻して開始)
 newgame:

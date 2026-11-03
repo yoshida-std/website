@@ -25,3 +25,4 @@ cc65(ca65/ld65)と Python3(Pillow)が必要。`make` で `build/horihori.nes` �
 - 第13段階: スコアなどの表示を画面の上部(黒地の32px)に移動。スプライト0でスクロールを切り替える。迷路の窓は208px(13マス)
 - 第14段階: BGMをブラウザ版の曲の自動採譜(メロディ+ベース)に差し替え。タイトル画面に©表記(YoshidaStudio・PANICPUMPKIN)
 - 第15段階: ステージの間に黒いクリア画面(ボーナス・金塊・PERFECT・残機回復・スコア、点滅するPUSH START。ALL CLEARはランク)。ステージ開始時にゲーム画面の上へ「STAGE x」を3秒。ゲーム画面の文字は黒い四角つき
+- 第16段階: ポーズ(Start。RESUME / RETIRE / TITLE を上下+Aで選ぶ)
