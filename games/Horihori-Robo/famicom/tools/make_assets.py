@@ -163,10 +163,11 @@ def main():
         sprites.append(s)
         for t in sprite_tiles(s):
             chr_sp += t
-    # 文字(GAME OVER・PUSH START用)。色2(=パレットの「からだ」色)だけで描く。タイル24〜35(G A M E O V R P U S H T)、36〜45(数字0〜9)、46=C 47=L 48=F、49〜52=ストップウォッチ
+    # 文字(GAME OVER・PUSH START用)。色2(=パレットの「からだ」色)だけで描く。タイル24〜35(G A M E O V R P U S H T)、36〜45(数字0〜9)、46=C 47=L 48=F、52〜55=ストップウォッチ
     for g in GLYPHS:
         chr_sp += tile_bytes([[2 if c == '1' else 0 for c in (row + '000')[:8]] for row in g] + [[0] * 8])
-    for t in sprite_tiles(watch16()): chr_sp += t     # タイル49〜52=ストップウォッチ
+    chr_sp += bytes(16 * 3)                            # タイル49〜51は空き
+    for t in sprite_tiles(watch16()): chr_sp += t     # タイル52〜55=ストップウォッチ(4の倍数から)
     chr_sp += bytes(4096 - len(chr_sp))
     open(os.path.join(OUT, 'chr.bin'), 'wb').write(bytes(chr_bg + chr_sp))
 

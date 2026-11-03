@@ -102,6 +102,11 @@ golds:  .res 1          ; 取った金塊の数
 bestrow:.res 1          ; いちばん上まで進んだマス行(上がるたび+10点)
 ladders:.res 1          ; 残りのハシゴ
 pushtimer:.res 1        ; 壁に向かって止まってから、ハシゴをかけられる残り時間
+swcx:   .res 1          ; ストップウォッチのマス
+swcy:   .res 1
+swon:   .res 1
+freezes:.res 1          ; スクロールが止まっている残り秒
+freezef:.res 1
 face:   .res 1          ; 向いている方向(1=右 2=左 4=下 8=上)
 digbuf: .res 1          ; 掘るボタンの入力をためておく(フレーム)
 digheld:.res 1
@@ -388,6 +393,9 @@ start_game:
     lda #0
     lda #255
     sta bestrow
+    lda #0
+    sta freezes
+    sta swon
     ldx stage           ; このステージの速さなど(表は0始まり)
     dex
     lda stg_cam,x
@@ -428,6 +436,7 @@ start_game:
     lda #8
     sta face
     jsr gen_maze
+    jsr place_watch
     ; 画面に最初から出る行(マス行16〜30)を背景に書いておく
     lda #(START_CAM / 16)
     sta ltop
@@ -449,6 +458,43 @@ start_game:
     sta $2001
     lda #0
     sta nmiflag
+    rts
+
+; ストップウォッチを1つ置く: 迷路の高さの30〜70%(奇数行9〜21)の、金塊のない奇数列の部屋
+place_watch:
+    lda #7
+    sta md
+    jsr rand
+    jsr rmod
+    asl
+    clc
+    adc #9
+    sta swcy
+    lda #6
+    sta md
+    jsr rand
+    jsr rmod
+    asl
+    clc
+    adc #1
+    sta swcx
+    ldx #6
+@w: ldy swcx
+    lda swcy
+    jsr getcell
+    beq @ok
+    lda swcx
+    clc
+    adc #2
+    cmp #12
+    bcc :+
+    lda #1
+:   sta swcx
+    dex
+    bne @w
+@ok:
+    lda #1
+    sta swon
     rts
 
 ; ---------------------------------------------------------------- 乱数・迷路生成
@@ -883,6 +929,16 @@ read_pad:
 ; ---------------------------------------------------------------- カメラ
 ; カメラを上へ少しずつ進め(0で止まる)、新しく画面の上端に出るマス行を背景に書く
 update_cam:
+    lda freezes         ; ストップウォッチで止まっている間
+    beq @nofz
+    dec freezef
+    bne @fzs
+    lda #60
+    sta freezef
+    dec freezes
+@fzs:
+    jmp set_scroll
+@nofz:
     lda campause
     beq :+
     dec campause
@@ -2217,6 +2273,21 @@ update_hero:
     lda #3
     jsr addscore
 @nogold:
+    lda swon            ; ストップウォッチ: スクロールが10秒止まる
+    beq @nowatch
+    lda dcx
+    cmp swcx
+    bne @nowatch
+    lda dcy
+    cmp swcy
+    bne @nowatch
+    lda #0
+    sta swon
+    lda #10
+    sta freezes
+    lda #60
+    sta freezef
+@nowatch:
     lda hstate          ; 穴に落ちている間は動けない(1秒で這い出る)
     cmp #1
     bne @notstuck
@@ -2706,10 +2777,80 @@ draw_all:
     sta oam+3,y
     lda #16
     sta oam+7,y
-    tya                 ; 残りのハシゴ(1桁)
+    ldy #236            ; ストップウォッチ(取るまで)
+    lda swon
+    bne @wsh
+    lda #$FF
+    sta oam,y
+    sta oam+4,y
+    sta oam+8,y
+    sta oam+12,y
+    jmp @wd
+@wsh:
+    lda swcx
+    asl
+    asl
+    asl
+    asl
     clc
-    adc #8
-    tay
+    adc #24
+    sta cx
+    lda swcy
+    asl
+    asl
+    asl
+    asl
+    pha
+    lda swcy
+    lsr
+    lsr
+    lsr
+    lsr
+    tax
+    pla
+    jsr w2s
+    sta cy
+    lda #13             ; タイル52〜55
+    sta cfr
+    lda #0
+    sta cfl
+    sta chalf
+    lda #3
+    sta cat
+    jsr draw_char
+@wd:
+    ldy #128            ; 止まっている残り秒(画面の上の中央。文字の表示と場所を共有)
+    lda freezes
+    bne @fz
+    lda #$FF
+    sta oam,y
+    sta oam+4,y
+    jmp @fzd
+@fz:
+    ldx #0
+    cmp #10
+    bcc :+
+    sbc #10
+    ldx #1
+:   clc
+    adc #36
+    sta oam+5,y
+    txa
+    clc
+    adc #36
+    sta oam+1,y
+    lda #23
+    sta oam,y
+    sta oam+4,y
+    lda #3
+    sta oam+2,y
+    sta oam+6,y
+    lda #116
+    sta oam+3,y
+    lda #124
+    sta oam+7,y
+@fzd:
+    ldy #232            ; 残りのハシゴ(1桁)
     lda #135
     sta oam,y
     lda ladders
