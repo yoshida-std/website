@@ -85,6 +85,7 @@ GLYPHS = [  # G A M E O V R (5x7)
     [".111.", "1...1", "1...1", ".1111", "....1", "...1.", ".11.."],   # 9
     [".1111", "1....", "1....", "1....", "1....", "1....", ".1111"],   # C (46)
     ["1....", "1....", "1....", "1....", "1....", "1....", "11111"],   # L (47)
+    ["11111", "1....", "1....", "1111.", "1....", "1....", "1...."],   # F (48)
 ]
 BG_FLOOR = pat(["00000000", "00000000", "00010000", "00000000",
                 "00000000", "00000100", "00000000", "00000000"])
@@ -104,6 +105,43 @@ def pit16(rx, ry):
             elif d <= 1: px[y][x] = 2
     return px
 
+def disc(px, cx, cy, rx, ry, edge, fill):
+    for y in range(16):
+        for x in range(16):
+            d = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2
+            if d <= 1:
+                di = ((x - cx) / (rx - 1)) ** 2 + ((y - cy) / (ry - 1)) ** 2
+                px[y][x] = fill if di <= 1 else edge
+
+def gold16():
+    # 金塊の山: 3つの丸い塊。ふち=茶(2)、中=うす橙(3)、かげ=こい色(1)
+    px = [[0] * 16 for _ in range(16)]
+    disc(px, 4.5, 11.0, 4.6, 3.6, 2, 3)
+    disc(px, 11.0, 11.0, 4.6, 3.6, 2, 3)
+    disc(px, 7.8, 7.0, 4.6, 3.8, 2, 3)
+    for (x, y) in ((6, 5), (7, 5), (3, 10), (10, 10)):
+        px[y][x] = 1
+    return px
+
+def ladder16():
+    # 壁にかけたハシゴ: レンガ(2/3)のうえに、こい色(1)の縦棒2本と横棒
+    px = [[BG_WALL[y % 8][x % 8] for x in range(16)] for y in range(16)]
+    for y in range(16):
+        for x in (3, 4, 11, 12): px[y][x] = 1
+    for y in (2, 6, 10, 14):
+        for x in range(3, 13): px[y][x] = 1
+    return px
+
+def watch16():
+    # ストップウォッチ(スプライト): ふち=1、文字盤=2、針=3
+    px = [[0] * 16 for _ in range(16)]
+    disc(px, 7.5, 9.0, 6.8, 6.8, 1, 2)
+    for y in range(0, 3):
+        for x in (6, 7, 8, 9): px[y][x] = 1
+    for y in range(4, 10): px[y][7] = px[y][8] = 3
+    for k in range(4): px[9 + k // 1 * 0][8 + k] = 3
+    return px
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     sheet = Image.open(SRC).convert('RGBA')
@@ -114,6 +152,8 @@ def main():
         for t in sprite_tiles(pit16(rx, ry)):
             chr_bg += t
     chr_bg += tile_bytes(BG_GOAL)                     # タイル11=ゴールのチェッカー
+    for t in sprite_tiles(gold16()): chr_bg += t      # タイル12〜15=金塊(左上,右上,左下,右下)
+    for t in sprite_tiles(ladder16()): chr_bg += t    # タイル16〜19=ハシゴ
     chr_bg += bytes(4096 - len(chr_bg))
     chr_sp = bytearray()
     sprites = []
@@ -123,9 +163,10 @@ def main():
         sprites.append(s)
         for t in sprite_tiles(s):
             chr_sp += t
-    # 文字(GAME OVER・PUSH START用)。色2(=パレットの「からだ」色)だけで描く。タイル24〜35(G A M E O V R P U S H T)、36〜45(数字0〜9)、46=C 47=L
+    # 文字(GAME OVER・PUSH START用)。色2(=パレットの「からだ」色)だけで描く。タイル24〜35(G A M E O V R P U S H T)、36〜45(数字0〜9)、46=C 47=L 48=F、49〜52=ストップウォッチ
     for g in GLYPHS:
         chr_sp += tile_bytes([[2 if c == '1' else 0 for c in (row + '000')[:8]] for row in g] + [[0] * 8])
+    for t in sprite_tiles(watch16()): chr_sp += t     # タイル49〜52=ストップウォッチ
     chr_sp += bytes(4096 - len(chr_sp))
     open(os.path.join(OUT, 'chr.bin'), 'wb').write(bytes(chr_bg + chr_sp))
 

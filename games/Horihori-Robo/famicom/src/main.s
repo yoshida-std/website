@@ -98,6 +98,8 @@ rspd:   .res 1
 rrsp:   .res 1
 nrob:   .res 1
 nrobm1: .res 1
+golds:  .res 1          ; 取った金塊の数
+bestrow:.res 1          ; いちばん上まで進んだマス行(上がるたび+10点)
 face:   .res 1          ; 向いている方向(1=右 2=左 4=下 8=上)
 digbuf: .res 1          ; 掘るボタンの入力をためておく(フレーム)
 digheld:.res 1
@@ -117,7 +119,8 @@ to:     .res 1          ; draw_text の書き込み先(OAMのオフセット)
 oam:    .res 256
 
 .segment "BSS"
-rowbuf: .res 32
+rowbuf: .res 32         ; 背景1マス行の上のタイル行
+rowbuf2:.res 32         ; 同じ、下のタイル行
 mapram: .res 512        ; 迷路(1行16バイト x 31行。1=壁)
 bq:
 sx:     .res 96         ; 迷路生成のスタック(部屋のx)。ゲーム中は距離マップのキューに使い回す
@@ -257,7 +260,7 @@ main:
     sta cx
     lda #104
     sta cy
-    lda #112
+    lda #128
     sta to
     jsr draw_text
     lda #<txt_push2
@@ -270,7 +273,7 @@ main:
     sta cx
     lda #120
     sta cy
-    lda #132
+    lda #148
     sta to
     jsr draw_text
     jmp main
@@ -376,6 +379,9 @@ start_game:
     sta bfs_on
     sta epoch
     sta clear
+    sta golds
+    lda #255
+    sta bestrow
     ldx stage           ; このステージの速さなど(表は0始まり)
     dex
     lda stg_cam,x
@@ -683,6 +689,59 @@ gen_maze:
     sta sd
     lda #0
     jsr setcell
+    ; 金塊: 行を10の帯に分けて、それぞれ1つ(奇数行・奇数列の部屋のどこか)
+    lda #0
+    sta cur
+@g: lda cur
+    asl
+    clc
+    adc cur             ; 3*帯
+    lsr                 ; 帯k の行番号(0〜14番目の奇数行)= (3k)/2 + 0か1
+    sta gy
+    jsr rand
+    and #1
+    clc
+    adc gy
+    cmp #14
+    bcc :+
+    lda #13             ; 一番下の通路(行29)には置かない
+:   asl
+    clc
+    adc #1
+    sta gy              ; 奇数行 1〜27
+    lda #6
+    sta md
+    jsr rand
+    jsr rmod
+    asl
+    clc
+    adc #1
+    sta gx
+    ldx #6              ; すでに金塊があれば、となりの部屋へずらす
+@gp:ldy gx
+    lda gy
+    jsr getcell
+    beq @gok
+    lda gx
+    clc
+    adc #2
+    cmp #12
+    bcc :+
+    lda #1
+:   sta gx
+    dex
+    bne @gp
+    beq @gn
+@gok:
+    lda #5
+    sta sd
+    ldy gx
+    lda gy
+    jsr setcell
+@gn:inc cur
+    lda cur
+    cmp #10
+    bne @g
     ; 一番下の通路(行29)は全部あける
     ldy #1
 @b: lda #29
@@ -905,15 +964,42 @@ build_row:
     beq @fl
     lda (ptr),y
     beq @fl
+    cmp #2
+    beq @fl             ; 穴は床として(読み込み時には穴は無い)
+    cmp #1
+    beq @wall
     cmp #3
-    beq @gl
-    lda #2              ; 壁
-    bne @st
-@gl:lda #11             ; ゴール
-    bne @st
-@fl:lda #1              ; 床
-@st:sta rowbuf,x
-    inx
+    beq @goal
+    cmp #4
+    beq @lad
+    lda #12             ; 5=金塊(タイル12〜15)
+    bne @big
+@lad:
+    lda #16             ; 4=ハシゴ(タイル16〜19)
+@big:
+    sta tmp
+    txa
+    clc
+    adc #1
+    and #1              ; 左右どちらのタイルか(タイル列3から始まるマス)
+    clc
+    adc tmp
+    sta rowbuf,x
+    clc
+    adc #2
+    sta rowbuf2,x
+    jmp @nx
+@wall:
+    lda #2
+    bne @same
+@goal:
+    lda #11
+    bne @same
+@fl:lda #1
+@same:
+    sta rowbuf,x
+    sta rowbuf2,x
+@nx:inx
     cpx #32
     bne @l
     lda rr
@@ -941,7 +1027,7 @@ write_row:
     cpx #32
     bne @a
     ldx #0
-@b: lda rowbuf,x
+@b: lda rowbuf2,x
     sta $2007
     inx
     cpx #32
@@ -1271,13 +1357,14 @@ addscore:
     clc
     adc dg+2
     sta dg+2
-@a: lda dg+2
+addnorm:
+    lda dg+2
     cmp #10
     bcc @b
     sbc #10
     sta dg+2
     inc dg+1
-    jmp @a
+    jmp addnorm
 @b: lda dg+1
     cmp #10
     bcc @c
@@ -1295,6 +1382,18 @@ addscore:
     sta dg+3
     sta dg+4
 @d: rts
+
+; 10点を足す
+addten:
+    inc dg+3
+    lda dg+3
+    cmp #10
+    bcc @r
+    lda #0
+    sta dg+3
+    inc dg+2
+    jmp addnorm
+@r: rts
 
 ; ---------------------------------------------------------------- 主人公までの距離(幅優先探索)
 ; 16フレームごとに主人公の居るマスから始めて、1フレームに24マスずつ広げる。
@@ -2039,10 +2138,54 @@ update_hero:
     clc
     adc #10
     jsr addscore
-    lda #1
+    lda golds           ; 金塊ぜんぶ(10個)でさらに3000点
+    cmp #10
+    bne :+
+    lda #30
+    jsr addscore
+:   lda #1
     sta clear
     rts
 @notgoal:
+    lda pylo            ; 一番上へ1マス進むごとに10点
+    sta u
+    lda pyhi
+    sta v
+    jsr tocell
+    cmp bestrow
+    bcs @nobest
+    sta bestrow
+    jsr addten
+@nobest:
+    lda px              ; 金塊のマスなら取る(+300)
+    sec
+    sbc #24
+    lsr
+    lsr
+    lsr
+    lsr
+    sta dcx
+    lda pylo
+    sta u
+    lda pyhi
+    sta v
+    jsr tocell
+    sta dcy
+    tax
+    lda px
+    jsr mapat
+    cmp #5
+    bne @nogold
+    lda #0
+    sta sd
+    ldy dcx
+    lda dcy
+    jsr setcell
+    jsr qfloor
+    inc golds
+    lda #3
+    jsr addscore
+@nogold:
     lda hstate          ; 穴に落ちている間は動けない(1秒で這い出る)
     cmp #1
     bne @notstuck
@@ -2403,7 +2546,7 @@ draw_all:
     jmp @dr
 :
     ; 残機(左上に縦3つ。主人公の頭のタイル)
-    ldy #96
+    ldy #112
     ldx #1
 @lv:
     stx tmp
@@ -2448,7 +2591,7 @@ draw_all:
     sta cx
     lda #104
     sta cy
-    lda #112
+    lda #128
     sta to
     jsr draw_text
     lda #<goover2
@@ -2459,12 +2602,12 @@ draw_all:
     sta cx
     lda #120
     sta cy
-    lda #132
+    lda #148
     sta to
     jsr draw_text
 @nogo:
-    ldx #0              ; スコア: 左の余白に縦に5桁(OAM 152〜)
-    ldy #152
+    ldx #0              ; スコア: 左の余白に縦に5桁(OAM 200〜)
+    ldy #200
 @sc:
     txa
     asl
@@ -2498,6 +2641,33 @@ draw_all:
     sta oam+2,y
     lda #8
     sta oam+3,y
+    iny
+    iny
+    iny
+    iny
+    lda #119            ; 取った金塊の数(2桁)
+    sta oam,y
+    sta oam+4,y
+    lda golds
+    ldx #0
+    cmp #10
+    bcc :+
+    sbc #10
+    ldx #1
+:   clc
+    adc #36
+    sta oam+5,y
+    txa
+    clc
+    adc #36
+    sta oam+1,y
+    lda #3
+    sta oam+2,y
+    sta oam+6,y
+    lda #8
+    sta oam+3,y
+    lda #16
+    sta oam+7,y
     ; ステージクリア
     lda clear
     beq @nocl
@@ -2525,7 +2695,7 @@ draw_all:
 @cl2:
     lda #104
     sta cy
-    lda #112
+    lda #128
     sta to
     jsr draw_text
     lda #<clr2          ; CLEAR
@@ -2538,7 +2708,23 @@ draw_all:
     sta cx
     lda #120
     sta cy
-    lda #132
+    lda #148
+    sta to
+    jsr draw_text
+    lda golds           ; 金塊を10個ぜんぶ取っていたら PERFECT!
+    cmp #10
+    bne @nocl
+    lda #<perf1
+    sta tp
+    lda #>perf1
+    sta tp+1
+    lda #7
+    sta tn
+    lda #100
+    sta cx
+    lda #140
+    sta cy
+    lda #168
     sta to
     jsr draw_text
 @nocl:
@@ -2668,6 +2854,8 @@ palette:
     .byte $29,$09,$17,$27,  $29,$09,$17,$27,  $29,$09,$17,$27,  $29,$09,$17,$27
     ; スプライト0=白 1=黄 2=赤 3=予備(ふち,からだ,アクセント)
     .byte $29,$01,$30,$21,  $29,$01,$38,$27,  $29,$01,$16,$27,  $29,$01,$30,$21
+perf1:
+    .byte 31,27,30,48,27,46,35  ; P E R F E C T
 clr1:
     .byte 33,35,25,24,27      ; S T A G E
 clr2:
