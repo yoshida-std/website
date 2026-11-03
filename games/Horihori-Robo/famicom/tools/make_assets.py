@@ -87,6 +87,13 @@ GLYPHS = [  # G A M E O V R (5x7)
     ["1....", "1....", "1....", "1....", "1....", "1....", "11111"],   # L (47)
     ["11111", "1....", "1....", "1111.", "1....", "1....", "1...."],   # F (48)
 ]
+_names = 'GAMEOVRPUSHT' + '0123456789' + 'CLF'
+FONT = {c: GLYPHS[i] for i, c in enumerate(_names)}
+FONT['I'] = ["11111", "..1..", "..1..", "..1..", "..1..", "..1..", "11111"]
+FONT['D'] = ["1111.", "1...1", "1...1", "1...1", "1...1", "1...1", "1111."]
+HUD_LETTERS = 'SCOREL' + 'IFTPAGD'          # 背景タイル 32〜44 の並び
+HUD_TILE = {c: 22 + i for i, c in enumerate('0123456789')}
+HUD_TILE.update({c: 32 + i for i, c in enumerate(HUD_LETTERS)})
 BG_FLOOR = pat(["00000000", "00000000", "00010000", "00000000",
                 "00000000", "00000100", "00000000", "00000000"])
 BG_WALL = pat(["22222222", "33332333", "33332333", "22222222",
@@ -154,6 +161,12 @@ def main():
     chr_bg += tile_bytes(BG_GOAL)                     # タイル11=ゴールのチェッカー
     for t in sprite_tiles(gold16()): chr_bg += t      # タイル12〜15=金塊(左上,右上,左下,右下)
     for t in sprite_tiles(ladder16()): chr_bg += t    # タイル16〜19=ハシゴ
+    # 表示帯(背景パレット1: 色1=黒、色2=白)。20=黒, 21=区切り線, 22〜31=数字0〜9, 32〜44=文字
+    chr_bg += tile_bytes([[1] * 8 for _ in range(8)])
+    chr_bg += tile_bytes([[1] * 8 for _ in range(7)] + [[2] * 8])
+    for ch in '0123456789' + HUD_LETTERS:
+        g = FONT[ch]
+        chr_bg += tile_bytes([[2 if c == '1' else 1 for c in (row + '000')[:8]] for row in g] + [[1] * 8])
     chr_bg += bytes(4096 - len(chr_bg))
     chr_sp = bytearray()
     sprites = []
@@ -168,6 +181,7 @@ def main():
         chr_sp += tile_bytes([[2 if c == '1' else 0 for c in (row + '000')[:8]] for row in g] + [[0] * 8])
     chr_sp += bytes(16 * 3)                            # タイル49〜51は空き
     for t in sprite_tiles(watch16()): chr_sp += t     # タイル52〜55=ストップウォッチ(4の倍数から)
+    chr_sp += bytes(8) + bytes([0xFF]) + bytes(7)      # タイル56=スプライト0(一番上の1行だけ白。表示帯の区切り線と重なって見えない)
     chr_sp += bytes(4096 - len(chr_sp))
     open(os.path.join(OUT, 'chr.bin'), 'wb').write(bytes(chr_bg + chr_sp))
 
@@ -198,8 +212,8 @@ def main():
     # 背景の1行(32タイル)ごとの「どの列のマスか」。画面の左3タイル・右3タイルは床(255)
     colcell = bytes(255 if (c < 3 or c >= 29) else (c - 3) // 2 for c in range(32))
     open(os.path.join(OUT, 'colcell.bin'), 'wb').write(colcell)
-    # ネームテーブルの輪(上下2面=30マス行)での、各マス行(0〜29)の書き込み先アドレス
-    addr = [0x2000 + k * 64 if k < 15 else 0x2800 + (k - 15) * 64 for k in range(30)]
+    # ネームテーブルの輪(縦ミラーの1画面=15マス行)での、各マス行(0〜31)の書き込み先アドレス
+    addr = [0x2000 + (r % 15) * 64 for r in range(32)]
     open(os.path.join(OUT, 'rowlo.bin'), 'wb').write(bytes(a & 255 for a in addr))
     open(os.path.join(OUT, 'rowhi.bin'), 'wb').write(bytes(a >> 8 for a in addr))
     print('maze rows', H)
@@ -211,6 +225,17 @@ def main():
                 for yy in range(8):
                     for xx in range(8): mz.putpixel((x * 8 + xx, y * 8 + yy), (200, 120, 40))
     mz.save(os.path.join(OUT, 'maze_preview.png'))
+
+    # 表示帯(画面B=ネームテーブル$2400)。1行目は余白、2〜3行目に文字、4行目は区切り線
+    nt = [20] * 960
+    def put(row, col, text):
+        for i, ch in enumerate(text):
+            if ch != ' ': nt[row * 32 + col + i] = HUD_TILE[ch]
+    put(1, 1, 'SCORE'); put(1, 7, '00000'); put(1, 14, 'LIFE'); put(1, 19, '3'); put(1, 22, 'STOP')
+    put(2, 1, 'STAGE'); put(2, 7, '1'); put(2, 10, 'GOLD'); put(2, 15, '00'); put(2, 19, 'LADDER'); put(2, 26, '3')
+    for c in range(32): nt[3 * 32 + c] = 21
+    attr = [0x55] * 8 + [0] * 56               # 上の4タイル行はパレット1(黒地に白)
+    open(os.path.join(OUT, 'hud.bin'), 'wb').write(bytes(nt) + bytes(attr))
 
     # 確認用の拡大プレビュー(白・黄・赤の3パレット)
     pals = [{1: (16, 16, 80), 2: (255, 255, 255), 3: (120, 190, 255)},

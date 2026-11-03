@@ -3,7 +3,10 @@
 .setcpu "6502"
 
 ROWS      = 31          ; 迷路の行数(1行=16px)
-START_CAM = 256         ; 開始時のカメラ(世界座標で画面の一番上のy) = 31*16-240
+START_CAM = 288         ; 開始時のカメラ(世界座標で迷路窓の一番上のy) = 31*16-208
+HUDBLANK  = 20          ; 表示帯の背景タイル: 黒
+HUDD0     = 22          ; 数字0のタイル
+HUD_H     = 32          ; 画面上部の表示帯の高さ(px)。迷路はその下の208px
 NROBMAX   = 5           ; 白いロボの最大数(ステージ5で5体)。番号5は赤いロボ
 STAGES    = 5
 TRAP_T    = 105         ; 穴から這い出るまで(2フレーム単位 ≒ 3.5秒)
@@ -19,7 +22,7 @@ PAUSE_FR  = 120         ; 復活後にスクロールが止まるフレーム数
     .byte "NES", $1A
     .byte 2             ; PRG 16KB x2
     .byte 1             ; CHR 8KB x1
-    .byte 0, 0          ; 横ミラー(上下2面=縦スクロール用)、マッパー0
+    .byte 1, 0          ; 縦ミラー(迷路=画面A、表示帯=画面B)、マッパー0
 
 .segment "ZEROPAGE"
 pad:    .res 1
@@ -126,6 +129,8 @@ spon:   .res 1
 snc:    .res 1          ; 効果音(ノイズ)の残りフレーム・音量
 snv:    .res 1
 sfx_req:.res 1          ; 鳴らしたい効果音の番号(NMIが受け取って0に戻す)
+hudflag:.res 1          ; 1=表示帯の数字を書き直す
+sp2:    .res 1          ; 画面途中のスクロール切り替えに使う値
 face:   .res 1          ; 向いている方向(1=右 2=左 4=下 8=上)
 digbuf: .res 1          ; 掘るボタンの入力をためておく(フレーム)
 digheld:.res 1
@@ -147,6 +152,7 @@ to:     .res 1          ; draw_text の書き込み先(OAMのオフセット)
 oam:    .res 256
 
 .segment "BSS"
+hudbuf: .res 12         ; 表示帯の数字のタイル(スコア5・残機・ストップウォッチ2・ステージ・金塊2・ハシゴ)
 rowbuf: .res 32         ; 背景1マス行の上のタイル行
 rowbuf2:.res 32         ; 同じ、下のタイル行
 mapram: .res 512        ; 迷路(1行16バイト x 31行。1=壁)
@@ -258,8 +264,11 @@ main:
     beq main
     lda #0
     sta nmiflag
-
-    jsr read_pad
+    lda title
+    bne :+
+    jsr do_split        ; 表示帯の下端で、迷路のスクロールに切り替える
+    jsr update_hud
+:   jsr read_pad
     inc seed            ; 乱数の種(遊んでいる間もずっと進める)
     bne :+
     inc seed+1
@@ -485,6 +494,43 @@ start_game:
     cmp #ROWS
     bne :-
     jsr set_scroll
+    lda #30             ; スプライト0: 表示帯の区切り線(31行目)に重ねる。ここで切り替える
+    sta oam
+    lda #56
+    sta oam+1
+    lda #3
+    sta oam+2
+    lda #240
+    sta oam+3
+    lda $2002           ; 表示帯(画面B)を書く
+    lda #$24
+    sta $2006
+    lda #0
+    sta $2006
+    lda #<hudnt
+    sta ptr
+    lda #>hudnt
+    sta ptr+1
+    ldy #0
+    ldx #4
+@hd:lda (ptr),y
+    sta $2007
+    iny
+    bne @hd
+    inc ptr+1
+    dex
+    bne @hd
+    ldx #11
+    lda #$FF
+:   sta hudbuf,x
+    dex
+    bpl :-
+    jsr update_hud      ; 数字を最新に
+    jsr write_hud
+    lda #0
+    sta hudflag
+    lda #$89            ; 画面Bから(スプライトは$1000)
+    sta ctrl
     jsr bgm_start
     bit $2002
 :   bit $2002
@@ -532,6 +578,165 @@ place_watch:
 @ok:
     lda #1
     sta swon
+    rts
+
+; ---------------------------------------------------------------- 表示帯
+; 画面の上の32pxは、迷路とは別の画面B(固定)。黒地に白い数字を背景タイルで出す。
+; スプライト0が区切り線に当たった行で、迷路の窓のスクロールに切り替える。
+do_split:
+    lda scrl            ; 切り替えに使う値を先に作っておく
+    and #$38
+    asl
+    asl
+    sta sp2
+    lda #0
+    sta u
+    sta v
+@w0:bit $2002           ; 前のフレームの当たりが消えるまで待つ
+    bvc @w1
+    inc u
+    bne @w0
+    inc v
+    lda v
+    cmp #12
+    bne @w0
+    rts
+@w1:lda #0
+    sta u
+    sta v
+@w2:bit $2002           ; スプライト0の当たりを待つ
+    bvs @hit
+    inc u
+    bne @w2
+    inc v
+    lda v
+    cmp #40
+    bne @w2
+    rts
+@hit:
+    lda #0              ; 画面A・スクロール(0, scrl)
+    sta $2006
+    lda scrl
+    sta $2005
+    lda #0
+    sta $2005
+    lda sp2
+    sta $2006
+    rts
+
+; 表示帯の数字(hudbuf)を最新にして、変わっていれば hudflag を立てる
+update_hud:
+    ldx #0
+@sc:lda dg,x
+    clc
+    adc #HUDD0
+    jsr hud_set
+    inx
+    cpx #5
+    bne @sc
+    lda lives
+    clc
+    adc #HUDD0
+    ldx #5
+    jsr hud_set
+    lda freezes         ; ストップウォッチの残り秒
+    beq @nostop
+    ldy #HUDBLANK
+    cmp #10
+    bcc :+
+    sbc #10
+    ldy #HUDD0+1
+:   clc
+    adc #HUDD0
+    pha
+    tya
+    ldx #6
+    jsr hud_set
+    pla
+    ldx #7
+    jsr hud_set
+    jmp @stage
+@nostop:
+    lda #HUDBLANK
+    ldx #6
+    jsr hud_set
+    lda #HUDBLANK
+    ldx #7
+    jsr hud_set
+@stage:
+    lda stage
+    clc
+    adc #HUDD0
+    ldx #8
+    jsr hud_set
+    lda golds
+    ldy #0
+    cmp #10
+    bcc :+
+    sbc #10
+    ldy #1
+:   clc
+    adc #HUDD0
+    pha
+    tya
+    clc
+    adc #HUDD0
+    ldx #9
+    jsr hud_set
+    pla
+    ldx #10
+    jsr hud_set
+    lda ladders
+    clc
+    adc #HUDD0
+    ldx #11
+    jmp hud_set
+
+; A=タイル、X=番号。変わっていたら書き換えを予約
+hud_set:
+    cmp hudbuf,x
+    beq @r
+    sta hudbuf,x
+    lda #1
+    sta hudflag
+@r: rts
+
+.macro HUDADDR hi, lo
+    lda #hi
+    sta $2006
+    lda #lo
+    sta $2006
+.endmacro
+
+; 表示帯の数字を背景に書く(NMIか、描画オフのとき)
+write_hud:
+    lda $2002
+    HUDADDR $24, $27    ; スコア5桁
+    ldx #0
+:   lda hudbuf,x
+    sta $2007
+    inx
+    cpx #5
+    bne :-
+    HUDADDR $24, $33    ; 残機
+    lda hudbuf+5
+    sta $2007
+    HUDADDR $24, $3B    ; ストップウォッチ
+    lda hudbuf+6
+    sta $2007
+    lda hudbuf+7
+    sta $2007
+    HUDADDR $24, $47    ; ステージ
+    lda hudbuf+8
+    sta $2007
+    HUDADDR $24, $4F    ; 金塊
+    lda hudbuf+9
+    sta $2007
+    lda hudbuf+10
+    sta $2007
+    HUDADDR $24, $5A    ; ハシゴ
+    lda hudbuf+11
+    sta $2007
     rts
 
 ; ---------------------------------------------------------------- 音
@@ -1130,11 +1335,19 @@ nmi:
     tya
     pha
     lda pending
-    beq :+
+    beq @nopend
     jsr write_row
     lda #0
     sta pending
-:   lda #2              ; 穴の絵の書き換え(1フレームに2マスまで)
+    jmp @qs
+@nopend:
+    lda hudflag         ; 表示帯の数字(行を書かないフレームだけ)
+    beq @qs
+    jsr write_hud
+    lda #0
+    sta hudflag
+@qs:
+    lda #2              ; 穴の絵の書き換え(1フレームに2マスまで)
     sta qn
 @q: lda qn
     beq @qd
@@ -1173,9 +1386,8 @@ nmi:
     sta $2003
     lda #>oam
     sta $4014
-    lda #0
+    lda #0              ; 画面の一番上は表示帯(画面B)。迷路の窓は do_split で切り替える
     sta $2005
-    lda scrl
     sta $2005
     lda ctrl
     sta $2000
@@ -1256,24 +1468,18 @@ update_cam:
 @fin:
     jmp set_scroll
 
-; カメラ(世界座標y)→ PPUのスクロールYとネームテーブル選択。輪は 480px(上下2面)
+; カメラ(世界座標y)→ 迷路窓のスクロールY(輪は240px=縦ミラーの1画面分。世界yを240で割った余り)
 set_scroll:
     lda camhi
-    bne @lower
+    bne @sub
     lda camlo
     cmp #240
-    bcs @lower
-    sta scrl
-    lda #$88            ; NMI有効、スプライト=$1000
-    sta ctrl
-    rts
-@lower:
+    bcc @st
+@sub:
     lda camlo
     sec
     sbc #240
-    sta scrl
-    lda #$8A            ; ネームテーブル選択=下の面
-    sta ctrl
+@st:sta scrl
     rts
 
 ; ---------------------------------------------------------------- 背景の行
@@ -1342,11 +1548,7 @@ build_row:
 @nx:inx
     cpx #32
     bne @l
-    lda rr
-    cmp #30
-    bcc @k
-    sbc #30
-@k: tay
+    ldy rr              ; 行 → 輪の中の書き込み先(表は mod 15 済み)
     lda rowlo,y
     sta wrlo
     lda rowhi,y
@@ -1639,11 +1841,7 @@ qfloor:
     sta t2
     sta t3
 qpush:
-    lda dcy             ; 輪の中の行 = 行 mod 30
-    cmp #30
-    bcc :+
-    sbc #30
-:   tay
+    ldy dcy             ; 輪の中の行(表は mod 15 済み)
     lda rowlo,y
     sta wrlo
     lda rowhi,y
@@ -1976,7 +2174,7 @@ update_robots:
     lda camlo
     ora camhi
     bne @r
-    lda #13
+    lda #11
     sta soff
     lda #5
     sta rc
@@ -1999,7 +2197,7 @@ robot_one:
     bmi @inscr
     bne @drop
     lda u
-    cmp #240
+    cmp #208
     bcc @inscr
 @drop:
     lda #0
@@ -2426,7 +2624,7 @@ check_squeeze:
     sbc camhi
     bne @no
     lda u
-    cmp #225
+    cmp #193            ; 下辺(窓の下端)に触れた
     bcc @no
     lda #0
     sta mdir
@@ -2910,8 +3108,10 @@ w2s:
     sbc camhi
     bne @hide
     lda u
-    cmp #240
+    cmp #208            ; 迷路窓(208px)の外は隠す
     bcs @hide
+    clc
+    adc #HUD_H          ; 表示帯の下から
     rts
 @hide:
     lda #$FF
@@ -2943,7 +3143,7 @@ draw_all:
     sta cfl
     lda #1              ; スプライトパレット1=黄
     sta cat
-    ldy #0
+    ldy #4              ; OAM 0〜3 はスプライト0
     jsr draw_char
     ; ロボ(待機中は隠す)
     lda #0
@@ -2956,7 +3156,7 @@ draw_all:
     asl
     asl
     clc
-    adc #16
+    adc #20
     tay                 ; Y = このロボの OAM 位置
     lda rst,x
     bne @rshow
@@ -3044,39 +3244,6 @@ draw_all:
     sta rc
     jmp @dr
 @ddone:
-    ; 残機(左上に縦3つ。主人公の頭のタイル)
-    ldy #112
-    ldx #1
-@lv:
-    stx tmp
-    lda lives
-    cmp tmp
-    bcs @show
-    lda #$FF
-    sta oam,y
-    jmp @nx
-@show:
-    txa
-    asl
-    asl
-    asl
-    sec
-    sbc #1
-    sta oam,y           ; y = 8*番号 - 1
-    lda #0
-    sta oam+1,y
-    lda #1
-    sta oam+2,y
-    lda #8
-    sta oam+3,y
-@nx:
-    iny
-    iny
-    iny
-    iny
-    inx
-    cpx #4
-    bne @lv
     ; GAME OVER
     lda gover
     beq @nogo
@@ -3105,68 +3272,6 @@ draw_all:
     sta to
     jsr draw_text
 @nogo:
-    ldx #0              ; スコア: 左の余白に縦に5桁(OAM 200〜)
-    ldy #200
-@sc:
-    txa
-    asl
-    asl
-    asl
-    clc
-    adc #47
-    sta oam,y           ; y = 48 + 8*桁 - 1
-    lda dg,x
-    clc
-    adc #36
-    sta oam+1,y
-    lda #3
-    sta oam+2,y
-    lda #8
-    sta oam+3,y
-    iny
-    iny
-    iny
-    iny
-    inx
-    cpx #5
-    bne @sc
-    lda #103            ; ステージ番号(スコアの下)
-    sta oam,y
-    lda stage
-    clc
-    adc #36
-    sta oam+1,y
-    lda #3
-    sta oam+2,y
-    lda #8
-    sta oam+3,y
-    iny
-    iny
-    iny
-    iny
-    lda #119            ; 取った金塊の数(2桁)
-    sta oam,y
-    sta oam+4,y
-    lda golds
-    ldx #0
-    cmp #10
-    bcc :+
-    sbc #10
-    ldx #1
-:   clc
-    adc #36
-    sta oam+5,y
-    txa
-    clc
-    adc #36
-    sta oam+1,y
-    lda #3
-    sta oam+2,y
-    sta oam+6,y
-    lda #8
-    sta oam+3,y
-    lda #16
-    sta oam+7,y
     ldy #236            ; ストップウォッチ(取るまで)
     lda swon
     bne @wsh
@@ -3209,48 +3314,6 @@ draw_all:
     sta cat
     jsr draw_char
 @wd:
-    ldy #128            ; 止まっている残り秒(画面の上の中央。文字の表示と場所を共有)
-    lda freezes
-    bne @fz
-    lda #$FF
-    sta oam,y
-    sta oam+4,y
-    jmp @fzd
-@fz:
-    ldx #0
-    cmp #10
-    bcc :+
-    sbc #10
-    ldx #1
-:   clc
-    adc #36
-    sta oam+5,y
-    txa
-    clc
-    adc #36
-    sta oam+1,y
-    lda #23
-    sta oam,y
-    sta oam+4,y
-    lda #3
-    sta oam+2,y
-    sta oam+6,y
-    lda #116
-    sta oam+3,y
-    lda #124
-    sta oam+7,y
-@fzd:
-    ldy #232            ; 残りのハシゴ(1桁)
-    lda #135
-    sta oam,y
-    lda ladders
-    clc
-    adc #36
-    sta oam+1,y
-    lda #3
-    sta oam+2,y
-    lda #8
-    sta oam+3,y
     ; ステージクリア
     lda clear
     beq @nocl
@@ -3434,7 +3497,7 @@ draw_char:
 .segment "RODATA"
 palette:
     ; 背景: 床(緑)・こい緑・茶・うす橙
-    .byte $29,$09,$17,$27,  $29,$09,$17,$27,  $29,$09,$17,$27,  $29,$09,$17,$27
+    .byte $29,$09,$17,$27,  $29,$0F,$30,$0F,  $29,$09,$17,$27,  $29,$09,$17,$27
     ; スプライト0=白 1=黄 2=赤 3=予備(ふち,からだ,アクセント)
     .byte $29,$01,$30,$21,  $29,$01,$38,$27,  $29,$01,$16,$27,  $29,$01,$30,$21
 perf1:
@@ -3453,6 +3516,8 @@ txt_push1:
     .byte 31,32,33,34         ; P U S H
 txt_push2:
     .byte 33,35,25,30,35      ; S T A R T
+hudnt:
+    .incbin "../assets/hud.bin"
 colcell:
     .incbin "../assets/colcell.bin"
 rowlo:

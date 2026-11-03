@@ -27,6 +27,12 @@ for (let f = 0; f < N; f++) {
   if (f > 10 && mem('stage') > 5 && !last.reported) { last.reported = true; console.log('stage>5 at frame', f, 'stage', mem('stage'), 'title', mem('title'), 'pc', nes.cpu.REG_PC.toString(16)); }
   if (f > 10) maxStage = Math.max(maxStage, mem('stage'));
   minSP = Math.min(minSP, nes.cpu.REG_SP & 255);
+  if (process.env.TRACE && f >= +process.env.TRACE && f % 60 === 0 && f < +process.env.TRACE + 1500) console.log(f, JSON.stringify({ fc: mem('fc'), title: mem('title'), gover: mem('gover'), clear: mem('clear'), lives: mem('lives'), pc: nes.cpu.REG_PC.toString(16), cam: mem('camlo') }));
+  if (f % 60 === 0) {                      // 60フレームごとに fc が進んでいるか(遊んでいる間)
+    const fcn = mem('fc'), playing = !mem('title') && !mem('gover') && !mem('clear');
+    if (playing && last.playing && fcn === last.fc) bad.push(['fcが進まない(止まった?)', f, { fc: fcn }]);
+    last.fc = fcn; last.playing = playing;
+  }
   if (f % 600 === 599) {
     const pc = nes.cpu.REG_PC;
     const fc = mem('fc');
@@ -34,8 +40,6 @@ for (let f = 0; f < N; f++) {
     if (pc < 0x8000) bad.push(['PC範囲外', f, st]);
     if (mem('stage') < 1 || mem('stage') > 5) bad.push(['stage', f, st]);
     if (mem('lives') > 3) bad.push(['lives', f, st]);
-    if (!mem('title') && !mem('gover') && !mem('clear') && fc === last.fc) bad.push(['fcが進まない(止まった?)', f, st]);
-    last.fc = fc;
   }
 }
 console.log(JSON.stringify({ frames: N, maxStage, gameoverFrames: gameovers, clearFrames: clears, minSP, problems: bad.length }));
