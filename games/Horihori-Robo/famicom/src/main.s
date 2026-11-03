@@ -100,6 +100,8 @@ nrob:   .res 1
 nrobm1: .res 1
 golds:  .res 1          ; 取った金塊の数
 bestrow:.res 1          ; いちばん上まで進んだマス行(上がるたび+10点)
+ladders:.res 1          ; 残りのハシゴ
+pushtimer:.res 1        ; 壁に向かって止まってから、ハシゴをかけられる残り時間
 face:   .res 1          ; 向いている方向(1=右 2=左 4=下 8=上)
 digbuf: .res 1          ; 掘るボタンの入力をためておく(フレーム)
 digheld:.res 1
@@ -380,6 +382,10 @@ start_game:
     sta epoch
     sta clear
     sta golds
+    sta pushtimer
+    lda #3
+    sta ladders
+    lda #0
     lda #255
     sta bestrow
     ldx stage           ; このステージの速さなど(表は0始まり)
@@ -1179,8 +1185,30 @@ do_dig:
     beq @dig
     cmp #2
     beq @fill
+    cmp #1
+    beq @lad
 @no:
     rts
+@lad:                   ; 壁に向かって止まったあとにボタン → ハシゴ(外周とゴール行は除く)
+    lda ladders
+    beq @no
+    lda pushtimer
+    beq @no
+    lda dcx
+    beq @no
+    lda dcy
+    cmp #3
+    bcc @no
+    lda #4
+    sta sd
+    ldy dcx
+    lda dcy
+    jsr setcell
+    dec ladders
+    lda #0
+    sta pushtimer
+    lda #16             ; ハシゴのタイル
+    jmp qcell
 @dig:
     ldx #7              ; あいている穴の番号を探す
 :   lda ht,x
@@ -2092,7 +2120,10 @@ do_miss:
 ; マス単位で歩く(ブラウザ版と同じ)。マスの中心に来たときだけ向きを決め、
 ; 次のマスまで1フレーム1pxずつ進む。途中で逆向きを押すと即座に戻れる。
 update_hero:
-    ; 掘るボタン(A/B)の押した瞬間を 0.4秒ためておく
+    lda pushtimer
+    beq :+
+    dec pushtimer
+:   ; 掘るボタン(A/B)の押した瞬間を 0.4秒ためておく
     lda digbuf
     beq :+
     dec digbuf
@@ -2260,6 +2291,13 @@ update_hero:
     bne @fin
     lda #8
     jsr try_dir
+    lda mdir            ; 壁に向かって止まったなら、1.5秒のあいだハシゴをかけられる
+    bne @fin
+    lda pad
+    and #$0F
+    beq @fin
+    lda #90
+    sta pushtimer
     jmp @fin
 @mid:                   ; --- マスの途中: 逆向きなら反転、そのまま進む
     lda hstate
@@ -2668,6 +2706,20 @@ draw_all:
     sta oam+3,y
     lda #16
     sta oam+7,y
+    tya                 ; 残りのハシゴ(1桁)
+    clc
+    adc #8
+    tay
+    lda #135
+    sta oam,y
+    lda ladders
+    clc
+    adc #36
+    sta oam+1,y
+    lda #3
+    sta oam+2,y
+    lda #8
+    sta oam+3,y
     ; ステージクリア
     lda clear
     beq @nocl
