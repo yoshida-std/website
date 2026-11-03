@@ -249,6 +249,27 @@ reset:
     dey
     bne @cl
 
+    ; タイトル画面のクレジット(画面Aの26行目。黒地に白)
+    lda $2002
+    lda #$23
+    sta $2006
+    lda #$40
+    sta $2006
+    ldx #0
+:   lda titlent,x
+    sta $2007
+    inx
+    cpx #32
+    bne :-
+    lda #$23
+    sta $2006
+    lda #$F0
+    sta $2006
+:   lda titlent,x
+    sta $2007
+    inx
+    cpx #40
+    bne :-
     ; タイトル画面
     lda #1
     sta title
@@ -502,6 +523,16 @@ start_game:
     sta oam+2
     lda #240
     sta oam+3
+    lda $2002           ; タイトルの黒地(属性)を戻す
+    lda #$23
+    sta $2006
+    lda #$F0
+    sta $2006
+    lda #0
+    ldx #8
+:   sta $2007
+    dex
+    bne :-
     lda $2002           ; 表示帯(画面B)を書く
     lda #$24
     sta $2006
@@ -3516,6 +3547,8 @@ txt_push1:
     .byte 31,32,33,34         ; P U S H
 txt_push2:
     .byte 33,35,25,30,35      ; S T A R T
+titlent:
+    .incbin "../assets/title.bin"
 hudnt:
     .incbin "../assets/hud.bin"
 colcell:

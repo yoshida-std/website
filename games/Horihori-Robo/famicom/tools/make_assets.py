@@ -90,10 +90,15 @@ GLYPHS = [  # G A M E O V R (5x7)
 _names = 'GAMEOVRPUSHT' + '0123456789' + 'CLF'
 FONT = {c: GLYPHS[i] for i, c in enumerate(_names)}
 FONT['I'] = ["11111", "..1..", "..1..", "..1..", "..1..", "..1..", "11111"]
+FONT['Y'] = ["1...1", "1...1", ".1.1.", "..1..", "..1..", "..1..", "..1.."]
+FONT['N'] = ["1...1", "11..1", "11..1", "1.1.1", "1..11", "1..11", "1...1"]
+FONT['K'] = ["1...1", "1..1.", "1.1..", "11...", "1.1..", "1..1.", "1...1"]
+FONT['©'] = [".111.", "1...1", "1.11.", "1.1.1", "1.11.", "1...1", ".111."]
 FONT['D'] = ["1111.", "1...1", "1...1", "1...1", "1...1", "1...1", "1111."]
-HUD_LETTERS = 'SCOREL' + 'IFTPAGD'          # 背景タイル 32〜44 の並び
+HUD_LETTERS = 'SCOREL' + 'IFTPAGD' + 'YNKHUM'   # 背景タイル 32〜50 の並び(51=©)
 HUD_TILE = {c: 22 + i for i, c in enumerate('0123456789')}
 HUD_TILE.update({c: 32 + i for i, c in enumerate(HUD_LETTERS)})
+HUD_TILE['©'] = 51
 BG_FLOOR = pat(["00000000", "00000000", "00010000", "00000000",
                 "00000000", "00000100", "00000000", "00000000"])
 BG_WALL = pat(["22222222", "33332333", "33332333", "22222222",
@@ -164,7 +169,7 @@ def main():
     # 表示帯(背景パレット1: 色1=黒、色2=白)。20=黒, 21=区切り線, 22〜31=数字0〜9, 32〜44=文字
     chr_bg += tile_bytes([[1] * 8 for _ in range(8)])
     chr_bg += tile_bytes([[1] * 8 for _ in range(7)] + [[2] * 8])
-    for ch in '0123456789' + HUD_LETTERS:
+    for ch in '0123456789' + HUD_LETTERS + '©':
         g = FONT[ch]
         chr_bg += tile_bytes([[2 if c == '1' else 1 for c in (row + '000')[:8]] for row in g] + [[1] * 8])
     chr_bg += bytes(4096 - len(chr_bg))
@@ -236,6 +241,15 @@ def main():
     for c in range(32): nt[3 * 32 + c] = 21
     attr = [0x55] * 8 + [0] * 56               # 上の4タイル行はパレット1(黒地に白)
     open(os.path.join(OUT, 'hud.bin'), 'wb').write(bytes(nt) + bytes(attr))
+
+    # タイトル画面のクレジット(画面A $2340 の1行 + 属性 $23F0〜の8バイト)。黒地に白(背景パレット1)
+    cred = '©YOSHIDASTUDIO ©PANICPUMPKIN'
+    row = [0] * 32
+    for i, ch in enumerate(cred):
+        row[2 + i] = 20 if ch == ' ' else HUD_TILE[ch]
+    for i in range(32):
+        if row[i] == 0: row[i] = 20
+    open(os.path.join(OUT, 'title.bin'), 'wb').write(bytes(row) + bytes([0x55] * 8))
 
     # 確認用の拡大プレビュー(白・黄・赤の3パレット)
     pals = [{1: (16, 16, 80), 2: (255, 255, 255), 3: (120, 190, 255)},
