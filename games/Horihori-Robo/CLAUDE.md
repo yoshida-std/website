@@ -2,6 +2,7 @@
 
 スマホ縦画面向けの縦スクロール穴ほりアクション（仮題。名前・フォルダ名は変えてよい）。公開URL: `https://yoshida-std.github.io/website/games/Horihori-Robo/`
 リポジトリ全体の作業ルール（ブランチ・PR・確認方法・コピーライト表記）はルートの `CLAUDE.md` を参照。
+ファミコン版（ROM）は `famicom/` にある（作り方・仕様は `famicom/CLAUDE.md`）。
 
 プッシュ前の確認用 Artifact: `https://claude.ai/artifact/1JWDnmdpVxVJC3r7oNmZKN`（変更のたびにこの URL を更新する。`index.html` と、`files` で `robo.png` `hero.png` `boss.png` `bgm.mp3` `dig.wav` `spawn.wav` `gold.wav` `clear.wav` `miss.wav` `logo.jpg` `redalert.png` `ogp.jpg` `favicon.ico` `favicon-32.png` `apple-touch-icon.png` `icon-192.png` `icon-512.png` `icon-maskable-512.png` `manifest.webmanifest` を同じパスに載せる。`Artifact` ツールが使えないときは `publish_files`（`mcp__claude-artifacts`）で、リポジトリのファイルをそのまま公開する）
 
