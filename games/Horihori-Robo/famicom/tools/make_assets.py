@@ -84,25 +84,46 @@ def main():
     chr_sp += bytes(4096 - len(chr_sp))
     open(os.path.join(OUT, 'chr.bin'), 'wb').write(bytes(chr_bg + chr_sp))
 
-    # ネームテーブル: 13x15マス(1マス=2x2タイル)。左に3タイル余白(=26タイル幅を中央寄せ)
-    W, H = 13, 15
-    nt = bytearray([1] * 960)
-    for cy in range(H):
-        for cx in range(W):
-            wall = cx in (0, W - 1) or cy in (0, H - 1) or (cx % 2 == 0 and cy % 2 == 0)
-            t = 2 if wall else 1
-            for dy in range(2):
-                for dx in range(2):
-                    nt[(cy * 2 + dy) * 32 + 3 + cx * 2 + dx] = t
-    nt += bytes(64)  # 属性テーブル(全部パレット0)
-    # 衝突マップ: 1行16バイト x 16行(=256B)。範囲外は壁。(行<<4)|列 で引ける
-    cm = bytearray([1] * 256)
-    for cy in range(H):
-        for cx in range(W):
-            wall = cx in (0, W - 1) or cy in (0, H - 1) or (cx % 2 == 0 and cy % 2 == 0)
-            cm[cy * 16 + cx] = 1 if wall else 0
-    open(os.path.join(OUT, 'map.bin'), 'wb').write(bytes(cm))
-    open(os.path.join(OUT, 'nametable.bin'), 'wb').write(bytes(nt))
+    # 迷路: 13列 x 31行(1マス=16px)。1=壁。奇数列x奇数行が部屋、偶数x偶数は柱。
+    # 行は 1行16バイト(範囲外の列13〜15は壁)。ROMに置き、画面に出る行だけ実行時に背景へ書く
+    import random
+    rnd = random.Random(1)
+    W, H = 13, 31
+    grid = [[1] * 16 for _ in range(H)]
+    nodes = [(x, y) for y in range(1, H - 1, 2) for x in range(1, W - 1, 2)]
+    for (x, y) in nodes: grid[y][x] = 0
+    seen = {nodes[-1]}          # 一番下(スタート側)から掘り始める
+    stack = [nodes[-1]]
+    while stack:
+        x, y = stack[-1] if rnd.random() < 0.5 else rnd.choice(stack)
+        nb = [(x + dx, y + dy) for dx, dy in ((2, 0), (-2, 0), (0, 2), (0, -2))
+              if 1 <= x + dx < W - 1 and 1 <= y + dy < H - 1 and (x + dx, y + dy) not in seen]
+        if not nb:
+            stack.remove((x, y)); continue
+        nx, ny = rnd.choice(nb)
+        grid[(y + ny) // 2][(x + nx) // 2] = 0
+        seen.add((nx, ny)); stack.append((nx, ny))
+    for _ in range(int(len(nodes) * 0.5)):   # 壁を少し抜いて行き止まりを減らす
+        x = rnd.randrange(1, W - 1); y = rnd.randrange(1, H - 1)
+        if (x % 2) != (y % 2): grid[y][x] = 0
+    for x in range(1, W - 1): grid[H - 2][x] = 0   # 一番下の通路は全部あける(スタート)
+    open(os.path.join(OUT, 'map.bin'), 'wb').write(bytes(v for row in grid for v in row))
+    # 背景の1行(32タイル)ごとの「どの列のマスか」。画面の左3タイル・右3タイルは床(255)
+    colcell = bytes(255 if (c < 3 or c >= 29) else (c - 3) // 2 for c in range(32))
+    open(os.path.join(OUT, 'colcell.bin'), 'wb').write(colcell)
+    # ネームテーブルの輪(上下2面=30マス行)での、各マス行(0〜29)の書き込み先アドレス
+    addr = [0x2000 + k * 64 if k < 15 else 0x2800 + (k - 15) * 64 for k in range(30)]
+    open(os.path.join(OUT, 'rowlo.bin'), 'wb').write(bytes(a & 255 for a in addr))
+    open(os.path.join(OUT, 'rowhi.bin'), 'wb').write(bytes(a >> 8 for a in addr))
+    print('maze rows', H)
+    # 迷路の確認画像
+    mz = Image.new('RGB', (W * 8, H * 8), (41, 160, 60))
+    for y in range(H):
+        for x in range(W):
+            if grid[y][x]:
+                for yy in range(8):
+                    for xx in range(8): mz.putpixel((x * 8 + xx, y * 8 + yy), (200, 120, 40))
+    mz.save(os.path.join(OUT, 'maze_preview.png'))
 
     # 確認用の拡大プレビュー(白・黄・赤の3パレット)
     pals = [{1: (16, 16, 80), 2: (255, 255, 255), 3: (120, 190, 255)},

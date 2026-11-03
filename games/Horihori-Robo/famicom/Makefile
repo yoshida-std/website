@@ -5,10 +5,10 @@ ROM  = build/horihori.nes
 
 all: $(ROM)
 
-assets/chr.bin assets/nametable.bin assets/map.bin: tools/make_assets.py ../robo.png
+assets/chr.bin assets/map.bin assets/colcell.bin assets/rowlo.bin assets/rowhi.bin: tools/make_assets.py ../robo.png
 	python3 tools/make_assets.py
 
-build/main.o: src/main.s assets/chr.bin assets/nametable.bin assets/map.bin
+build/main.o: src/main.s assets/chr.bin assets/map.bin assets/colcell.bin assets/rowlo.bin assets/rowhi.bin
 	mkdir -p build
 	$(CA65) -g -o $@ src/main.s
 
