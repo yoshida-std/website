@@ -20,7 +20,10 @@
 ROWS      = 31          ; 迷路の行数(1行=16px)
 START_CAM = 288         ; 開始時のカメラ(世界座標で迷路窓の一番上のy) = 31*16-208
 HUDBLANK  = 20          ; 表示帯の背景タイル: 黒
-HUDD0     = 22          ; 数字0のタイル
+HUDD0     = 22          ; 数字0のタイル(白)
+HUDV0     = 117         ; 表示帯の値の数字0(黄)。117〜126
+HUDHEAD   = 127         ; 残機の絵(黄色いロボの頭)
+HUDLAD    = 128         ; ハシゴの残りの絵
 HUD_H     = 32          ; 画面上部の表示帯の高さ(px)。迷路はその下の208px
 NROBMAX   = 5           ; 白いロボの最大数(ステージ5で5体)。番号5は赤いロボ
 STAGES    = 5
@@ -186,7 +189,7 @@ bon:    .res 1          ; クリアボーナス(100点単位)
 tgold:  .res 1          ; 通しで取った金塊の数
 healed: .res 1          ; 1=クリアで残機が回復する
 tbuf:   .res 8          ; 文字の表(実行時に作るもの)
-hudbuf: .res 12         ; 表示帯の数字のタイル(スコア5・残機・ストップウォッチ2・ステージ・金塊2・ハシゴ)
+hudbuf: .res 16         ; 表示帯の数字のタイル(スコア5・残機・ストップウォッチ2・ステージ・金塊2・ハシゴ)
 rowbuf: .res 32         ; 背景1マス行の上のタイル行
 rowbuf2:.res 32         ; 同じ、下のタイル行
 mapram: .res 512        ; 迷路(1行16バイト x 31行。1=壁)
@@ -1023,7 +1026,7 @@ start_game:
     inc ptr+1
     dex
     bne @hd
-    ldx #11
+    ldx #15
     lda #$FF
 :   sta hudbuf,x
     dex
@@ -1131,45 +1134,52 @@ update_hud:
     ldx #0
 @sc:lda dg,x
     clc
-    adc #HUDD0
+    adc #HUDV0
     jsr hud_set
     inx
     cpx #5
     bne @sc
-    lda lives
-    clc
-    adc #HUDD0
-    ldx #5
-    jsr hud_set
+    ldx #5              ; 残機: 残りの数だけ黄色いロボの頭(3つぶんの枠)
+@lf:txa
+    sec
+    sbc #5
+    cmp lives
+    lda #HUDBLANK
+    bcs :+
+    lda #HUDHEAD
+:   jsr hud_set
+    inx
+    cpx #8
+    bne @lf
     lda freezes         ; ストップウォッチの残り秒
     beq @nostop
     ldy #HUDBLANK
     cmp #10
     bcc :+
     sbc #10
-    ldy #HUDD0+1
+    ldy #HUDV0+1
 :   clc
-    adc #HUDD0
+    adc #HUDV0
     pha
     tya
-    ldx #6
+    ldx #8
     jsr hud_set
     pla
-    ldx #7
+    ldx #9
     jsr hud_set
     jmp @stage
 @nostop:
     lda #HUDBLANK
-    ldx #6
+    ldx #8
     jsr hud_set
     lda #HUDBLANK
-    ldx #7
+    ldx #9
     jsr hud_set
 @stage:
     lda stage
     clc
-    adc #HUDD0
-    ldx #8
+    adc #HUDV0
+    ldx #10
     jsr hud_set
     lda golds
     ldy #0
@@ -1178,21 +1188,29 @@ update_hud:
     sbc #10
     ldy #1
 :   clc
-    adc #HUDD0
+    adc #HUDV0
     pha
     tya
     clc
-    adc #HUDD0
-    ldx #9
+    adc #HUDV0
+    ldx #11
     jsr hud_set
     pla
-    ldx #10
+    ldx #12
     jsr hud_set
-    lda ladders
-    clc
-    adc #HUDD0
-    ldx #11
-    jmp hud_set
+    ldx #13             ; ハシゴ: 残りの数だけハシゴの絵
+@ld:txa
+    sec
+    sbc #13
+    cmp ladders
+    lda #HUDBLANK
+    bcs :+
+    lda #HUDLAD
+:   jsr hud_set
+    inx
+    cpx #16
+    bne @ld
+    rts
 
 ; A=タイル、X=番号。変わっていたら書き換えを予約
 hud_set:
@@ -1210,7 +1228,7 @@ hud_set:
     sta $2006
 .endmacro
 
-; 表示帯の数字を背景に書く(NMIか、描画オフのとき)
+; 表示帯の数字(と残機・ハシゴの絵)を背景に書く(NMIか、描画オフのとき)
 write_hud:
     lda $2002
     HUDADDR $24, $27    ; スコア5桁
@@ -1220,25 +1238,33 @@ write_hud:
     inx
     cpx #5
     bne :-
-    HUDADDR $24, $33    ; 残機
-    lda hudbuf+5
+    HUDADDR $24, $33    ; 残機(頭3つ)
+    ldx #5
+:   lda hudbuf,x
     sta $2007
+    inx
+    cpx #8
+    bne :-
     HUDADDR $24, $3B    ; ストップウォッチ
-    lda hudbuf+6
-    sta $2007
-    lda hudbuf+7
-    sta $2007
-    HUDADDR $24, $47    ; ステージ
     lda hudbuf+8
     sta $2007
-    HUDADDR $24, $4F    ; 金塊
     lda hudbuf+9
     sta $2007
+    HUDADDR $24, $47    ; ステージ
     lda hudbuf+10
     sta $2007
-    HUDADDR $24, $5A    ; ハシゴ
+    HUDADDR $24, $4F    ; 金塊
     lda hudbuf+11
     sta $2007
+    lda hudbuf+12
+    sta $2007
+    HUDADDR $24, $5A    ; ハシゴ(3つ)
+    ldx #13
+:   lda hudbuf,x
+    sta $2007
+    inx
+    cpx #16
+    bne :-
     rts
 
 ; ---------------------------------------------------------------- 音
@@ -4432,7 +4458,7 @@ draw_char:
 palette:
     ; 背景0: 床(緑)・こい緑・茶・うす橙
     ; 1=表示帯・クリア画面(黒地に白) 2=点滅(色2をNMIで切り替え) 3=黄(色3=赤は、タイトルの大きな文字の影)
-    .byte $29,$09,$17,$27,  $29,$0F,$30,$0F,  $29,$0F,$30,$0F,  $29,$0F,$28,$16
+    .byte $29,$09,$17,$27,  $29,$0F,$30,$28,  $29,$0F,$30,$0F,  $29,$0F,$28,$16
     ; スプライト0=白 1=黄 2=赤 3=文字(黒い四角に白)・ストップウォッチ
     .byte $29,$01,$30,$21,  $29,$01,$38,$27,  $29,$01,$16,$27,  $29,$0F,$30,$21
 padtab:                         ; 黒い四角だけの行(文字の上下の余白)

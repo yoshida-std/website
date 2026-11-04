@@ -211,6 +211,15 @@ def main():
     # タイトルの大きな文字(16x16=4タイル。TL,TR,BL,BR)。81〜116。色2=本体、色3=影(背景パレット3: 黄と赤)
     for ch in BIG_LETTERS:
         chr_bg += big_letter(FONT[ch])
+    # 表示帯の値(背景パレット1: 色1=黒、色2=白、色3=黄)。117〜126=黄色い数字0〜9、127=残機の頭、128=ハシゴ
+    for ch in '0123456789':
+        g = FONT[ch]
+        chr_bg += tile_bytes([[3 if c == '1' else 1 for c in (row + '000')[:8]] for row in g] + [[1] * 8])
+    HEAD = ['...22...', '...33...', '.333333.', '.333333.', '.313313.', '.333333.', '.333333.', '..3333..']
+    LAD = ['.3....3.', '.322223.', '.3....3.', '.322223.', '.3....3.', '.322223.', '.3....3.', '.3....3.']
+    for icon in (HEAD, LAD):
+        chr_bg += tile_bytes([[1 if c == '.' else int(c) for c in row] for row in icon])
+    assert len(chr_bg) == 129 * 16
     chr_bg += bytes(4096 - len(chr_bg))
     chr_sp = bytearray()
     sprites = []
@@ -278,8 +287,8 @@ def main():
     def put(row, col, text):
         for i, ch in enumerate(text):
             if ch != ' ': nt[row * 32 + col + i] = HUD_TILE[ch]
-    put(1, 1, 'SCORE'); put(1, 7, '00000'); put(1, 14, 'LIFE'); put(1, 19, '3'); put(1, 22, 'STOP')
-    put(2, 1, 'STAGE'); put(2, 7, '1'); put(2, 10, 'GOLD'); put(2, 15, '00'); put(2, 19, 'LADDER'); put(2, 26, '3')
+    put(1, 1, 'SCORE'); put(1, 14, 'LIFE'); put(1, 22, 'STOP')
+    put(2, 1, 'STAGE'); put(2, 10, 'GOLD'); put(2, 19, 'LADDER')
     for c in range(32): nt[3 * 32 + c] = 21
     attr = [0x55] * 8 + [0] * 56               # 上の4タイル行はパレット1(黒地に白)
     open(os.path.join(OUT, 'hud.bin'), 'wb').write(bytes(nt) + bytes(attr))
