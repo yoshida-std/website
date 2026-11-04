@@ -26,3 +26,4 @@ cc65(ca65/ld65)と Python3(Pillow)が必要。`make` で `build/horihori.nes` �
 - 第14段階: BGMをブラウザ版の曲の自動採譜(メロディ+ベース)に差し替え。タイトル画面に©表記(YoshidaStudio・PANICPUMPKIN)
 - 第15段階: ステージの間に黒いクリア画面(ボーナス・金塊・PERFECT・残機回復・スコア、点滅するPUSH START。ALL CLEARはランク)。ステージ開始時にゲーム画面の上へ「STAGE x」を3秒。ゲーム画面の文字は黒い四角つき
 - 第16段階: ポーズ(Start。RESUME / RETIRE / TITLE を上下+Aで選ぶ)
+- 第17段階: タイトル画面(黒地・壁ブロックの枠のタイトル・3体のロボ・上から降りてくるスクロール・©2026)、ハイスコアの記録と表示(電池つきRAM)

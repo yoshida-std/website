@@ -38,7 +38,7 @@ PAUSE_FR  = 120         ; 復活後にスクロールが止まるフレーム数
     .byte "NES", $1A
     .byte 2             ; PRG 16KB x2
     .byte 1             ; CHR 8KB x1
-    .byte 1, 0          ; 縦ミラー(迷路=画面A、表示帯=画面B)、マッパー0
+    .byte 3, 0, 1       ; 縦ミラー(迷路=画面A、表示帯=画面B)+電池つきRAM、マッパー0、PRG-RAM 8KB(ハイスコア)
 
 .segment "ZEROPAGE"
 pad:    .res 1
@@ -168,6 +168,9 @@ to:     .res 1          ; draw_text の書き込み先(OAMのオフセット)
 oam:    .res 256
 
 .segment "BSS"
+tcam:   .res 1          ; タイトルの絵の上端(世界座標。208から0へ。絵が降りてくる)
+tprev:  .res 1
+hsr:    .res 5          ; ハイスコア(10000,1000,100,10,1の位)
 padold: .res 1          ; 前のフレームのボタン
 padnew: .res 1          ; このフレームに押したボタン
 paused: .res 1          ; 1=ポーズ中
@@ -264,6 +267,7 @@ reset:
     cpx #32
     bne :-
 
+    jsr load_hi
     jsr show_title
 
 main:
@@ -271,12 +275,14 @@ main:
     beq main
     lda #0
     sta nmiflag
+    lda cscr
+    bne @nosplit
+    jsr do_split        ; 表示帯の下端で、迷路(タイトルでは絵)のスクロールに切り替える
     lda title
-    ora cscr
-    bne :+
-    jsr do_split        ; 表示帯の下端で、迷路のスクロールに切り替える
+    bne @nosplit
     jsr update_hud
-:   jsr read_pad
+@nosplit:
+    jsr read_pad
     lda padold          ; このフレームに押したボタン
     eor #$FF
     and pad
@@ -320,13 +326,40 @@ main:
     beq :+
     jsr newgame
     jmp main
-:   lda #4              ; 黒い四角の中に PUSH / START
-    sta to
-    LINE padtab, 6, 104, 96
-    LINE txt_push1, 6, 104, 104
-    LINE padtab, 7, 100, 112
-    LINE txt_push2, 7, 100, 120
-    LINE padtab, 7, 100, 128
+:   lda tcam            ; 絵が上から降りてくる(1フレーム2px)。新しく画面の上端に出るマス行を背景に書く
+    beq @tfin
+    sta tprev
+    sec
+    sbc #2
+    sta tcam
+    lsr
+    lsr
+    lsr
+    lsr
+    sta u
+    lda tprev
+    lsr
+    lsr
+    lsr
+    lsr
+    cmp u
+    beq @tfin
+    lda u
+    jsr build_trow
+    lda #1
+    sta pending
+@tfin:
+    lda tcam
+    sta scrl
+    inc cblink          ; PUSH START の点滅
+    lda cblink
+    and #$20
+    beq :+
+    lda #$0F
+    bne @tb
+:   lda #$30
+@tb:sta pcol
+    jsr draw_trobots
     jmp main
 @clear:
     lda cscr
@@ -518,6 +551,7 @@ pause_lbl:
 
 ; タイトルへ戻る(BGMを止め、状態を全部初期化してタイトル画面を出す)
 to_title:
+    jsr update_hi
     jsr bgm_stop
     lda #0
     sta hudflag
@@ -543,8 +577,7 @@ show_title:
     lda #0
     sta $2000
     sta $2001
-    ; 背景(ネームテーブル)をゼロで埋める
-    lda $2002
+    lda $2002           ; 背景(ネームテーブル)をゼロで埋める
     lda #$20
     sta $2006
     lda #0
@@ -556,38 +589,233 @@ show_title:
     bne @cl
     dey
     bne @cl
-
-    ; タイトル画面のクレジット(画面Aの26行目。黒地に白)
-    lda $2002
-    lda #$23
+    lda #$3F            ; 背景色を黒に(ゲームを始めるとき start_game が戻す)
     sta $2006
-    lda #$40
+    lda #0
+    sta $2006
+    lda #$0F
+    sta $2007
+    lda #$23            ; 絵(画面A)の属性
+    sta $2006
+    lda #$C0
     sta $2006
     ldx #0
-:   lda titlent,x
+:   lda titlepic+832,x
     sta $2007
     inx
-    cpx #32
+    cpx #64
     bne :-
+    lda #$24            ; 上の表示帯(画面B。HIGH SCORE)
+    sta $2006
+    lda #0
+    sta $2006
+    lda #<titlebar
+    sta ptr
+    lda #>titlebar
+    sta ptr+1
+    ldy #0
+    ldx #4
+@tb:lda (ptr),y
+    sta $2007
+    iny
+    bne @tb
+    inc ptr+1
+    dex
+    bne @tb
+    lda #$24            ; ハイスコアの数字(3行目の19列目から)
+    sta $2006
+    lda #$53
+    sta $2006
+    ldx #0
+:   lda hsr,x
+    clc
+    adc #HUDD0
+    sta $2007
+    inx
+    cpx #5
+    bne :-
+    ldx #0              ; スプライトは全部隠し、スプライト0だけ置く(画面Bの黒に隠れて見えない)
+    lda #$FF
+:   sta oam,x
+    inx
+    bne :-
+    lda #30
+    sta oam
+    lda #56
+    sta oam+1
     lda #$23
-    sta $2006
-    lda #$F0
-    sta $2006
-:   lda titlent,x
-    sta $2007
-    inx
-    cpx #40
-    bne :-
-    ; タイトル画面
+    sta oam+2
+    lda #240
+    sta oam+3
+    lda #208            ; 絵は画面の外から降りてくる
+    sta tcam
+    sta scrl
+    lda #0
+    sta pending
+    sta cblink
+    lda #$30
+    sta pcol
     lda #1
     sta title
     sta seed
-    lda #$88
+    lda #$89
     sta ctrl
     sta $2000
     lda #%00011110
     sta $2001
     rts
+
+; A=絵のマス行(0〜12) → rowbuf・rowbuf2(上下のタイル行)と、輪の中の書き込み先 wrhi:wrlo
+build_trow:
+    tay
+    lda rowlo,y
+    sta wrlo
+    lda rowhi,y
+    sta wrhi
+    tya
+    lsr
+    lsr
+    clc
+    adc #>(titlepic)
+    sta ptr+1
+    tya
+    and #3
+    lsr
+    ror
+    ror                 ; (行 and 3) x 64
+    clc
+    adc #<(titlepic)
+    sta ptr
+    bcc :+
+    inc ptr+1
+:   ldy #0
+:   lda (ptr),y
+    sta rowbuf,y
+    iny
+    cpy #32
+    bne :-
+    ldx #0
+:   lda (ptr),y
+    sta rowbuf2,x
+    iny
+    inx
+    cpx #32
+    bne :-
+    rts
+
+; タイトルの3体のロボ(白・主人公・赤)。絵と一緒に降りてくる(表示帯にかかる間は隠す)
+draw_trobots:
+    lda tcam
+    cmp #113
+    bcc @show
+    ldx #4
+    lda #$FF
+:   sta oam,x
+    inx
+    inx
+    inx
+    inx
+    cpx #52
+    bne :-
+    rts
+@show:
+    lda #144
+    sec
+    sbc tcam
+    sta cy
+    lda #0
+    sta cfr
+    sta cfl
+    sta chalf
+    ldy #4
+    lda #96
+    sta cx
+    lda #0              ; 白いロボ
+    sta cat
+    jsr draw_char
+    lda #120
+    sta cx
+    lda #1              ; 主人公(黄)
+    sta cat
+    jsr draw_char
+    lda #144
+    sta cx
+    lda #2              ; 赤いロボ
+    sta cat
+    jmp draw_char
+
+; ---------------------------------------------------------------- ハイスコア
+; 電池つきRAM($6000)に 'H' 'R'・5桁・検査値を置く。RAMが無い/壊れていれば0から
+load_hi:
+    lda sv_magic
+    cmp #$48
+    bne @bad
+    lda sv_magic+1
+    cmp #$52
+    bne @bad
+    lda #$A5
+    sta u
+    ldx #4
+:   lda sv_hs,x
+    cmp #10
+    bcs @bad
+    eor u
+    sta u
+    dex
+    bpl :-
+    lda u
+    cmp sv_sum
+    bne @bad
+    ldx #4
+:   lda sv_hs,x
+    sta hsr,x
+    dex
+    bpl :-
+    rts
+@bad:
+    lda #0
+    ldx #4
+:   sta hsr,x
+    dex
+    bpl :-
+    rts
+
+save_hi:
+    lda #$48
+    sta sv_magic
+    lda #$52
+    sta sv_magic+1
+    lda #$A5
+    sta u
+    ldx #4
+:   lda hsr,x
+    sta sv_hs,x
+    eor u
+    sta u
+    dex
+    bpl :-
+    lda u
+    sta sv_sum
+    rts
+
+; いまのスコア(dg)がハイスコアより大きければ更新して保存
+update_hi:
+    ldx #0
+@c: lda dg,x
+    cmp hsr,x
+    bcc @no
+    bne @new
+    inx
+    cpx #5
+    bne @c
+@no:rts
+@new:
+    ldx #4
+:   lda dg,x
+    sta hsr,x
+    dex
+    bpl :-
+    jmp save_hi
 
 ; 最初から(1面・残機・スコアを戻して開始)
 newgame:
@@ -745,13 +973,19 @@ start_game:
     sta oam+2
     lda #240
     sta oam+3
-    lda $2002           ; タイトルの黒地(属性)を戻す
-    lda #$23
-    sta $2006
-    lda #$F0
+    lda $2002           ; タイトルの色(背景色=黒)と属性を戻す
+    lda #$3F
     sta $2006
     lda #0
-    ldx #8
+    sta $2006
+    lda #$29
+    sta $2007
+    lda #$23
+    sta $2006
+    lda #$C0
+    sta $2006
+    lda #0
+    ldx #64
 :   sta $2007
     dex
     bne :-
@@ -1681,7 +1915,8 @@ nmi:
     sta $2003
     lda #>oam
     sta $4014
-    lda cscr            ; クリア画面: PUSH START の点滅(背景パレット2の色2)
+    lda cscr            ; クリア画面・タイトル: PUSH START の点滅(背景パレット2の色2)
+    ora title
     beq @nocs
     lda $2002
     lda #$3F
@@ -2955,6 +3190,7 @@ do_miss:
     bne @re
     lda #1
     sta gover
+    jsr update_hi
     jmp bgm_stop
 @re:
     lda px
@@ -3642,6 +3878,7 @@ div10:
 
 ; ステージクリア(5面のあとは ALL CLEAR)の画面を画面B($2400)に作って出す
 enter_clear:
+    jsr update_hi
     lda #0
     sta $2001
     sta $2000
@@ -3941,8 +4178,8 @@ draw_char:
 .segment "RODATA"
 palette:
     ; 背景0: 床(緑)・こい緑・茶・うす橙
-    ; 1=表示帯・クリア画面(黒地に白) 2=クリア画面の点滅(色2をNMIで切り替え) 3=クリア画面の黄色
-    .byte $29,$09,$17,$27,  $29,$0F,$30,$0F,  $29,$0F,$30,$0F,  $29,$0F,$28,$0F
+    ; 1=表示帯・クリア画面(黒地に白) 2=点滅(色2をNMIで切り替え) 3=黄(色3=赤は、タイトルの大きな文字の影)
+    .byte $29,$09,$17,$27,  $29,$0F,$30,$0F,  $29,$0F,$30,$0F,  $29,$0F,$28,$16
     ; スプライト0=白 1=黄 2=赤 3=文字(黒い四角に白)・ストップウォッチ
     .byte $29,$01,$30,$21,  $29,$01,$38,$27,  $29,$01,$16,$27,  $29,$0F,$30,$21
 padtab:                         ; 黒い四角だけの行(文字の上下の余白)
@@ -3953,12 +4190,10 @@ goover1:
     .byte $FF,24,25,26,27,$FF ; _ G A M E _
 goover2:
     .byte $FF,28,29,27,30,$FF ; _ O V E R _
-txt_push1:
-    .byte $FF,31,32,33,34,$FF ; _ P U S H _
-txt_push2:
-    .byte $FF,33,35,25,30,35,$FF ; _ S T A R T _
-titlent:
-    .incbin "../assets/title.bin"
+titlepic:
+    .incbin "../assets/titlepic.bin"
+titlebar:
+    .incbin "../assets/titlebar.bin"
 hudnt:
     .incbin "../assets/hud.bin"
 colcell:
@@ -4026,6 +4261,11 @@ s_score:  .byte "SCORE   ", $FF
 s_push:   .byte "PUSH START", $FF
 
 .include "../assets/sound.inc"
+
+.segment "SAVE"
+sv_magic: .res 2        ; 'H' 'R'
+sv_hs:    .res 5        ; ハイスコア
+sv_sum:   .res 1        ; 検査値
 
 .segment "VECTORS"
     .word nmi, reset, irq

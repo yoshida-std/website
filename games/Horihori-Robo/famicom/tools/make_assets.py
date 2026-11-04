@@ -110,6 +110,25 @@ HUD_LETTERS = 'SCOREL' + 'IFTPAGD' + 'YNKHUM'   # 背景タイル 32〜50 の並
 HUD_TILE = {c: 22 + i for i, c in enumerate('0123456789')}
 HUD_TILE.update({c: 32 + i for i, c in enumerate(HUD_LETTERS)})
 HUD_TILE['©'] = 51
+HUD_TILE_ALL = {c: 22 + i for i, c in enumerate('0123456789')}
+HUD_TILE_ALL.update({c: 52 + i for i, c in enumerate(ALPHA)})
+HUD_TILE_ALL['\u00a9'] = 51
+
+BIG_LETTERS = 'HORIBUSTE'
+def big_letter(g):
+    """5x7のグリフを2倍(10x14)にして16x16へ。右下にずらした影つき。4タイル(TL,TR,BL,BR)のバイト列を返す"""
+    px = [[0] * 16 for _ in range(16)]
+    on = [(x * 2 + dx, y * 2 + dy) for y, row in enumerate(g) for x, c in enumerate(row) if c == '1'
+          for dx in (0, 1) for dy in (0, 1)]
+    for (x, y) in on:                      # 影(色3)
+        if x + 3 < 16 and y + 2 < 16: px[y + 2][x + 3] = 3
+    for (x, y) in on:                      # 本体(色2)
+        px[y][x + 1] = 2
+    out = b''
+    for ty in (0, 8):
+        for tx in (0, 8):
+            out += tile_bytes([row[tx:tx + 8] for row in px[ty:ty + 8]])
+    return out
 BG_FLOOR = pat(["00000000", "00000000", "00010000", "00000000",
                 "00000000", "00000100", "00000000", "00000000"])
 BG_WALL = pat(["22222222", "33332333", "33332333", "22222222",
@@ -188,6 +207,10 @@ def main():
     for ch in ALPHA + '!+/':
         g = FONT[ch]
         chr_bg += tile_bytes([[2 if c == '1' else 1 for c in (row + '000')[:8]] for row in g] + [[1] * 8])
+    assert len(chr_bg) == 81 * 16
+    # タイトルの大きな文字(16x16=4タイル。TL,TR,BL,BR)。81〜116。色2=本体、色3=影(背景パレット3: 黄と赤)
+    for ch in BIG_LETTERS:
+        chr_bg += big_letter(FONT[ch])
     chr_bg += bytes(4096 - len(chr_bg))
     chr_sp = bytearray()
     sprites = []
@@ -261,14 +284,45 @@ def main():
     attr = [0x55] * 8 + [0] * 56               # 上の4タイル行はパレット1(黒地に白)
     open(os.path.join(OUT, 'hud.bin'), 'wb').write(bytes(nt) + bytes(attr))
 
-    # タイトル画面のクレジット(画面A $2340 の1行 + 属性 $23F0〜の8バイト)。黒地に白(背景パレット1)
-    cred = '©YOSHIDASTUDIO ©PANICPUMPKIN'
-    row = [0] * 32
-    for i, ch in enumerate(cred):
-        row[2 + i] = 20 if ch == ' ' else HUD_TILE[ch]
-    for i in range(32):
-        if row[i] == 0: row[i] = 20
-    open(os.path.join(OUT, 'title.bin'), 'wb').write(bytes(row) + bytes([0x55] * 8))
+    # タイトル画面。上の32pxは画面B(HIGH SCORE。静的)、その下の208px(13マス行)は画面Aの輪をスクロールで降ろす絵
+    # 絵(13マス行x16マス列。1マス=2x2タイル)を、上のマス行から順に64バイトずつ(上タイル行32+下タイル行32)
+    BIGT = {ch: 81 + 4 * i for i, ch in enumerate(BIG_LETTERS)}
+    pic = [[0] * 32 for _ in range(26)]
+    def ptext(row, col, text):
+        for i, ch in enumerate(text):
+            pic[row][col + i] = 20 if ch == ' ' else HUD_TILE_ALL[ch]
+    def pbig(row, col, text):
+        for i, ch in enumerate(text):
+            if ch == ' ': continue
+            b0 = BIGT[ch]
+            pic[row][col + i * 2] = b0; pic[row][col + i * 2 + 1] = b0 + 1
+            pic[row + 1][col + i * 2] = b0 + 2; pic[row + 1][col + i * 2 + 1] = b0 + 3
+    for r in (2, 3, 11, 12):                     # 枠(ゲームの壁のブロック): 上・下
+        for c in range(2, 30): pic[r][c] = 2
+    for r in range(4, 11):                       # 枠: 左右
+        for c in (2, 3, 28, 29): pic[r][c] = 2
+    pbig(5, 8, 'HORIHORI')
+    pbig(8, 5, 'ROBO BUSTER')
+    ptext(19, 11, 'PUSH START')
+    ptext(22, 6, '\u00a92026 YOSHIDASTUDIO')
+    ptext(23, 9, '\u00a9PANICPUMPKIN')
+    qpal = [[1] * 16 for _ in range(13)]        # マスごとのパレット(0=壁 1=白 2=点滅 3=黄)
+    for r in (1, 5, 6):
+        for c in range(1, 15): qpal[r][c] = 0
+    for r in (2, 3, 4):
+        for c in range(1, 15): qpal[r][c] = 0 if c in (1, 14) else 3
+    for c in range(16): qpal[9][c] = 2
+    tattr = bytearray(64)
+    for r in range(13):
+        for c in range(16):
+            tattr[(r >> 1) * 8 + (c >> 1)] |= qpal[r][c] << ((((r & 1) << 1) | (c & 1)) * 2)
+    open(os.path.join(OUT, 'titlepic.bin'), 'wb').write(bytes(v for row in pic for v in row) + bytes(tattr))
+    # 上の表示帯(画面B $2400): 4タイル行。3行目に HIGH SCORE(数字は実行時に書く)、4行目はスプライト0が当たる黒
+    bar = [20] * 960
+    for i, ch in enumerate('HIGH SCORE'):
+        if ch != ' ': bar[2 * 32 + 8 + i] = HUD_TILE_ALL[ch]
+    for i in range(5): bar[2 * 32 + 19 + i] = 22
+    open(os.path.join(OUT, 'titlebar.bin'), 'wb').write(bytes(bar) + bytes([0x55] * 8 + [0] * 56))
 
     # クリア画面(画面B)の属性: 16x16px(2タイル行)ごとのパレット。1=白 2=点滅(PUSH START) 3=黄
     # 文字を置く行(タイル行): 4,6=黄(見出し・ランク) 8,10=白 12=黄(PERFECT) 14,18=白 24=点滅
