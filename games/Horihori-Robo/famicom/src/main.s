@@ -200,6 +200,8 @@ rpl:    .res 6          ; y下位
 rph:    .res 6          ; y上位
 rmd:    .res 6          ; 進む向き(1=右 2=左 4=下 8=上、0=止まり)
 rst:    .res 6          ; 0=待機中 1=歩く 2=穴にはまっている
+rrun:   .res 6          ; 出現前に画面の横の余白を走り上がっている(1=左 2=右)
+rly:    .res 6          ; その画面のy
 rtm:    .res 6          ; 待機・這い出るまでの残り(2フレーム単位)
 racc:   .res 6          ; 速さの小数
 rimm:   .res 6          ; 1=這い出た直後(その穴では落ちない)
@@ -935,6 +937,7 @@ start_game:
     ldx #5              ; ロボは待機から(番号5は赤いロボ=スクロールが止まるまで出ない)(2秒+1.4秒ずつずらして出る)
 :   lda #0
     sta rst,x
+    sta rrun,x
     sta rmd,x
     sta racc,x
     sta rimm,x
@@ -2776,15 +2779,37 @@ robot_one:
     beq @next
     lda camlo           ; スクロールが止まったあとは白いロボは出ない
     ora camhi
-    beq @next
+    bne :+
+    sta rrun,x          ; (走っていたロボも消す)
+    jmp @next
+:   lda rrun,x
+    bne @run
     lda fc
     and #1
     bne @next
     lda rtm,x
-    beq @spawn
+    cmp #52             ; 出る約1.7秒前になったら、横の余白を走り上がりはじめる
+    bcc @startrun
     dec rtm,x
     jmp @next
-@spawn:
+@startrun:
+    txa
+    and #1
+    clc
+    adc #1              ; 1=左の余白 2=右の余白(ロボごとに交互)
+    sta rrun,x
+    lda #240            ; 画面の下から
+    sta rly,x
+    jmp @next
+@run:
+    lda rly,x           ; 1フレーム2pxで走り上がり、画面の上に着いたら迷路の上端に登場
+    sec
+    sbc #2
+    sta rly,x
+    cmp #35
+    bcs @next
+    lda #0
+    sta rrun,x
     lda #1
     sta soff
     jsr spawn_robot
@@ -3718,12 +3743,34 @@ draw_all:
     tay                 ; Y = このロボの OAM 位置
     lda rst,x
     bne @rshow
+    lda rrun,x
+    bne @runshow
     lda #$FF
     sta oam,y
     sta oam+4,y
     sta oam+8,y
     sta oam+12,y
     jmp @dn
+@runshow:               ; 出る前: 横の余白を走り上がる(背面。足踏みで左右反転)
+    cmp #2
+    beq @rr
+    lda #4
+    bne @rx
+@rr:lda #236
+@rx:sta cx
+    lda rly,x
+    sta cy
+    lda fc
+    lsr
+    lsr
+    and #1
+    sta cfl
+    lda #0
+    sta chalf
+    sta cat
+    lda #1
+    sta cfr
+    jmp @go
 @rshow:
     lda rpx,x
     sta cx
