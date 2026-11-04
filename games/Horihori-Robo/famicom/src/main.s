@@ -24,6 +24,7 @@ HUDD0     = 22          ; 数字0のタイル
 HUD_H     = 32          ; 画面上部の表示帯の高さ(px)。迷路はその下の208px
 NROBMAX   = 5           ; 白いロボの最大数(ステージ5で5体)。番号5は赤いロボ
 STAGES    = 5
+SCROLL_WAIT = 300       ; ゲーム開始(STAGE x の表示が終わったあと)からスクロールが始まるまで(フレーム=5秒)
 INTRO_FR  = 180         ; ステージ開始時の「STAGE x」を出すフレーム数(3秒)
 TRAP_T    = 105         ; 穴から這い出るまで(2フレーム単位 ≒ 3.5秒)
 INVINC    = 150         ; ミス後の無敵(フレーム)
@@ -176,6 +177,7 @@ padnew: .res 1          ; このフレームに押したボタン
 paused: .res 1          ; 1=ポーズ中
 pmenu:  .res 1          ; ポーズ画面の選んでいる項目(0〜2)
 bgmwas: .res 1          ; ポーズに入る前の bgm_on
+sdelay: .res 2          ; 開始からスクロールが始まるまでの残りフレーム
 intro:  .res 1          ; >0 の間は「STAGE x」を出して止まっている(残りフレーム)
 cscr:   .res 1          ; 1=黒いクリア画面を出している
 cblink: .res 1          ; PUSH START の点滅用カウンタ
@@ -901,6 +903,10 @@ start_game:
     sta pushtimer
     lda #INTRO_FR       ; 開始前に「STAGE x」を3秒出す
     sta intro
+    lda #<SCROLL_WAIT
+    sta sdelay
+    lda #>SCROLL_WAIT
+    sta sdelay+1
     lda #3
     sta ladders
     lda #0
@@ -1960,6 +1966,15 @@ read_pad:
 ; ---------------------------------------------------------------- カメラ
 ; カメラを上へ少しずつ進め(0で止まる)、新しく画面の上端に出るマス行を背景に書く
 update_cam:
+    lda sdelay          ; 開始から5秒はスクロールしない
+    ora sdelay+1
+    beq @nsd
+    lda sdelay
+    bne :+
+    dec sdelay+1
+:   dec sdelay
+    jmp set_scroll
+@nsd:
     lda freezes         ; ストップウォッチで止まっている間
     beq @nofz
     dec freezef
