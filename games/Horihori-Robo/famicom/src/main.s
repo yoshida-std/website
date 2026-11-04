@@ -203,6 +203,7 @@ rpl:    .res 6          ; y下位
 rph:    .res 6          ; y上位
 rmd:    .res 6          ; 進む向き(1=右 2=左 4=下 8=上、0=止まり)
 rst:    .res 6          ; 0=待機中 1=歩く 2=穴にはまっている
+dying:  .res 1          ; >0 の間は主人公が倒れるアニメ(やられたあとの60フレーム)
 scol:   .res 1
 scnt:   .res 1
 spx:    .res 1
@@ -317,6 +318,9 @@ main:
 :   lda intro
     beq :+
     jmp @intro
+:   lda dying
+    beq :+
+    jmp @dying
 :   lda paused
     beq :+
     jmp @pause
@@ -460,6 +464,12 @@ main:
     jsr bgm_start
 @ib:
     jsr draw_all
+    jmp main
+@dying:
+    dec dying           ; 倒れるアニメのあいだは全部止まる。終わったら復活
+    bne :+
+    jsr revive
+:   jsr draw_all
     jmp main
 @over:
     lda pad
@@ -914,6 +924,8 @@ start_game:
     sta pushtimer
     lda #INTRO_FR       ; 開始前に「STAGE x」を3秒出す
     sta intro
+    lda #0
+    sta dying
     lda #<SCROLL_WAIT
     sta sdelay
     lda #>SCROLL_WAIT
@@ -3402,6 +3414,12 @@ do_miss:
     jsr update_hi
     jmp bgm_stop
 @re:
+    lda #60             ; 1秒、正面を向いて倒れるアニメを見せてから復活する
+    sta dying
+    rts
+
+; 復活: 画面の下のほうの部屋に戻す
+revive:
     lda px
     sec
     sbc #24
@@ -3876,6 +3894,23 @@ draw_all:
     ldx pyhi
     jsr w2s
     sta cy
+    lda dying
+    beq @alive
+    lda #60             ; やられた: 正面を向いて倒れる(3コマ、20フレームずつ)
+    sec
+    sbc dying
+    ldx #15
+    cmp #20
+    bcc :+
+    inx
+    cmp #40
+    bcc :+
+    inx
+:   stx cfr
+    lda #0
+    sta cfl
+    jmp @hdraw
+@alive:
     lda invinc
     and #4
     beq :+
@@ -3892,6 +3927,7 @@ draw_all:
 :   sta cfr
     lda flip
     sta cfl
+@hdraw:
     lda #1              ; スプライトパレット1=黄
     sta cat
     ldy #4              ; OAM 0〜3 はスプライト0
@@ -3961,9 +3997,15 @@ draw_all:
     lda rst,x
     cmp #2
     bne :+
-    lda #1              ; 穴にはまっている: 頭だけ
+    lda #1              ; 穴にはまっている: 頭だけ(8フレームごとに上下1pxずつ動かす)
     sta chalf
-    lda #0
+    lda fc
+    and #8
+    beq @bu
+    inc cy
+    jmp @bd
+@bu:dec cy
+@bd:lda #0
     sta cfr
     jmp @go
 :   lda rmd,x

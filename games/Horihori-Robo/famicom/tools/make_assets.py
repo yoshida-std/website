@@ -238,6 +238,10 @@ def main():
         chr_sp += tile_bytes([[2 if c == '1' else 1 for c in ('0' + row + '00')[:8]] for row in g] + [[1] * 8])
     for t in sprite_tiles(watch16()): chr_sp += t     # タイル52〜55=ストップウォッチ(4の倍数から)
     chr_sp += bytes(8) + bytes([0xFF]) + bytes(7)      # タイル56=スプライト0(一番上の1行だけ白。表示帯の区切り線と重なって見えない)
+    chr_sp += bytes(60 * 16 - len(chr_sp))             # タイル60〜71=やられて倒れるコマ3つ(コマ番号15〜17)
+    for c in (0, 1, 2):
+        cell = sheet.crop((c * CELL, 5 * CELL, (c + 1) * CELL, 6 * CELL))
+        for t in sprite_tiles(to_sprite16(cell)): chr_sp += t
     chr_sp += bytes(4096 - len(chr_sp))
     open(os.path.join(OUT, 'chr.bin'), 'wb').write(bytes(chr_bg + chr_sp))
 

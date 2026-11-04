@@ -34,7 +34,7 @@ for (let f = 0; f < N; f++) {
       if (at('rst', i) === 2 && at('rst', j) === 2 && at('rpx', i) === at('rpx', j) && at('rpl', i) === at('rpl', j) && at('rph', i) === at('rph', j)) { bad.push(['同じ穴に2体', f, { i, j }]); }
   }
   if (f % 60 === 0) {                      // 60フレームごとに fc が進んでいるか(遊んでいる間)
-    const fcn = mem('fc'), playing = !mem('title') && !mem('gover') && !mem('clear') && !mem('intro') && !mem('cscr');
+    const fcn = mem('fc'), playing = !mem('title') && !mem('gover') && !mem('clear') && !mem('intro') && !mem('cscr') && !mem('dying');
     if (playing && last.playing && fcn === last.fc) bad.push(['fcが進まない(止まった?)', f, { fc: fcn }]);
     last.fc = fcn; last.playing = playing;
   }
