@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """音のデータ(音程表・BGM・効果音)を assets/sound.inc に書き出す。
 BGM はこの作品用のオリジナル曲(ブラウザ版の曲そのものではない)。
-音符: 1〜72 = ド(C2)から半音刻み(MIDI 36〜107)、0=休み。
+音符: 1〜84 = ド(C1)から半音刻み(MIDI 24〜107)、0=休み。
 曲のデータは「音符,長さ(フレーム)」の並び。$FF=曲の頭へ戻る、$FE=効果音の終わり。"""
 import os
 
@@ -17,7 +17,7 @@ def midi(name):
     return 12 * (int(name[i:]) + 1) + n
 
 def idx(name):
-    return midi(name) - 35          # C2(MIDI36)=1
+    return midi(name) - 23          # C1(MIDI24)=1
 
 def freq(m): return 440.0 * 2 ** ((m - 69) / 12.0)
 
@@ -27,7 +27,7 @@ def period(m, tri=False):
 
 lines = ['; 自動生成: tools/make_sound.py']
 for label, tri, hi in (('perlo', 0, 0), ('perhi', 0, 1), ('trilo', 1, 0), ('trihi', 1, 1)):
-    vals = [period(36 + k, tri) for k in range(72)]
+    vals = [period(24 + k, tri) for k in range(84)]
     vals = [(v >> 8) if hi else (v & 255) for v in vals]
     lines.append(f'{label}:  .byte ' + ','.join(str(v) for v in vals))
 
@@ -42,26 +42,62 @@ def stac(seq, rest=2):
             out += [idx(name), d - rest, 0, rest]
     return out
 
-# メロディ(8小節 = C Am F G C Am F G)。1小節=8分音符8つ
-mel = [
-    [('E5',1),('G5',1),('E5',1),('C5',1),('D5',1),('E5',1),('G5',2)],
-    [('A4',1),('C5',1),('E5',1),('C5',1),('A4',1),('C5',1),('E5',2)],
-    [('F5',1),('A5',1),('F5',1),('C5',1),('D5',1),('F5',1),('A5',2)],
-    [('G5',1),('F5',1),('E5',1),('D5',1),('C5',1),('D5',1),('D5',2)],
-    [('E5',1),('E5',1),('G5',1),('E5',1),('C6',1),('B5',1),('G5',2)],
-    [('A5',1),('G5',1),('E5',1),('C5',1),('A4',2),('E5',2)],
-    [('F5',1),('E5',1),('D5',1),('C5',1),('A4',2),('C5',2)],
-    [('D5',1),('E5',1),('D5',1),('B4',1),('G4',2),('G5',2)],
-]
-bass_roots = [('C3','G3'), ('A2','E3'), ('F2','C3'), ('G2','D3')] * 2
-mel_b = []
-for bar in mel:
-    assert sum(e for _, e in bar) == 8
-    mel_b += stac(bar)
-bass_b = []
-for r, f in bass_roots:
-    bass_b += stac([(r,1),(f,1)] * 4)
-assert sum(mel_b[1::2]) == sum(bass_b[1::2]) == 8 * 96
+# --- BGM
+NOTES_JSON = os.path.join(os.path.dirname(HERE), 'assets', 'bgm_notes.json')
+
+def from_steps(steps, fpp, gap):
+    """16分音符ごとの音(MIDI番号 or None)の並び → 「音符,長さ(フレーム)」。同じ音が続けば1つにまとめ、
+    gap フレームの休みを音の終わりに入れる(0なら入れない)。長さは255以内に分ける"""
+    out, i = [], 0
+    while i < len(steps):
+        j = i
+        while j < len(steps) and steps[j] == steps[i]: j += 1
+        frames = (j - i) * fpp
+        n = 0 if steps[i] is None else steps[i] - 23
+        if n and gap and frames > gap:
+            out += chunk(n, frames - gap) + [0, gap]
+        else:
+            out += chunk(n, frames)
+        i = j
+    return out
+
+def chunk(n, frames):
+    out = []
+    while frames > 0:
+        d = min(255, frames)
+        out += [n, d]
+        frames -= d
+    return out
+
+if os.path.exists(NOTES_JSON):
+    import json
+    arr = json.load(open(NOTES_JSON))
+    fpp = arr['step_frames']
+    mel_b = from_steps(arr['mel'], fpp, 0)       # メロディはつなげて
+    bass_b = from_steps(arr['bass'], fpp, 1)     # ベースは音の終わりに1フレームの休み
+    SRC = 'bgm_notes.json(ブラウザ版のBGMの自動採譜)'
+else:
+    # 仮の曲(8小節 = C Am F G C Am F G)。1小節=8分音符8つ
+    mel = [
+        [('E5',1),('G5',1),('E5',1),('C5',1),('D5',1),('E5',1),('G5',2)],
+        [('A4',1),('C5',1),('E5',1),('C5',1),('A4',1),('C5',1),('E5',2)],
+        [('F5',1),('A5',1),('F5',1),('C5',1),('D5',1),('F5',1),('A5',2)],
+        [('G5',1),('F5',1),('E5',1),('D5',1),('C5',1),('D5',1),('D5',2)],
+        [('E5',1),('E5',1),('G5',1),('E5',1),('C6',1),('B5',1),('G5',2)],
+        [('A5',1),('G5',1),('E5',1),('C5',1),('A4',2),('E5',2)],
+        [('F5',1),('E5',1),('D5',1),('C5',1),('A4',2),('C5',2)],
+        [('D5',1),('E5',1),('D5',1),('B4',1),('G4',2),('G5',2)],
+    ]
+    bass_roots = [('C3','G3'), ('A2','E3'), ('F2','C3'), ('G2','D3')] * 2
+    mel_b = []
+    for bar in mel:
+        mel_b += stac(bar)
+    bass_b = []
+    for r, f in bass_roots:
+        bass_b += stac([(r,1),(f,1)] * 4)
+    SRC = '仮の曲'
+total_m, total_b = sum(mel_b[1::2]), sum(bass_b[1::2])
+assert total_m == total_b, (total_m, total_b)
 lines.append('bgm_mel:  .byte ' + ','.join(str(v) for v in mel_b) + ',$FF')
 lines.append('bgm_bass: .byte ' + ','.join(str(v) for v in bass_b) + ',$FF')
 
@@ -102,4 +138,4 @@ lines.append('nzlen: .byte ' + ','.join(map(str, nlen)))
 for i, name in enumerate(ids, 1):
     lines.append(f'SFX_{name.upper()} = {i}')
 open(OUT, 'w').write('\n'.join(lines) + '\n')
-print('sound.inc ok, bgm frames', sum(mel_b[1::2]))
+print('sound.inc ok:', SRC, '/ bgm frames', total_m, '(%.1f秒)' % (total_m / 60.0988), '/ bytes', len(mel_b) + len(bass_b))

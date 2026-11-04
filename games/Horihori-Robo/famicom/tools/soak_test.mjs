@@ -29,7 +29,7 @@ for (let f = 0; f < N; f++) {
   minSP = Math.min(minSP, nes.cpu.REG_SP & 255);
   if (process.env.TRACE && f >= +process.env.TRACE && f % 60 === 0 && f < +process.env.TRACE + 1500) console.log(f, JSON.stringify({ fc: mem('fc'), title: mem('title'), gover: mem('gover'), clear: mem('clear'), lives: mem('lives'), pc: nes.cpu.REG_PC.toString(16), cam: mem('camlo') }));
   if (f % 60 === 0) {                      // 60フレームごとに fc が進んでいるか(遊んでいる間)
-    const fcn = mem('fc'), playing = !mem('title') && !mem('gover') && !mem('clear');
+    const fcn = mem('fc'), playing = !mem('title') && !mem('gover') && !mem('clear') && !mem('intro') && !mem('cscr');
     if (playing && last.playing && fcn === last.fc) bad.push(['fcが進まない(止まった?)', f, { fc: fcn }]);
     last.fc = fcn; last.playing = playing;
   }

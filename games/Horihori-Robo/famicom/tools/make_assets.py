@@ -90,10 +90,45 @@ GLYPHS = [  # G A M E O V R (5x7)
 _names = 'GAMEOVRPUSHT' + '0123456789' + 'CLF'
 FONT = {c: GLYPHS[i] for i, c in enumerate(_names)}
 FONT['I'] = ["11111", "..1..", "..1..", "..1..", "..1..", "..1..", "11111"]
+FONT['Y'] = ["1...1", "1...1", ".1.1.", "..1..", "..1..", "..1..", "..1.."]
+FONT['N'] = ["1...1", "11..1", "11..1", "1.1.1", "1..11", "1..11", "1...1"]
+FONT['K'] = ["1...1", "1..1.", "1.1..", "11...", "1.1..", "1..1.", "1...1"]
+FONT['©'] = [".111.", "1...1", "1.11.", "1.1.1", "1.11.", "1...1", ".111."]
 FONT['D'] = ["1111.", "1...1", "1...1", "1...1", "1...1", "1...1", "1111."]
-HUD_LETTERS = 'SCOREL' + 'IFTPAGD'          # 背景タイル 32〜44 の並び
+FONT['B'] = ["1111.", "1...1", "1...1", "1111.", "1...1", "1...1", "1111."]
+FONT['J'] = ["..111", "...1.", "...1.", "...1.", "...1.", "1..1.", ".11.."]
+FONT['Q'] = [".111.", "1...1", "1...1", "1...1", "1.1.1", "1..1.", ".11.1"]
+FONT['W'] = ["1...1", "1...1", "1...1", "1.1.1", "1.1.1", "11.11", "1...1"]
+FONT['X'] = ["1...1", "1...1", ".1.1.", "..1..", ".1.1.", "1...1", "1...1"]
+FONT['Z'] = ["11111", "....1", "...1.", "..1..", ".1...", "1....", "11111"]
+FONT['!'] = ["..1..", "..1..", "..1..", "..1..", "..1..", ".....", "..1.."]
+FONT['+'] = [".....", "..1..", "..1..", "11111", "..1..", "..1..", "....."]
+FONT['/'] = ["....1", "....1", "...1.", "..1..", ".1...", "1....", "1...."]
+ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+ARROW = ["1....", "11...", "111..", "1111.", "111..", "11...", "1...."]
+HUD_LETTERS = 'SCOREL' + 'IFTPAGD' + 'YNKHUM'   # 背景タイル 32〜50 の並び(51=©)
 HUD_TILE = {c: 22 + i for i, c in enumerate('0123456789')}
 HUD_TILE.update({c: 32 + i for i, c in enumerate(HUD_LETTERS)})
+HUD_TILE['©'] = 51
+HUD_TILE_ALL = {c: 22 + i for i, c in enumerate('0123456789')}
+HUD_TILE_ALL.update({c: 52 + i for i, c in enumerate(ALPHA)})
+HUD_TILE_ALL['\u00a9'] = 51
+
+BIG_LETTERS = 'HORIBUSTE'
+def big_letter(g):
+    """5x7のグリフを2倍(10x14)にして16x16へ。右下にずらした影つき。4タイル(TL,TR,BL,BR)のバイト列を返す"""
+    px = [[0] * 16 for _ in range(16)]
+    on = [(x * 2 + dx, y * 2 + dy) for y, row in enumerate(g) for x, c in enumerate(row) if c == '1'
+          for dx in (0, 1) for dy in (0, 1)]
+    for (x, y) in on:                      # 影(色3)
+        if x + 3 < 16 and y + 2 < 16: px[y + 2][x + 3] = 3
+    for (x, y) in on:                      # 本体(色2)
+        px[y][x + 1] = 2
+    out = b''
+    for ty in (0, 8):
+        for tx in (0, 8):
+            out += tile_bytes([row[tx:tx + 8] for row in px[ty:ty + 8]])
+    return out
 BG_FLOOR = pat(["00000000", "00000000", "00010000", "00000000",
                 "00000000", "00000100", "00000000", "00000000"])
 BG_WALL = pat(["22222222", "33332333", "33332333", "22222222",
@@ -164,9 +199,18 @@ def main():
     # 表示帯(背景パレット1: 色1=黒、色2=白)。20=黒, 21=区切り線, 22〜31=数字0〜9, 32〜44=文字
     chr_bg += tile_bytes([[1] * 8 for _ in range(8)])
     chr_bg += tile_bytes([[1] * 8 for _ in range(7)] + [[2] * 8])
-    for ch in '0123456789' + HUD_LETTERS:
+    for ch in '0123456789' + HUD_LETTERS + '©':
         g = FONT[ch]
         chr_bg += tile_bytes([[2 if c == '1' else 1 for c in (row + '000')[:8]] for row in g] + [[1] * 8])
+    assert len(chr_bg) == 52 * 16
+    # クリア画面用の全文字(背景パレットの色1=黒、色2=文字色)。52〜77=A〜Z、78='!'、79='+'、80='/'
+    for ch in ALPHA + '!+/':
+        g = FONT[ch]
+        chr_bg += tile_bytes([[2 if c == '1' else 1 for c in (row + '000')[:8]] for row in g] + [[1] * 8])
+    assert len(chr_bg) == 81 * 16
+    # タイトルの大きな文字(16x16=4タイル。TL,TR,BL,BR)。81〜116。色2=本体、色3=影(背景パレット3: 黄と赤)
+    for ch in BIG_LETTERS:
+        chr_bg += big_letter(FONT[ch])
     chr_bg += bytes(4096 - len(chr_bg))
     chr_sp = bytearray()
     sprites = []
@@ -177,9 +221,12 @@ def main():
         for t in sprite_tiles(s):
             chr_sp += t
     # 文字(GAME OVER・PUSH START用)。色2(=パレットの「からだ」色)だけで描く。タイル24〜35(G A M E O V R P U S H T)、36〜45(数字0〜9)、46=C 47=L 48=F、52〜55=ストップウォッチ
+    # 黒い四角の中に白い文字(ゲーム画面の上でも読める)。左に1ドットの余白。色1=黒、色2=文字色
     for g in GLYPHS:
-        chr_sp += tile_bytes([[2 if c == '1' else 0 for c in (row + '000')[:8]] for row in g] + [[0] * 8])
-    chr_sp += bytes(16 * 3)                            # タイル49〜51は空き
+        chr_sp += tile_bytes([[2 if c == '1' else 1 for c in ('0' + row + '00')[:8]] for row in g] + [[1] * 8])
+    chr_sp += tile_bytes([[1] * 8 for _ in range(8)])  # タイル49=黒いだけ(文字の余白・空白)
+    for g in (FONT['I'], ARROW):                       # タイル50=I、51=矢印(ポーズの選択)
+        chr_sp += tile_bytes([[2 if c == '1' else 1 for c in ('0' + row + '00')[:8]] for row in g] + [[1] * 8])
     for t in sprite_tiles(watch16()): chr_sp += t     # タイル52〜55=ストップウォッチ(4の倍数から)
     chr_sp += bytes(8) + bytes([0xFF]) + bytes(7)      # タイル56=スプライト0(一番上の1行だけ白。表示帯の区切り線と重なって見えない)
     chr_sp += bytes(4096 - len(chr_sp))
@@ -236,6 +283,59 @@ def main():
     for c in range(32): nt[3 * 32 + c] = 21
     attr = [0x55] * 8 + [0] * 56               # 上の4タイル行はパレット1(黒地に白)
     open(os.path.join(OUT, 'hud.bin'), 'wb').write(bytes(nt) + bytes(attr))
+
+    # タイトル画面。上の32pxは画面B(HIGH SCORE。静的)、その下の208px(13マス行)は画面Aの輪をスクロールで降ろす絵
+    # 絵(13マス行x16マス列。1マス=2x2タイル)を、上のマス行から順に64バイトずつ(上タイル行32+下タイル行32)
+    BIGT = {ch: 81 + 4 * i for i, ch in enumerate(BIG_LETTERS)}
+    pic = [[0] * 32 for _ in range(26)]
+    def ptext(row, col, text):
+        for i, ch in enumerate(text):
+            pic[row][col + i] = 20 if ch == ' ' else HUD_TILE_ALL[ch]
+    def pbig(row, col, text):
+        for i, ch in enumerate(text):
+            if ch == ' ': continue
+            b0 = BIGT[ch]
+            pic[row][col + i * 2] = b0; pic[row][col + i * 2 + 1] = b0 + 1
+            pic[row + 1][col + i * 2] = b0 + 2; pic[row + 1][col + i * 2 + 1] = b0 + 3
+    for r in (2, 3, 11, 12):                     # 枠(ゲームの壁のブロック): 上・下
+        for c in range(2, 30): pic[r][c] = 2
+    for r in range(4, 11):                       # 枠: 左右
+        for c in (2, 3, 28, 29): pic[r][c] = 2
+    pbig(5, 8, 'HORIHORI')
+    pbig(8, 5, 'ROBO BUSTER')
+    ptext(19, 11, 'PUSH START')
+    ptext(22, 6, '\u00a92026 YOSHIDASTUDIO')
+    ptext(23, 9, '\u00a9PANICPUMPKIN')
+    qpal = [[1] * 16 for _ in range(13)]        # マスごとのパレット(0=壁 1=白 2=点滅 3=黄)
+    for r in (1, 5, 6):
+        for c in range(1, 15): qpal[r][c] = 0
+    for r in (2, 3, 4):
+        for c in range(1, 15): qpal[r][c] = 0 if c in (1, 14) else 3
+    for c in range(16): qpal[9][c] = 2
+    tattr = bytearray(64)
+    for r in range(13):
+        for c in range(16):
+            tattr[(r >> 1) * 8 + (c >> 1)] |= qpal[r][c] << ((((r & 1) << 1) | (c & 1)) * 2)
+    open(os.path.join(OUT, 'titlepic.bin'), 'wb').write(bytes(v for row in pic for v in row) + bytes(tattr))
+    # 上の表示帯(画面B $2400): 4タイル行。3行目に HIGH SCORE(数字は実行時に書く)、4行目はスプライト0が当たる黒
+    bar = [20] * 960
+    for i, ch in enumerate('HIGH SCORE'):
+        if ch != ' ': bar[2 * 32 + 8 + i] = HUD_TILE_ALL[ch]
+    for i in range(5): bar[2 * 32 + 19 + i] = 22
+    open(os.path.join(OUT, 'titlebar.bin'), 'wb').write(bytes(bar) + bytes([0x55] * 8 + [0] * 56))
+
+    # クリア画面(画面B)の属性: 16x16px(2タイル行)ごとのパレット。1=白 2=点滅(PUSH START) 3=黄
+    # 文字を置く行(タイル行): 4,6=黄(見出し・ランク) 8,10=白 12=黄(PERFECT) 14,18=白 24=点滅
+    qpal = [1] * 16
+    for r, p in ((4, 3), (6, 3), (12, 3), (24, 2)):
+        qpal[r // 2] = p
+    rattr = bytearray(64)
+    for qr in range(16):
+        half = qpal[qr] * 5                            # 左右2マスとも同じパレット
+        for bc in range(8):
+            if (qr >> 1) * 8 + bc < 64:
+                rattr[(qr >> 1) * 8 + bc] |= half << ((qr & 1) * 4)
+    open(os.path.join(OUT, 'resattr.bin'), 'wb').write(bytes(rattr))
 
     # 確認用の拡大プレビュー(白・黄・赤の3パレット)
     pals = [{1: (16, 16, 80), 2: (255, 255, 255), 3: (120, 190, 255)},
