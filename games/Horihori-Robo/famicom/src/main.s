@@ -3911,6 +3911,24 @@ draw_all:
     sta cfl
     jmp @hdraw
 @alive:
+    lda hstate
+    cmp #1
+    bne @walking
+    lda #1              ; 穴に落ちている: X目の頭だけ出して、8フレームごとに上下1pxずつ動かす
+    sta chalf
+    lda #15
+    sta cfr
+    lda #0
+    sta cfl
+    lda fc
+    and #8
+    beq @hbu
+    inc cy
+    jmp @hdraw
+@hbu:
+    dec cy
+    jmp @hdraw
+@walking:
     lda invinc
     and #4
     beq :+
@@ -3932,6 +3950,8 @@ draw_all:
     sta cat
     ldy #4              ; OAM 0〜3 はスプライト0
     jsr draw_char
+    lda #0
+    sta chalf
     ; ロボ(待機中は隠す)
     lda #0
     sta rc
