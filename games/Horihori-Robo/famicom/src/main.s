@@ -375,6 +375,7 @@ main:
     bne @cc
 :   lda #$30
 @cc:sta pcol
+    jsr draw_cscene     ; 黄色いロボの演出
     lda pad
     and #$10            ; Start で次のステージ(5面のあとは最初から)
     bne @cgo
@@ -4056,6 +4057,54 @@ put_two:
     adc #HUDD0
     sta $2007
     rts
+
+; クリア画面の演出(スプライト)。ステージクリア: 黄色いロボが画面の左から右へ歩いて抜ける(くり返し)
+; ALL CLEAR: 真ん中で正面を向いて飛び跳ねる
+draw_cscene:
+    lda stage
+    cmp #STAGES
+    bcs @all
+    lda cblink          ; 1フレーム1px。画面の右端(241〜)では隠して、また左から
+    cmp #241
+    bcc @wv
+    lda #$FF
+    sta cy
+    bne @dr
+@wv:sta cx
+    lsr
+    lsr
+    lsr
+    and #3
+    clc
+    adc #2              ; 横向きの歩きのコマ(2〜5)
+    sta cfr
+    lda #160
+    sta cy
+    lda #0
+    sta cfl
+    beq @dr
+@all:
+    lda cblink
+    and #31
+    tay
+    lda #124
+    sec
+    sbc jumptab,y
+    sta cy
+    lda #120
+    sta cx
+    lda #0
+    sta cfr
+    sta cfl
+@dr:lda #0
+    sta chalf
+    lda #1              ; 主人公(黄)
+    sta cat
+    ldy #4
+    jmp draw_char
+
+jumptab:                ; 飛び跳ねの高さ(32フレームで1回。最大16px)
+    .byte 0,1,3,5,7,8,9,10,12,12,13,14,15,15,15,15,16,15,15,15,15,14,13,12,12,10,9,8,7,5,3,1
 
 ; 16x16キャラを4スプライトで描く。Y=OAMオフセット(呼ぶたび16進む)。cy=$FFなら隠す
 draw_char:
