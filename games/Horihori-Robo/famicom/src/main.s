@@ -200,6 +200,12 @@ rpl:    .res 6          ; y下位
 rph:    .res 6          ; y上位
 rmd:    .res 6          ; 進む向き(1=右 2=左 4=下 8=上、0=止まり)
 rst:    .res 6          ; 0=待機中 1=歩く 2=穴にはまっている
+scol:   .res 1
+scnt:   .res 1
+spx:    .res 1
+syl:    .res 1
+syh:    .res 1
+stmp:   .res 1
 rrun:   .res 6          ; 出現前に画面の横の余白を走り上がっている(1=左 2=右)
 rly:    .res 6          ; その画面のy
 rtm:    .res 6          ; 待機・這い出るまでの残り(2フレーム単位)
@@ -2829,16 +2835,50 @@ robot_one:
     jmp robot_hero
 
 ; 画面の上のほうの空いた部屋に出す(rc番)
-spawn_robot:
-    lda #6
-    sta md
-    jsr rand
-    jsr rmod
-    asl
-    clc
+; 出現位置(spx, syl/syh)が、いまいるロボと重なっていなければ C=1
+spawn_free:
+    ldx #5
+@l: cpx rc
+    beq @n
+    lda rst,x
+    beq @n
+    lda rpx,x
+    sec
+    sbc spx
+    bcs :+
+    eor #$FF
     adc #1
-    sta dcx             ; 奇数列 1〜11
-    lda camlo
+:   cmp #16
+    bcs @n
+    lda rpl,x
+    sec
+    sbc syl
+    sta stmp
+    lda rph,x
+    sbc syh
+    beq @p
+    cmp #$FF
+    bne @n
+    lda stmp
+    cmp #241
+    bcs @hit
+    bcc @n
+@p: lda stmp
+    cmp #16
+    bcc @hit
+@n: dex
+    bpl @l
+    sec
+    rts
+@hit:
+    clc
+    rts
+
+spawn_robot:
+    lda soff
+    cmp #1
+    beq @top
+    lda camlo           ; (赤いロボ) 画面の上端から soff 行下の奇数行
     lsr
     lsr
     lsr
@@ -2852,11 +2892,85 @@ spawn_robot:
     ora u
     clc
     adc soff
-    ora #1              ; 画面の上端から soff 行下の奇数行
+    ora #1
+    jmp @rowok
+@top:                   ; 白いロボ: 画面に見えている一番上の行(上が欠けていない行)
+    lda camlo
+    clc
+    adc #15
+    sta u
+    lda camhi
+    adc #0
+    sta stmp
+    lda u
+    lsr
+    lsr
+    lsr
+    lsr
+    sta u
+    lda stmp
+    asl
+    asl
+    asl
+    asl
+    ora u
+@rowok:
     cmp #30
     bcc :+
     lda #29
 :   sta dcy
+    asl                 ; 行の世界y (下位・上位)
+    asl
+    asl
+    asl
+    sta syl
+    lda dcy
+    lsr
+    lsr
+    lsr
+    lsr
+    sta syh
+    lda #13             ; 列をランダムに選び、壁か他のロボと重なる列は次の列へ
+    sta md
+    jsr rand
+    jsr rmod
+    sta scol
+    lda #13
+    sta scnt
+@try:
+    lda scol
+    asl
+    asl
+    asl
+    asl
+    clc
+    adc #24
+    sta spx
+    ldy scol
+    lda dcy
+    jsr getcell
+    cmp #1
+    beq @bad
+    jsr spawn_free
+    bcs @ok
+@bad:
+    inc scol
+    lda scol
+    cmp #13
+    bcc :+
+    lda #0
+    sta scol
+:   dec scnt
+    bne @try
+    lda scol            ; 空きが無いときは(まず起きない)奇数列に出す
+    ora #1
+    cmp #12
+    bcc @ok
+    lda #11
+    sta scol
+@ok:
+    lda scol
+    sta dcx
     ldx rc
     lda dcx
     asl
