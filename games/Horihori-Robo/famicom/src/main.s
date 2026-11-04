@@ -2288,7 +2288,7 @@ calc_target:
     rts
 
 ; Bボタン: 壁に向かって止まったあと(1.5秒以内)なら、向いている壁をハシゴにする
-; (外周とゴールの行は除く。ハシゴは1ステージに3本)
+; (外周とゴールの行は除く。ゴールの次の行にはかけられる。ハシゴは1ステージに3本)
 do_ladder:
     lda ladders
     beq @no
@@ -2304,7 +2304,7 @@ do_ladder:
     lda dcx
     beq @no
     lda dcy
-    cmp #3
+    cmp #2
     bcc @no
     lda #4
     sta sd
@@ -3045,6 +3045,9 @@ robot_walk:
     bne @nohole
     lda rimm,x
     bne @decide
+    jsr hole_taken      ; すでに別のロボがはまっている穴には落ちない(1つの穴に1体まで)
+    ldx rc
+    bcs @decide
     lda #2              ; 穴に落ちる
     sta rst,x
     lda #TRAP_T
@@ -3158,6 +3161,31 @@ robot_choose:
 :   ldx rc
     lda cur
     sta rmd,x
+    rts
+
+; rc番のいるマスの穴に、別のロボがはまっていれば C=1
+hole_taken:
+    ldx #5
+@l: cpx rc
+    beq @n
+    lda rst,x
+    cmp #2
+    bne @n
+    ldy rc
+    lda rpx,x
+    cmp rpx,y
+    bne @n
+    lda rpl,x
+    cmp rpl,y
+    bne @n
+    lda rph,x
+    cmp rph,y
+    bne @n
+    sec
+    rts
+@n: dex
+    bpl @l
+    clc
     rts
 
 dbit: .byte 1, 2, 4, 8
