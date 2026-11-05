@@ -28,8 +28,13 @@ for (let f = 0; f < N; f++) {
   if (f > 10) maxStage = Math.max(maxStage, mem('stage'));
   minSP = Math.min(minSP, nes.cpu.REG_SP & 255);
   if (process.env.TRACE && f >= +process.env.TRACE && f % 60 === 0 && f < +process.env.TRACE + 1500) console.log(f, JSON.stringify({ fc: mem('fc'), title: mem('title'), gover: mem('gover'), clear: mem('clear'), lives: mem('lives'), pc: nes.cpu.REG_PC.toString(16), cam: mem('camlo') }));
+  if (sym.rst) {                           // 1つの穴にはまるロボは1体まで
+    const at = (a, i) => nes.cpu.mem[sym[a] + i];
+    for (let i = 0; i < 6; i++) for (let j = i + 1; j < 6; j++)
+      if (at('rst', i) === 2 && at('rst', j) === 2 && at('rpx', i) === at('rpx', j) && at('rpl', i) === at('rpl', j) && at('rph', i) === at('rph', j)) { bad.push(['同じ穴に2体', f, { i, j }]); }
+  }
   if (f % 60 === 0) {                      // 60フレームごとに fc が進んでいるか(遊んでいる間)
-    const fcn = mem('fc'), playing = !mem('title') && !mem('gover') && !mem('clear') && !mem('intro') && !mem('cscr');
+    const fcn = mem('fc'), playing = !mem('title') && !mem('gover') && !mem('clear') && !mem('intro') && !mem('cscr') && !mem('dying');
     if (playing && last.playing && fcn === last.fc) bad.push(['fcが進まない(止まった?)', f, { fc: fcn }]);
     last.fc = fcn; last.playing = playing;
   }

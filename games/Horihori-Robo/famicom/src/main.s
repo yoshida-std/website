@@ -20,10 +20,14 @@
 ROWS      = 31          ; 迷路の行数(1行=16px)
 START_CAM = 288         ; 開始時のカメラ(世界座標で迷路窓の一番上のy) = 31*16-208
 HUDBLANK  = 20          ; 表示帯の背景タイル: 黒
-HUDD0     = 22          ; 数字0のタイル
+HUDD0     = 22          ; 数字0のタイル(白)
+HUDV0     = 117         ; 表示帯の値の数字0(黄)。117〜126
+HUDHEAD   = 127         ; 残機の絵(黄色いロボの頭)
+HUDLAD    = 128         ; ハシゴの残りの絵
 HUD_H     = 32          ; 画面上部の表示帯の高さ(px)。迷路はその下の208px
 NROBMAX   = 5           ; 白いロボの最大数(ステージ5で5体)。番号5は赤いロボ
 STAGES    = 5
+TURN_FR   = 8           ; 止まっているときに方向キーを押すと、まずその向きに変わり、このフレーム数だけ押し続けると歩き出す
 SCROLL_WAIT = 300       ; ゲーム開始(STAGE x の表示が終わったあと)からスクロールが始まるまで(フレーム=5秒)
 INTRO_FR  = 180         ; ステージ開始時の「STAGE x」を出すフレーム数(3秒)
 TRAP_T    = 105         ; 穴から這い出るまで(2フレーム単位 ≒ 3.5秒)
@@ -186,7 +190,7 @@ bon:    .res 1          ; クリアボーナス(100点単位)
 tgold:  .res 1          ; 通しで取った金塊の数
 healed: .res 1          ; 1=クリアで残機が回復する
 tbuf:   .res 8          ; 文字の表(実行時に作るもの)
-hudbuf: .res 12         ; 表示帯の数字のタイル(スコア5・残機・ストップウォッチ2・ステージ・金塊2・ハシゴ)
+hudbuf: .res 16         ; 表示帯の数字のタイル(スコア5・残機・ストップウォッチ2・ステージ・金塊2・ハシゴ)
 rowbuf: .res 32         ; 背景1マス行の上のタイル行
 rowbuf2:.res 32         ; 同じ、下のタイル行
 mapram: .res 512        ; 迷路(1行16バイト x 31行。1=壁)
@@ -200,7 +204,13 @@ rpl:    .res 6          ; y下位
 rph:    .res 6          ; y上位
 rmd:    .res 6          ; 進む向き(1=右 2=左 4=下 8=上、0=止まり)
 rst:    .res 6          ; 0=待機中 1=歩く 2=穴にはまっている
+oldface:.res 1          ; このフレームの前の向き
+wasm:   .res 1          ; マスの中心に着いたとき、直前まで歩いていたら非0
+turnt:  .res 1          ; 止まった状態から向きを変えたあと、歩き出すまでの残りフレーム
+dying:  .res 1          ; >0 の間は主人公が倒れるアニメ(やられたあとの60フレーム)
 scol:   .res 1
+srow:   .res 1
+fbn:    .res 1
 scnt:   .res 1
 spx:    .res 1
 syl:    .res 1
@@ -314,6 +324,9 @@ main:
 :   lda intro
     beq :+
     jmp @intro
+:   lda dying
+    beq :+
+    jmp @dying
 :   lda paused
     beq :+
     jmp @pause
@@ -457,6 +470,12 @@ main:
     jsr bgm_start
 @ib:
     jsr draw_all
+    jmp main
+@dying:
+    dec dying           ; 倒れるアニメのあいだは全部止まる。終わったら復活
+    bne :+
+    jsr revive
+:   jsr draw_all
     jmp main
 @over:
     lda pad
@@ -911,6 +930,8 @@ start_game:
     sta pushtimer
     lda #INTRO_FR       ; 開始前に「STAGE x」を3秒出す
     sta intro
+    lda #0
+    sta dying
     lda #<SCROLL_WAIT
     sta sdelay
     lda #>SCROLL_WAIT
@@ -967,6 +988,9 @@ start_game:
     bne :-
     lda #8
     sta face
+    lda #0
+    sta turnt
+    sta wasm
     jsr gen_maze
     jsr place_watch
     ; 画面に最初から出る行(マス行16〜30)を背景に書いておく
@@ -1023,7 +1047,7 @@ start_game:
     inc ptr+1
     dex
     bne @hd
-    ldx #11
+    ldx #15
     lda #$FF
 :   sta hudbuf,x
     dex
@@ -1131,45 +1155,52 @@ update_hud:
     ldx #0
 @sc:lda dg,x
     clc
-    adc #HUDD0
+    adc #HUDV0
     jsr hud_set
     inx
     cpx #5
     bne @sc
-    lda lives
-    clc
-    adc #HUDD0
-    ldx #5
-    jsr hud_set
+    ldx #5              ; 残機: 残りの数だけ黄色いロボの頭(3つぶんの枠)
+@lf:txa
+    sec
+    sbc #5
+    cmp lives
+    lda #HUDBLANK
+    bcs :+
+    lda #HUDHEAD
+:   jsr hud_set
+    inx
+    cpx #8
+    bne @lf
     lda freezes         ; ストップウォッチの残り秒
     beq @nostop
     ldy #HUDBLANK
     cmp #10
     bcc :+
     sbc #10
-    ldy #HUDD0+1
+    ldy #HUDV0+1
 :   clc
-    adc #HUDD0
+    adc #HUDV0
     pha
     tya
-    ldx #6
+    ldx #8
     jsr hud_set
     pla
-    ldx #7
+    ldx #9
     jsr hud_set
     jmp @stage
 @nostop:
     lda #HUDBLANK
-    ldx #6
+    ldx #8
     jsr hud_set
     lda #HUDBLANK
-    ldx #7
+    ldx #9
     jsr hud_set
 @stage:
     lda stage
     clc
-    adc #HUDD0
-    ldx #8
+    adc #HUDV0
+    ldx #10
     jsr hud_set
     lda golds
     ldy #0
@@ -1178,21 +1209,29 @@ update_hud:
     sbc #10
     ldy #1
 :   clc
-    adc #HUDD0
+    adc #HUDV0
     pha
     tya
     clc
-    adc #HUDD0
-    ldx #9
+    adc #HUDV0
+    ldx #11
     jsr hud_set
     pla
-    ldx #10
+    ldx #12
     jsr hud_set
-    lda ladders
-    clc
-    adc #HUDD0
-    ldx #11
-    jmp hud_set
+    ldx #13             ; ハシゴ: 残りの数だけハシゴの絵
+@ld:txa
+    sec
+    sbc #13
+    cmp ladders
+    lda #HUDBLANK
+    bcs :+
+    lda #HUDLAD
+:   jsr hud_set
+    inx
+    cpx #16
+    bne @ld
+    rts
 
 ; A=タイル、X=番号。変わっていたら書き換えを予約
 hud_set:
@@ -1210,7 +1249,7 @@ hud_set:
     sta $2006
 .endmacro
 
-; 表示帯の数字を背景に書く(NMIか、描画オフのとき)
+; 表示帯の数字(と残機・ハシゴの絵)を背景に書く(NMIか、描画オフのとき)
 write_hud:
     lda $2002
     HUDADDR $24, $27    ; スコア5桁
@@ -1220,25 +1259,33 @@ write_hud:
     inx
     cpx #5
     bne :-
-    HUDADDR $24, $33    ; 残機
-    lda hudbuf+5
+    HUDADDR $24, $33    ; 残機(頭3つ)
+    ldx #5
+:   lda hudbuf,x
     sta $2007
+    inx
+    cpx #8
+    bne :-
     HUDADDR $24, $3B    ; ストップウォッチ
-    lda hudbuf+6
-    sta $2007
-    lda hudbuf+7
-    sta $2007
-    HUDADDR $24, $47    ; ステージ
     lda hudbuf+8
     sta $2007
-    HUDADDR $24, $4F    ; 金塊
     lda hudbuf+9
     sta $2007
+    HUDADDR $24, $47    ; ステージ
     lda hudbuf+10
     sta $2007
-    HUDADDR $24, $5A    ; ハシゴ
+    HUDADDR $24, $4F    ; 金塊
     lda hudbuf+11
     sta $2007
+    lda hudbuf+12
+    sta $2007
+    HUDADDR $24, $5A    ; ハシゴ(3つ)
+    ldx #13
+:   lda hudbuf,x
+    sta $2007
+    inx
+    cpx #16
+    bne :-
     rts
 
 ; ---------------------------------------------------------------- 音
@@ -2288,7 +2335,7 @@ calc_target:
     rts
 
 ; Bボタン: 壁に向かって止まったあと(1.5秒以内)なら、向いている壁をハシゴにする
-; (外周とゴールの行は除く。ハシゴは1ステージに3本)
+; (外周とゴールの行は除く。ゴールの次の行にはかけられる。ハシゴは1ステージに3本)
 do_ladder:
     lda ladders
     beq @no
@@ -2304,7 +2351,7 @@ do_ladder:
     lda dcx
     beq @no
     lda dcy
-    cmp #3
+    cmp #2
     bcc @no
     lda #4
     sta sd
@@ -2935,6 +2982,9 @@ spawn_robot:
     jsr rand
     jsr rmod
     sta scol
+    lda #3              ; 主人公まで歩ける道がわかっているマスだけに出す。なければ1行ずつ下を探す
+    sta srow
+@rowtry:
     lda #13
     sta scnt
 @try:
@@ -2951,6 +3001,18 @@ spawn_robot:
     jsr getcell
     cmp #1
     beq @bad
+    lda dcy
+    and #15
+    asl
+    asl
+    asl
+    asl
+    ora scol
+    tax
+    lda dist,x
+    and #$7F
+    cmp #$7F
+    beq @bad            ; 主人公へ行く道がまだわからない(外から切り離されたマス)
     jsr spawn_free
     bcs @ok
 @bad:
@@ -2962,6 +3024,23 @@ spawn_robot:
     sta scol
 :   dec scnt
     bne @try
+    dec srow            ; この行に出せるマスがなければ、1行下で探す
+    beq @nomore
+    inc dcy
+    lda dcy
+    asl
+    asl
+    asl
+    asl
+    sta syl
+    lda dcy
+    lsr
+    lsr
+    lsr
+    lsr
+    sta syh
+    jmp @rowtry
+@nomore:
     lda scol            ; 空きが無いときは(まず起きない)奇数列に出す
     ora #1
     cmp #12
@@ -3045,6 +3124,9 @@ robot_walk:
     bne @nohole
     lda rimm,x
     bne @decide
+    jsr hole_taken      ; すでに別のロボがはまっている穴には落ちない(1つの穴に1体まで)
+    ldx rc
+    bcs @decide
     lda #2              ; 穴に落ちる
     sta rst,x
     lda #TRAP_T
@@ -3153,11 +3235,70 @@ robot_choose:
     lda bd
     cmp #$7F
     bcc :+
-    lda #0              ; 行き先がわからなければ止まる
+    lda #0              ; 行き先がわからなければ、あいている向きへ適当に進む(止まらない)
     sta cur
+    lda fc
+    lsr
+    and #3
+    sta kk
+    lda #4
+    sta fbn
+@fb:ldx kk
+    lda gx
+    clc
+    adc dxm,x
+    sta nx
+    lda gy
+    clc
+    adc dym,x
+    sta ny
+    sec
+    sbc btop
+    cmp #16
+    bcs @fn
+    lda ny
+    ldy nx
+    jsr getcell
+    cmp #1
+    beq @fn
+    ldx kk
+    lda dbit,x
+    sta cur
+    jmp :+
+@fn:inc kk
+    lda kk
+    and #3
+    sta kk
+    dec fbn
+    bne @fb
 :   ldx rc
     lda cur
     sta rmd,x
+    rts
+
+; rc番のいるマスの穴に、別のロボがはまっていれば C=1
+hole_taken:
+    ldx #5
+@l: cpx rc
+    beq @n
+    lda rst,x
+    cmp #2
+    bne @n
+    ldy rc
+    lda rpx,x
+    cmp rpx,y
+    bne @n
+    lda rpl,x
+    cmp rpl,y
+    bne @n
+    lda rph,x
+    cmp rph,y
+    bne @n
+    sec
+    rts
+@n: dex
+    bpl @l
+    clc
     rts
 
 dbit: .byte 1, 2, 4, 8
@@ -3348,6 +3489,12 @@ do_miss:
     jsr update_hi
     jmp bgm_stop
 @re:
+    lda #60             ; 1秒、正面を向いて倒れるアニメを見せてから復活する
+    sta dying
+    rts
+
+; 復活: 画面の下のほうの部屋に戻す
+revive:
     lda px
     sec
     sbc #24
@@ -3398,6 +3545,7 @@ do_miss:
     sta pylo
     lda #0
     sta mdir
+    sta turnt
     sta hstate
     sta digbuf
     sta ladbuf
@@ -3467,7 +3615,9 @@ update_hero:
 @tomid:
     jmp @mid
 @center:
-    lda #0              ; --- マスの中心
+    lda mdir            ; --- マスの中心(直前まで歩いていたか覚えておく)
+    sta wasm
+    lda #0
     sta mdir
     lda pylo            ; ゴールのマスなら ステージクリア
     sta u
@@ -3588,6 +3738,8 @@ update_hero:
     jmp @fin
 @nofall:
     ; 向き(押している方向。壁に向かっても向きだけ変わる)
+    lda face
+    sta oldface
     lda pad
     and #$0F
     beq @nof
@@ -3611,6 +3763,17 @@ update_hero:
 :   lda #8
     sta face
 @nof:
+    lda pad             ; 止まっている状態から別の向きを押したら、まず向きだけ変える
+    and #$0F
+    beq @nt
+    lda face
+    cmp oldface
+    beq @nt
+    lda wasm            ; 歩いている途中の曲がり角ではそのまま曲がる(待たない)
+    bne @nt
+    lda #TURN_FR
+    sta turnt
+@nt:
     lda digbuf          ; ためてある掘る入力を、マスの中心でここに使う
     beq @nd
     lda #0
@@ -3623,6 +3786,16 @@ update_hero:
     sta ladbuf
     jsr do_ladder
 @nl:
+    lda turnt           ; 向きを変えている間は歩かない(離したら向きだけ変えて終わり)
+    beq @mv
+    lda pad
+    and #$0F
+    bne :+
+    sta turnt
+    jmp @fin
+:   dec turnt
+    jmp @fin
+@mv:
     lda #1              ; 向きを選ぶ
     jsr try_dir
     lda mdir
@@ -3702,6 +3875,30 @@ update_hero:
     lda #0
     sta anim
     sta atimer
+    lda face            ; 止まっているときは、向いている方向の絵
+    lsr
+    bcc :+
+    lda #2
+    sta dir
+    lda #0
+    sta flip
+    rts
+:   lda face
+    and #2
+    beq :+
+    lda #2
+    sta dir
+    lda #1
+    sta flip
+    rts
+:   lda face
+    and #4
+    beq :+
+    lda #0
+    sta dir
+    rts
+:   lda #1
+    sta dir
     rts
 @walk:
     inc atimer
@@ -3822,6 +4019,41 @@ draw_all:
     ldx pyhi
     jsr w2s
     sta cy
+    lda dying
+    beq @alive
+    lda #60             ; やられた: 正面を向いて倒れる(3コマ、20フレームずつ)
+    sec
+    sbc dying
+    ldx #15
+    cmp #20
+    bcc :+
+    inx
+    cmp #40
+    bcc :+
+    inx
+:   stx cfr
+    lda #0
+    sta cfl
+    jmp @hdraw
+@alive:
+    lda hstate
+    cmp #1
+    bne @walking
+    lda #1              ; 穴に落ちている: X目の頭だけ出して、8フレームごとに上下1pxずつ動かす
+    sta chalf
+    lda #15
+    sta cfr
+    lda #0
+    sta cfl
+    lda fc
+    and #8
+    beq @hbu
+    inc cy
+    jmp @hdraw
+@hbu:
+    dec cy
+    jmp @hdraw
+@walking:
     lda invinc
     and #4
     beq :+
@@ -3838,10 +4070,13 @@ draw_all:
 :   sta cfr
     lda flip
     sta cfl
+@hdraw:
     lda #1              ; スプライトパレット1=黄
     sta cat
     ldy #4              ; OAM 0〜3 はスプライト0
     jsr draw_char
+    lda #0
+    sta chalf
     ; ロボ(待機中は隠す)
     lda #0
     sta rc
@@ -3907,9 +4142,15 @@ draw_all:
     lda rst,x
     cmp #2
     bne :+
-    lda #1              ; 穴にはまっている: 頭だけ
+    lda #1              ; 穴にはまっている: 頭だけ(8フレームごとに上下1pxずつ動かす)
     sta chalf
-    lda #0
+    lda fc
+    and #8
+    beq @bu
+    inc cy
+    jmp @bd
+@bu:dec cy
+@bd:lda #0
     sta cfr
     jmp @go
 :   lda rmd,x
@@ -4404,7 +4645,7 @@ draw_char:
 palette:
     ; 背景0: 床(緑)・こい緑・茶・うす橙
     ; 1=表示帯・クリア画面(黒地に白) 2=点滅(色2をNMIで切り替え) 3=黄(色3=赤は、タイトルの大きな文字の影)
-    .byte $29,$09,$17,$27,  $29,$0F,$30,$0F,  $29,$0F,$30,$0F,  $29,$0F,$28,$16
+    .byte $29,$09,$17,$27,  $29,$0F,$30,$28,  $29,$0F,$30,$0F,  $29,$0F,$28,$16
     ; スプライト0=白 1=黄 2=赤 3=文字(黒い四角に白)・ストップウォッチ
     .byte $29,$01,$30,$21,  $29,$01,$38,$27,  $29,$01,$16,$27,  $29,$0F,$30,$21
 padtab:                         ; 黒い四角だけの行(文字の上下の余白)
