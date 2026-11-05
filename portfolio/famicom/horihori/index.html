@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ホリホリ・ロボバスター（ファミコン版） | 自作ファミコンゲーム | ヨシダスタジオ</title>
+<meta name="description" content="穴をほって、ロボットを落として、頭をふみつけろ！ブラウザゲーム「ホリホリ・ロボバスター」のファミコン版。ROMイメージをダウンロードできます。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ヨシダスタジオ">
+<meta property="og:title" content="ホリホリ・ロボバスター（ファミコン版） | ヨシダスタジオ">
+<meta property="og:description" content="穴をほって、ロボットを落として、頭をふみつけろ！ブラウザゲーム「ホリホリ・ロボバスター」のファミコン版。ROMイメージをダウンロードできます。">
+<meta property="og:url" content="https://yoshida-std.github.io/website/portfolio/famicom/horihori/">
+<meta property="og:image" content="https://yoshida-std.github.io/website/portfolio/img/famicom/horihori.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ホリホリ・ロボバスター（ファミコン版）のタイトル画面とゲーム画面">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../../style.css?v=10">
+<style>
+/* このページだけの見た目：ファミコン本体の えんじ色 と クリーム色 */
+.fc-hero {
+  display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; gap: 24px;
+  padding: 28px; border-radius: var(--radius); color: #3b1d1a;
+  background: #efe6cf; border-bottom: 10px solid #a82c2a;
+}
+.fc-hero .kind { display: inline-block; font-size: 12px; padding: 2px 12px; border-radius: 999px; background: #a82c2a; color: #fff; }
+.fc-hero h1 { font-size: clamp(26px, 6.8vw, 42px); letter-spacing: .04em; margin: 10px 0 2px; line-height: 1.25; }
+.fc-hero .sub { font-size: 15px; font-weight: 700; color: #a82c2a; margin: 0 0 10px; }
+.fc-hero p { margin: 0 0 6px; }
+.fc-hero .file { font-size: 13px; opacity: .8; }
+.fc-hero .ip-btn { background: #a82c2a; color: #fff; }
+.fc-hero .ip-btn.sub { background: #fff; color: #3b1d1a; border-color: #d8ccb0; }
+.fc-shot { margin: 0; background: #000; border-radius: 8px; padding: 8px; }
+.fc-shot img, .fc-shots img { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+@media (max-width: 680px) {
+  .fc-hero { grid-template-columns: 1fr; padding: 20px; }
+  .fc-shot { order: -1; max-width: 360px; justify-self: center; }
+}
+.fc-sec { margin-top: 32px; }
+.fc-sec h2 { font-size: 20px; margin: 0 0 10px; }
+.fc-sec p { margin: 0 0 8px; }
+.fc-shots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-width: 760px; }
+.fc-shots figure { margin: 0; background: #000; border-radius: 8px; padding: 6px; }
+.fc-shots figcaption { color: #ddd; font-size: 12px; text-align: center; padding-top: 6px; }
+.fc-table { border-collapse: collapse; width: 100%; max-width: 640px; font-size: 15px; }
+.fc-table th, .fc-table td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+.fc-table th { white-space: nowrap; width: 8em; }
+.fc-key {
+  display: inline-block; min-width: 2.2em; padding: 0 8px; border-radius: 6px; text-align: center;
+  background: #3b3b3b; color: #fff; font-weight: 700; font-size: 13px;
+}
+.fc-key.ab { background: #a82c2a; border-radius: 999px; }
+.fc-list { margin: 0; padding-left: 1.3em; }
+.fc-list li { margin-bottom: 6px; }
+.fc-note { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="../../">ヨシダスタジオ</a>
+    <nav class="nav">
+      <a href="../../">トップ</a>
+      <a href="../../line/">LINEスタンプ</a>
+      <a href="../../games/">ゲーム</a>
+      <a href="../../charip/">キャラクターIP</a>
+      <span>ツール</span>
+      <a href="../../#note">note</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="count"><a href="../">← 自作ファミコンゲームの一覧</a></p>
+
+  <section class="fc-hero">
+    <div>
+      <span class="kind">自作ファミコンゲーム</span>
+      <h1>ホリホリ・ロボバスター</h1>
+      <p class="sub">ファミコン版</p>
+      <p>穴をほって、ロボットを落として、頭をふみつけろ！ブラウザゲーム「ホリホリ・ロボバスター」を、ファミコンで動くように作り直しました。</p>
+      <div class="ip-links">
+        <a class="ip-btn" href="../../../games/Horihori-Robo/famicom/rom/horihori.nes" download="horihori.nes">ROMをダウンロード</a>
+        <a class="ip-btn sub" href="../../../games/Horihori-Robo/">ブラウザ版で遊ぶ</a>
+      </div>
+      <p class="file">horihori.nes（約40KB）・2026年11月5日版・ハイスコアを記録</p>
+    </div>
+    <figure class="fc-shot"><img src="../../img/famicom/horihori-title.png" width="512" height="480" alt="タイトル画面。レンガの枠に HORIHORI ROBO BUSTER の文字と、3体のロボット"></figure>
+  </section>
+
+  <section class="fc-sec">
+    <h2>画面</h2>
+    <div class="fc-shots">
+      <figure><img src="../../img/famicom/horihori-play.png" width="512" height="480" alt="ゲーム画面。レンガの迷路に金塊とロボット" loading="lazy"><figcaption>ゲーム画面</figcaption></figure>
+      <figure><img src="../../img/famicom/horihori-clear.png" width="512" height="480" alt="ステージクリアの画面" loading="lazy"><figcaption>ステージクリア</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="fc-sec">
+    <h2>あそびかた</h2>
+    <ul class="fc-list">
+      <li>画面は少しずつ下へ流れていきます。壁にはさまれる前に、迷路の一番上のゴールをめざそう。全5ステージ。</li>
+      <li>穴をほってロボットを落とし、穴から出ている頭をふみつけるとボーナス。</li>
+      <li>壁にはハシゴをかけて乗りこえられます（1ステージ3本まで）。</li>
+      <li>金塊を集めるとボーナス。ストップウォッチを取ると、画面の流れがしばらく止まります。</li>
+      <li>白いロボットは画面の横から走ってきて登場。最後には赤いロボットが追いかけてきます。</li>
+    </ul>
+  </section>
+
+  <section class="fc-sec">
+    <h2>そうさ</h2>
+    <table class="fc-table">
+      <tr><th><span class="fc-key">十字キー</span></th><td>移動。止まっているときは、まず向きが変わり、そのまま押し続けると歩きます。</td></tr>
+      <tr><th><span class="fc-key ab">A</span></th><td>向いている先に穴をほる／穴をうめる</td></tr>
+      <tr><th><span class="fc-key ab">B</span></th><td>壁に向かって押したあと、ハシゴをかける</td></tr>
+      <tr><th><span class="fc-key">START</span></th><td>ゲームスタート／ポーズ（ゲームにもどる・自滅・タイトルにもどる）</td></tr>
+    </table>
+  </section>
+
+  <section class="fc-sec">
+    <h2>あそぶには</h2>
+    <p>ダウンロードした ROM イメージ（.nes ファイル）は、ファミコンのエミュレーターや、フラッシュカートリッジ（EverDrive N8 など）で遊べます。</p>
+    <table class="fc-table">
+      <tr><th>形式</th><td>iNES（.nes）／マッパー0（NROM）／プログラム32KB・キャラクター8KB</td></tr>
+      <tr><th>セーブ</th><td>バッテリーバックアップでハイスコアを記録（対応している環境のみ）</td></tr>
+      <tr><th>人数</th><td>1人</td></tr>
+    </table>
+    <p class="fc-note">実機での動作は確認中です。動作の保証はできません。</p>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">©YoshidaStudio</div>
+</footer>
+</body>
+</html>

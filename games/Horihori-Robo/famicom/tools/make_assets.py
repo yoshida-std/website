@@ -156,18 +156,36 @@ def disc(px, cx, cy, rx, ry, edge, fill):
                 px[y][x] = fill if di <= 1 else edge
 
 def gold16():
-    # 金塊の山: 3つの丸い塊。ふち=茶(2)、中=うす橙(3)、かげ=こい色(1)
+    # 金塊の山: 延べ棒3本(下に2本、上に1本)。上面=黄(3)、側面=橙(2)、ふち=こい茶(1)
+    INGOT = ["..1111..", ".133331.", ".133331.", "12222221", "12222221", "11111111"]
     px = [[0] * 16 for _ in range(16)]
-    disc(px, 4.5, 11.0, 4.6, 3.6, 2, 3)
-    disc(px, 11.0, 11.0, 4.6, 3.6, 2, 3)
-    disc(px, 7.8, 7.0, 4.6, 3.8, 2, 3)
-    for (x, y) in ((6, 5), (7, 5), (3, 10), (10, 10)):
-        px[y][x] = 1
+    for (x0, y0) in ((0, 9), (8, 9), (4, 3)):
+        for y, row in enumerate(INGOT):
+            for x, ch in enumerate(row):
+                if ch != '.': px[y0 + y][x0 + x] = int(ch)
+    return px
+
+def wall16(front):
+    # 立体の壁(ブラウザ版に近い見た目)。上面=橙(2)、上のふちのハイライト=黄(3)、レンガの目地=こい茶(1)。
+    # front=True は下が床のマス: 下5pxが前面(こい茶1)
+    px = [[2] * 16 for _ in range(16)]
+    top = 11 if front else 16
+    mid = 5 if front else 8
+    for x in range(16):
+        px[0][x] = 3
+        px[mid][x] = 1
+    for y in range(1, mid):
+        px[y][8] = 1
+    for y in range(mid + 1, top):
+        px[y][4] = px[y][12] = 1
+    if front:
+        for y in range(11, 16):
+            for x in range(16): px[y][x] = 1
     return px
 
 def ladder16():
     # 壁にかけたハシゴ: レンガ(2/3)のうえに、こい色(1)の縦棒2本と横棒
-    px = [[BG_WALL[y % 8][x % 8] for x in range(16)] for y in range(16)]
+    px = wall16(False)
     for y in range(16):
         for x in (3, 4, 11, 12): px[y][x] = 1
     for y in (2, 6, 10, 14):
@@ -220,6 +238,8 @@ def main():
     for icon in (HEAD, LAD):
         chr_bg += tile_bytes([[1 if c == '.' else int(c) for c in row] for row in icon])
     assert len(chr_bg) == 129 * 16
+    for fr in (False, True):                          # 129〜132=立体の壁(下も壁)、133〜136=立体の壁(下が床。前面つき)
+        for t in sprite_tiles(wall16(fr)): chr_bg += t
     chr_bg += bytes(4096 - len(chr_bg))
     chr_sp = bytearray()
     sprites = []
@@ -242,6 +262,10 @@ def main():
     for c in (0, 1, 2):
         cell = sheet.crop((c * CELL, 5 * CELL, (c + 1) * CELL, 6 * CELL))
         for t in sprite_tiles(to_sprite16(cell)): chr_sp += t
+    SPK = [["........", "........", "........", "...2....", "..232...", "...2....", "........", "........"],   # タイル72=金塊のキラキラ(小)
+           ["...2....", "...2....", "..222...", "2223222.", "..222...", "...2....", "...2....", "........"]]   # タイル73=キラキラ(大)
+    for g in SPK:
+        chr_sp += tile_bytes([[int(c) if c != '.' else 0 for c in row] for row in g])
     chr_sp += bytes(4096 - len(chr_sp))
     open(os.path.join(OUT, 'chr.bin'), 'wb').write(bytes(chr_bg + chr_sp))
 
@@ -310,10 +334,15 @@ def main():
             b0 = BIGT[ch]
             pic[row][col + i * 2] = b0; pic[row][col + i * 2 + 1] = b0 + 1
             pic[row + 1][col + i * 2] = b0 + 2; pic[row + 1][col + i * 2 + 1] = b0 + 3
-    for r in (2, 3, 11, 12):                     # 枠(ゲームの壁のブロック): 上・下
-        for c in range(2, 30): pic[r][c] = 2
-    for r in range(4, 11):                       # 枠: 左右
-        for c in (2, 3, 28, 29): pic[r][c] = 2
+    # 枠(ゲームと同じ立体の壁のブロック。129〜132=上面だけ、133〜136=前面つき。左上,右上,左下,右下)
+    side = (2, 3, 28, 29)
+    for c in range(2, 30):
+        lr = (c - 2) % 2
+        if c in side:                            # 左右: 上から下までつながった壁
+            for r in range(2, 11): pic[r][c] = 129 + lr + 2 * (r % 2)
+        else:                                    # 上の段: 下が空なので前面つき
+            pic[2][c] = 133 + lr; pic[3][c] = 135 + lr
+        pic[11][c] = 133 + lr; pic[12][c] = 135 + lr   # 下の段: 前面つき
     pbig(5, 8, 'HORIHORI')
     pbig(8, 5, 'ROBO BUSTER')
     ptext(19, 11, 'PUSH START')

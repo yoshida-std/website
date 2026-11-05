@@ -1,0 +1,12 @@
+{
+  "items": [
+    {
+      "id": "horihori-robo",
+      "title": "ホリホリ・ロボバスター（ファミコン版）",
+      "description": "ブラウザゲーム「ホリホリ・ロボバスター」を、ファミコンで動くように作り直しました。ROMイメージをダウンロードできます。",
+      "path": "horihori/",
+      "image": "../img/famicom/horihori.jpg",
+      "published": "2026-11-05"
+    }
+  ]
+}
