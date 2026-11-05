@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>自作ファミコンゲーム | ヨシダスタジオ</title>
+<meta name="description" content="ヨシダスタジオが作った、ファミコンで動くゲーム。ROMイメージをダウンロードできます。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ヨシダスタジオ">
+<meta property="og:title" content="自作ファミコンゲーム | ヨシダスタジオ">
+<meta property="og:description" content="ヨシダスタジオが作った、ファミコンで動くゲーム。ROMイメージをダウンロードできます。">
+<meta property="og:url" content="https://yoshida-std.github.io/website/portfolio/famicom/">
+<meta property="og:image" content="https://yoshida-std.github.io/website/portfolio/img/famicom/horihori.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ホリホリ・ロボバスター（ファミコン版）のタイトル画面とゲーム画面">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../style.css?v=10">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="../">ヨシダスタジオ</a>
+    <nav class="nav">
+      <a href="../">トップ</a>
+      <a href="../line/">LINEスタンプ</a>
+      <a href="../games/">ゲーム</a>
+      <a href="../charip/">キャラクターIP</a>
+      <span>ツール</span>
+      <a href="../#note">note</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1>自作ファミコンゲーム</h1>
+  <p class="lead">ファミコンの実機で動くように作ったゲームです。紹介ページから ROM イメージ（.nes）をダウンロードできます。</p>
+
+  <p class="count" id="count" aria-live="polite">読み込み中…</p>
+  <ul class="games" id="list"></ul>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">©YoshidaStudio</div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  // 載せる作品は famicom.json に書いたものだけ（公開日の新しい順に並べる）
+  var FEED = "famicom.json";
+  var list = document.getElementById("list");
+  var countEl = document.getElementById("count");
+
+  // 相対パスか https だけ通す（javascript: などは弾く）
+  function safeUrl(u) {
+    u = String(u || "");
+    return /^[a-z][a-z0-9+.-]*:/i.test(u) ? (/^https:\/\//i.test(u) ? u : "") : u;
+  }
+
+  function formatDate(s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || "");
+    return m ? m[1] + "." + Number(m[2]) + "." + Number(m[3]) : "";
+  }
+
+  fetch(FEED, { cache: "no-cache" })
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function (data) {
+      var items = (data.items || []).filter(function (it) { return it.title && safeUrl(it.path); });
+      items = items.map(function (it, i) { return { it: it, i: i }; })
+        .sort(function (a, b) {
+          var da = a.it.published || "", db = b.it.published || "";
+          return da < db ? 1 : da > db ? -1 : a.i - b.i;
+        })
+        .map(function (x) { return x.it; });
+
+      countEl.textContent = items.length ? items.length + " 本" : "まだ公開している作品はありません。";
+      items.forEach(function (it) {
+        var li = document.createElement("li");
+        var a = document.createElement("a");
+        a.className = "game";
+        a.href = safeUrl(it.path);
+        var thumb = document.createElement("div");
+        thumb.className = "game-thumb";
+        if (safeUrl(it.image)) {
+          ["bg", "fg"].forEach(function (cls) {
+            var img = document.createElement("img");
+            img.className = cls;
+            img.src = safeUrl(it.image);
+            img.alt = "";
+            img.loading = "lazy";
+            img.decoding = "async";
+            if (cls === "bg") img.setAttribute("aria-hidden", "true");
+            thumb.appendChild(img);
+          });
+        }
+        var body = document.createElement("div");
+        body.className = "game-body";
+        var title = document.createElement("h2");
+        title.textContent = it.title;
+        body.appendChild(title);
+        if (it.description) {
+          var desc = document.createElement("p");
+          desc.textContent = it.description;
+          body.appendChild(desc);
+        }
+        var date = formatDate(it.published);
+        if (date) {
+          var meta = document.createElement("div");
+          meta.className = "game-meta";
+          var t = document.createElement("time");
+          t.dateTime = it.published;
+          t.textContent = "公開 " + date;
+          meta.appendChild(t);
+          body.appendChild(meta);
+        }
+        a.appendChild(thumb);
+        a.appendChild(body);
+        li.appendChild(a);
+        list.appendChild(li);
+      });
+    })
+    .catch(function () {
+      countEl.textContent = "一覧を読み込めませんでした。時間をおいて再読み込みしてください。";
+    });
+})();
+</script>
+</body>
+</html>

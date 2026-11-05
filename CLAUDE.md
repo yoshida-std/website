@@ -46,7 +46,7 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 
 ## ポートフォリオ（`portfolio/`）
 
-段階的に作っている。今あるのはトップ・LINE スタンプ・ブラウザゲーム・キャラクターIP のページ。ツールは「準備中」でリンクなし。note はカードを置かず、トップの最新記事の欄で見せる。YouTube のショートもトップの欄で見せる（ナビの「note」はその欄 `#note` へのリンク）。
+段階的に作っている。今あるのはトップ・LINE スタンプ・ブラウザゲーム・キャラクターIP・自作ファミコンゲーム（未リンク）のページ。ツールは「準備中」でリンクなし。note はカードを置かず、トップの最新記事の欄で見せる。YouTube のショートもトップの欄で見せる（ナビの「note」はその欄 `#note` へのリンク）。
 
 - `portfolio/index.html` … トップ（ヘッダー画像、LINEスタンプ・ゲーム・キャラクターIP・ツールのカードと、note の最新記事3件をサムネイル付きで）
   - ヘッダー画像は `portfolio/img/header.jpg`（1424×748）と `header-800.jpg`（スマホ用の縮小版）。PC では上下を少し切って低めに見せる（ロゴは中央なので切れない）
@@ -64,6 +64,9 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
   - 1件の項目: `id`、`name`、`aliases`（別名の配列。省略可。一覧と詳細に「別名: …」で出す）、`group`（省略可。`{"name": "たいじろうズ", "members": [{"name","color","image"}]}`。`image` は紹介ページからの相対パス。`data-ip-members` に並べる）、`kind`（`original`＝自発 / `opensource`＝オープンソース。一覧は2つの見出しに分かれる）、`creator.name`（提供元者。一覧と詳細に出す）、`description`、`path`（紹介ページ。`charip/` からの相対パス `taijiro/`）、`image`（一覧のサムネイル。透過GIFなど。`../img/charip/…`。枠に全体が収まる）、`thumbBg`（サムネイルの背景。`linear-gradient(...)` のみ。省略は空色）、`stickers`（`{"q": "絞り込みの文字"}`。`"type": "emoji"` で絵文字タブ）、`games`（`games.json` の `id` の配列。そこに載っているものだけボタンが出る）、`published`。`opensource` は `source`（`{"name": "…", "url": "https://…"}`。元ページ。例: あいつ → https://yosooi.jp/aitsu/）も書く
   - 紹介ページは IP ごとに `charip/<id>/index.html`。**名前・提供元者・スタンプ／ゲームへのボタン・元ページへのリンク・最新スタンプは共通部品 `charip/ip.js`**（`<body data-ip="id">` と `data-ip-name` `data-ip-by` `data-ip-source` `data-ip-links` `data-ip-stickers` の目印を置くと `charip.json` から埋める。使い方は JS 冒頭）。**雰囲気・配置・デザインは IP ごとにエージェントと相談しながら作る**（そのページの `<style>` に書く。共通の部品は `style.css` の `.ip-*`）。スタンプのボタンは `line/?q=…` を開く
   - 今あるのは「たいじろう」（`charip/taijiro/`。ユーザー提供のアニメGIF（`img/charip/taijiro.gif`、透過）を使った空色のページ。`games` に `taijiros-yan` を指定済みだが、`games.json` に載せるまでボタンは出ない）。たいじろう＝むらさき（ふつう「たいじろう」と呼ぶ）、「たいじろうズ」はみどり・ピンクを含むグループ名（名前は「みどり」「ピンク」で確定）。もう1つたいじろうのページには「たいじろうのはじまり」の欄（もとはふつうのネコ。動く絵本スタンプ第1話へリンク）がある（静的HTML、`img/charip/taijiro-cat.gif` `taijiro-mikan.gif`）。もう1つ「あいつ」（`charip/aitsu/`。オープンソース。提供元者は「よそおいさん」、元ページ https://yosooi.jp/aitsu/ へリンク。夜ふけの紺色のページ。「ヨシダスタジオの独自設定」の欄（帽子の下に耳？＝ネコ疑惑、ペット「あいつの犬」、AI生成版）は静的HTMLで、`img/charip/aitsu-*`。`games` は `susume-yusha`（隠れキャラ））。もう1つ「ちびうぱ」（`charip/chibiupa/`。自発。ウーパールーパー。「ウーパくん」をチビ化したキャラ。やわらかいピンクのページ。ゲームなし）。予定: 自発は「ウーパくん」
+- `portfolio/famicom/` … 自作ファミコンゲーム（2026-11-05 作成。**まだトップのカード・ナビからはリンクしていない**。近いうちにトップに「自作ファミコンゲーム」のカードを足して `famicom/` へリンクする予定）
+  - `famicom/index.html` … 一覧。**載せる作品は `famicom/famicom.json` に書いたものだけ**（`games.json` と同じ形。`id` `title` `description` `path`（このページからの相対パス `horihori/`）`image`（`../img/famicom/…jpg`。1200×630）`published`）
+  - `famicom/horihori/index.html` … ホリホリ・ロボバスター（ファミコン版）の紹介ページ。ROM は `games/Horihori-Robo/famicom/rom/horihori.nes` を直接ダウンロード（`download` 属性。ROM を更新すればページはそのまま。版の日付 `2026年11月5日版` は手で直す）。画面写真は `img/famicom/horihori-*.png`（エミュレーターの 256×240 を 2 倍、`image-rendering: pixelated`）、OGP は `img/famicom/horihori.jpg`
 - `portfolio/games/index.html` … ブラウザゲームの一覧。**載せるゲームは `portfolio/games/games.json` に書いたものだけ**（`games/` のフォルダを巡回しない。制作中のゲームは書かなければ載らない）。公開日の新しい順（同じ日は書いた順）
   - スマホ（iPhone / Android）で開いたときだけ「ホーム画面に追加」の案内を出す（`#a2hs`。機種は UA で見分ける。ホーム画面から開いているときと PC では出さない）。ウェブページからは追加の画面を出せない（iOS には仕組みがない。Android の `beforeinstallprompt` は、そのゲーム自身のページでしか使えない）ので、案内だけ
   - **ゲームを公開するとき**: `games.json` の `items` に1件足す。取り下げるときは消す。`games/` のフォルダの名前・中身は変えない
