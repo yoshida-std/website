@@ -209,6 +209,16 @@ wasm:   .res 1          ; マスの中心に着いたとき、直前まで歩い
 turnt:  .res 1          ; 止まった状態から向きを変えたあと、歩き出すまでの残りフレーム
 dying:  .res 1          ; >0 の間は主人公が倒れるアニメ(やられたあとの60フレーム)
 scol:   .res 1
+spkt:   .res 1          ; 金塊のキラキラ: 残りフレーム(0で次の金塊を選ぶ)
+spgx:   .res 1          ; キラキラを出す金塊のマス($FF=なし)
+spgy:   .res 1
+spkn:   .res 1          ; 何番目の金塊か(順番に回す)
+skn:    .res 1
+skr:    .res 1
+spox:   .res 1          ; マスの中での位置
+spoy:   .res 1
+spxl:   .res 8          ; 画面に見えている金塊のマス(最大8個)
+spyl:   .res 8
 srow:   .res 1
 fbn:    .res 1
 scnt:   .res 1
@@ -991,6 +1001,7 @@ start_game:
     lda #0
     sta turnt
     sta wasm
+    sta spkt
     jsr gen_maze
     jsr place_watch
     ; 画面に最初から出る行(マス行16〜30)を背景に書いておく
@@ -4266,11 +4277,149 @@ draw_all:
     sta cat
     jsr draw_char
 @wd:
+    jsr draw_sparkle
     lda intro           ; ステージ開始の「STAGE x」
     beq @noin
     jsr draw_intro
 @noin:
     rts
+
+; 金塊のキラキラ(スプライト1個。OAM 252)。画面に見えている金塊を順番に、40フレームに1回光らせる
+draw_sparkle:
+    lda spkt
+    bne :+
+    jsr spk_pick
+:   dec spkt
+    lda spgx
+    bmi @hide
+    tay
+    lda spgy
+    jsr getcell
+    cmp #5              ; もう取られていたら出さない
+    bne @hide
+    lda spkt
+    cmp #16
+    bcc @hide           ; 0〜15 は休み
+    ldx #72             ; 16〜23・32〜39 は小、24〜31 は大
+    cmp #24
+    bcc @t
+    cmp #32
+    bcs @t
+    ldx #73
+@t: stx oam+253
+    lda spgy
+    asl
+    asl
+    asl
+    asl
+    pha
+    lda spgy
+    lsr
+    lsr
+    lsr
+    lsr
+    tax
+    pla
+    jsr w2s
+    cmp #$F0
+    bcs @hide
+    clc
+    adc spoy
+    sec
+    sbc #1
+    sta oam+252
+    lda #0              ; スプライトパレット0(白)
+    sta oam+254
+    lda spgx
+    asl
+    asl
+    asl
+    asl
+    clc
+    adc #24
+    clc
+    adc spox
+    sta oam+255
+    rts
+@hide:
+    lda #$FF
+    sta oam+252
+    rts
+
+; 画面に見えている金塊を集めて、次に光らせるものを選ぶ
+spk_pick:
+    lda #40
+    sta spkt
+    lda camlo           ; 画面の一番上のマス行から14行
+    lsr
+    lsr
+    lsr
+    lsr
+    sta u
+    lda camhi
+    asl
+    asl
+    asl
+    asl
+    ora u
+    sta spgy
+    lda #0
+    sta skn
+    lda #14
+    sta skr
+@row:
+    lda spgy
+    cmp #31
+    bcs @done
+    jsr cellptr
+    ldy #1
+@col:
+    lda (ptr),y
+    cmp #5
+    bne @nc
+    ldx skn
+    cpx #8
+    bcs @nc
+    tya
+    sta spxl,x
+    lda spgy
+    sta spyl,x
+    inc skn
+@nc:
+    iny
+    cpy #12
+    bne @col
+    inc spgy
+    dec skr
+    bne @row
+@done:
+    lda skn
+    bne :+
+    lda #$FF            ; 見えている金塊がない
+    sta spgx
+    lda #20
+    sta spkt
+    rts
+:   sta md
+    inc spkn
+    lda spkn
+    jsr rmod
+    tax
+    lda spxl,x
+    sta spgx
+    lda spyl,x
+    sta spgy
+    lda spkn
+    and #7
+    tax
+    lda spoxt,x
+    sta spox
+    lda spoyt,x
+    sta spoy
+    rts
+
+spoxt: .byte 1, 7, 4, 8, 2, 6, 5, 3
+spoyt: .byte 4, 1, 7, 2, 8, 5, 3, 6
 
 ; ---------------------------------------------------------------- 黒いクリア画面
 .macro PPUADDR row, col
@@ -4658,9 +4807,9 @@ draw_char:
 
 .segment "RODATA"
 palette:
-    ; 背景0: 床(緑)・こい茶・茶・うす橙
+    ; 背景0: 床(緑)・こい茶・橙・黄
     ; 1=表示帯・クリア画面(黒地に白) 2=点滅(色2をNMIで切り替え) 3=黄(色3=赤は、タイトルの大きな文字の影)
-    .byte $29,$07,$17,$27,  $29,$0F,$30,$28,  $29,$0F,$30,$0F,  $29,$0F,$28,$16
+    .byte $29,$07,$27,$28,  $29,$0F,$30,$28,  $29,$0F,$30,$0F,  $29,$0F,$28,$16
     ; スプライト0=白 1=黄 2=赤 3=文字(黒い四角に白)・ストップウォッチ
     .byte $29,$01,$30,$21,  $29,$01,$38,$27,  $29,$01,$16,$27,  $29,$0F,$30,$21
 padtab:                         ; 黒い四角だけの行(文字の上下の余白)
