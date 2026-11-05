@@ -27,6 +27,7 @@ HUDLAD    = 128         ; ハシゴの残りの絵
 HUD_H     = 32          ; 画面上部の表示帯の高さ(px)。迷路はその下の208px
 NROBMAX   = 5           ; 白いロボの最大数(ステージ5で5体)。番号5は赤いロボ
 STAGES    = 5
+TURN_FR   = 8           ; 止まっているときに方向キーを押すと、まずその向きに変わり、このフレーム数だけ押し続けると歩き出す
 SCROLL_WAIT = 300       ; ゲーム開始(STAGE x の表示が終わったあと)からスクロールが始まるまで(フレーム=5秒)
 INTRO_FR  = 180         ; ステージ開始時の「STAGE x」を出すフレーム数(3秒)
 TRAP_T    = 105         ; 穴から這い出るまで(2フレーム単位 ≒ 3.5秒)
@@ -203,6 +204,9 @@ rpl:    .res 6          ; y下位
 rph:    .res 6          ; y上位
 rmd:    .res 6          ; 進む向き(1=右 2=左 4=下 8=上、0=止まり)
 rst:    .res 6          ; 0=待機中 1=歩く 2=穴にはまっている
+oldface:.res 1          ; このフレームの前の向き
+wasm:   .res 1          ; マスの中心に着いたとき、直前まで歩いていたら非0
+turnt:  .res 1          ; 止まった状態から向きを変えたあと、歩き出すまでの残りフレーム
 dying:  .res 1          ; >0 の間は主人公が倒れるアニメ(やられたあとの60フレーム)
 scol:   .res 1
 scnt:   .res 1
@@ -982,6 +986,9 @@ start_game:
     bne :-
     lda #8
     sta face
+    lda #0
+    sta turnt
+    sta wasm
     jsr gen_maze
     jsr place_watch
     ; 画面に最初から出る行(マス行16〜30)を背景に書いておく
@@ -3470,6 +3477,7 @@ revive:
     sta pylo
     lda #0
     sta mdir
+    sta turnt
     sta hstate
     sta digbuf
     sta ladbuf
@@ -3539,7 +3547,9 @@ update_hero:
 @tomid:
     jmp @mid
 @center:
-    lda #0              ; --- マスの中心
+    lda mdir            ; --- マスの中心(直前まで歩いていたか覚えておく)
+    sta wasm
+    lda #0
     sta mdir
     lda pylo            ; ゴールのマスなら ステージクリア
     sta u
@@ -3660,6 +3670,8 @@ update_hero:
     jmp @fin
 @nofall:
     ; 向き(押している方向。壁に向かっても向きだけ変わる)
+    lda face
+    sta oldface
     lda pad
     and #$0F
     beq @nof
@@ -3683,6 +3695,17 @@ update_hero:
 :   lda #8
     sta face
 @nof:
+    lda pad             ; 止まっている状態から別の向きを押したら、まず向きだけ変える
+    and #$0F
+    beq @nt
+    lda face
+    cmp oldface
+    beq @nt
+    lda wasm            ; 歩いている途中の曲がり角ではそのまま曲がる(待たない)
+    bne @nt
+    lda #TURN_FR
+    sta turnt
+@nt:
     lda digbuf          ; ためてある掘る入力を、マスの中心でここに使う
     beq @nd
     lda #0
@@ -3695,6 +3718,16 @@ update_hero:
     sta ladbuf
     jsr do_ladder
 @nl:
+    lda turnt           ; 向きを変えている間は歩かない(離したら向きだけ変えて終わり)
+    beq @mv
+    lda pad
+    and #$0F
+    bne :+
+    sta turnt
+    jmp @fin
+:   dec turnt
+    jmp @fin
+@mv:
     lda #1              ; 向きを選ぶ
     jsr try_dir
     lda mdir
@@ -3774,6 +3807,30 @@ update_hero:
     lda #0
     sta anim
     sta atimer
+    lda face            ; 止まっているときは、向いている方向の絵
+    lsr
+    bcc :+
+    lda #2
+    sta dir
+    lda #0
+    sta flip
+    rts
+:   lda face
+    and #2
+    beq :+
+    lda #2
+    sta dir
+    lda #1
+    sta flip
+    rts
+:   lda face
+    and #4
+    beq :+
+    lda #0
+    sta dir
+    rts
+:   lda #1
+    sta dir
     rts
 @walk:
     inc atimer
