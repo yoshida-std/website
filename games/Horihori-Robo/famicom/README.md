@@ -3,7 +3,7 @@
 ブラウザ版(`../index.html`)をファミコン実機(NROM / マッパー0)向けに移植する作業フォルダ。
 
 ## ビルド
-cc65(ca65/ld65)と Python3(Pillow)が必要。`make` で `build/horihori.nes` ができる(EverDrive N8 のSDカードへ)。
+cc65(ca65/ld65)と Python3(Pillow)が必要。`make` で `build/horihori.nes` ができる(EverDrive N8 のSDカードへ)。ビルド済みのROMは `rom/horihori.nes`(最新のコードと同じものをコミットしてある。`make` したら `cp build/horihori.nes rom/` で更新する)。
 `assets/` は `tools/make_assets.py` が `../robo.png` から作る(CHR・背景・衝突マップ)。
 
 ## 確認(ヘッドレス)
