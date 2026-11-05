@@ -165,9 +165,29 @@ def gold16():
         px[y][x] = 1
     return px
 
+def wall16(front):
+    # 立体の壁(ブラウザ版に近い見た目)。上面=うす橙(3)にレンガの目地=茶(2)。
+    # front=True は下が床のマス: 下5pxが前面(茶2)、前面の下の線と継ぎ目=こい茶(1)
+    px = [[3] * 16 for _ in range(16)]
+    top = 11 if front else 16
+    mid = 5 if front else 7
+    for x in range(16):
+        px[mid][x] = 2
+        if not front: px[15][x] = 2
+    for y in range(0, mid):
+        px[y][8] = 2
+    for y in range(mid + 1, top - (0 if front else 1)):
+        px[y][4] = px[y][12] = 2
+    if front:
+        for y in range(11, 16):
+            for x in range(16): px[y][x] = 2
+        for x in range(16): px[15][x] = 1
+        for y in range(11, 15): px[y][10] = 1
+    return px
+
 def ladder16():
     # 壁にかけたハシゴ: レンガ(2/3)のうえに、こい色(1)の縦棒2本と横棒
-    px = [[BG_WALL[y % 8][x % 8] for x in range(16)] for y in range(16)]
+    px = wall16(False)
     for y in range(16):
         for x in (3, 4, 11, 12): px[y][x] = 1
     for y in (2, 6, 10, 14):
@@ -220,6 +240,8 @@ def main():
     for icon in (HEAD, LAD):
         chr_bg += tile_bytes([[1 if c == '.' else int(c) for c in row] for row in icon])
     assert len(chr_bg) == 129 * 16
+    for fr in (False, True):                          # 129〜132=立体の壁(下も壁)、133〜136=立体の壁(下が床。前面つき)
+        for t in sprite_tiles(wall16(fr)): chr_bg += t
     chr_bg += bytes(4096 - len(chr_bg))
     chr_sp = bytearray()
     sprites = []
