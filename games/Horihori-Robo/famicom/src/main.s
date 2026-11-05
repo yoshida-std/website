@@ -209,6 +209,8 @@ wasm:   .res 1          ; マスの中心に着いたとき、直前まで歩い
 turnt:  .res 1          ; 止まった状態から向きを変えたあと、歩き出すまでの残りフレーム
 dying:  .res 1          ; >0 の間は主人公が倒れるアニメ(やられたあとの60フレーム)
 scol:   .res 1
+srow:   .res 1
+fbn:    .res 1
 scnt:   .res 1
 spx:    .res 1
 syl:    .res 1
@@ -2980,6 +2982,9 @@ spawn_robot:
     jsr rand
     jsr rmod
     sta scol
+    lda #3              ; 主人公まで歩ける道がわかっているマスだけに出す。なければ1行ずつ下を探す
+    sta srow
+@rowtry:
     lda #13
     sta scnt
 @try:
@@ -2996,6 +3001,18 @@ spawn_robot:
     jsr getcell
     cmp #1
     beq @bad
+    lda dcy
+    and #15
+    asl
+    asl
+    asl
+    asl
+    ora scol
+    tax
+    lda dist,x
+    and #$7F
+    cmp #$7F
+    beq @bad            ; 主人公へ行く道がまだわからない(外から切り離されたマス)
     jsr spawn_free
     bcs @ok
 @bad:
@@ -3007,6 +3024,23 @@ spawn_robot:
     sta scol
 :   dec scnt
     bne @try
+    dec srow            ; この行に出せるマスがなければ、1行下で探す
+    beq @nomore
+    inc dcy
+    lda dcy
+    asl
+    asl
+    asl
+    asl
+    sta syl
+    lda dcy
+    lsr
+    lsr
+    lsr
+    lsr
+    sta syh
+    jmp @rowtry
+@nomore:
     lda scol            ; 空きが無いときは(まず起きない)奇数列に出す
     ora #1
     cmp #12
@@ -3201,8 +3235,42 @@ robot_choose:
     lda bd
     cmp #$7F
     bcc :+
-    lda #0              ; 行き先がわからなければ止まる
+    lda #0              ; 行き先がわからなければ、あいている向きへ適当に進む(止まらない)
     sta cur
+    lda fc
+    lsr
+    and #3
+    sta kk
+    lda #4
+    sta fbn
+@fb:ldx kk
+    lda gx
+    clc
+    adc dxm,x
+    sta nx
+    lda gy
+    clc
+    adc dym,x
+    sta ny
+    sec
+    sbc btop
+    cmp #16
+    bcs @fn
+    lda ny
+    ldy nx
+    jsr getcell
+    cmp #1
+    beq @fn
+    ldx kk
+    lda dbit,x
+    sta cur
+    jmp :+
+@fn:inc kk
+    lda kk
+    and #3
+    sta kk
+    dec fbn
+    bne @fb
 :   ldx rc
     lda cur
     sta rmd,x
