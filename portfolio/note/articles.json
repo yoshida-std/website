@@ -2,6 +2,13 @@
   "profile": "https://note.com/yoshida_std",
   "items": [
     {
+      "title": "ゲーム制作日記【2026/11/6】FC版制作 後編",
+      "url": "https://note.com/yoshida_std/n/n817fee6130df",
+      "image": "https://assets.st-note.com/production/uploads/images/332863033/rectangle_large_type_2_a0f9dfbc795051394eb7ef03900585f6.png?width=800",
+      "date": "2026-11-06T18:01:18+09:00",
+      "summary": "ヨシダです！ 前回の記事の続きです！ プロトタイプはできた！だがしかし！ ということで、こだわりと調整をして仕上げていきました。"
+    },
+    {
       "title": "ゲーム制作日記【2026/11/5】FC版の制作 前編",
       "url": "https://note.com/yoshida_std/n/n4b46be777a56",
       "image": "https://assets.st-note.com/production/uploads/images/332592852/rectangle_large_type_2_81778a822dea550441bfa5812afed6a6.png?width=800",
@@ -63,13 +70,6 @@
       "image": "https://assets.st-note.com/production/uploads/images/329545916/rectangle_large_type_2_95b17061e17d688170605cb58c589d13.png?width=800",
       "date": "2026-10-28T20:49:57+09:00",
       "summary": "ヨシダです！ ゲームっぽいのができたのでリリースしましたー！ 「すすめ！ゆうしゃ」という、横スクロールのアクションゲームです！"
-    },
-    {
-      "title": "ゲーム作って遊んでみた3",
-      "url": "https://note.com/yoshida_std/n/n4b5aef745117",
-      "image": "https://assets.st-note.com/production/uploads/images/329181844/rectangle_large_type_2_5be90cf695ea13a5615b5490f7b1361a.png?width=800",
-      "date": "2026-10-27T20:08:39+09:00",
-      "summary": "ヨシダです！ そろそろスタンプ制作に戻らんと思いながらclaude codeまわりで遊んでます。 昨日紹介したジャッジなんですが、キャラクターはスタンプや絵文字で既出なキャラクターでした。"
     }
   ]
 }
