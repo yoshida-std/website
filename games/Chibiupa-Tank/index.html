@@ -115,7 +115,7 @@ body[data-state=play] .pad{display:flex}
     </div>
     <p>水そうに落ちてくる<b>エサ</b>を、およいでパクッ！底にとどいたエサは少しするときえるよ。<b>5つ</b>きえると水がにごって、ゲームオーバー。</p>
     <p>エサを<b>10こ</b>食べると おなかいっぱいで<b>うごきがにぶく</b>なるよ。<b>💩ボタン</b>でうんちをすると元にもどるけど、底に4秒おくと水がよごれる（エサ2つ分）。ときどき左右から入ってくる<b>スポイト</b>の先でうんちをすると、すいとってくれるよ！</p>
-    <p>たまに落ちてくる<b>ヌマエビ</b>は食べると3点。食べずにおくと、底を歩いて<b>底のエサを食べてくれる</b>よ（最大2ひき）。</p>
+    <p>たまに落ちてくる<b>ヌマエビ</b>は食べると3点。食べずにおくと、底を歩いて<b>底のエサやうんちを食べてくれる</b>よ（最大4ひき）。</p>
     <p>◀ ▶ でよこにすすむ ／ <b>およぐ</b>でふわっとうえへ（ちょっとずつしずむよ）</p>
     <button class="btn" id="startBtn">あそぶ</button>
     <div class="copy">©YoshidaStudio, ©PANICPUMPKIN</div>
@@ -162,7 +162,7 @@ document.addEventListener('touchmove',e=>{ if(!e.target.closest('.card'))e.preve
 
 /* ===== 基本 ===== */
 const $=id=>document.getElementById(id);
-const H=400, WATER=96, FLOOR=H-38, FULL=10, POOP_REST=4;
+const H=400, WATER=96, FLOOR=H-38, FULL=10, POOP_REST=4, MAX_SHRIMP=4;
 let W=800, scale=1;
 const cv=$('cv'), ctx=cv.getContext('2d');
 const sprite=new Image(); sprite.src='img/chibiupa.png';
@@ -321,7 +321,7 @@ function scheduleDrop(){
   let n=1; if(lv>=3&&Math.random()<0.25+lv*0.03)n=2;
   for(let i=0;i<n;i++)queue.push({x:rnd(50,W-50),sh:false});
   const nsh=shrimps.length+queue.filter(q=>q.sh).length+(feeder.busy&&feeder.kind?1:0);
-  if(eaten>=2&&nsh<2&&Math.random()<.2)queue[queue.length-1].sh=true;
+  if(eaten>=2&&nsh<MAX_SHRIMP&&Math.random()<.2)queue[queue.length-1].sh=true;
   spawnT=Math.max(1.0,2.6-lv*0.13)*rnd(0.8,1.25);
 }
 function miss(f,n=1){
@@ -444,14 +444,14 @@ function update(dt){
       s.moving=false;
       if(s.eatT>0)s.eatT-=dt;
       else{
-        if(!s.tp||foods.indexOf(s.tp)<0||s.tp.state!=='rest'){
+        if(!s.tp||(foods.indexOf(s.tp)<0&&poops.indexOf(s.tp)<0)||s.tp.state!=='rest'){
           s.tp=null; let best=1e9;
-          for(const f of foods) if(f.state==='rest'){ const d=Math.abs(f.x-s.x); if(d<best&&!shrimps.some(o=>o!==s&&o.tp===f)){best=d;s.tp=f;} }
+          for(const f of foods.concat(poops)) if(f.state==='rest'){ const d=Math.abs(f.x-s.x); if(d<best&&!shrimps.some(o=>o!==s&&o.tp===f)){best=d;s.tp=f;} }
         }
         if(s.tp){
           const dx=s.tp.x-s.x;
           if(Math.abs(dx)<7){
-            foods.splice(foods.indexOf(s.tp),1); s.tp=null; s.eatT=.7; sfx.plop();
+            {const arr=foods.indexOf(s.tp)>=0?foods:poops; arr.splice(arr.indexOf(s.tp),1);} s.tp=null; s.eatT=.7; sfx.plop();
             parts.push({k:'txt',x:s.x,y:s.y-16,vy:-20,life:1,s:'もぐもぐ',c:'#d9663a',sm:1});
           }else{ s.dir=Math.sign(dx); s.x+=s.dir*42*dt; s.moving=true; }
         }else{
