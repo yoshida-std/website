@@ -58,7 +58,7 @@ canvas,#pad{touch-action:none}
 #dBar{width:100%;height:10px;background:#000;border:2px solid var(--line);border-radius:3px;box-sizing:border-box;overflow:hidden}
 #dBar i{display:block;height:100%;width:100%;background:var(--yel);transform-origin:left}
 #dBar i.low{background:var(--red)}
-.edWrap{position:relative;width:min(92vw,42vh,440px);aspect-ratio:1;border:4px solid #000;box-shadow:0 0 0 3px var(--line);background:#fff}
+.edWrap{position:relative;width:min(92vw,38vh,440px);aspect-ratio:1;border:4px solid #000;box-shadow:0 0 0 3px var(--line);background:#fff}
 #ed{width:100%;height:100%;display:block;image-rendering:pixelated}
 .tools{display:flex;gap:6px;width:100%;align-items:center;justify-content:center}
 .tool{flex:1;min-width:0;height:44px;border:3px solid #000;border-radius:5px;background:#3d3550;font-size:13px;padding:0;
@@ -68,10 +68,26 @@ canvas,#pad{touch-action:none}
 #prevWrap{flex:0 0 44px;height:44px;border:3px solid #000;background:#0d0c16;border-radius:5px;display:flex;align-items:center;justify-content:center}
 #prev{width:36px;height:36px;image-rendering:pixelated}
 #pal{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;width:100%}
-#pal button{aspect-ratio:1;max-height:40px;border:3px solid #000;border-radius:4px;padding:0}
+#pal button{aspect-ratio:1;max-height:34px;border:3px solid #000;border-radius:4px;padding:0}
 #pal button.on{outline:3px solid var(--yel);outline-offset:1px}
-#okBtn{margin-top:auto;width:100%;max-width:340px}
+#okBtn{margin-top:auto;width:100%;max-width:340px;padding:10px 28px}
+#params{width:100%;display:flex;flex-direction:column;gap:4px;background:var(--panel);border:3px solid #000;box-shadow:0 0 0 2px var(--line);
+  border-radius:4px;padding:6px 8px 5px;box-sizing:border-box}
+.pr{display:grid;grid-template-columns:90px 1fr 22px 72px;align-items:center;gap:6px;font-size:12px;line-height:1.2}
+.seg{display:grid;grid-template-columns:repeat(10,1fr);gap:2px}
+.seg i{height:10px;background:#0d0c16;border:1px solid #000;transition:background .12s}
+.seg i.on{background:var(--c)}
+.pr b{font-family:var(--px);font-size:11px;font-weight:400;text-align:right;color:var(--c)}
+.pr em{font-style:normal;color:var(--dim);font-size:11px;white-space:nowrap}
+.cap{font-size:10px;color:var(--dim);text-align:center;margin:1px 0 0;line-height:1.3}
 
+@media (max-height:700px){
+  #draw{gap:6px}.edWrap{width:min(92vw,34vh,440px)}.cap{display:none}
+  .tool{height:38px;font-size:12px}#prevWrap{height:38px;flex-basis:38px}
+  #pal{gap:4px}#pal button{max-height:28px}
+  .dHead{font-size:16px}.dHead b{font-size:20px}
+  #okBtn{font-size:18px;padding:8px 24px}
+}
 /* ゲーム */
 #game{padding:0;background:#000}
 #gcv{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -111,6 +127,7 @@ canvas,#pad{touch-action:none}
       <b>1.</b> じぶんの絵を <b>20秒</b> でかく<br>
       <b>2.</b> その絵が あなだを おちていく！<br>
       <b>3.</b> <b>30秒</b> で なんm おりられるか<br>
+      <b>＊</b> 絵で <b>はやさ・うごき・しょうがいぶつ</b> が決まる<br>
       <b>◀ ▶</b> いどう　<b>▲</b> ブレーキ　<b>▼</b> かそく<br>
       トゲや いわに あたると おそくなる
     </div>
@@ -124,6 +141,12 @@ canvas,#pad{touch-action:none}
     <div class="dHead"><span>じぶんの絵をかこう！</span><b id="dTime">20</b></div>
     <div id="dBar"><i></i></div>
     <div class="edWrap"><canvas id="ed"></canvas></div>
+    <div id="params">
+      <div class="pr" data-k="speed" style="--c:#ff7a3a"><span>おちるはやさ</span><div class="seg"></div><b></b><em></em></div>
+      <div class="pr" data-k="move" style="--c:#4aa8f0"><span>よこのうごき</span><div class="seg"></div><b></b><em></em></div>
+      <div class="pr" data-k="obst" style="--c:#b78cff"><span>しょうがいぶつ</span><div class="seg"></div><b></b><em></em></div>
+      <p class="cap">おもい絵＝はやい　ほそい絵＝すばやい　いろの数＝しょうがいぶつ</p>
+    </div>
     <div class="tools">
       <button class="tool on" data-tool="pencil">ペン</button>
       <button class="tool" data-tool="eraser">けす</button>
@@ -251,6 +274,42 @@ function makeSprite(a){
   }
   return c;
 }
+/* 絵の評価 → 3つのパラメータ（1〜10） */
+const lum=h=>{const n=parseInt(h.slice(1),16);return(.3*(n>>16)+.59*(n>>8&255)+.11*(n&255))/255};
+const PLUM=PAL.map(lum);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const PWORDS={
+  speed:['ふわふわ','ふわふわ','ゆったり','ゆったり','ふつう','ふつう','ずっしり','ずっしり','ドスン！','ドスン！'],
+  move:['のっそり','のっそり','おっとり','おっとり','ふつう','ふつう','すばしっこい','すばしっこい','ビュン！','ビュン！'],
+  obst:['すいてる','すいてる','ちらほら','ちらほら','ふつう','ふつう','おおい','おおい','ぎっしり','ぎっしり']
+};
+function evaluate(a){
+  let n=0,mass=0,minx=SIZE,maxx=-1;const used=new Set();
+  for(let i=0;i<a.length;i++){
+    const v=a[i];if(!v)continue;
+    n++;mass+=.6+.8*(1-PLUM[v-1]);used.add(v);
+    const x=i%SIZE;if(x<minx)minx=x;if(x>maxx)maxx=x;
+  }
+  if(!n)return null;
+  return {
+    speed:clamp(Math.ceil(mass/(SIZE*SIZE*.5)*10),1,10),
+    move:clamp(Math.round(10.5-(maxx-minx+1)*.42),1,10),
+    obst:clamp(used.size,1,10)
+  };
+}
+let params=evaluate(defaultArt());
+function buildParams(){
+  document.querySelectorAll('#params .seg').forEach(s=>{if(!s.children.length)for(let i=0;i<10;i++)s.appendChild(document.createElement('i'))});
+}
+function updateParams(){
+  const ev=evaluate(art);
+  document.querySelectorAll('#params .pr').forEach(r=>{
+    const k=r.dataset.k,lv=ev?ev[k]:0;
+    [...r.querySelector('.seg').children].forEach((el,i)=>el.classList.toggle('on',i<lv));
+    r.querySelector('b').textContent=ev?lv:'-';
+    r.querySelector('em').textContent=ev?PWORDS[k][lv-1]:'えをかいてね';
+  });
+}
 let sprite=null;
 function blit(canvas,spr){
   const g=canvas.getContext('2d');g.clearRect(0,0,canvas.width,canvas.height);
@@ -295,6 +354,7 @@ function renderEd(){
   for(let i=1;i<SIZE;i++){edc.moveTo(i*CELL+.5,0);edc.lineTo(i*CELL+.5,SIZE*CELL);edc.moveTo(0,i*CELL+.5);edc.lineTo(SIZE*CELL,i*CELL+.5)}
   edc.stroke();
   blit($('#prev'),makeSprite(art));
+  updateParams();
 }
 function pushUndo(){undo.push(art.slice());if(undo.length>40)undo.shift();}
 function cellOf(e){
@@ -346,7 +406,7 @@ $('#clearBtn').addEventListener('click',()=>{pushUndo();art=new Uint8Array(SIZE*
 function startDraw(){
   initAudio();
   loadArtOnce();
-  undo=[];setTool('pencil');buildPalette();renderEd();
+  undo=[];setTool('pencil');buildPalette();buildParams();renderEd();
   show('draw');
   drawEnd=Date.now()+DRAW_SEC*1000;
   let lastSec=DRAW_SEC+1;
@@ -370,7 +430,7 @@ function finishDraw(){
   clearInterval(drawTimer);drawTimer=null;
   if(isEmpty(art))art=defaultArt();
   lsSet(SAVE_ART,artToStr(art));
-  sprite=makeSprite(art);
+  sprite=makeSprite(art);params=evaluate(art);
   show('game');
   resizeGame();
   startGame();
@@ -378,7 +438,7 @@ function finishDraw(){
 $('#okBtn').addEventListener('click',()=>{if(drawTimer){beep(880,.1);finishDraw();}});
 
 /* ---------- ゲーム ---------- */
-const W=360, WALL=50, LX=WALL, RX=W-WALL, PR=14, MOVE=290;
+const W=360, WALL=50, LX=WALL, RX=W-WALL, PR=14; let MOVE=290, spdScale=1, gapScale=1;
 const gcv=$('#gcv'), g=gcv.getContext('2d');
 let H=640, scl=1, safeTop=0;
 function resizeGame(){
@@ -442,6 +502,8 @@ const PY=()=>Math.max(120,H*0.27);
 const M=40; // 1m = 40px
 
 function startGame(){
+  const lv=params||evaluate(defaultArt());
+  spdScale=.7+(lv.speed-1)/9*.7;MOVE=200+(lv.move-1)/9*160;gapScale=1.3-(lv.obst-1)/9*.55;
   t=PLAY_SEC;d=0;px=W/2;vx=0;mult=1;spd=0;hitSlow=0;inv=0;flash=0;shake=0;tm=0;goShow=0;
   obs=[];nextY=H+240;
   lines=[];for(let i=0;i<22;i++)lines.push({x:LX+Math.random()*(RX-LX),y:Math.random()*H,l:16+Math.random()*34,s:.8+Math.random()*.9});
@@ -500,7 +562,7 @@ function update(dt){
       mult+=(tgt-mult)*Math.min(1,dt*7);
       let pen=1;
       if(hitSlow>0){hitSlow-=dt;pen=.25+.75*Math.max(0,1-hitSlow/1.0);}
-      const base=230*(1+.25*(PLAY_SEC-t)/PLAY_SEC);
+      const base=230*spdScale*(1+.25*(PLAY_SEC-t)/PLAY_SEC);
       spd=base*mult*pen;
     }else{
       vx*=Math.max(0,1-dt*6);px+=vx*dt;
@@ -516,7 +578,7 @@ function update(dt){
   while(nextY<d+H+140){
     spawn(nextY);
     const k=Math.min(1,d/7000);
-    nextY+=235-40*k+Math.random()*75;
+    nextY+=(235-40*k+Math.random()*75)*gapScale;
   }
   obs=obs.filter(o=>o.y-d>-90);
   for(const o of obs){
@@ -614,6 +676,9 @@ function drawHud(){
   g.font=px2(20);outText(depthM()+'m',14,top+10,'#fff','left');
   if(st==='ready'){
     g.font=px2(30);outText(readyT>.5?'READY?':'GO!',W/2,H*.5,'#ffe03a');
+    g.font=px2(10);
+    [['はやさ',params.speed,'#ff7a3a'],['うごき',params.move,'#4aa8f0'],['しょうがい',params.obst,'#b78cff']].forEach((r,i)=>{
+      g.textAlign='left';outText(r[0]+' '+r[1],W/2-70,H*.5+40+i*18,r[2],'left');});
   }else if(goShow>0){
     g.font=px2(34);outText('GO!',W/2,H*.45,'#6bff5a');
   }
