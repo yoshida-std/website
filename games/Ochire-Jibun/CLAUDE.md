@@ -3,7 +3,7 @@
 スマホ縦画面向け。自分で描いた絵のキャラが穴をおちていく。公開URL（まだポートフォリオには載せていない）: `https://yoshida-std.github.io/website/games/Ochire-Jibun/`
 リポジトリ全体の作業ルールはルートの `CLAUDE.md` を参照。
 
-プッシュ前の確認用 Artifact: （未作成。公開したら URL をここに書く。`index.html` 1枚だけ）
+プッシュ前の確認用 Artifact: `https://claude.ai/artifact/4qF847JqRMxTc7c5ihN2cV`（変更のたびにこの URL を更新する。`index.html` 1枚だけ。Artifact 側が外枠を付けるので、載せるときは `<!doctype>` `<html>` `<head>` `<body>` と viewport の meta を外したコピーを使う）
 
 ## 流れ
 1. タイトル → 2. お絵かき（24×24ドット、制限20秒、「OK」で短縮。ペン／けす／ぬる／もどす／クリア、16色）→ 3. READY→GO → 4. 30秒のおちるゲーム → 5. 結果（おなじ絵でもう1回／絵をかきなおす／タイトルへ）
