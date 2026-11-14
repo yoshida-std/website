@@ -491,8 +491,8 @@ function drawBody(c,ph,swim,sq){
   // 足（ひざを曲げて、うしろへけり出す）
   for(const [hx,sg] of [[-13,0],[13,Math.PI]]){
     const p=ph+sg, a1=.15+amp*Math.sin(p), a2=a1+.35-.6*amp*Math.sin(p-1);
-    const kx=hx+18*Math.sin(a1), ky=44+18*Math.cos(a1);
-    limb(c,[[hx,40],[kx,ky],[kx+15*Math.sin(a2),ky+15*Math.cos(a2)]],21,9);
+    const kx=hx+10*Math.sin(a1), ky=44+10*Math.cos(a1);
+    limb(c,[[hx,40],[kx,ky],[kx+8*Math.sin(a2),ky+8*Math.cos(a2)]],20,9);
   }
   // どう体
   c.fillStyle=SKIN; c.strokeStyle=OUT; c.lineWidth=6;
@@ -501,8 +501,8 @@ function drawBody(c,ph,swim,sq){
   // うで
   for(const [sx,sg] of [[-24,0],[24,Math.PI]]){
     const p=ph*.9+sg+1, a=(sx<0?-1:1)*(.75+.55*Math.sin(p)*(.3+swim));
-    const ex=sx+15*Math.sin(a), ey=6+15*Math.cos(a), b=a+(sx<0?-1:1)*.5*Math.sin(p+1);
-    limb(c,[[sx,4],[ex,ey],[ex+13*Math.sin(b),ey+13*Math.cos(b)]],15,5);
+    const ex=sx+9*Math.sin(a), ey=6+9*Math.cos(a), b=a+(sx<0?-1:1)*.5*Math.sin(p+1);
+    limb(c,[[sx,4],[ex,ey],[ex+8*Math.sin(b),ey+8*Math.cos(b)]],14,5);
   }
 }
 // 顔: mode 0=ふつうの目 / 1=にっこり目、o=口のひらき(0〜1)。元の絵の目と口の上にぬって描きかえる
