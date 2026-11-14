@@ -289,7 +289,7 @@ function stroke(cd,silent){
 function dropPellet(x){
   const lv=level();
   foods.push({x,base:x,y:24,vy:0,state:'air',ph:rnd(0,6.28),amp:rnd(10,24),freq:rnd(1.4,2.3),
-    timer:0,sinkT:0,sv:rnd(24,34)+lv*2.4,jit:rnd(0,12),rest:Math.max(2.8,4.4-lv*0.12)});
+    timer:0,sinkT:0,sv:rnd(24,34)+lv*2.4,jit:rnd(0,6),rest:Math.max(2.8,4.4-lv*0.12)});
   sfx.plop();
 }
 function scheduleDrop(){
@@ -327,7 +327,7 @@ function updatePlayer(dt,auto){
   P.x+=P.vx*dt; P.y+=P.vy*dt;
   P.x=clamp(P.x,30,W-30);
   if(P.y<WATER+16){P.y=WATER+16;if(P.vy<0)P.vy=0;}
-  if(P.y>FLOOR-20){P.y=FLOOR-20;P.vy=0;P.vx*=.92;}
+  if(P.y>FLOOR-14){P.y=FLOOR-14;P.vy=0;P.vx*=.92;}
   if(P.sq>0)P.sq=Math.max(0,P.sq-dt*3.2);
   const sw=clamp(Math.abs(P.vx)/150*.7+(P.vy<-30?.5:0)+P.sq,0,1);
   P.swim+=(sw-P.swim)*Math.min(1,dt*8);
@@ -374,7 +374,8 @@ function update(dt){
     }
     if(playing&&f.state!=='air'){
       const dx=f.x-P.x, dy=f.y-(P.y+4);
-      if(dx*dx+dy*dy<27*27){ foods.splice(i,1); eat(f); }
+      const hit=f.state==='rest'?(Math.abs(dx)<32&&Math.abs(dy)<30):(dx*dx+dy*dy<27*27);
+      if(hit){ foods.splice(i,1); eat(f); }
       else if(dx*dx+dy*dy<80*80)near=true;
     }
   }
