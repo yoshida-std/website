@@ -3,7 +3,7 @@
 スマホ横画面・スクロールなしの固定画面。水そうの中をちびうぱが泳ぎ、上から落ちてくる人工エサをキャッチする。公開URL（まだポートフォリオには載せていない）: `https://yoshida-std.github.io/website/games/Chibiupa-Tank/`
 リポジトリ全体の作業ルールはルートの `CLAUDE.md` を参照。
 
-プッシュ前の確認用 Artifact: （未作成。作ったらここに URL を書き、以後その URL を更新する。`index.html` と `img/chibiupa.png` を同じパスで載せる）
+プッシュ前の確認用 Artifact: `https://claude.ai/artifact/VCdowGubUF6gCxXRSAujKH`（変更のたびにこの URL を更新する。`index.html` と `img/chibiupa.png` を同じパスで載せる）
 
 ## ファイル
 - `index.html` … 1枚完結（canvas 描画。音は WebAudio の合成音でファイルなし）
