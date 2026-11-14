@@ -13,6 +13,9 @@
   --font:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Hiragino Kaku Gothic ProN",sans-serif;
   --display:"Mochiy Pop One","M PLUS Rounded 1c",sans-serif;
   color-scheme:light;
+  --ps:clamp(46px,17vh,70px); --bs:clamp(56px,22vh,86px);
+  --rl:calc(max(14px,env(safe-area-inset-left,0px)) + 2*var(--ps) + 22px);
+  --rr:calc(max(18px,env(safe-area-inset-right,0px)) + var(--bs) + 10px);
 }
 html,body{height:100%;margin:0;overflow:hidden;touch-action:manipulation;overscroll-behavior:none;
   -webkit-touch-callout:none;-webkit-text-size-adjust:100%;-webkit-user-select:none;user-select:none;
@@ -22,32 +25,33 @@ button{touch-action:manipulation;font-family:var(--font);cursor:pointer}
 img{-webkit-user-drag:none}
 canvas{touch-action:none;display:block}
 [hidden]{display:none!important}
-#cv{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+#stage{position:fixed;top:0;bottom:0;left:var(--rl);right:var(--rr)}
+#cv{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px #cfe0e8,0 0 24px rgba(0,0,0,.4)}
 
 /* HUD（水面より上の空きスペースに重ねる） */
-#hud{position:fixed;left:max(10px,env(safe-area-inset-left));top:max(6px,env(safe-area-inset-top));
-  display:flex;gap:8px;align-items:center;pointer-events:none}
+#hud{position:fixed;left:calc(var(--rl) + 6px);top:max(6px,env(safe-area-inset-top));
+  display:flex;gap:5px;align-items:center;pointer-events:none}
 .chip{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:2px 10px;box-shadow:0 2px 0 var(--line);
   display:flex;align-items:center;gap:6px;height:30px;box-sizing:border-box}
 .chip b{font-size:10px;letter-spacing:.1em;color:#a98a98}
-.chip span{font-family:var(--display);font-weight:400;font-size:17px;color:var(--pink);font-variant-numeric:tabular-nums}
+.chip span{font-family:var(--display);font-weight:400;font-size:16px;color:var(--pink);font-variant-numeric:tabular-nums}
 #lives{display:flex;gap:4px}
 #lives i{width:14px;height:14px;border-radius:50%;box-sizing:border-box;background:radial-gradient(circle at 35% 30%,#f6c27a,#c9772e);border:2px solid #9a5a22;transition:all .3s}
 #lives i.off{background:#d9d2cc;border-color:#b3a9a2;opacity:.55}
-#pauseBtn{position:fixed;right:max(10px,env(safe-area-inset-right));top:max(6px,env(safe-area-inset-top));height:30px;min-width:44px;
+#pauseBtn{position:fixed;right:calc(var(--rr) + 6px);top:max(6px,env(safe-area-inset-top));height:30px;min-width:44px;
   border:2px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:0 2px 0 var(--line);color:var(--pink);
   font-family:var(--display);font-size:13px;padding:0 10px}
 
 /* 操作パッド */
 .pad{position:fixed;bottom:max(14px,env(safe-area-inset-bottom));display:none;align-items:center;justify-content:center;
-  --ps:clamp(54px,22vh,86px);width:var(--ps);height:var(--ps);border-radius:50%;box-sizing:border-box;touch-action:none;
+  width:var(--ps);height:var(--ps);border-radius:50%;box-sizing:border-box;touch-action:none;
   background:rgba(255,255,255,.28);border:3px solid rgba(255,255,255,.7);color:#fff;font-family:var(--display);font-size:calc(var(--ps)*.34);
   text-shadow:0 2px 0 rgba(30,90,120,.45);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
 .pad.on{background:rgba(255,255,255,.55)}
 body[data-state=play] .pad{display:flex}
 #bL{left:max(14px,env(safe-area-inset-left))}
-#bR{left:calc(max(14px,env(safe-area-inset-left)) + clamp(54px,22vh,86px) + 12px)}
-#bS{right:max(18px,env(safe-area-inset-right));--ps:clamp(66px,28vh,108px);font-size:calc(var(--ps)*.2);background:rgba(247,127,152,.55);border-color:rgba(255,255,255,.85)}
+#bR{left:calc(max(14px,env(safe-area-inset-left)) + var(--ps) + 12px)}
+#bS{right:max(18px,env(safe-area-inset-right));--ps:var(--bs);font-size:calc(var(--ps)*.2);background:rgba(247,127,152,.55);border-color:rgba(255,255,255,.85)}
 #bS.on{background:rgba(247,127,152,.85)}
 
 /* オーバーレイ */
@@ -79,7 +83,7 @@ body[data-state=play] .pad{display:flex}
 </style>
 </head>
 <body data-state="title">
-<canvas id="cv"></canvas>
+<div id="stage"><canvas id="cv"></canvas></div>
 
 <div id="hud" hidden>
   <div class="chip"><b>たべた</b><span id="score">0</span></div>
@@ -158,8 +162,9 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
 
 function resize(){
-  const iw=innerWidth, ih=innerHeight;
-  const asp=clamp(iw/ih,1.6,2.4);
+  const sr=$('stage').getBoundingClientRect();
+  const iw=sr.width, ih=sr.height;
+  const asp=clamp(iw/ih,1.1,2.4);
   W=Math.round(H*asp);
   let cw,ch; if(iw/ih>asp){ch=ih;cw=ih*asp}else{cw=iw;ch=iw/asp}
   const dpr=Math.min(devicePixelRatio||1,2.5);
