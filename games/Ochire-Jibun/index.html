@@ -82,12 +82,40 @@ canvas,#pad{touch-action:none}
 .cap{font-size:10px;color:var(--dim);text-align:center;margin:1px 0 0;line-height:1.3}
 
 @media (max-height:700px){
+  #title{gap:8px}#fallDemo{display:none}.rules{font-size:12px;line-height:1.6;padding:8px 12px}#title h1{font-size:clamp(34px,12vw,48px)}
   #draw{gap:6px}.edWrap{width:min(92vw,34vh,440px)}.cap{display:none}
   .tool{height:38px;font-size:12px}#prevWrap{height:38px;flex-basis:38px}
   #pal{gap:4px}#pal button{max-height:28px}
   .dHead{font-size:16px}.dHead b{font-size:20px}
   #okBtn{font-size:18px;padding:8px 24px}
 }
+.dHead span{flex:1;min-width:0;white-space:nowrap}
+.dHead{gap:8px}
+#topBtn{flex:0 0 auto;height:30px;padding:0 9px;font-size:12px;border:3px solid #000;border-radius:5px;background:#3d3550;box-shadow:0 3px 0 #000}
+#topBtn:active{transform:translateY(2px);box-shadow:0 1px 0 #000}
+#topPop{position:absolute;left:14px;right:14px;top:52px;z-index:3;background:var(--panel);border:3px solid #000;
+  box-shadow:0 0 0 3px var(--line),0 10px 30px #000c;border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:8px}
+#topPop p{margin:0;font-size:13px;color:var(--dim);text-align:center}
+.topRow{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.topRow button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 0 4px;border:3px solid #000;border-radius:5px;background:#15121f;font-size:10px;min-width:0}
+.topRow button:disabled{opacity:.3}
+.topRow button:not(:disabled):active{background:#3d3550}
+.th{width:100%;max-width:52px;aspect-ratio:1;image-rendering:pixelated;display:block}
+#rank{z-index:5;justify-content:center;gap:14px;background:radial-gradient(ellipse at 50% 30%,#2b2540 0,#0d0c16 70%)}
+#rank h2{margin:0;font-family:var(--px);font-size:20px;font-weight:400;color:var(--yel);text-shadow:3px 3px 0 #b3200f}
+#rankList{width:100%;max-width:340px;display:flex;flex-direction:column;gap:8px}
+.rr{display:grid;grid-template-columns:30px 56px 1fr;align-items:center;gap:10px;background:var(--panel);border:3px solid #000;
+  box-shadow:0 0 0 2px var(--line);border-radius:5px;padding:6px 12px}
+.rr .no{font-family:var(--px);font-size:20px;text-align:center}
+.rr .th{width:52px;height:52px;background:#0d0c16;border:2px solid #000;box-sizing:border-box}
+.rr .rc{font-family:var(--px);font-size:20px;text-align:right}
+.rr .rc small{font-size:.6em;color:var(--dim)}
+.rr.empty{opacity:.4}
+.rr.hi{box-shadow:0 0 0 3px var(--yel);animation:hi .6s steps(2) infinite}
+@keyframes hi{50%{box-shadow:0 0 0 3px #fff6}}
+#result .btns{gap:8px}
+#result .btns .big.sub{padding:9px 20px}
+#result .rk{font-family:var(--px);font-size:13px;color:var(--yel)}
 /* ゲーム */
 #game{padding:0;background:#000}
 #gcv{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -127,18 +155,19 @@ canvas,#pad{touch-action:none}
       <b>1.</b> じぶんの絵を <b>20秒</b> でかく<br>
       <b>2.</b> その絵が あなだを おちていく！<br>
       <b>3.</b> <b>30秒</b> で なんm おりられるか<br>
-      <b>＊</b> 絵で <b>はやさ・うごき・しょうがいぶつ</b> が決まる<br>
+      <b>＊</b> 絵で <b>ステータス</b> が決まる<br>
       <b>◀ ▶</b> いどう　<b>▲</b> ブレーキ　<b>▼</b> かそく<br>
       トゲや いわに あたると おそくなる
     </div>
     <button id="startBtn" class="big">あそぶ</button>
+    <button id="rankBtn" class="big sub">ランキング</button>
     <div class="best">BEST <span id="bestTitle">0</span>m</div>
     <p class="copy">©YoshidaStudio, ©PANICPUMPKIN</p>
   </section>
 
   <!-- お絵かき -->
   <section id="draw" class="screen" hidden>
-    <div class="dHead"><span>じぶんの絵をかこう！</span><b id="dTime">20</b></div>
+    <div class="dHead"><span>じぶんの絵をかこう！</span><button id="topBtn" hidden>TOP5の絵</button><b id="dTime">20</b></div>
     <div id="dBar"><i></i></div>
     <div class="edWrap"><canvas id="ed"></canvas></div>
     <div id="params">
@@ -157,6 +186,10 @@ canvas,#pad{touch-action:none}
     </div>
     <div id="pal"></div>
     <button id="okBtn" class="big">OK！ゲームへ</button>
+    <div id="topPop" hidden>
+      <p>TOP5の絵をえらぶ（いまの絵はきえる）</p>
+      <div class="topRow" id="topRow"></div>
+    </div>
   </section>
 
   <!-- ゲーム -->
@@ -169,13 +202,21 @@ canvas,#pad{touch-action:none}
       <p class="lab">ここまで おちた！</p>
       <p class="dist"><span id="rDist">0</span><small>m</small></p>
       <p class="new" id="rNew" hidden>NEW RECORD!</p>
+      <p class="rk" id="rRank" hidden></p>
       <p class="rec">BEST <span id="rBest">0</span>m　COIN <span id="rCoin">0</span></p>
       <div class="btns">
         <button id="againBtn" class="big">おなじ絵でもう1回</button>
         <button id="redrawBtn" class="big sub">絵をかきなおす</button>
+        <button id="rankBtn2" class="big sub">ランキング</button>
         <button id="homeBtn" class="big sub">タイトルへ</button>
       </div>
     </div>
+  </section>
+  <!-- ランキング -->
+  <section id="rank" class="screen" hidden>
+    <h2>RANKING TOP5</h2>
+    <div id="rankList"></div>
+    <button id="rankBack" class="big sub">もどる</button>
   </section>
 </div>
 
@@ -310,6 +351,41 @@ function updateParams(){
     r.querySelector('em').textContent=ev?PWORDS[k][lv-1]:'えをかいてね';
   });
 }
+/* ランキング（この端末のブラウザに保存） */
+const SAVE_RANK='ochire_rank';
+function loadRank(){
+  try{
+    return JSON.parse(lsGet(SAVE_RANK)||'[]').map(e=>({a:strToArt(e.a),m:+e.m||0})).filter(e=>e.a&&e.m>0).slice(0,5);
+  }catch(e){return[]}
+}
+function addRank(m,a){
+  if(m<=0)return -1;
+  const list=loadRank();
+  let i=list.findIndex(e=>m>e.m);if(i<0)i=list.length;
+  if(i>=5)return -1;
+  list.splice(i,0,{a:a.slice(),m});
+  lsSet(SAVE_RANK,JSON.stringify(list.slice(0,5).map(e=>({a:artToStr(e.a),m:e.m}))));
+  return i;
+}
+function thumb(a){
+  const c=document.createElement('canvas');c.width=c.height=SIZE+2;c.className='th';
+  blit(c,makeSprite(a));return c;
+}
+const RCOL=['#ffd23a','#cfd3dc','#e0905a','#9d92b4','#9d92b4'];
+function openRank(hi){
+  const list=loadRank(),box=$('#rankList');box.innerHTML='';
+  for(let i=0;i<5;i++){
+    const e=list[i],row=document.createElement('div');
+    row.className='rr'+(e?'':' empty')+(i===hi?' hi':'');
+    const no=document.createElement('span');no.className='no';no.textContent=i+1;no.style.color=RCOL[i];
+    row.appendChild(no);
+    if(e)row.appendChild(thumb(e.a));else{const d=document.createElement('div');d.className='th';row.appendChild(d);}
+    const rc=document.createElement('span');rc.className='rc';
+    rc.innerHTML=e?e.m+'<small>m</small>':'---';
+    row.appendChild(rc);box.appendChild(row);
+  }
+  $('#rank').hidden=false;
+}
 let sprite=null;
 function blit(canvas,spr){
   const g=canvas.getContext('2d');g.clearRect(0,0,canvas.width,canvas.height);
@@ -403,10 +479,24 @@ ed.addEventListener('pointermove',e=>{
 $('#undoBtn').addEventListener('click',()=>{if(undo.length){art=undo.pop();renderEd();}});
 $('#clearBtn').addEventListener('click',()=>{pushUndo();art=new Uint8Array(SIZE*SIZE);renderEd();});
 
+function buildTop(){
+  const list=loadRank(),row=$('#topRow');row.innerHTML='';
+  $('#topBtn').hidden=!list.length;$('#topPop').hidden=true;
+  for(let i=0;i<5;i++){
+    const e=list[i],b=document.createElement('button');
+    if(e){
+      b.appendChild(thumb(e.a));
+      const t=document.createElement('span');t.textContent=(i+1)+'位 '+e.m+'m';b.appendChild(t);
+      b.addEventListener('click',()=>{pushUndo();art=e.a.slice();renderEd();$('#topPop').hidden=true;beep(660,.06);});
+    }else{b.disabled=true;b.textContent=(i+1)+'位';}
+    row.appendChild(b);
+  }
+}
+$('#topBtn').addEventListener('click',()=>{$('#topPop').hidden=!$('#topPop').hidden;});
 function startDraw(){
   initAudio();
   loadArtOnce();
-  undo=[];setTool('pencil');buildPalette();buildParams();renderEd();
+  undo=[];setTool('pencil');buildPalette();buildParams();buildTop();renderEd();
   show('draw');
   drawEnd=Date.now()+DRAW_SEC*1000;
   let lastSec=DRAW_SEC+1;
@@ -427,7 +517,7 @@ function startDraw(){
 let artLoaded=false;
 function loadArtOnce(){loadArt();}
 function finishDraw(){
-  clearInterval(drawTimer);drawTimer=null;
+  clearInterval(drawTimer);drawTimer=null;$('#topPop').hidden=true;
   if(isEmpty(art))art=defaultArt();
   lsSet(SAVE_ART,artToStr(art));
   sprite=makeSprite(art);params=evaluate(art);
@@ -497,7 +587,7 @@ const wallTile=tile(c=>{
 });
 
 let st='idle', t=0, d=0, px=W/2, vx=0, mult=1, spd=0, hitSlow=0, inv=0, flash=0, shake=0, readyT=0, endT=0, tm=0, goShow=0;
-let coins=0, baseLv=5, pops=[], obs=[], nextY=0, lines=[], keys={l:0,r:0,u:0,dn:0}, padK={l:0,r:0,u:0,dn:0}, bestNow=0, running=false, last=0;
+let lastRank=-1, coins=0, baseLv=5, pops=[], obs=[], nextY=0, lines=[], keys={l:0,r:0,u:0,dn:0}, padK={l:0,r:0,u:0,dn:0}, bestNow=0, running=false, last=0;
 const PY=()=>Math.max(120,H*0.27);
 const M=40; // 1m = 40px
 const scaleFor=l=>.7+(l-1)/9*.7; // おちるはやさのレベル→速度倍率（上限なし）
@@ -541,7 +631,7 @@ function hitTest(o,sy){
   const dx=cx-nx,dy=cy-ny;
   return dx*dx+dy*dy<(PR-2)*(PR-2);
 }
-function pop(txt,col){pops.push({x:px,y:PY()-34,txt,col,life:.9});}
+function pop(txt,col){pops.push({x:Math.max(64,Math.min(W-64,px)),y:PY()-40-(pops.length%3)*22,txt,col,life:1.1});}
 function onHit(o){
   if(coins>0){coins--;pop('コイン−1','#ff6a5a');}
   inv=1.3;hitSlow=o.spike?1.0:.6;flash=.35;shake=.3;
@@ -713,8 +803,9 @@ function drawHud(){
   if(st==='end'){g.font=px2(30);outText('TIME UP!',W/2,H*.45,'#ff4a3a');}
 }
 function drawPops(){
-  g.font=px2(9);
-  for(const q of pops){g.globalAlpha=Math.min(1,q.life*2);outText(q.txt,q.x,q.y,q.col);}
+  for(const q of pops){
+    g.font=px2(Math.round(17*(1+Math.max(0,q.life-.85)*1.6)));
+    g.globalAlpha=Math.min(1,q.life*2);outText(q.txt,q.x,q.y,q.col);}
   g.globalAlpha=1;
 }
 function render(){
@@ -743,6 +834,8 @@ function finishGame(){
   const nb=m>bestNow;
   if(nb){bestNow=m;lsSet(SAVE_BEST,String(m));}
   $('#rDist').textContent=m;$('#rCoin').textContent=coins;$('#rBest').textContent=bestNow;$('#rNew').hidden=!nb;
+  const ri=addRank(m,art);lastRank=ri;
+  $('#rRank').hidden=ri<0;if(ri>=0)$('#rRank').textContent='ランキング '+(ri+1)+'位！';
   $('#result').hidden=false;
   if(nb)beep(660,.4,'square',.06,1320);
   render();
@@ -774,6 +867,9 @@ $('#againBtn').addEventListener('click',()=>{initAudio();beep(520,.08);startGame
 $('#redrawBtn').addEventListener('click',()=>{stopGame();startDraw();});
 $('#homeBtn').addEventListener('click',goTitle);
 $('#quit').addEventListener('click',goTitle);
+$('#rankBtn').addEventListener('click',()=>{beep(520,.08);openRank(-1);});
+$('#rankBtn2').addEventListener('click',()=>{openRank(lastRank);});
+$('#rankBack').addEventListener('click',()=>{$('#rank').hidden=true;});
 
 /* 起動 */
 (function(){
