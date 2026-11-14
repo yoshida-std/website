@@ -481,7 +481,7 @@ function limb(c,pts,wo,wi){
     for(let i=1;i<pts.length;i++)c.lineTo(pts[i][0],pts[i][1]); c.stroke();
   }
 }
-// 体（首が原点・下向きが+y。絵の座標で描く）。ひとかきで足をバタつかせ、うでをかく
+// 体（首が原点・下向きが+y。絵の座標で描く。元の絵は左向きで、しっぽが右、足は右へたなびく）。ひとかきで足をバタつかせ、うでをかく
 function drawBody(c,ph,swim,sq){
   const amp=.25+.6*swim+.35*sq;
   // しっぽ
@@ -490,7 +490,7 @@ function drawBody(c,ph,swim,sq){
   c.beginPath(); c.moveTo(12,34); c.quadraticCurveTo(34,32,44+tw*.4,50+tw); c.quadraticCurveTo(28,54,12,48); c.closePath(); c.fill(); c.stroke();
   // 足（ひざを曲げて、うしろへけり出す）
   for(const [hx,sg] of [[-13,0],[13,Math.PI]]){
-    const p=ph+sg, a1=-.15+amp*Math.sin(p), a2=a1-.35+.6*amp*Math.sin(p-1);
+    const p=ph+sg, a1=.15+amp*Math.sin(p), a2=a1+.35-.6*amp*Math.sin(p-1);
     const kx=hx+18*Math.sin(a1), ky=44+18*Math.cos(a1);
     limb(c,[[hx,40],[kx,ky],[kx+15*Math.sin(a2),ky+15*Math.cos(a2)]],21,9);
   }
@@ -530,14 +530,14 @@ function drawPlayer(){
   const sq=P.sq, mun=P.munch>0?Math.sin(P.munch/MUNCH*Math.PI):0;
   const lean=over?.15:(.1+.5*Math.min(1,Math.abs(P.vx)/150))*(1-sq*.5);
   c.save(); c.translate(P.x,P.y+bob);
-  c.rotate(clamp(P.vx/150,-1,1)*.06*P.face*P.face+(P.vy<-20?-.04*P.face:0));
-  c.scale(P.face,1);
+  c.rotate(clamp(P.vx/150,-1,1)*.06+(P.vy<-20?-.04*P.face:0));
+  c.scale(-P.face,1); // 元の絵は左向き（しっぽが右）なので、右へ進むときは反転する
   c.scale(1+sq*.08+mun*.05,1-sq*.1+mun*.08);
   if(over){ c.globalAlpha=.9; c.rotate(.2); }
   c.scale(k,k); c.translate(-87,-66);
   if(sprite.complete&&sprite.naturalWidth){
-    c.save(); c.translate(87,84); c.rotate(lean); drawBody(c,P.ph,P.swim,sq); c.restore();
-    c.save(); c.translate(87,84); c.rotate(lean*.5); c.translate(-87,-84);
+    c.save(); c.translate(87,84); c.rotate(-lean); drawBody(c,P.ph,P.swim,sq); c.restore();
+    c.save(); c.translate(87,84); c.rotate(-lean*.5); c.translate(-87,-84);
     c.save(); c.beginPath(); c.rect(0,0,100,85); c.rect(100,0,74,94); c.clip();
     c.drawImage(sprite,0,0,174,94,0,0,174,94); c.restore();
     let mode=0,o=0;
