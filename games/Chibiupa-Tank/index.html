@@ -204,7 +204,8 @@ let eaten=0, lost=0, best=0;
 try{ best=+localStorage.getItem('chibiupa_best')||0; }catch(e){}
 let dirt=0, dirtTarget=0;
 let spawnT=1.2, overT=0, newBest=false;
-const P={x:300,y:220,vx:0,vy:0,face:1,cd:0,sq:0,munch:0};
+const P={x:300,y:220,vx:0,vy:0,face:1,cd:0,sq:0,munch:0,ph:0,swim:0,near:false};
+const MUNCH=.55;
 let foods=[], parts=[], queue=[];
 const feeder={x:300,busy:false,target:0,shake:0};
 const inp={l:false,r:false,held:false,heldT:0,edge:0};
@@ -219,7 +220,7 @@ function resetGame(){
   eaten=0; lost=0; dirt=0; dirtTarget=0; spawnT=1.4; newBest=false;
   foods=[]; parts=[]; queue=[];
   feeder.x=W/2; feeder.busy=false; feeder.shake=0;
-  Object.assign(P,{x:W*0.5,y:WATER+120,vx:0,vy:0,face:1,cd:0,sq:0,munch:0});
+  Object.assign(P,{x:W*0.5,y:WATER+120,vx:0,vy:0,face:1,cd:0,sq:0,munch:0,ph:0,swim:0,near:false});
   inp.edge=0;
   updateHud();
 }
@@ -305,7 +306,7 @@ function miss(f){
   if(lost>=5)gameOver();
 }
 function eat(f){
-  eaten++; P.munch=.35; sfx.eat();
+  eaten++; P.munch=MUNCH; sfx.eat();
   for(let i=0;i<7;i++){const a=rnd(0,6.28);parts.push({k:'spark',x:f.x,y:f.y,vx:Math.cos(a)*rnd(30,70),vy:Math.sin(a)*rnd(30,70),life:.5});}
   parts.push({k:'txt',x:f.x,y:f.y-12,vy:-34,life:.8,s:'+1',c:'#ee7f98'});
   updateHud();
@@ -328,6 +329,9 @@ function updatePlayer(dt,auto){
   if(P.y<WATER+16){P.y=WATER+16;if(P.vy<0)P.vy=0;}
   if(P.y>FLOOR-20){P.y=FLOOR-20;P.vy=0;P.vx*=.92;}
   if(P.sq>0)P.sq=Math.max(0,P.sq-dt*3.2);
+  const sw=clamp(Math.abs(P.vx)/150*.7+(P.vy<-30?.5:0)+P.sq,0,1);
+  P.swim+=(sw-P.swim)*Math.min(1,dt*8);
+  P.ph+=dt*(4+P.swim*11);
   if(P.munch>0)P.munch-=dt;
 }
 
@@ -350,6 +354,7 @@ function update(dt){
     }
   }
   // エサ
+  let near=false;
   for(let i=foods.length-1;i>=0;i--){
     const f=foods[i];
     if(f.state==='air'){
@@ -370,8 +375,10 @@ function update(dt){
     if(playing&&f.state!=='air'){
       const dx=f.x-P.x, dy=f.y-(P.y+4);
       if(dx*dx+dy*dy<27*27){ foods.splice(i,1); eat(f); }
+      else if(dx*dx+dy*dy<80*80)near=true;
     }
   }
+  P.near=near&&playing;
   // パーティクル
   for(let i=parts.length-1;i>=0;i--){
     const p=parts[i]; p.life-=dt;
@@ -466,18 +473,79 @@ function drawFood(f){
   c.fillStyle='rgba(255,255,255,.7)'; c.beginPath(); c.arc(-2,-2.2,1.6,0,6.28); c.fill();
   c.restore();
 }
+const SKIN='#f5d7d9', OUT='#050405';
+function limb(c,pts,wo,wi){
+  c.lineCap='round'; c.lineJoin='round';
+  for(const [w,col] of [[wo,OUT],[wi,SKIN]]){
+    c.strokeStyle=col; c.lineWidth=w; c.beginPath(); c.moveTo(pts[0][0],pts[0][1]);
+    for(let i=1;i<pts.length;i++)c.lineTo(pts[i][0],pts[i][1]); c.stroke();
+  }
+}
+// 体（首が原点・下向きが+y。絵の座標で描く）。ひとかきで足をバタつかせ、うでをかく
+function drawBody(c,ph,swim,sq){
+  const amp=.25+.6*swim+.35*sq;
+  // しっぽ
+  const tw=Math.sin(ph*.8)*(6+8*swim);
+  c.fillStyle=SKIN; c.strokeStyle=OUT; c.lineWidth=5; c.lineJoin='round';
+  c.beginPath(); c.moveTo(12,34); c.quadraticCurveTo(34,32,44+tw*.4,50+tw); c.quadraticCurveTo(28,54,12,48); c.closePath(); c.fill(); c.stroke();
+  // 足（ひざを曲げて、うしろへけり出す）
+  for(const [hx,sg] of [[-13,0],[13,Math.PI]]){
+    const p=ph+sg, a1=-.15+amp*Math.sin(p), a2=a1-.35+.6*amp*Math.sin(p-1);
+    const kx=hx+18*Math.sin(a1), ky=44+18*Math.cos(a1);
+    limb(c,[[hx,40],[kx,ky],[kx+15*Math.sin(a2),ky+15*Math.cos(a2)]],21,9);
+  }
+  // どう体
+  c.fillStyle=SKIN; c.strokeStyle=OUT; c.lineWidth=6;
+  c.beginPath(); c.moveTo(-26,-14); c.bezierCurveTo(-33,12,-28,34,-18,46); c.quadraticCurveTo(0,55,18,46);
+  c.bezierCurveTo(28,34,33,12,26,-14); c.closePath(); c.fill(); c.stroke();
+  // うで
+  for(const [sx,sg] of [[-24,0],[24,Math.PI]]){
+    const p=ph*.9+sg+1, a=(sx<0?-1:1)*(.75+.55*Math.sin(p)*(.3+swim));
+    const ex=sx+15*Math.sin(a), ey=6+15*Math.cos(a), b=a+(sx<0?-1:1)*.5*Math.sin(p+1);
+    limb(c,[[sx,4],[ex,ey],[ex+13*Math.sin(b),ey+13*Math.cos(b)]],15,5);
+  }
+}
+// 顔: mode 0=ふつうの目 / 1=にっこり目、o=口のひらき(0〜1)。元の絵の目と口の上にぬって描きかえる
+function drawFace(c,mode,o){
+  if(mode===0&&o<=.02)return;
+  c.fillStyle=SKIN;
+  c.beginPath(); c.ellipse(85,72,26,13,0,0,6.283); c.fill();
+  if(mode===1){
+    c.beginPath(); c.ellipse(55,52,11,12,0,0,6.283); c.fill();
+    c.beginPath(); c.ellipse(116.5,61,11,10,0,0,6.283); c.fill();
+    c.strokeStyle=OUT; c.lineWidth=5.5; c.lineCap='round';
+    c.beginPath(); c.moveTo(46,57); c.quadraticCurveTo(55,40,64,57); c.stroke();
+    c.beginPath(); c.moveTo(107,66); c.quadraticCurveTo(116.5,49,126,66); c.stroke();
+  }
+  if(o>.02){
+    const w=8+12*o, h=3+12*o, cy=69+h*.35;
+    c.save(); c.beginPath(); c.ellipse(85,cy,w,h,0,0,6.283); c.fillStyle='#5b1f31'; c.fill(); c.clip();
+    c.fillStyle='#ef8a9f'; c.beginPath(); c.ellipse(85,cy+h*.75,w*.65,h*.6,0,0,6.283); c.fill(); c.restore();
+    c.strokeStyle=OUT; c.lineWidth=4.5; c.beginPath(); c.ellipse(85,cy,w,h,0,0,6.283); c.stroke();
+  }
+}
 function drawPlayer(){
-  const c=ctx, w=70, h=w*152/174;
-  const bob=state==='over'?0:Math.sin(T*3)*1.5;
-  const sq=P.sq, mun=P.munch>0?Math.sin(P.munch/.35*Math.PI):0;
+  const c=ctx, k=70/174, over=state==='over';
+  const bob=over?0:Math.sin(T*3)*1.5;
+  const sq=P.sq, mun=P.munch>0?Math.sin(P.munch/MUNCH*Math.PI):0;
+  const lean=over?.15:(.1+.5*Math.min(1,Math.abs(P.vx)/150))*(1-sq*.5);
   c.save(); c.translate(P.x,P.y+bob);
-  c.rotate(clamp(P.vx/150,-1,1)*.18*P.face*P.face + (P.vy<-20?-.04*P.face:0));
+  c.rotate(clamp(P.vx/150,-1,1)*.06*P.face*P.face+(P.vy<-20?-.04*P.face:0));
   c.scale(P.face,1);
-  const sx=1+sq*.1+mun*.06, sy=1-sq*.14+mun*.1;
-  c.scale(sx,sy);
-  if(state==='over'){ c.globalAlpha=.9; c.rotate(.2*P.face); }
-  if(sprite.complete&&sprite.naturalWidth)c.drawImage(sprite,-w/2,-h*.52,w,h);
-  else{ c.fillStyle='#f7d6db'; c.beginPath(); c.arc(0,0,24,0,6.28); c.fill(); }
+  c.scale(1+sq*.08+mun*.05,1-sq*.1+mun*.08);
+  if(over){ c.globalAlpha=.9; c.rotate(.2); }
+  c.scale(k,k); c.translate(-87,-66);
+  if(sprite.complete&&sprite.naturalWidth){
+    c.save(); c.translate(87,84); c.rotate(lean); drawBody(c,P.ph,P.swim,sq); c.restore();
+    c.save(); c.translate(87,84); c.rotate(lean*.5); c.translate(-87,-84);
+    c.save(); c.beginPath(); c.rect(0,0,100,85); c.rect(100,0,74,94); c.clip();
+    c.drawImage(sprite,0,0,174,94,0,0,174,94); c.restore();
+    let mode=0,o=0;
+    if(P.munch>0){ mode=1; o=.5+.5*Math.cos((1-P.munch/MUNCH)*Math.PI*3); }
+    else if(P.near){ o=.85+.15*Math.sin(T*14); }
+    drawFace(c,mode,o);
+    c.restore();
+  }else{ c.fillStyle=SKIN; c.beginPath(); c.arc(87,60,40,0,6.28); c.fill(); }
   c.restore();
 }
 function drawFeeder(){
