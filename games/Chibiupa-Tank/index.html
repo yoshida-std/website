@@ -31,7 +31,7 @@ canvas{touch-action:none;display:block}
 body[data-state=title] #stage{left:0;right:0}
 /* 左右の余白のアニメGIF: 左右は**同じ大きさ**（--sw）。左右それぞれの「余白の幅」と「ボタンの上までの高さ」から入る大きさを出して、いちばん小さいものに合わせる */
 :root{
-  --sp:5px;                                                   /* 枠の内側の余白 */
+  --sp:0px;                                                   /* 枠の内側の余白（なし。のぞき見のスタンプの切れ目を、枠の左端にぴったり付けるため） */
   --sh:calc((var(--sw) - 2*var(--sp))/.8432 + 2*var(--sp));   /* 枠の高さ（中の1マスの縦横比 190:225.33 を保つ） */
   --botL:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--ps) + 10px);                       /* ◀ ▶ ボタンの上まで */
   --botR:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--bs) + 10px + var(--pp) + 10px);   /* 💩・およぐ ボタンの上まで */
@@ -460,16 +460,21 @@ function resetGame(){
 // 左右の余白のアニメGIF（img/side/side1〜5.gif。縦長のシート＝スタンプ6体が2列×3段）。
 // ゲームの開始・ステージの切り替えごとに、左右ちがうシートをランダムに選び、そのシートの6体を1体ずつ、一定時間（SIDE_MS）ごとにスライドのように切り替えて見せる
 const SIDE_N=5, SIDE_MS=10000;   // 切り替えの間隔（ms）
-const sideCell={sideL:0,sideR:0};
+const sideCell={sideL:0,sideR:0}, sideSheet={sideL:0,sideR:1};
+// 各シート×6体の「切り出す位置（背景の位置 % = x, y）」。シートは均等な格子ではなく、キャラが枠の中でずれていたので、
+// 全コマを重ねたキャラの外枠の中心が、枠の中心になるように1体ずつ計算した（のぞき見のスタンプ＝2枚目の左中だけは、欠けた左端を枠の左端にそろえた）
+const SIDE_POS=[[[4.5,-0.0],[100.0,1.7],[1.1,52.0],[101.8,53.8],[3.2,102.7],[98.4,101.4]],[[0.5,3.5],[99.2,2.5],[3.2,52.7],[100.0,50.0],[-2.4,103.4],[103.7,101.5]],[[-0.8,2.1],[97.1,-0.6],[0.0,53.7],[98.2,51.3],[2.1,98.7],[98.4,102.3]],[[1.1,3.1],[99.2,3.3],[3.2,52.2],[103.2,53.0],[2.4,98.7],[99.2,101.7]],[[0.5,-0.4],[101.1,2.4],[0.0,52.2],[97.4,54.1],[3.2,98.7],[101.8,100.7]]];
 function showCell(el,i){
   const c=((i%6)+6)%6; sideCell[el.id]=c;
-  el.style.backgroundPosition=(c%2?'100%':'0%')+' '+(Math.floor(c/2)*50)+'%';   // 2列×3段（左上→右上→左中…の順）
+  const p=SIDE_POS[sideSheet[el.id]][c];   // 2列×3段（左上→右上→左中…の順）
+  el.style.backgroundPosition=p[0]+'% '+p[1]+'%';
   el.classList.remove('flip'); void el.offsetWidth; el.classList.add('flip');
 }
 function rollSides(){
   const a=Math.floor(Math.random()*SIDE_N); let b=Math.floor(Math.random()*(SIDE_N-1)); if(b>=a)b++;
   for(const [id,k] of [['sideL',a],['sideR',b]]){
     const el=$(id), url='img/side/side'+(k+1)+'.gif';
+    sideSheet[id]=k;
     el.classList.remove('on');
     const im=new Image(); im.onload=()=>{ el.style.backgroundImage='url('+url+')'; showCell(el,Math.floor(Math.random()*6)); el.classList.add('on'); }; im.src=url;
   }
