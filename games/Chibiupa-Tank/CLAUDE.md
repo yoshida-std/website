@@ -1,6 +1,6 @@
 # ちびうぱのエサキャッチ！（`games/Chibiupa-Tank/`）
 
-スマホ横画面・スクロールなしの固定画面。水そうの中をちびうぱが泳ぎ、上から落ちてくる人工エサをキャッチする。公開URL（まだポートフォリオには載せていない）: `https://yoshida-std.github.io/website/games/Chibiupa-Tank/`
+スマホ横画面・スクロールなしの固定画面。水そうの中をちびうぱが泳ぎ、上から落ちてくる人工エサをキャッチする。公開URL（ポートフォリオの `games.json` に載せた：id `chibiupa-tank`、公開日 2026-11-15。ちびうぱのIPページ `charip.json` の `games` にも指定）: `https://yoshida-std.github.io/website/games/Chibiupa-Tank/`
 リポジトリ全体の作業ルールはルートの `CLAUDE.md` を参照。
 
 プッシュ前の確認用 Artifact: `https://claude.ai/artifact/VCdowGubUF6gCxXRSAujKH`（変更のたびにこの URL を更新する。`index.html` と `img/chibiupa.png` `img/logo.png` `img/side/side1〜5.gif` `sound/bgm.mp3` `sound/poop.wav` を同じパスで載せる）
@@ -8,7 +8,7 @@
 ## ファイル
 - `index.html` … 1枚完結（canvas 描画。音は WebAudio の合成音でファイルなし）
 - `icon-512.png` `icon-192.png` `apple-touch-icon.png`(180) `favicon-32.png` … アイコン（正方形・全面に絵。iOSは角を自動で丸める）。水の中で両手を広げて口を開けて喜ぶちびうぱ（ユーザー提供の2枚目のシートの1コマ目を1.5倍）に、光のすじ・あわ・エサ・砂。512pxを作り、ほかは縮小。`<head>` から `icon`・`apple-touch-icon` で読む（manifest は作っていない＝ホーム画面から起動したときの見た目は変えていない）
-- `portfolio/img/games/chibiupa-tank.jpg` … ポートフォリオ用のサムネイル（960×504。タイトルのデモの水槽を背景に、ロゴと大きなちびうぱを重ねたもの。**`portfolio/games/games.json` にはまだ載せていない**）
+- `portfolio/img/games/chibiupa-tank.jpg` … ポートフォリオ用のサムネイル（960×504。タイトルのデモの水槽を背景に、ロゴと大きなちびうぱを重ねたもの。`portfolio/games/games.json` の `image` に指定）
 - `sound/bgm.mp3` … ゲーム中のBGM（ユーザー提供の `BGM256-251031-taisetsunaehon-wav.wav`（60.8秒・ステレオ）を mp3 128kbps に変換したもの、約0.95MB。曲名・提供元はファイル名しか分かっていない。ライセンス・クレジット表記の要否はユーザーに確認すること）
 - `img/side/side1〜5.gif` … 水槽の左右の余白に置くアニメGIF（ユーザー提供のもの。ちびうぱのスタンプ6体が2列×3段に並んだ縦長のシートで、元は506×900・20コマ・2秒ループ・約1MB。透明を保ったまま ffmpeg で**元の大きさのまま**64色にして各0.67〜0.8MB（合計約3.8MB）。枠が大きいので、縮めると粗く見える）
 - `sound/poop.wav` … 💩の効果音（ユーザー提供の `monsterpuyon.wav`（0.58秒）の、音のある最初の0.3秒だけを切り出し、モノラル・44.1kHz・16bitのWAVに（約26KB）。短いので mp3 にせず WAV のまま＝再生の遅れなし。曲名・提供元はファイル名しか分かっていない。クレジット表記の要否はユーザーに確認すること）
