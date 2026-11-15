@@ -36,20 +36,21 @@ canvas{touch-action:none;display:block}
 body[data-state=title] #stage{left:0;right:0}
 /* 左右の余白のアニメGIF: 左右は**同じ大きさ**（--sw）。左右それぞれの「余白の幅」と「ボタンの上までの高さ」から入る大きさを出して、いちばん小さいものに合わせる */
 :root{
+  --sscale:.85;   /* 左右の枠の大きさ（入る最大の大きさに対する割合。1＝いっぱい）*/
   --sp:0px;                                                   /* 枠の内側の余白（なし。のぞき見のスタンプの切れ目を、枠の左端にぴったり付けるため） */
   --sh:calc((var(--sw) - 2*var(--sp))/.8432 + 2*var(--sp));   /* 枠の高さ（中の1マスの縦横比 190:225.33 を保つ） */
   --botL:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--ps) + 10px);                       /* ◀ ▶ ボタンの上まで */
   --botR:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--bs) + 10px + var(--pp) + 10px);   /* 💩・およぐ ボタンの上まで */
-  --sw:min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
-           calc((100vh - 16px - var(--botL) - 2*var(--sp)) * .8432 + 2*var(--sp)),calc((100vh - 16px - var(--botR) - 2*var(--sp)) * .8432 + 2*var(--sp)));
+  --sw:calc(var(--sscale) * min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
+           calc((100vh - 16px - var(--botL) - 2*var(--sp)) * .8432 + 2*var(--sp)),calc((100vh - 16px - var(--botR) - 2*var(--sp)) * .8432 + 2*var(--sp))));
 }
 @supports (height:100dvh){:root{
-  --sw:min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
-           calc((100dvh - 16px - var(--botL) - 2*var(--sp)) * .8432 + 2*var(--sp)),calc((100dvh - 16px - var(--botR) - 2*var(--sp)) * .8432 + 2*var(--sp)));
+  --sw:calc(var(--sscale) * min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
+           calc((100dvh - 16px - var(--botL) - 2*var(--sp)) * .8432 + 2*var(--sp)),calc((100dvh - 16px - var(--botR) - 2*var(--sp)) * .8432 + 2*var(--sp))));
 }}
 body[data-stage="1"]{--botR:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--bs) + 10px)}   /* ステージ1は💩ボタンがない */
 .side{position:fixed;top:8px;width:var(--sw);height:var(--sh);box-sizing:border-box;padding:var(--sp);pointer-events:none;opacity:0;transition:opacity .4s;display:none;
-  background-color:#fbfcff;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,.28);   /* 白に近い背景の角丸の枠 */
+  background-color:#fbfcff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.28);   /* 白に近い背景の角丸の枠 */
   background-repeat:no-repeat;background-origin:content-box;background-size:200% 300%;background-position:0% 0%}   /* シート（2列×3段）の1マスだけを、枠の内側に見せる */
 .side.flip{animation:sideIn .5s ease-out}
 @keyframes sideIn{from{opacity:0;transform:translateX(14px) scale(.94)}to{opacity:1;transform:none}}
