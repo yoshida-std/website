@@ -26,17 +26,18 @@ img{-webkit-user-drag:none}
 canvas{touch-action:none;display:block}
 [hidden]{display:none!important}
 #stage{position:fixed;top:0;bottom:0;left:var(--rl);right:var(--rr)}
+body[data-state=title] #stage{left:0;right:0}   /* タイトルのデモは画面の横いっぱい */
 #cv{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px #cfe0e8,0 0 24px rgba(0,0,0,.4)}
 
 /* HUD（水面より上の空きスペースに重ねる） */
 #hud{position:fixed;left:calc(var(--rl) + 6px);top:max(6px,env(safe-area-inset-top));
-  display:flex;gap:5px;align-items:center;pointer-events:none}
-.chip{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:2px 10px;box-shadow:0 2px 0 var(--line);
-  display:flex;align-items:center;gap:6px;height:30px;box-sizing:border-box}
-.chip b{font-size:10px;letter-spacing:.1em;color:#a98a98}
-.chip span{font-family:var(--display);font-weight:400;font-size:16px;color:var(--pink);font-variant-numeric:tabular-nums}
-#lives{display:flex;gap:4px}
-#lives i{width:14px;height:14px;border-radius:50%;box-sizing:border-box;background:radial-gradient(circle at 35% 30%,#f6c27a,#c9772e);border:2px solid #9a5a22;transition:all .3s}
+  display:flex;gap:4px;align-items:center;pointer-events:none}
+.chip{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:2px 7px;box-shadow:0 2px 0 var(--line);
+  display:flex;align-items:center;gap:4px;height:30px;box-sizing:border-box}
+.chip b{font-size:9px;letter-spacing:0;color:#a98a98}
+.chip span{font-family:var(--display);font-weight:400;font-size:15px;color:var(--pink);font-variant-numeric:tabular-nums}
+#lives{display:flex;gap:3px}
+#lives i{width:12px;height:12px;border-radius:50%;box-sizing:border-box;background:radial-gradient(circle at 35% 30%,#f6c27a,#c9772e);border:2px solid #9a5a22;transition:all .3s}
 #lives i.off{background:#d9d2cc;border-color:#b3a9a2;opacity:.55}
 #pauseBtn{position:fixed;right:calc(var(--rr) + 6px);top:max(6px,env(safe-area-inset-top));height:30px;min-width:44px;
   border:2px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:0 2px 0 var(--line);color:var(--pink);
@@ -59,6 +60,7 @@ body[data-state=play] .pad{display:flex}
 #bP.off{opacity:.4}
 #bP.full{--pc:#e0524f;animation:pp .5s ease-in-out infinite alternate}
 @keyframes pp{to{transform:scale(1.12)}}
+body[data-stage="1"] #bP{display:none!important}
 #bS{right:max(18px,env(safe-area-inset-right));--ps:var(--bs);font-size:calc(var(--ps)*.2);background:rgba(247,127,152,.55);border-color:rgba(255,255,255,.85)}
 #bS.on{background:rgba(247,127,152,.85)}
 
@@ -67,6 +69,31 @@ body[data-state=play] .pad{display:flex}
   backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);padding:10px;box-sizing:border-box}
 .card{background:var(--panel);border:3px solid var(--line);border-radius:22px;box-shadow:0 5px 0 var(--line);
   padding:12px 20px 14px;text-align:center;max-height:100%;box-sizing:border-box;overflow-y:auto;touch-action:pan-y;max-width:min(520px,100%)}
+.overlay.light{background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none}
+#ready .card,#over .card,#pause .card,#help .card{background:rgba(255,248,240,.38);border-color:rgba(239,207,198,.7);box-shadow:none;padding:8px 18px 12px}
+#ready .card h2,#over .card h2,#pause .card h2,#help .card h2{text-shadow:2px 2px 0 rgba(255,255,255,.9),0 0 8px rgba(255,255,255,.8)}
+#ready .card p,#over .card p,#pause .card p,#help .card p{color:#6b4a58;font-weight:800;text-shadow:0 0 6px #fff,0 0 3px #fff,1px 1px 0 rgba(255,255,255,.9)}
+#ready .btn{background:rgba(238,127,152,.88)}
+#ready .card h2,#over .card h2,#pause .card h2,#help .card h2{font-size:18px;margin:0 0 2px}
+#ready .card p,#over .card p,#pause .card p,#help .card p{font-size:10px;margin:2px 0;line-height:1.5}
+#help .card{background:rgba(255,248,240,.6)}
+#help .card p{text-align:left;font-size:11px;margin:4px 0}
+#help .card p b{color:#e0527a}
+/* タイトル: ウィンドウなし。デモ画面の上にロゴとボタンをじかに置く */
+#title{flex-direction:column;gap:clamp(8px,2.4vh,16px);padding-bottom:clamp(14px,5vh,34px)}
+#title .logo{height:clamp(90px,40vh,190px);width:auto;max-width:86vw;display:block;filter:drop-shadow(0 3px 6px rgba(20,60,90,.35))}
+#title .tbtns{display:flex;flex-direction:column;align-items:center;gap:8px}
+#title .btn{margin:0}
+#title #startBtn{width:clamp(150px,38vw,220px);font-size:18px;padding:9px 12px}
+#title #helpBtn{width:clamp(110px,26vw,150px);font-size:13px;padding:6px 10px}
+#title .copy{position:fixed;left:50%;transform:translateX(-50%);bottom:max(8px,env(safe-area-inset-bottom,0px));white-space:nowrap;
+  font-size:10px;font-weight:800;color:#5b3f4d;text-shadow:0 0 5px #fff,0 0 3px #fff,0 0 2px #fff;margin:0}
+#ready .card p.big,#over .card p.big,#pause .card p.big{font-size:14px!important}
+#over .card p.big{font-size:20px!important}
+#ready .btn,#over .btn,#pause .btn,#help .btn{font-size:12.5px;padding:6px 10px;margin-top:6px}
+#over .btn,#pause .btn{opacity:.92}
+#over .btn,#pause .btn,#ready .btn,#over .card h2,#pause .card h2,#ready .card h2{white-space:nowrap}
+#pause .btns .btn,#over .btns .btn{padding:6px 8px;font-size:11.5px}
 .card h1{font-family:var(--display);font-weight:400;margin:2px 0 0;font-size:clamp(24px,7vh,34px);line-height:1.15;color:var(--pink);
   text-shadow:2px 2px 0 #fff,4px 4px 0 var(--line)}
 .card h2{font-family:var(--display);font-weight:400;margin:2px 0 4px;font-size:26px;color:var(--pink);text-shadow:2px 2px 0 #fff,3px 3px 0 var(--line)}
@@ -94,8 +121,8 @@ body[data-state=play] .pad{display:flex}
 <div id="stage"><canvas id="cv"></canvas></div>
 
 <div id="hud" hidden>
-  <div class="chip"><b>たべた</b><span id="score">0</span></div>
-  <div class="chip"><b>ベスト</b><span id="best">0</span></div>
+  <div class="chip"><b>ステージ</b><span id="stg">1/5</span></div>
+  <div class="chip"><b>あと</b><span id="goal">12</span></div>
   <div class="chip" title="のこりのエサ"><div id="lives"><i></i><i></i><i></i><i></i><i></i></div></div>
 </div>
 <button id="pauseBtn" hidden>II</button>
@@ -105,25 +132,38 @@ body[data-state=play] .pad{display:flex}
 <div class="pad" id="bS">およぐ</div>
 <div class="pad" id="bP"><span>💩</span></div>
 
-<div id="title" class="overlay menu">
-  <div class="card">
-    <div class="row">
-      <img class="hero" src="img/chibiupa.png" alt="ちびうぱ" draggable="false">
-      <div class="col">
-        <h1>ちびうぱの<br>エサキャッチ！</h1>
-      </div>
-    </div>
+<div id="title" class="overlay menu light">
+  <img class="logo" src="img/logo.png" alt="ちびうぱのエサキャッチ！" draggable="false">
+  <div class="tbtns">
+    <button class="btn" id="startBtn">あそぶ</button>
+    <button class="btn sub" id="helpBtn">せつめい</button>
+  </div>
+  <div class="copy">©YoshidaStudio, ©PANICPUMPKIN</div>
+</div>
+
+<div id="help" class="overlay menu light" hidden>
+  <div class="card" style="max-width:min(480px,100%)">
+    <h2>あそびかた</h2>
+    <p>ぜんぶで<b>10ステージ</b>。ステージごとに決まった数のエサを食べるとクリア！ 水そうは、あみですくわれて、5ステージ目まで だんだん大きくなるよ。途中からは<b>ポンプ</b>の水流も出てくるよ。</p>
     <p>水そうに落ちてくる<b>エサ</b>を、およいでパクッ！底にとどいたエサは少しするときえるよ。<b>5つ</b>きえると水がにごって、ゲームオーバー。</p>
     <p>エサを<b>10こ</b>食べると おなかいっぱいで<b>うごきがにぶく</b>なるよ。<b>💩ボタン</b>でうんちをすると元にもどるけど、底に4秒おくと水がよごれる（エサ2つ分）。ときどき左右から入ってくる<b>スポイト</b>の先でうんちをすると、すいとってくれるよ！</p>
     <p>たまに落ちてくる<b>ヌマエビ</b>は食べると3点。食べずにおくと、底を歩いて<b>底のエサやうんちを食べてくれる</b>よ（最大4ひき）。</p>
     <p>◀ ▶ でよこにすすむ ／ <b>およぐ</b>でふわっとうえへ（ちょっとずつしずむよ）</p>
-    <button class="btn" id="startBtn">あそぶ</button>
-    <div class="copy">©YoshidaStudio, ©PANICPUMPKIN</div>
+    <button class="btn" id="helpClose">とじる</button>
   </div>
 </div>
 
-<div id="pause" class="overlay menu" hidden>
-  <div class="card" style="min-width:220px">
+<div id="ready" class="overlay menu light" hidden>
+  <div class="card" style="min-width:190px">
+    <h2 id="rTitle">ステージ 1</h2>
+    <p id="rGoal" class="big"></p>
+    <p id="rNote"></p>
+    <button class="btn" id="goBtn">スタート</button>
+  </div>
+</div>
+
+<div id="pause" class="overlay menu light" hidden>
+  <div class="card" style="min-width:210px">
     <h2>ポーズ</h2>
     <button class="btn" id="resumeBtn">つづける</button>
     <button class="btn sub" id="soundBtn">おと ON</button>
@@ -134,9 +174,10 @@ body[data-state=play] .pad{display:flex}
   </div>
 </div>
 
-<div id="over" class="overlay menu" hidden>
-  <div class="card" style="min-width:250px">
-    <h2>みずが にごっちゃった…</h2>
+<div id="over" class="overlay menu light" hidden>
+  <div class="card" style="min-width:230px">
+    <h2 id="oTitle">みずが にごっちゃった…</h2>
+    <p id="oStage"></p>
     <p>たべたエサ</p>
     <p class="big"><span id="oScore">0</span> こ</p>
     <p id="oBest">ベスト 0</p>
@@ -150,6 +191,7 @@ body[data-state=play] .pad{display:flex}
 <div id="rotate"><span class="ic">📱</span>スマホを よこむきにしてね</div>
 
 <script>
+document.body.dataset.state='title';
 /* ===== タッチ・ズーム・長押しの抑止（ボタンとメニューは除く） ===== */
 const KEEP='button,.menu';
 document.addEventListener('touchstart',e=>{ if(e.touches.length>1||!e.target.closest(KEEP))e.preventDefault(); },{passive:false});
@@ -162,12 +204,21 @@ document.addEventListener('touchmove',e=>{ if(!e.target.closest('.card'))e.preve
 
 /* ===== 基本 ===== */
 const $=id=>document.getElementById(id);
-const H=400, WATER=96, FLOOR=H-38, FULL=10, POOP_REST=4, MAX_SHRIMP=4;
+const H=400, FLOOR=H-38, FULL=10, POOP_REST=4, MAX_SHRIMP=4;
+const STAGES=10;
+const GOALS=[12,16,20,25,30,32,35,38,41,45];            // ステージごとのクリアに必要な数（エサ1・ヌマエビ3）
+const PUMP_X=[[],[],[],[],[],[.5],[.3],[.28,.72],[.22,.6],[.2,.5,.8]];   // ポンプの位置（水槽の幅に対する割合）。ステージ6から
+const PUMP_HW=34;   // 水流のはば（ポンプの中心から左右）
+const STAGE_NOTE={1:'◀ ▶ でよこに、およぐ でうえに すすむよ',2:'ヌマエビと スポイトが でてくるよ',6:'ポンプの水流が でてくるよ！ したから うえへ ながされるよ',8:'ポンプが ふえるよ',10:'さいごの ステージ！'};
+const TW=[.62,.72,.82,.91,1], TH=[.89,.89,.89,.89,.89];   // 水槽の幅・水の深さの割合（深さは全ステージ同じ＝ステージ4の高さ。幅だけ大きくなる）
 let W=800, scale=1;
+let WATER=96, TL=0, TR=800;             // いまの水槽の水面・左右のはし
+let PUMPS=[], readyPending=false;
+let stage=1, stageEaten=0, won=false, clearPending=false, trans=null, net=null, banner=null;
 const cv=$('cv'), ctx=cv.getContext('2d');
 const sprite=new Image(); sprite.src='img/chibiupa.png';
 const rnd=(a,b)=>a+Math.random()*(b-a);
-const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 const lerp=(a,b,t)=>a+(b-a)*t;
 
 function resize(){
@@ -180,6 +231,19 @@ function resize(){
   cv.style.width=cw+'px'; cv.style.height=ch+'px';
   cv.width=Math.round(cw*dpr); cv.height=Math.round(ch*dpr);
   scale=cv.width/W;
+  applyTank(tankFor(stage));
+}
+function tankFor(n){
+  const i=clamp(Math.min(n,5),1,5)-1, w=W*TW[i], depth=(H-96)*TH[i], L=(W-w)/2;   // 大きさが変わるのは5ステージ目まで
+  return {L,R:L+w,WT:H-depth,w,depth,pumps:(PUMP_X[clamp(n,1,STAGES)-1]||[]).map(f=>L+w*f)};
+}
+function applyTank(t){ WATER=t.WT; TL=t.L; TR=t.R; PUMPS=t.pumps; }
+// ポンプの水流の強さ（0〜1）。ポンプの真上ほど強く、はしほど弱い。水面より上と、ポンプの下には出ない
+function flowAt(x,y){
+  if(!PUMPS.length||y<WATER||y>FLOOR+8)return 0;
+  let f=0;
+  for(const px of PUMPS){ const dx=Math.abs(x-px); if(dx<PUMP_HW){ const u=1-dx/PUMP_HW; f+=u*u*(3-2*u); } }
+  return Math.min(1,f)*(.85+.15*Math.sin(T*1.8));
 }
 addEventListener('resize',resize); resize();
 
@@ -190,7 +254,7 @@ function initAudio(){
   if(ac&&ac.state==='suspended')ac.resume();
 }
 function tone(f,d,type,v,to,delay){
-  if(!ac||muted)return;
+  if(!ac||muted||state==='title')return;
   const t0=ac.currentTime+(delay||0);
   const o=ac.createOscillator(), g=ac.createGain();
   o.type=type||'sine'; o.frequency.setValueAtTime(f,t0);
@@ -204,6 +268,12 @@ const sfx={
   eat(){tone(620,.08,'square',.06,940); tone(940,.1,'square',.05,1240,.07)},
   full(){tone(260,.25,'sine',.08,180)},
   poop(){tone(200,.18,'square',.06,110); tone(150,.2,'square',.05,90,.12)},
+  clear(){[523,659,784,1047].forEach((f,i)=>tone(f,.2,'triangle',.08,f*1.02,i*.1))},
+  win(){[523,659,784,1047,1319].forEach((f,i)=>tone(f,.24,'triangle',.09,f*1.01,i*.13))},
+  net(){tone(520,.45,'sawtooth',.03,180)},
+  scoop(){tone(260,.15,'sine',.07,420)},
+  slide(){tone(150,.9,'sawtooth',.025,260)},
+  splash(){tone(420,.18,'sine',.07,140); tone(900,.08,'sine',.04,300,.03)},
   suck(){tone(380,.28,'sine',.08,980)},
   miss(){tone(220,.35,'sawtooth',.07,80)},
   over(){tone(330,.25,'triangle',.1,260); tone(260,.25,'triangle',.1,190,.22); tone(200,.5,'triangle',.1,110,.44)}
@@ -225,38 +295,63 @@ const specks=Array.from({length:70},()=>({x:Math.random(),y:Math.random(),r:rnd(
 const plants=[0.04,0.1,0.17,0.46,0.52,0.83,0.9,0.96].map((x,i)=>({x,h:rnd(70,120),w:rnd(10,18),c:i%2,ph:rnd(0,6)}));
 const stones=Array.from({length:26},()=>({x:Math.random(),y:Math.random(),r:rnd(2,5),c:rnd(0,1)}));
 
-function level(){ return Math.min(12,Math.floor((eaten+lost*2)/5)); }
-function setState(s){ state=s; document.body.dataset.state=s; }
+function level(){ return Math.min(12,Math.round((stage-1)*1.2)+Math.floor((stageEaten+lost*2)/5)); }
+function setState(s){ const was=state; state=s; document.body.dataset.state=s; if((was==='title')!==(s==='title'))resize(); }   // タイトルだけ水槽の枠の広さがちがう
 
 function resetGame(){
-  eaten=0; lost=0; dirt=0; dirtTarget=0; spawnT=1.4; newBest=false;
-  foods=[]; parts=[]; queue=[];
-  feeder.x=W/2; feeder.busy=false; feeder.shake=0;
-  Object.assign(P,{x:W*0.5,y:WATER+120,vx:0,vy:0,face:1,cd:0,sq:0,munch:0,ph:0,swim:0,near:false,stomach:0});
-  poops=[]; droppers=[]; shrimps=[]; dropT=9;
+  eaten=0; newBest=false; won=false; clearPending=false; trans=null; net=null; banner=null; parts=[];
+  startStage(1);
+  const mid=(TL+TR)/2, dep=H-WATER;
+  Object.assign(P,{x:mid,y:WATER+Math.min(120,dep*.5),vx:0,vy:0,face:1,cd:0,sq:0,munch:0,ph:0,swim:0,near:false,stomach:0});
   inp.edge=0;
   updateHud();
 }
+// 新しい水槽（ステージ n）で始める。にごり・おなか・エサは全部リセット
+function startStage(n){
+  stage=n; stageEaten=0; lost=0; dirt=0; dirtTarget=0; P.stomach=0;
+  foods=[]; poops=[]; shrimps=[]; queue=[]; droppers=[]; dropT=9; spawnT=1.8;
+  applyTank(tankFor(n));
+  feeder.x=(TL+TR)/2; feeder.busy=false; feeder.shake=0;
+  document.body.dataset.stage=n;
+  updateHud();
+}
 function updateHud(){
-  $('score').textContent=eaten; $('best').textContent=best;
+  $('stg').textContent=stage+'/'+STAGES; $('goal').textContent=Math.max(0,GOALS[stage-1]-stageEaten);
   [...$('lives').children].forEach((el,i)=>el.classList.toggle('off',i>=5-lost));
   const bp=$('bP'); bp.style.setProperty('--st',Math.min(100,P.stomach*100/FULL));
   bp.classList.toggle('off',P.stomach<=0); bp.classList.toggle('full',P.stomach>=FULL);
 }
 function startGame(){
-  initAudio(); resetGame(); setState('play');
-  $('title').hidden=true; $('over').hidden=true; $('pause').hidden=true;
+  initAudio(); setState('ready'); resetGame(); readyPending=false;
+  $('title').hidden=true; $('help').hidden=true; $('over').hidden=true; $('pause').hidden=true;
   $('hud').hidden=false; $('pauseBtn').hidden=false;
+  showReady();
+}
+// ステージのはじまり: 演出が終わったら「スタート」ボタンを出して、タップするまで始まらない
+function showReady(){
+  $('rTitle').textContent='ステージ '+stage;
+  $('rGoal').textContent='エサを '+GOALS[stage-1]+'こ たべよう！';
+  $('rNote').textContent=STAGE_NOTE[stage]||''; $('rNote').hidden=!STAGE_NOTE[stage];
+  $('ready').hidden=false;
+}
+// タイトルの背景: いちばん大きい水槽（ステージ5）で、ウパが自動でエサを追いかけて食べるデモ
+function setupDemo(){
+  startStage(5); spawnT=.6;
+  Object.assign(P,{x:(TL+TR)/2,y:WATER+110,vx:0,vy:0,stomach:0});
+}
+function startPlay(){
+  if(state!=='ready'||$('ready').hidden)return;
+  $('ready').hidden=true; setState('play'); spawnT=1.2; releaseInput();
 }
 function toTitle(){
-  setState('title'); resetGame();
-  $('title').hidden=false; $('over').hidden=true; $('pause').hidden=true;
+  setState('title'); resetGame(); readyPending=false; setupDemo();
+  $('help').hidden=true; $('title').hidden=false; $('over').hidden=true; $('pause').hidden=true; $('ready').hidden=true;
   $('hud').hidden=true; $('pauseBtn').hidden=true;
 }
 function pauseGame(){ if(state!=='play')return; setState('pause'); $('pause').hidden=false; releaseInput(); }
 function resumeGame(){ if(state!=='pause')return; setState('play'); $('pause').hidden=true; }
-function gameOver(){
-  setState('over'); overT=1.0; releaseInput(); sfx.over();
+function gameOver(win){
+  won=!!win; setState('over'); overT=1.0; releaseInput(); won?sfx.win():sfx.over();
   if(eaten>best){ best=eaten; newBest=true; try{localStorage.setItem('chibiupa_best',best)}catch(e){} }
   updateHud();
 }
@@ -275,6 +370,7 @@ bindPad('bS',()=>{inp.held=true;inp.heldT=0;inp.edge=.12},()=>inp.held=false);
 bindPad('bP',()=>doPoop(),()=>{});
 const keyMap={ArrowLeft:'l',KeyA:'l',ArrowRight:'r',KeyD:'r'};
 addEventListener('keydown',e=>{
+  if(state==='ready'){ if(e.code==='Enter'||e.code==='Space'){ startPlay(); e.preventDefault(); } return; }
   if(state!=='play')return;
   if(keyMap[e.code]){inp[keyMap[e.code]]=true;e.preventDefault();}
   if(['Space','ArrowUp','KeyW'].includes(e.code)){ if(!e.repeat){inp.edge=.12;inp.heldT=0;} inp.held=true; e.preventDefault(); }
@@ -286,6 +382,11 @@ addEventListener('keyup',e=>{
   if(['Space','ArrowUp','KeyW'].includes(e.code))inp.held=false;
 });
 $('startBtn').onclick=startGame;
+const showHelp=on=>{ $('help').hidden=!on; $('title').hidden=on; };   // 説明を開いている間は、タイトルのカードを隠す
+$('helpBtn').onclick=()=>showHelp(true);
+$('helpClose').onclick=()=>showHelp(false);
+$('help').addEventListener('click',e=>{ if(e.target.id==='help')showHelp(false); });
+$('goBtn').onclick=startPlay;
 $('retryBtn').onclick=startGame;
 $('over2Title').onclick=toTitle;
 $('pauseBtn').onclick=pauseGame;
@@ -319,12 +420,13 @@ function dropPellet(x){
 function scheduleDrop(){
   const lv=level();
   let n=1; if(lv>=3&&Math.random()<0.25+lv*0.03)n=2;
-  for(let i=0;i<n;i++)queue.push({x:rnd(50,W-50),sh:false});
+  for(let i=0;i<n;i++)queue.push({x:rnd(TL+40,TR-40),sh:false});
   const nsh=shrimps.length+queue.filter(q=>q.sh).length+(feeder.busy&&feeder.kind?1:0);
-  if(eaten>=2&&nsh<MAX_SHRIMP&&Math.random()<.2)queue[queue.length-1].sh=true;
+  if(stage>=2&&stageEaten>=2&&nsh<MAX_SHRIMP&&Math.random()<.2)queue[queue.length-1].sh=true;
   spawnT=Math.max(1.0,2.6-lv*0.13)*rnd(0.8,1.25);
 }
 function miss(f,n=1){
+  if(state==='title'){ for(let i=0;i<8;i++)parts.push({k:'puff',x:f.x+rnd(-8,8),y:f.y+rnd(-6,4),vx:rnd(-25,25),vy:-rnd(5,25),r:rnd(8,16),life:rnd(1,1.6),max:1.6}); return; }   // デモ中は見た目だけ（にごりも失敗もなし）
   lost+=n; dirtTarget=Math.min(1,lost/5); sfx.miss();
   for(let i=0;i<10*n;i++)parts.push({k:'puff',x:f.x+rnd(-8,8),y:f.y+rnd(-6,4),vx:rnd(-25,25),vy:-rnd(5,25),r:rnd(10,22),life:rnd(1.6,2.6),max:2.6});
   parts.push({k:'txt',x:f.x,y:f.y-10,vy:-24,life:1,s:n>1?'××':'×',c:'#9a5a22'});
@@ -335,14 +437,15 @@ function gainStomach(n){
   const before=P.stomach; P.stomach=Math.min(FULL,P.stomach+n);
   if(before<FULL&&P.stomach>=FULL){ parts.push({k:'txt',x:P.x,y:P.y-34,vy:-18,life:1.8,s:'おなかいっぱい…',c:'#c9863f',sm:1}); sfx.full(); }
 }
+function addProgress(n){ stageEaten+=n; if(stageEaten>=GOALS[stage-1]&&state==='play')clearPending=true; updateHud(); }
 function eatShrimp(s){
-  eaten+=3; P.munch=MUNCH; sfx.eat(); tone(1240,.12,'square',.05,1660,.14); gainStomach(2);
+  eaten+=3; addProgress(3); P.munch=MUNCH; sfx.eat(); tone(1240,.12,'square',.05,1660,.14); gainStomach(2);
   for(let i=0;i<9;i++){const a=rnd(0,6.28);parts.push({k:'spark',x:s.x,y:s.y,vx:Math.cos(a)*rnd(30,80),vy:Math.sin(a)*rnd(30,80),life:.6});}
   parts.push({k:'txt',x:s.x,y:s.y-14,vy:-34,life:1,s:'+3',c:'#ee7f98'});
   updateHud();
 }
 function eat(f){
-  eaten++; P.munch=MUNCH; sfx.eat();
+  eaten++; addProgress(1); P.munch=MUNCH; sfx.eat();
   gainStomach(1);
   for(let i=0;i<7;i++){const a=rnd(0,6.28);parts.push({k:'spark',x:f.x,y:f.y,vx:Math.cos(a)*rnd(30,70),vy:Math.sin(a)*rnd(30,70),life:.5});}
   parts.push({k:'txt',x:f.x,y:f.y-12,vy:-34,life:.8,s:'+1',c:'#ee7f98'});
@@ -352,18 +455,26 @@ function eat(f){
 function doPoop(){
   if(state!=='play'||P.stomach<=0)return;
   const was=isFull();
-  poops.push({x:clamp(P.x-P.face*18,18,W-18),y:P.y+14,base:clamp(P.x-P.face*18,18,W-18),state:'sink',sinkT:0,ph:rnd(0,6.28),amp:rnd(3,7),sv:rnd(30,38),timer:0});
+  poops.push({x:clamp(P.x-P.face*18,TL+18,TR-18),y:P.y+14,base:clamp(P.x-P.face*18,TL+18,TR-18),state:'sink',sinkT:0,ph:rnd(0,6.28),amp:rnd(3,7),sv:rnd(30,38),timer:0});
   P.stomach=0; P.sq=1; sfx.poop();
   parts.push({k:'txt',x:P.x,y:P.y-34,vy:-26,life:1.2,s:was?'すっきり！':'ぽとっ',c:'#c9863f',sm:1});
   updateHud();
 }
 function updatePlayer(dt,auto){
   let dir=(inp.r?1:0)-(inp.l?1:0);
-  if(auto){ dir=Math.sin(T*.5)>0?1:-1; if(P.y>H*.52&&P.cd<=0)stroke(.5,true); }
+  if(auto){
+    let tg=null, best=1e9;
+    for(const f of foods.concat(shrimps)){ if(f.state==='air')continue; const d=Math.abs(f.x-P.x)+Math.abs(f.y-P.y)*.6; if(d<best){best=d;tg=f;} }
+    if(tg){ const dx=tg.x-P.x; dir=Math.abs(dx)<8?0:Math.sign(dx); if(P.y+4>tg.y+10&&P.cd<=0)stroke(.3,true); }
+    else{ dir=Math.sin(T*.5)>0?1:-1; if(P.y>H*.52&&P.cd<=0)stroke(.5,true); }
+    if(state==='title')P.stomach=0;
+  }
   if(dir)P.face=dir;
   const slow=isFull();
   P.vx+=(dir*(slow?80:150)-P.vx)*Math.min(1,dt*(dir?4:2.2));
   P.vy=Math.min(P.vy+(slow?330:260)*dt,slow?115:85);
+  const fl=flowAt(P.x,P.y);   // ポンプの水流: 上へ流され、横の動きには抵抗がかかる
+  if(fl>0){ P.vy+=(-130*fl-P.vy)*Math.min(1,dt*8*fl); P.vx*=Math.max(0,1-2.4*fl*dt); }
   P.cd-=dt;
   if(!auto){
     if(inp.held)inp.heldT+=dt;
@@ -371,7 +482,7 @@ function updatePlayer(dt,auto){
     else if(inp.held&&inp.heldT>.25&&P.cd<=0)stroke(.3);
   }
   P.x+=P.vx*dt; P.y+=P.vy*dt;
-  P.x=clamp(P.x,30,W-30);
+  P.x=clamp(P.x,TL+30,TR-30);
   if(P.y<WATER+16){P.y=WATER+16;if(P.vy<0)P.vy=0;}
   if(P.y>FLOOR-14){P.y=FLOOR-14;P.vy=0;P.vx*=.92;}
   if(P.sq>0)P.sq=Math.max(0,P.sq-dt*3.2);
@@ -381,17 +492,19 @@ function updatePlayer(dt,auto){
   if(P.munch>0)P.munch-=dt;
 }
 
-const dropX=d=>d.side<0?44:W-44;
+const dropX=d=>d.side<0?TL+44:TR-44;
 function update(dt){
   T+=dt;
   const playing=state==='play';
   // ちびうぱ
   if(playing)updatePlayer(dt,false);
   else if(state==='over'){ updatePlayer(dt,false); }
+  else if(state==='trans'){ updateTrans(dt); }
   else updatePlayer(dt,true);
 
   // エサ出し
-  if(playing){
+  const demo=state==='title';
+  if(playing||demo){
     spawnT-=dt; if(spawnT<=0)scheduleDrop();
     if(!feeder.busy&&queue.length){const q=queue.shift();feeder.target=q.x;feeder.kind=q.sh;feeder.busy=true;feeder.shake=0;}
     if(feeder.busy){
@@ -412,14 +525,15 @@ function update(dt){
       f.x=f.base+Math.sin(T*2+f.ph)*3; f.y=WATER+1+Math.sin(T*3+f.ph);
       f.timer-=dt; if(f.timer<=0){f.state='sink';f.sinkT=0;}
     }else if(f.state==='sink'){
-      f.sinkT+=dt; f.y+=f.sv*dt;
-      f.x=clamp(f.base+Math.sin(f.sinkT*f.freq+f.ph)*f.amp*Math.min(1,f.sinkT*1.5),20,W-20);
+      f.sinkT+=dt; f.y=Math.max(WATER+1,f.y+(f.sv-155*flowAt(f.x,f.y))*dt);
+      f.x=clamp(f.base+Math.sin(f.sinkT*f.freq+f.ph)*f.amp*Math.min(1,f.sinkT*1.5),TL+20,TR-20);
       if(f.y>=FLOOR+3+f.jit){f.y=FLOOR+3+f.jit;f.state='rest';f.timer=f.rest;f.restMax=f.rest;}
     }else if(f.state==='rest'){
+      if(flowAt(f.x,f.y-14)>.4){ f.state='sink'; f.sinkT=0; f.base=f.x; f.y-=4; continue; }   // ポンプの水流にふき上げられる
       f.timer-=dt;
-      if(f.timer<=0&&playing){ foods.splice(i,1); miss(f); continue; }
+      if(f.timer<=0&&(playing||demo)){ foods.splice(i,1); miss(f); continue; }
     }
-    if(playing&&f.state!=='air'){
+    if((playing||demo)&&f.state!=='air'){
       const dx=f.x-P.x, dy=f.y-(P.y+4);
       const hit=f.state==='rest'?(Math.abs(dx)<32&&Math.abs(dy)<30):(dx*dx+dy*dy<27*27);
       if(hit){ foods.splice(i,1); eat(f); }
@@ -437,16 +551,20 @@ function update(dt){
       s.x=s.base+Math.sin(T*2+s.ph)*3; s.y=WATER+1+Math.sin(T*3+s.ph);
       s.timer-=dt; if(s.timer<=0){s.state='sink';s.sinkT=0;}
     }else if(s.state==='sink'){
-      s.sinkT+=dt; s.y+=s.sv*dt;
-      s.x=clamp(s.base+Math.sin(s.sinkT*s.freq+s.ph)*s.amp*Math.min(1,s.sinkT*1.5),20,W-20);
+      s.sinkT+=dt; s.y=Math.max(WATER+1,s.y+(s.sv-155*flowAt(s.x,s.y))*dt);
+      s.x=clamp(s.base+Math.sin(s.sinkT*s.freq+s.ph)*s.amp*Math.min(1,s.sinkT*1.5),TL+20,TR-20);
       if(s.y>=FLOOR+4){ s.y=FLOOR+4; s.state='walk'; s.wait=rnd(.3,.8); }
     }else{
       s.moving=false;
       if(s.eatT>0)s.eatT-=dt;
       else{
-        if(!s.tp||(foods.indexOf(s.tp)<0&&poops.indexOf(s.tp)<0)||s.tp.state!=='rest'){
+        // 底のうんちがあれば、エサより先にそちらへ向かう（エサをねらっていても、うんちが出たら乗りかえる）
+        const free=f=>f.state==='rest'&&!shrimps.some(o=>o!==s&&o.tp===f);
+        const hasPoop=poops.some(free);
+        const valid=s.tp&&(foods.indexOf(s.tp)>=0||poops.indexOf(s.tp)>=0)&&s.tp.state==='rest';
+        if(!valid||(hasPoop&&foods.indexOf(s.tp)>=0)){
           s.tp=null; let best=1e9;
-          for(const f of foods.concat(poops)) if(f.state==='rest'){ const d=Math.abs(f.x-s.x); if(d<best&&!shrimps.some(o=>o!==s&&o.tp===f)){best=d;s.tp=f;} }
+          for(const f of (hasPoop?poops:foods)) if(free(f)){ const d=Math.abs(f.x-s.x); if(d<best){best=d;s.tp=f;} }
         }
         if(s.tp){
           const dx=s.tp.x-s.x;
@@ -455,21 +573,21 @@ function update(dt){
             parts.push({k:'txt',x:s.x,y:s.y-16,vy:-20,life:1,s:'もぐもぐ',c:'#d9663a',sm:1});
           }else{ s.dir=Math.sign(dx); s.x+=s.dir*42*dt; s.moving=true; }
         }else{
-          s.wait-=dt; if(s.wait<=0){ s.wx=rnd(30,W-30); s.wait=rnd(2,4); }
+          s.wait-=dt; if(s.wait<=0){ s.wx=rnd(TL+30,TR-30); s.wait=rnd(2,4); }
           if(s.wx!==null&&Math.abs(s.wx-s.x)>4){ s.dir=Math.sign(s.wx-s.x); s.x+=s.dir*22*dt; s.moving=true; }
         }
       }
     }
-    if(playing&&s.state!=='air'){
+    if((playing||demo)&&s.state!=='air'){
       const dx=s.x-P.x, dy=s.y-(P.y+4);
       const hit=s.state==='walk'?(Math.abs(dx)<32&&Math.abs(dy)<30):(dx*dx+dy*dy<27*27);
       if(hit){ shrimps.splice(i,1); eatShrimp(s); }
       else if(dx*dx+dy*dy<80*80)near=true;
     }
   }
-  P.near=near&&playing;
+  P.near=near&&(playing||demo);
   // スポイト
-  if(playing&&!droppers.length){ dropT-=dt; if(dropT<=0){ droppers.push({side:Math.random()<.5?-1:1,y:WATER-8,tipY:WATER+(FLOOR-WATER)*rnd(.45,.62),st:'in',t:0}); } }
+  if(playing&&stage>=2&&!droppers.length){ dropT-=dt; if(dropT<=0){ droppers.push({side:Math.random()<.5?-1:1,y:WATER-8,tipY:WATER+(FLOOR-WATER)*rnd(.45,.62),st:'in',t:0}); } }
   for(let i=droppers.length-1;i>=0;i--){
     const d=droppers[i];
     if(d.st==='in'){ d.y+=140*dt; if(d.y>=d.tipY){d.y=d.tipY;d.st='stay';d.t=8.5;} }
@@ -480,7 +598,7 @@ function update(dt){
   for(let i=poops.length-1;i>=0;i--){
     const q=poops[i];
     if(q.state==='sink'){
-      q.sinkT+=dt; q.y+=q.sv*dt;
+      q.sinkT+=dt; q.y=Math.max(WATER+4,q.y+(q.sv-155*flowAt(q.x,q.y))*dt);
       const d=droppers.find(v=>v.st==='stay');
       if(d){
         const tx=dropX(d), dx=tx-q.x, dy=d.y-q.y, dist=Math.hypot(dx,dy);
@@ -492,9 +610,10 @@ function update(dt){
         }
         if(dist<58){ q.base+=dx/dist*90*dt; q.y+=dy/dist*60*dt; }
       }
-      q.x=clamp(q.base+Math.sin(q.sinkT*2+q.ph)*q.amp,14,W-14);
+      q.x=clamp(q.base+Math.sin(q.sinkT*2+q.ph)*q.amp,TL+14,TR-14);
       if(q.y>=FLOOR+4){ q.y=FLOOR+4; q.state='rest'; q.timer=POOP_REST; }
     }else if(q.state==='rest'){
+      if(flowAt(q.x,q.y-14)>.4){ q.state='sink'; q.sinkT=0; q.base=q.x; q.y-=4; continue; }
       q.timer-=dt;
       if(q.timer<=0&&playing){ poops.splice(i,1); miss(q,2); }
     }
@@ -506,50 +625,106 @@ function update(dt){
     if(p.k==='bub'){p.y+=p.vy*dt;p.x+=Math.sin(T*6+p.y)*.3;if(p.y<WATER)parts.splice(i,1);}
     else if(p.k==='spark'||p.k==='puff'){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.96;p.vy*=.96;}
     else if(p.k==='txt'){p.y+=p.vy*dt;}
+    else if(p.k==='drip'){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;}
   }
-  if(Math.random()<dt*(state==='title'?1.5:.8))parts.push({k:'bub',x:rnd(30,W-30),y:FLOOR,vy:-rnd(25,45),r:rnd(2,5),life:9});
+  if(state!=='trans')for(const px of PUMPS)if(Math.random()<dt*9)parts.push({k:'bub',x:px+rnd(-12,12),y:FLOOR-12,vy:-rnd(70,120),r:rnd(1.5,3.5),life:3});
+  if(Math.random()<dt*(state==='title'?1.5:.8))parts.push({k:'bub',x:rnd(TL+30,TR-30),y:FLOOR,vy:-rnd(25,45),r:rnd(2,5),life:9});
   // 水のよごれ
   dirt+=(dirtTarget-dirt)*Math.min(1,dt*.8);
   if(state==='over'&&overT>0){ overT-=dt; if(overT<=0){
-    $('oScore').textContent=eaten; $('oBest').textContent=(newBest?'ベスト こうしん！ ':'ベスト ')+best; $('over').hidden=false; } }
+    $('oTitle').textContent=won?'ぜんぶ クリア！':'みずが にごっちゃった…'; $('oStage').textContent=won?STAGES+'ステージを ぜんぶ クリアしたよ！':'ステージ '+stage+' で ゲームオーバー'; $('oScore').textContent=eaten; $('oBest').textContent=(newBest?'ベスト こうしん！ ':'ベスト ')+best; $('over').hidden=false; } }
+  if(clearPending){ clearPending=false; if(state==='play'){ stage>=STAGES?gameOver(true):startTrans(); } }
+  updateNet(dt);
+  if(state==='ready'&&readyPending&&!net){ readyPending=false; showReady(); }
+  if(banner){ banner.t+=dt; if(banner.t>=banner.max)banner=null; }
 }
 
 /* ===== 描画 ===== */
 const mix=(a,b,t)=>{ // 色の補間 [r,g,b]
   return `rgb(${Math.round(lerp(a[0],b[0],t))},${Math.round(lerp(a[1],b[1],t))},${Math.round(lerp(a[2],b[2],t))})`;
 };
-function draw(){
-  const c=ctx; c.setTransform(scale,0,0,scale,0,0);
-  c.clearRect(0,0,W,H);
-  const d=dirt;
-  // かべ（水面より上）
-  let g=c.createLinearGradient(0,0,0,WATER); g.addColorStop(0,'#fdf4e6'); g.addColorStop(1,'#f3e3cf');
-  c.fillStyle=g; c.fillRect(0,0,W,WATER);
+// ---- 水槽（ステージごとに大きさがちがう）----
+function drawRoom(){
+  const c=ctx, g=c.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#fdf4e6'); g.addColorStop(1,'#efd9bd');
+  c.fillStyle=g; c.fillRect(0,0,W,H);
+}
+function drawTankBack(tk,d,tx){
+  const c=ctx, {L,R,WT,w,depth}=tk, sc=depth/304;
+  c.save(); c.translate(tx,0);
+  c.beginPath(); c.rect(L,WT,w,H-WT); c.clip();
   // 水
-  g=c.createLinearGradient(0,WATER,0,H);
+  let g=c.createLinearGradient(0,WT,0,H);
   g.addColorStop(0,mix([158,232,242],[170,176,98],d)); g.addColorStop(1,mix([52,150,200],[84,84,44],d));
-  c.fillStyle=g; c.fillRect(0,WATER,W,H-WATER);
+  c.fillStyle=g; c.fillRect(L,WT,w,H-WT);
   // 光
   c.save(); c.globalAlpha=.16*(1-d*.8);
   for(let i=0;i<5;i++){
-    const x=(i+.5)*W/5+Math.sin(T*.4+i*1.7)*26;
-    c.fillStyle='#fff'; c.beginPath(); c.moveTo(x-18,WATER); c.lineTo(x+18,WATER); c.lineTo(x+60,FLOOR); c.lineTo(x-20,FLOOR); c.closePath(); c.fill();
+    const x=L+(i+.5)*w/5+Math.sin(T*.4+i*1.7)*26;
+    c.fillStyle='#fff'; c.beginPath(); c.moveTo(x-18,WT); c.lineTo(x+18,WT); c.lineTo(x+60,FLOOR); c.lineTo(x-20,FLOOR); c.closePath(); c.fill();
   }
   c.restore();
   // 水草
   for(const p of plants){
-    const x=p.x*W; c.strokeStyle=mix(p.c?[70,170,110]:[90,190,120],[110,100,50],d); c.lineWidth=p.w; c.lineCap='round';
+    const x=L+p.x*w, h=p.h*sc; c.strokeStyle=mix(p.c?[70,170,110]:[90,190,120],[110,100,50],d); c.lineWidth=p.w*(.8+.2*sc); c.lineCap='round';
     c.beginPath(); c.moveTo(x,FLOOR+4);
-    c.quadraticCurveTo(x+Math.sin(T*.9+p.ph)*16,FLOOR-p.h*.55,x+Math.sin(T*.9+p.ph+1)*22,FLOOR-p.h); c.stroke();
+    c.quadraticCurveTo(x+Math.sin(T*.9+p.ph)*16,FLOOR-h*.55,x+Math.sin(T*.9+p.ph+1)*22,FLOOR-h); c.stroke();
   }
   // すな
   g=c.createLinearGradient(0,FLOOR,0,H); g.addColorStop(0,mix([240,222,170],[150,130,80],d)); g.addColorStop(1,mix([222,198,140],[120,104,64],d));
-  c.fillStyle=g; c.beginPath(); c.moveTo(0,FLOOR+6);
-  for(let x=0;x<=W;x+=20)c.lineTo(x,FLOOR+3+Math.sin(x*.03)*3);
-  c.lineTo(W,H); c.lineTo(0,H); c.closePath(); c.fill();
-  for(const s of stones){ c.fillStyle=s.c>.5?'rgba(180,150,110,.6)':'rgba(255,255,255,.5)'; c.beginPath(); c.arc(s.x*W,FLOOR+10+s.y*(H-FLOOR-14),s.r,0,6.28); c.fill(); }
+  c.fillStyle=g; c.beginPath(); c.moveTo(L,FLOOR+6);
+  for(let x=L;x<=R+20;x+=20)c.lineTo(x,FLOOR+3+Math.sin(x*.03)*3);
+  c.lineTo(R,H); c.lineTo(L,H); c.closePath(); c.fill();
+  for(const s of stones){ c.fillStyle=s.c>.5?'rgba(180,150,110,.6)':'rgba(255,255,255,.5)'; c.beginPath(); c.arc(L+s.x*w,FLOOR+10+s.y*(H-FLOOR-14),s.r,0,6.28); c.fill(); }
+  for(const px of tk.pumps)drawPump(px,WT,d);
   // にごり（水全体）
-  if(d>0.005){ c.fillStyle=`rgba(96,84,28,${.5*d})`; c.fillRect(0,WATER,W,H-WATER); }
+  if(d>0.005){ c.fillStyle=`rgba(96,84,28,${.5*d})`; c.fillRect(L,WT,w,H-WT); }
+  c.restore();
+}
+function drawPump(px,WT,d){
+  const c=ctx, hw=PUMP_HW;
+  // 水流（上へ流れるすじ）
+  const g=c.createLinearGradient(0,WT,0,FLOOR); g.addColorStop(0,'rgba(255,255,255,0)'); g.addColorStop(1,'rgba(255,255,255,.14)');
+  c.fillStyle=g; c.fillRect(px-hw,WT,hw*2,FLOOR-WT);
+  c.save(); c.lineCap='round'; c.lineWidth=2.2; c.strokeStyle=`rgba(255,255,255,${.34*(1-d*.5)})`; c.setLineDash([10,18]);
+  for(let i=-2;i<=2;i++){ c.lineDashOffset=T*75+i*9; const x=px+i*hw*.36+Math.sin(T*2+i)*2;
+    c.beginPath(); c.moveTo(x,WT+2); c.lineTo(x,FLOOR-16); c.stroke(); }
+  c.restore();
+  // ポンプ本体
+  c.lineJoin='round'; c.lineWidth=2.2; c.strokeStyle='#34444f';
+  c.fillStyle='#8da0ad'; c.beginPath(); c.moveTo(px-10,FLOOR-4); c.lineTo(px-7,FLOOR-15); c.lineTo(px+7,FLOOR-15); c.lineTo(px+10,FLOOR-4); c.closePath(); c.fill(); c.stroke();
+  c.fillStyle='#6f8391'; c.beginPath(); c.roundRect(px-17,FLOOR-6,34,19,5); c.fill(); c.stroke();
+  c.strokeStyle='#34444f'; c.lineWidth=1.4; for(let i=-2;i<=2;i++){ c.beginPath(); c.moveTo(px+i*5,FLOOR-1); c.lineTo(px+i*5,FLOOR+9); c.stroke(); }
+  c.fillStyle=Math.sin(T*6)>0?'#7fe08a':'#3f8f4a'; c.beginPath(); c.arc(px+12,FLOOR-1,1.8,0,6.283); c.fill();
+}
+function drawTankFront(tk,d,tx){
+  const c=ctx, {L,R,WT,w}=tk;
+  c.save(); c.translate(tx,0);
+  // にごりの粒
+  if(d>0){
+    c.save(); c.beginPath(); c.rect(L,WT,w,H-WT); c.clip();
+    for(let i=0;i<specks.length;i++){ if(i/specks.length>d)break; const s=specks[i];
+      const x=L+((s.x*w+Math.sin(T*.5+s.ph)*14+T*s.sp)%w+w)%w, y=WT+10+((s.y*(H-WT-20)+Math.sin(T*.7+s.ph)*10)%(H-WT-20));
+      c.fillStyle='rgba(80,66,24,.45)'; c.beginPath(); c.arc(x,y,s.r,0,6.28); c.fill(); }
+    c.restore();
+  }
+  // 水面
+  c.strokeStyle='rgba(255,255,255,.85)'; c.lineWidth=3; c.beginPath();
+  for(let x=L;x<=R;x+=8){ const y=WT+Math.sin(x*.05+T*2)*1.6; x===L?c.moveTo(x,y):c.lineTo(x,y); } c.stroke();
+  // ガラスのふち
+  c.fillStyle='#dbe8ee'; c.fillRect(L-4,WT-9,w+8,6); c.fillStyle='#fff'; c.fillRect(L-4,WT-9,w+8,2);
+  c.fillStyle='rgba(255,255,255,.18)'; c.fillRect(L,WT,5,H-WT); c.fillRect(R-5,WT,5,H-WT);
+  c.fillStyle='#cfe0e8'; c.fillRect(L-4,WT-9,4,H-WT+9); c.fillRect(R,WT-9,4,H-WT+9);
+  c.restore();
+}
+function draw(){
+  const c=ctx; c.setTransform(scale,0,0,scale,0,0);
+  c.clearRect(0,0,W,H);
+  drawRoom();
+  const tr=trans, two=tr&&tr.showTanks;
+  const cur=tankFor(stage), nxt=tr?tankFor(tr.to):null;
+  if(two){ drawTankBack(tankFor(tr.from),tr.oldDirt,tr.oldX); drawTankBack(nxt,0,tr.newX); }
+  else drawTankBack(cur,tr?tr.oldDirt:dirt,0);
 
   // エサ
   for(const f of foods)drawFood(f);
@@ -562,24 +737,106 @@ function draw(){
     if(p.k==='bub'){ c.strokeStyle='rgba(255,255,255,.8)'; c.fillStyle='rgba(255,255,255,.25)'; c.lineWidth=1.4;
       c.beginPath(); c.arc(p.x,p.y,p.r,0,6.28); c.fill(); c.stroke(); }
     else if(p.k==='spark'){ c.fillStyle=`rgba(255,240,150,${p.life*2})`; c.beginPath(); c.arc(p.x,p.y,3,0,6.28); c.fill(); }
+    else if(p.k==='drip'){ c.fillStyle=`rgba(190,235,250,${Math.min(1,p.life*2)})`; c.beginPath(); c.arc(p.x,p.y,2.2,0,6.28); c.fill(); }
     else if(p.k==='puff'){ const a=Math.min(1,p.life/p.max*1.3)*.4; c.fillStyle=`rgba(92,76,30,${a})`; c.beginPath(); c.arc(p.x,p.y,p.r,0,6.28); c.fill(); }
     else if(p.k==='rip'){ const r=(1-p.life/.7)*18; c.strokeStyle=`rgba(255,255,255,${p.life})`; c.lineWidth=1.5;
       c.beginPath(); c.ellipse(p.x,p.y,r+3,(r+3)*.3,0,0,6.28); c.stroke(); }
     else if(p.k==='txt'){ c.font=(p.sm?'800 14px':'800 20px')+' "Mochiy Pop One","M PLUS Rounded 1c",sans-serif'; c.textAlign='center'; c.lineWidth=4; c.strokeStyle='#fff'; c.fillStyle=p.c;
       c.globalAlpha=Math.min(1,p.life*2); c.strokeText(p.s,p.x,p.y); c.fillText(p.s,p.x,p.y); c.globalAlpha=1; }
   }
-  // にごりの粒
-  if(d>0){ for(let i=0;i<specks.length;i++){ if(i/specks.length>d)break; const s=specks[i];
-    const x=((s.x*W+Math.sin(T*.5+s.ph)*14+T*s.sp)%W+W)%W, y=WATER+10+((s.y*(H-WATER-20)+Math.sin(T*.7+s.ph)*10)%(H-WATER-20));
-    c.fillStyle='rgba(80,66,24,.45)'; c.beginPath(); c.arc(x,y,s.r,0,6.28); c.fill(); } }
-  // 水面
-  c.strokeStyle='rgba(255,255,255,.85)'; c.lineWidth=3; c.beginPath();
-  for(let x=0;x<=W;x+=8){ const y=WATER+Math.sin(x*.05+T*2)*1.6; x?c.lineTo(x,y):c.moveTo(x,y); } c.stroke();
-  // ガラスのふち
-  c.fillStyle='#dbe8ee'; c.fillRect(0,WATER-9,W,6); c.fillStyle='#fff'; c.fillRect(0,WATER-9,W,2);
-  c.fillStyle='rgba(255,255,255,.18)'; c.fillRect(0,WATER,5,H-WATER); c.fillRect(W-5,WATER,5,H-WATER);
-  drawFeeder();
+  if(two){ drawTankFront(tankFor(tr.from),tr.oldDirt,tr.oldX); drawTankFront(nxt,0,tr.newX); }
+  else drawTankFront(cur,tr?tr.oldDirt:dirt,0);
+  if(state!=='trans')drawFeeder();
   for(const d of droppers)drawDropper(d);
+  if(net)drawNet(net);
+  drawBanner();
+}
+function drawBanner(){
+  if(!banner)return;
+  const c=ctx, a=clamp(Math.min(banner.t*4,(banner.max-banner.t)*3),0,1), y=H*.3+(1-a)*10;
+  c.save(); c.globalAlpha=a; c.textAlign='center'; c.lineJoin='round';
+  c.font='34px "Mochiy Pop One","M PLUS Rounded 1c",sans-serif'; c.lineWidth=8; c.strokeStyle='#fff'; c.strokeText(banner.text,W/2,y);
+  c.fillStyle='#ee7f98'; c.fillText(banner.text,W/2,y);
+  if(banner.sub){ c.font='800 16px "M PLUS Rounded 1c",sans-serif'; c.lineWidth=5; c.strokeStyle='#fff'; c.strokeText(banner.sub,W/2,y+28);
+    c.fillStyle='#8a6c79'; c.fillText(banner.sub,W/2,y+28); }
+  c.restore();
+}
+// 網（先の輪の中心が n.x,n.y。柄は右上へのびて画面の外へ）
+function drawNet(n){
+  const c=ctx; c.save(); c.translate(n.x,n.y); c.rotate(n.rot||0);
+  c.lineCap='round'; c.lineJoin='round';
+  c.strokeStyle='#6b4a30'; c.lineWidth=8; c.beginPath(); c.moveTo(34,-4); c.lineTo(150,-330); c.stroke();
+  c.strokeStyle='#b98a5c'; c.lineWidth=5; c.beginPath(); c.moveTo(34,-4); c.lineTo(150,-330); c.stroke();
+  // あみ（ふくろ）
+  c.beginPath(); c.moveTo(-38,0); c.bezierCurveTo(-38,56,38,56,38,0); c.closePath();
+  c.fillStyle='rgba(255,255,255,.22)'; c.fill();
+  c.save(); c.clip(); c.strokeStyle='rgba(255,255,255,.65)'; c.lineWidth=1;
+  for(let i=-60;i<=60;i+=9){ c.beginPath(); c.moveTo(i,-4); c.lineTo(i+30,56); c.moveTo(i,-4); c.lineTo(i-30,56); c.stroke(); }
+  c.restore();
+  c.strokeStyle='rgba(255,255,255,.85)'; c.lineWidth=1.6; c.beginPath(); c.moveTo(-38,0); c.bezierCurveTo(-38,56,38,56,38,0); c.stroke();
+  // わっか
+  c.strokeStyle='#d9d2c4'; c.lineWidth=4.5; c.beginPath(); c.ellipse(0,0,38,10,0,0,6.283); c.stroke();
+  c.strokeStyle='#8f897d'; c.lineWidth=1.4; c.beginPath(); c.ellipse(0,0,38,10,0,0,6.283); c.stroke();
+  c.restore();
+}
+// ---- ステージクリアの演出 ----
+const easeIO=u=>u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
+function splash(x,y){
+  parts.push({k:'rip',x,y,life:.7});
+  for(let i=0;i<9;i++)parts.push({k:'drip',x:x+rnd(-18,18),y,vx:rnd(-30,30),vy:-rnd(80,170),life:1});
+  sfx.splash();
+}
+function startTrans(){
+  sfx.clear();
+  for(const o of foods.concat(poops,shrimps))for(let i=0;i<4;i++){const a=rnd(0,6.28);parts.push({k:'spark',x:o.x,y:o.y,vx:Math.cos(a)*50,vy:Math.sin(a)*50,life:.5});}
+  foods=[]; poops=[]; shrimps=[]; queue=[]; droppers=[]; feeder.busy=false;
+  releaseInput(); setState('trans');
+  trans={ph:'clear',t:0,from:stage,to:stage+1,oldX:0,newX:W,showTanks:false,oldDirt:dirt,x0:0,y0:0};
+  net={x:P.x,y:-80,rot:0,carry:false,rising:false};
+  banner={text:'ステージ クリア！',sub:stage+' / '+STAGES,t:0,max:1.8};
+}
+function updateTrans(dt){
+  const tr=trans, oldTk=tankFor(tr.from), newTk=tankFor(tr.to);
+  tr.t+=dt;
+  P.ph+=dt*(net.carry?16:5);
+  if(net.carry){ P.swim=1; P.vx=P.vy=0; }
+  else{ P.vx*=.92; P.vy*=.92; P.x+=P.vx*dt; P.y+=P.vy*dt; P.swim+=(0-P.swim)*Math.min(1,dt*4); }
+  const carry=()=>{ P.x=net.x; P.y=net.y+18; };
+  if(tr.ph==='clear'){
+    net.x=P.x;
+    if(tr.t>=1){ tr.ph='scoop'; tr.t=0; tr.y0=net.y; sfx.net(); }
+  }else if(tr.ph==='scoop'){
+    const u=Math.min(1,tr.t/1.1), prev=net.y; net.x=P.x; net.y=lerp(tr.y0,P.y-18,easeIO(u));
+    if(prev<oldTk.WT&&net.y>=oldTk.WT)splash(net.x,oldTk.WT);
+    if(u>=1){ net.carry=true; tr.ph='lift'; tr.t=0; tr.y0=net.y; sfx.scoop(); }
+  }else if(tr.ph==='lift'){
+    const u=Math.min(1,tr.t/1.0), prev=net.y; net.y=lerp(tr.y0,oldTk.WT-70,easeIO(u)); carry();
+    if(prev>=oldTk.WT&&net.y<oldTk.WT)splash(net.x,oldTk.WT);
+    if(net.y<oldTk.WT+40&&Math.random()<dt*25)parts.push({k:'drip',x:net.x+rnd(-24,24),y:net.y+34,vx:rnd(-10,10),vy:20,life:1});
+    if(u>=1){ tr.ph='slide'; tr.t=0; tr.x0=net.x; tr.y0=net.y; tr.showTanks=true; sfx.slide(); }
+  }else if(tr.ph==='slide'){
+    const u=Math.min(1,tr.t/1.7), e=easeIO(u);
+    tr.oldX=-W*e; tr.newX=W*(1-e);
+    net.x=lerp(tr.x0,W/2,e); net.y=lerp(tr.y0,newTk.WT-70,e); net.rot=Math.sin(u*9)*.05*(1-u); carry();
+    if(Math.random()<dt*12)parts.push({k:'drip',x:net.x+rnd(-24,24),y:net.y+34,vx:rnd(-10,10),vy:20,life:1});
+    if(u>=1){ tr.ph='lower'; tr.t=0; tr.y0=net.y; net.rot=0; }
+  }else if(tr.ph==='lower'){
+    const u=Math.min(1,tr.t/.9), prev=net.y; net.y=lerp(tr.y0,newTk.WT+34,easeIO(u)); carry();
+    if(prev<newTk.WT&&net.y>=newTk.WT)splash(net.x,newTk.WT);
+    if(u>=1)tr.ph='release';
+  }else{ // release: 新しい水槽でスタート。網はそのまま上へ引きあげる
+    const to=tr.to, x=net.x, y=net.y+18;
+    startStage(to);
+    P.x=x; P.y=y; P.vx=0; P.vy=50; P.sq=1;
+    net.carry=false; net.rising=true;
+    for(let i=0;i<8;i++)parts.push({k:'bub',x:x+rnd(-20,20),y:y+rnd(-10,10),vy:-rnd(30,70),r:rnd(2,4),life:1.4});
+    trans=null; setState('ready'); readyPending=true; banner=null;
+  }
+}
+function updateNet(dt){
+  if(!net||!net.rising)return;
+  net.y-=150*dt; net.rot+=(-.35-net.rot)*Math.min(1,dt*3);
+  if(net.y<-90)net=null;
 }
 function drawFood(f){
   const c=ctx;
@@ -746,8 +1003,8 @@ function loop(now){
   draw();
   requestAnimationFrame(loop);
 }
-resetGame(); requestAnimationFrame(loop);
-window.__game={P,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
+resetGame(); setupDemo(); requestAnimationFrame(loop);
+window.__game={P,setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
 </script>
 </body>
 </html>
