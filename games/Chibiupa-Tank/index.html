@@ -102,6 +102,19 @@ body[data-stage="1"] #bP{display:none!important}
 #title #startBtn,#title #tokoBtn{width:clamp(120px,24vw,170px);font-size:17px;padding:9px 10px}
 #title #rankBtn,#title #helpBtn{width:clamp(100px,19vw,130px);font-size:13px;padding:6px 8px}
 .btn.toko{background:#f2a23a;box-shadow:0 4px 0 #c7791c}
+.btn.share{background:#3d8ee0;box-shadow:0 4px 0 #2a6bb0}
+.btn.share:active{box-shadow:0 1px 0 #2a6bb0}
+a.btn{text-decoration:none;text-align:center;box-sizing:border-box}
+#over .card>.btn.share{margin-top:8px;font-size:12px;padding:6px 8px}
+#shareModal .card{background:rgba(255,248,240,.82)}
+#shareModal h2{font-size:16px;margin:0 0 4px}
+#shareModal p{font-size:10px;margin:3px 0;color:#6b4a58;font-weight:800;text-shadow:0 0 5px #fff}
+#shareModal p.stext{font-weight:500;color:#5b4a52;background:rgba(255,255,255,.55);border-radius:8px;padding:4px 6px;text-align:left;word-break:break-all}
+#shareModal .btn{font-size:11.5px;padding:6px 8px;margin-top:6px}
+#shareModal .btns{gap:6px}
+/* 長押しで保存できるように、この画像だけは長押しメニュー・選択を許す */
+#shareImg{display:block;width:100%;max-height:44vh;object-fit:contain;border-radius:8px;background:#0e4660;
+  -webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto;pointer-events:auto}
 .padfocus{outline:3px solid #ffd84a;outline-offset:3px;filter:brightness(1.08);transform:scale(1.06);animation:padf .6s ease-in-out infinite alternate}
 @keyframes padf{to{outline-color:#fff6c2}}
 .btn.toko:active{box-shadow:0 1px 0 #c7791c}
@@ -113,7 +126,7 @@ body[data-stage="1"] #bP{display:none!important}
 #ready .btn,#over .btn,#pause .btn,#help .btn{font-size:12.5px;padding:6px 10px;margin-top:6px}
 #over .btn,#pause .btn{opacity:.92}
 #over .btn,#pause .btn,#ready .btn,#over .card h2,#pause .card h2,#ready .card h2{white-space:nowrap}
-#pause .btns .btn,#over .btns .btn,#rank .tabs .btn{padding:6px 8px;font-size:11.5px}
+#pause .btns .btn,#over .btns .btn,#rank .tabs .btn,#shareModal .btns .btn{padding:6px 8px;font-size:11.5px}
 .card h1{font-family:var(--display);font-weight:400;margin:2px 0 0;font-size:clamp(24px,7vh,34px);line-height:1.15;color:var(--pink);
   text-shadow:2px 2px 0 #fff,4px 4px 0 var(--line)}
 .card h2{font-family:var(--display);font-weight:400;margin:2px 0 4px;font-size:26px;color:var(--pink);text-shadow:2px 2px 0 #fff,3px 3px 0 var(--line)}
@@ -203,6 +216,21 @@ body[data-stage="1"] #bP{display:none!important}
   </div>
 </div>
 
+<!-- シェアの代わり（共有シートが使えない環境）: 画像を見せて「長押しで保存」、Xの投稿画面を別タブで開く -->
+<div id="shareModal" class="overlay menu light" hidden>
+  <div class="card" style="max-width:min(420px,100%)">
+    <h2>けっかを シェア</h2>
+    <img id="shareImg" alt="けっか画像" draggable="false">
+    <p>画像を<b>長押し</b>して保存して、Xなどに はってね</p>
+    <p id="shareText" class="stext"></p>
+    <div class="btns">
+      <a class="btn share" id="shareX" target="_blank" rel="noopener noreferrer">Xで投稿</a>
+      <a class="btn sub" id="shareDl" download="chibiupa-result.png">画像を保存</a>
+      <button class="btn sub" id="shareClose">とじる</button>
+    </div>
+  </div>
+</div>
+
 <div id="pause" class="overlay menu light" hidden>
   <div class="card" style="min-width:210px">
     <h2>ポーズ</h2>
@@ -228,6 +256,7 @@ body[data-stage="1"] #bP{display:none!important}
       <button class="btn sub" id="overRank">ランキング</button>
       <button class="btn sub" id="over2Title">タイトルへ</button>
     </div>
+    <button class="btn share" id="shareBtn">📤 けっかを シェア</button>
   </div>
 </div>
 
@@ -242,7 +271,7 @@ let lastTouchEnd=0;
 document.addEventListener('touchend',e=>{ const t=Date.now(); if(t-lastTouchEnd<350&&!e.target.closest(KEEP))e.preventDefault(); lastTouchEnd=t; },{passive:false});
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 ['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
-document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('contextmenu',e=>{ if(e.target.id!=='shareImg')e.preventDefault(); });   // シェア画像だけは長押し保存を許す
 document.addEventListener('touchmove',e=>{ if(!e.target.closest('.card'))e.preventDefault(); },{passive:false});
 
 /* ===== 基本 ===== */
@@ -440,10 +469,117 @@ function showOver(){
   const r=$('oRank'); r.hidden=!pos; r.classList.toggle('first',pos===1);
   if(pos){ r.textContent=pos===1?'🏆 1位！ しんきろく！':'ランクイン！ '+pos+'位'; r.style.animation='none'; void r.offsetWidth; r.style.animation=''; sfx.rank(pos); confetti(pos===1?130:70); }
   $('over').hidden=false;
+  prepareShareImage();
 }
 function confetti(n){
   const cols=['#ee7f98','#f2a23a','#ffd84a','#6cc4e0','#8fd18a','#c59af0'];
   for(let i=0;i<n;i++)parts.push({k:'conf',x:rnd(0,W),y:rnd(-60,-4),vx:rnd(-30,30),vy:rnd(40,120),rot:rnd(0,6.28),vr:rnd(-6,6),c:cols[i%cols.length],w:rnd(5,9),h:rnd(3,6),ph:rnd(0,6.28),life:rnd(3,5)});
+}
+/* =====================================================================
+   シェア機能（ゲーム画面の画像 + スコア + ハッシュタグを、まとめて SNS へ）
+   1) Web Share API Level 2（navigator.canShare({files}) → navigator.share({files,text,url})）
+   2) 使えない環境（PC・LINE/Xなどのアプリ内ブラウザ）: 画像をモーダルに出して「長押しで保存」＋
+      X の投稿画面（intent/tweet）を別タブで開く。共有シートのキャンセル（AbortError）は何も出さない。
+   画像: 対象は <canvas id="cv">（素の Canvas 2D）。裏の Canvas にゲーム画面をコピーして、タイトル・SCORE を合成して PNG にする。
+   WebGL（Three.js / PixiJS など）で同じことをするときの注意は、captureGameCanvas の中のコメントを参照。
+   ===================================================================== */
+const SHARE={   // ← ゲームごとに変えるのはここだけ
+  title:'ちびうぱのエサキャッチ！',
+  hashtags:['ちびうぱのエサキャッチ','ブラウザゲーム'],                 // # は付けない
+  template:'{title}（{mode}）で{score}{unit}を獲得しました！{extra}',      // {tags} は共有テキストの最後に自動で付く
+  scoreUnit:'点',
+  fileName:'chibiupa-result.png',
+  gameUrl:()=>window.location.href,
+  imgW:1200, imgH:630,                                                  // X のカードで見やすい 1.91:1
+  bg:'#0e4660'
+};
+let shareBlob=null, shareMeta=null;
+const shareTags=()=>SHARE.hashtags.map(t=>'#'+t).join(' ');
+function shareInfo(){   // いまのゲームの結果
+  const tk=mode==='toko', pos=lastRank&&lastRank.pos||0;
+  const modeName=tk?'とことん':'ステージ';
+  const extra=(tk?'':(won?' 全ステージクリア！':' ステージ'+stage+'まで'))+(pos?' '+pos+'位にランクイン！':'');
+  const text=SHARE.template.replace('{title}',SHARE.title).replace('{mode}',modeName).replace('{score}',eaten).replace('{unit}',SHARE.scoreUnit).replace('{extra}',extra).trim();
+  return {text,modeName,score:eaten,sub:(tk?'':(won?'ぜんぶクリア！':'ステージ '+stage+' まで'))+(pos?(tk?'':'　')+pos+'位':''),url:SHARE.gameUrl()};
+}
+// ゲーム画面をコピーする。Canvas 2D は描いた内容が残るのでそのまま drawImage できる（直前に draw() して最新にする）。
+// WebGL の場合: ① getContext('webgl',{preserveDrawingBuffer:true}) で作る（描画の直後にバッファが消えて真っ黒になるのを防ぐ）、
+//   ② できなければ「レンダリング直後の同じタスクの中」（renderer.render(...) の次の行）で drawImage / toBlob する（rAF の中で）、
+//   ③ Three.js は renderer.render(scene,camera); のすぐあとに renderer.domElement を使う。Unity は 'preserveDrawingBuffer' ビルド設定か
+//   Module.canvas を使い、レンダリングのコールバック内で取る。
+function captureGameCanvas(){ try{ draw(); }catch(e){} return cv; }
+async function composeResultImage(){
+  const info=shareInfo(), W2=SHARE.imgW, H2=SHARE.imgH;
+  if(document.fonts&&document.fonts.load){ try{ await document.fonts.load('40px "Mochiy Pop One"'); }catch(e){} }
+  const src=captureGameCanvas(), c=document.createElement('canvas'); c.width=W2; c.height=H2;
+  const g=c.getContext('2d');
+  g.fillStyle=SHARE.bg; g.fillRect(0,0,W2,H2);
+  // ゲーム画面を、縦横比そのままで中央にいっぱいに置く
+  const k=Math.min(W2/src.width,H2/src.height), dw=src.width*k, dh=src.height*k, dx=(W2-dw)/2, dy=(H2-dh)/2;
+  g.drawImage(src,dx,dy,dw,dh);
+  // 下の帯（SCORE）
+  const bh=170, gr=g.createLinearGradient(0,H2-bh,0,H2); gr.addColorStop(0,'rgba(8,40,60,0)'); gr.addColorStop(.35,'rgba(8,40,60,.78)'); gr.addColorStop(1,'rgba(8,40,60,.92)');
+  g.fillStyle=gr; g.fillRect(0,H2-bh,W2,bh);
+  const font='"Mochiy Pop One","M PLUS Rounded 1c",sans-serif';
+  g.textBaseline='alphabetic'; g.lineJoin='round';
+  g.textAlign='left'; g.font='28px '+font; g.fillStyle='#ffd84a'; g.fillText('SCORE',44,H2-112);
+  g.font='96px '+font; g.lineWidth=10; g.strokeStyle='#7a2a45'; g.strokeText(String(info.score),40,H2-28); g.fillStyle='#fff'; g.fillText(String(info.score),40,H2-28);
+  const sw=g.measureText(String(info.score)).width;
+  g.font='34px '+font; g.fillStyle='#fff'; g.fillText(SHARE.scoreUnit,40+sw+14,H2-28);
+  g.textAlign='right'; g.font='34px '+font; g.fillStyle='#fff'; g.fillText(info.modeName,W2-40,H2-96);
+  g.font='28px '+font; g.fillStyle='#ffd1de'; g.fillText(info.sub,W2-40,H2-52);
+  // 上のタイトル（ロゴ画像が読めていればロゴ、なければ文字）
+  const logo=document.querySelector('#title .logo');
+  if(logo&&logo.complete&&logo.naturalWidth){ const lw=360, lh=lw*logo.naturalHeight/logo.naturalWidth; g.drawImage(logo,20,14,lw,lh); }
+  else{ g.textAlign='left'; g.font='40px '+font; g.lineWidth=8; g.strokeStyle='#fff'; g.strokeText(SHARE.title,28,60); g.fillStyle='#ee7f98'; g.fillText(SHARE.title,28,60); }
+  return c;
+}
+const canvasToBlob=c=>new Promise((ok,ng)=>c.toBlob(b=>b?ok(b):ng(new Error('toBlob failed')),'image/png'));
+async function prepareShareImage(){   // 結果画面が出たときに先に作っておく（押した瞬間に共有シートを開けるように）
+  shareBlob=null;
+  try{ shareBlob=await canvasToBlob(await composeResultImage()); shareMeta=shareInfo(); }catch(e){ shareBlob=null; }
+}
+// ファイル共有に対応しているか（同期で調べる。ダミーの File を渡す）
+function canShareFiles(){
+  try{ return !!(navigator.share&&navigator.canShare&&navigator.canShare({files:[new File([''],'a.png',{type:'image/png'})]})); }catch(e){ return false; }
+}
+function xIntentUrl(info){
+  const q=new URLSearchParams({text:info.text,hashtags:SHARE.hashtags.join(','),url:info.url});
+  return 'https://twitter.com/intent/tweet?'+q.toString();
+}
+let shareObjUrl=null;
+function showShareModal(blob,info){
+  if(shareObjUrl)URL.revokeObjectURL(shareObjUrl);
+  shareObjUrl=URL.createObjectURL(blob);
+  $('shareImg').src=shareObjUrl; $('shareDl').href=shareObjUrl;
+  $('shareText').textContent=info.text+' '+shareTags()+' '+info.url;
+  $('shareX').href=xIntentUrl(info);
+  $('shareModal').hidden=false; $('over').hidden=true;
+}
+function closeShareModal(){ $('shareModal').hidden=true; if(state==='over')$('over').hidden=false; }
+let sharing=false;
+async function shareResult(){
+  if(sharing)return; sharing=true;
+  try{
+    const info=shareMeta||shareInfo(), text=info.text+' '+shareTags();
+    const files=canShareFiles();
+    // ① ファイル共有に非対応なら、まず（ボタンを押した直後の同じ処理の中で）X の投稿画面を別タブで開く。あとからだとポップアップブロックされる
+    if(!files){ try{ window.open(xIntentUrl(info),'_blank','noopener'); }catch(e){} }
+    let blob=shareBlob; if(!blob){ blob=await canvasToBlob(await composeResultImage()); }
+    if(files){
+      const file=new File([blob],SHARE.fileName,{type:'image/png'});
+      if(navigator.canShare({files:[file]})){
+        try{ await navigator.share({files:[file],text,url:info.url}); }
+        catch(e){
+          if(e&&e.name==='AbortError')return;              // 共有シートをキャンセル: 何も出さない
+          showShareModal(blob,info); try{ window.open(xIntentUrl(info),'_blank','noopener'); }catch(_){}   // それ以外の失敗は代替処理へ
+        }
+        return;
+      }
+    }
+    showShareModal(blob,info);                                // ② 代替: 画像を出して長押し保存
+  }catch(e){ /* 画像が作れなかったときも、エラーは出さない */ }
+  finally{ sharing=false; }
 }
 /* ----- ランキング画面 ----- */
 let rankMode='stage', rankFrom='title';
@@ -512,6 +648,9 @@ $('tokoBtn').onclick=()=>startGame('toko');
 $('rankBtn').onclick=()=>showRank('title','stage');
 $('overRank').onclick=()=>showRank('over',mode);
 $('rankClose').onclick=closeRank;
+$('shareBtn').onclick=shareResult;
+$('shareClose').onclick=closeShareModal;
+$('shareModal').addEventListener('click',e=>{ if(e.target.id==='shareModal')closeShareModal(); });
 $('tabStage').onclick=()=>{ rankMode='stage'; renderRank(); };
 $('tabToko').onclick=()=>{ rankMode='toko'; renderRank(); };
 $('rank').addEventListener('click',e=>{ if(e.target.id==='rank')closeRank(); });
@@ -537,6 +676,7 @@ document.addEventListener('visibilitychange',()=>{
 const gp={ax:0,prev:[],on:false,held:false};
 let mCont=null, mFocus=null;   // いま操作できるメニューと、選んでいるボタン
 function menuContainer(){
+  if(!$('shareModal').hidden)return $('shareModal');
   if(!$('rank').hidden)return $('rank');
   if(!$('help').hidden)return $('help');
   if(state==='title'&&!$('title').hidden)return $('title');
@@ -587,7 +727,7 @@ function pollPad(){
     const tab=el=>{ if(el&&!el.hidden){ el.click(); mFocus=el; } };
     if(A){ if(mFocus)mFocus.click(); }
     else if(B){
-      if(cont.id==='rank')closeRank(); else if(cont.id==='help')showHelp(false);
+      if(cont.id==='shareModal')closeShareModal(); else if(cont.id==='rank')closeRank(); else if(cont.id==='help')showHelp(false);
       else if(cont.id==='pause')resumeGame(); else if(cont.id==='over')toTitle();
     }
     else if(START&&cont.id==='ready')startPlay();
@@ -1233,7 +1373,7 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 resetGame(); setupDemo(); requestAnimationFrame(loop);
-window.__game={P,gp,pollPad,get mode(){return mode},get tokoPumps(){return tokoPumps},loadRank,addRank,showRank,get lastRank(){return lastRank},bestFor,RK,gameOver,startGame,get bgm(){return {loaded:!!bgmBuf,playing:!!bgmSrc,dur:bgmBuf&&bgmBuf.duration,vol:bgmGain&&bgmGain.gain.value}},setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
+window.__game={P,shareResult,composeResultImage,shareInfo,get shareBlob(){return shareBlob},SHARE,xIntentUrl,gp,pollPad,get mode(){return mode},get tokoPumps(){return tokoPumps},loadRank,addRank,showRank,get lastRank(){return lastRank},bestFor,RK,gameOver,startGame,get bgm(){return {loaded:!!bgmBuf,playing:!!bgmSrc,dur:bgmBuf&&bgmBuf.duration,vol:bgmGain&&bgmGain.gain.value}},setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
 </script>
 </body>
 </html>
