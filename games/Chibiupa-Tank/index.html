@@ -102,6 +102,8 @@ body[data-stage="1"] #bP{display:none!important}
 #title #startBtn,#title #tokoBtn{width:clamp(120px,24vw,170px);font-size:17px;padding:9px 10px}
 #title #rankBtn,#title #helpBtn{width:clamp(100px,19vw,130px);font-size:13px;padding:6px 8px}
 .btn.toko{background:#f2a23a;box-shadow:0 4px 0 #c7791c}
+.padfocus{outline:3px solid #ffd84a;outline-offset:3px;filter:brightness(1.08);transform:scale(1.06);animation:padf .6s ease-in-out infinite alternate}
+@keyframes padf{to{outline-color:#fff6c2}}
 .btn.toko:active{box-shadow:0 1px 0 #c7791c}
 #title .copy{position:fixed;left:50%;transform:translateX(-50%);bottom:max(8px,env(safe-area-inset-bottom,0px));white-space:nowrap;
   font-size:10px;font-weight:800;color:#5b3f4d;text-shadow:0 0 5px #fff,0 0 3px #fff,0 0 2px #fff;margin:0}
@@ -173,7 +175,7 @@ body[data-stage="1"] #bP{display:none!important}
     <p><b>とことん</b>は、ステージ5の大きさの水そうで、どこまで食べられるかをきそうモード。5つ きえるまで つづいて、とちゅうで<b>ポンプ</b>がふえていくよ。<b>ステージ</b>と<b>とことん</b>は、ランキングが べつべつ。</p>
     <p>エサを<b>10こ</b>食べると おなかいっぱいで<b>うごきがにぶく</b>なるよ。<b>💩ボタン</b>でうんちをすると元にもどるけど、底に4秒おくと水がよごれる（エサ2つ分）。ときどき左右から入ってくる<b>スポイト</b>の先でうんちをすると、すいとってくれるよ！</p>
     <p>たまに落ちてくる<b>ヌマエビ</b>は食べると3点。食べずにおくと、底を歩いて<b>底のエサやうんちを食べてくれる</b>よ（最大4ひき）。</p>
-    <p><b>ゲームパッド</b>も つかえるよ。スティック／十字キーで よこに、<b>A・B</b>で およぐ、<b>X・Y</b>で うんち、<b>START</b>で ポーズ。メニューは <b>A</b>で けってい、<b>B</b>で もどる（タイトルは A＝ステージ、X＝とことん、Y＝ランキング）。</p>
+    <p><b>ゲームパッド</b>も つかえるよ。スティック／十字キーで よこに、<b>A・B</b>で およぐ、<b>X・Y</b>で うんち、<b>START</b>で ポーズ。メニューは 十字キー／スティックで ボタンをえらんで、<b>A</b>で けってい、<b>B</b>で もどる。</p>
     <p>◀ ▶ でよこにすすむ ／ <b>およぐ</b>でふわっとうえへ（ちょっとずつしずむよ）</p>
     <button class="btn" id="helpClose">とじる</button>
   </div>
@@ -533,6 +535,34 @@ document.addEventListener('visibilitychange',()=>{
    スティック／十字キー: よこ ／ A・B・RB・RT: およぐ ／ X・Y・LB: うんち ／ START: ポーズ
    メニュー: A=けってい、B=もどる（タイトル: A=ステージ X=とことん Y=ランキング BACK=せつめい）*/
 const gp={ax:0,prev:[],on:false,held:false};
+let mCont=null, mFocus=null;   // いま操作できるメニューと、選んでいるボタン
+function menuContainer(){
+  if(!$('rank').hidden)return $('rank');
+  if(!$('help').hidden)return $('help');
+  if(state==='title'&&!$('title').hidden)return $('title');
+  if(state==='over'&&!$('over').hidden)return $('over');
+  if(state==='pause'&&!$('pause').hidden)return $('pause');
+  if(state==='ready'&&!$('ready').hidden)return $('ready');
+  return null;
+}
+const menuButtons=c=>[...c.querySelectorAll('button')].filter(b=>b.getClientRects().length>0);
+const defaultMenuButton=c=>{ const bs=menuButtons(c); return bs.find(b=>b.classList.contains('btn')&&!b.classList.contains('sub'))||bs[0]||null; };
+// 押した方向にあるボタンのうち一番近いものへ（まず進行方向の真ん前＝45度以内、なければ斜めも含めて）
+function moveFocus(dx,dy){
+  if(!mCont||!mFocus)return;
+  const r=mFocus.getBoundingClientRect(), cx=r.x+r.width/2, cy=r.y+r.height/2;
+  const cands=[];
+  for(const b of menuButtons(mCont)){
+    if(b===mFocus)continue;
+    const q=b.getBoundingClientRect(), x=q.x+q.width/2-cx, y=q.y+q.height/2-cy;
+    const along=x*dx+y*dy, perp=dx?Math.abs(y):Math.abs(x);
+    if(along>2)cands.push({b,along,perp});
+  }
+  let pool=cands.filter(c=>c.along>=c.perp); if(!pool.length)pool=cands;
+  let best=null, bd=1e9;
+  for(const c of pool){ const d=c.along+c.perp*2; if(d<bd){bd=d;best=c.b;} }
+  if(best){ mFocus.classList.remove('padfocus'); mFocus=best; sfx.plop(); }
+}
 function pollPad(){
   const list=navigator.getGamepads?navigator.getGamepads():[];
   let pad=null; for(const p of list){ if(p&&p.connected&&p.buttons&&p.buttons.length>=10){ pad=p; break; } }
@@ -543,29 +573,31 @@ function pollPad(){
   let ax=Math.abs(sx)>dead?(sx-Math.sign(sx)*dead)/(1-dead):0;
   if(b[14])ax=-1; if(b[15])ax=1;
   gp.ax=(state==='play'||state==='ready'||state==='title')?clamp(ax,-1,1):0;
-  let used=false;
+  // ---- メニュー: 十字キー／スティックでボタンを選び（光る枠）、A=けってい、B=もどる ----
+  const cont=menuContainer();
+  if(cont!==mCont){ if(mFocus)mFocus.classList.remove('padfocus'); mCont=cont; mFocus=cont?defaultMenuButton(cont):null; }
+  const sy=pad.axes[1]||0;
+  const up=pr(12)||(sy<-.6&&!(gp.py<-.6)), down=pr(13)||(sy>.6&&!(gp.py>.6)), left=pr(14)||(sx<-.6&&!(gp.px<-.6)), right=pr(15)||(sx>.6&&!(gp.px>.6));
+  gp.px=sx; gp.py=sy;
   const A=pr(0), B=pr(1), X=pr(2), Y=pr(3), BACK=pr(8), START=pr(9);
-  if(state==='title'){
-    if(!$('rank').hidden){ if(B||A){ closeRank(); } else if(pr(14)||pr(4)){ rankMode='stage'; renderRank(); } else if(pr(15)||pr(5)){ rankMode='toko'; renderRank(); } used=true; }
-    else if(!$('help').hidden){ if(A||B||BACK)showHelp(false); used=true; }
-    else if(A){ startGame('stage'); used=true; }
-    else if(X){ startGame('toko'); used=true; }
-    else if(Y){ showRank('title','stage'); used=true; }
-    else if(BACK){ showHelp(true); used=true; }
-  }else if(state==='ready'){
-    if(A||START){ startPlay(); used=true; }
-  }else if(state==='play'){
-    if(START){ pauseGame(); used=true; }
-  }else if(state==='pause'){
-    if(START||A||B){ resumeGame(); used=true; }
-  }else if(state==='over'){   // ゲームオーバー／クリアのウィンドウが出てから（出る前は何もしない）
-    if(!$('rank').hidden){ if(B||A)closeRank(); else if(pr(14)||pr(4)){ rankMode='stage'; renderRank(); } else if(pr(15)||pr(5)){ rankMode='toko'; renderRank(); } used=true; }
-    else if(!$('over').hidden){
-      if(A){ startGame(mode); used=true; }
-      else if(B){ toTitle(); used=true; }
-      else if(Y){ showRank('over',mode); used=true; }
+  let used=false;
+  if(cont){
+    used=true;
+    if(left)moveFocus(-1,0); else if(right)moveFocus(1,0); else if(up)moveFocus(0,-1); else if(down)moveFocus(0,1);
+    const tab=el=>{ if(el&&!el.hidden){ el.click(); mFocus=el; } };
+    if(A){ if(mFocus)mFocus.click(); }
+    else if(B){
+      if(cont.id==='rank')closeRank(); else if(cont.id==='help')showHelp(false);
+      else if(cont.id==='pause')resumeGame(); else if(cont.id==='over')toTitle();
     }
-  }
+    else if(START&&cont.id==='ready')startPlay();
+    else if(START&&cont.id==='pause')resumeGame();
+    else if(cont.id==='rank'){ if(pr(4))tab($('tabStage')); else if(pr(5))tab($('tabToko')); }   // LB・RB でタブ
+    else if(cont.id==='title'){ if(X)startGame('toko'); else if(Y)showRank('title','stage'); else if(BACK)showHelp(true); }   // ショートカット
+    else if(cont.id==='over'){ if(Y)showRank('over',mode); }
+    if(mFocus&&document.body.contains(mFocus))mFocus.classList.add('padfocus');
+  }else if(mFocus){ mFocus.classList.remove('padfocus'); mFocus=null; mCont=null; }
+  if(state==='play'&&START){ pauseGame(); used=true; }
   // 操作（メニューで使ったボタンは、ゲームの操作にしない）
   if(state==='play'&&!used){
     const held=b[0]||b[1]||b[5]||b[7];
