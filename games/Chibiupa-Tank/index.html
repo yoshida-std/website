@@ -69,8 +69,8 @@ body[data-stage="1"] #bP{display:none!important}
 .card{background:var(--panel);border:3px solid var(--line);border-radius:22px;box-shadow:0 5px 0 var(--line);
   padding:12px 20px 14px;text-align:center;max-height:100%;box-sizing:border-box;overflow-y:auto;touch-action:pan-y;max-width:min(520px,100%)}
 .overlay.light{background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none}
-#ready .card,#over .card,#pause .card,#title .card,#help .card{background:rgba(255,248,240,.38);border-color:rgba(239,207,198,.7);box-shadow:none;padding:8px 18px 12px}
-#ready .card h2,#over .card h2,#pause .card h2,#help .card h2,#title .card h1{text-shadow:2px 2px 0 rgba(255,255,255,.9),0 0 8px rgba(255,255,255,.8)}
+#ready .card,#over .card,#pause .card,#help .card{background:rgba(255,248,240,.38);border-color:rgba(239,207,198,.7);box-shadow:none;padding:8px 18px 12px}
+#ready .card h2,#over .card h2,#pause .card h2,#help .card h2{text-shadow:2px 2px 0 rgba(255,255,255,.9),0 0 8px rgba(255,255,255,.8)}
 #ready .card p,#over .card p,#pause .card p,#help .card p{color:#6b4a58;font-weight:800;text-shadow:0 0 6px #fff,0 0 3px #fff,1px 1px 0 rgba(255,255,255,.9)}
 #ready .btn{background:rgba(238,127,152,.88)}
 #ready .card h2,#over .card h2,#pause .card h2,#help .card h2{font-size:18px;margin:0 0 2px}
@@ -78,8 +78,15 @@ body[data-stage="1"] #bP{display:none!important}
 #help .card{background:rgba(255,248,240,.6)}
 #help .card p{text-align:left;font-size:11px;margin:4px 0}
 #help .card p b{color:#e0527a}
-#title .card .copy{color:#6b4a58;text-shadow:0 0 5px #fff,0 0 3px #fff;font-weight:800}
-#title .btn{font-size:14px;padding:7px 12px;margin-top:8px}
+/* タイトル: ウィンドウなし。デモ画面の上にロゴとボタンをじかに置く */
+#title{flex-direction:column;gap:clamp(8px,2.4vh,16px);padding-bottom:clamp(14px,5vh,34px)}
+#title .logo{height:clamp(90px,40vh,190px);width:auto;max-width:86vw;display:block;filter:drop-shadow(0 3px 6px rgba(20,60,90,.35))}
+#title .tbtns{display:flex;flex-direction:column;align-items:center;gap:8px}
+#title .btn{margin:0}
+#title #startBtn{width:clamp(150px,38vw,220px);font-size:18px;padding:9px 12px}
+#title #helpBtn{width:clamp(110px,26vw,150px);font-size:13px;padding:6px 10px}
+#title .copy{position:fixed;left:50%;transform:translateX(-50%);bottom:max(8px,env(safe-area-inset-bottom,0px));white-space:nowrap;
+  font-size:10px;font-weight:800;color:#5b3f4d;text-shadow:0 0 5px #fff,0 0 3px #fff,0 0 2px #fff;margin:0}
 #ready .card p.big,#over .card p.big,#pause .card p.big{font-size:14px!important}
 #over .card p.big{font-size:20px!important}
 #ready .btn,#over .btn,#pause .btn,#help .btn{font-size:12.5px;padding:6px 10px;margin-top:6px}
@@ -125,19 +132,12 @@ body[data-stage="1"] #bP{display:none!important}
 <div class="pad" id="bP"><span>💩</span></div>
 
 <div id="title" class="overlay menu light">
-  <div class="card">
-    <div class="row">
-      <img class="hero" src="img/chibiupa.png" alt="ちびうぱ" draggable="false">
-      <div class="col">
-        <h1>ちびうぱの<br>エサキャッチ！</h1>
-      </div>
-    </div>
-    <div class="btns">
-      <button class="btn" id="startBtn">あそぶ</button>
-      <button class="btn sub" id="helpBtn">せつめい</button>
-    </div>
-    <div class="copy">©YoshidaStudio, ©PANICPUMPKIN</div>
+  <img class="logo" src="img/logo.png" alt="ちびうぱのエサキャッチ！" draggable="false">
+  <div class="tbtns">
+    <button class="btn" id="startBtn">あそぶ</button>
+    <button class="btn sub" id="helpBtn">せつめい</button>
   </div>
+  <div class="copy">©YoshidaStudio, ©PANICPUMPKIN</div>
 </div>
 
 <div id="help" class="overlay menu light" hidden>
