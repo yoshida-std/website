@@ -16,8 +16,10 @@
   --edge:20px;   /* 画面の上のふちから離す（ホーム画面から起動したとき、ふち近くのタップはシステムのジェスチャーに取られることがある） */
   --pp:clamp(44px,15vh,60px);   /* 💩ボタンの大きさ */
   --ps:clamp(46px,17vh,70px); --bs:clamp(56px,22vh,86px);
-  --rl:calc(max(14px,env(safe-area-inset-left,0px)) + 2*var(--ps) + 22px);
-  --rr:calc(max(18px,env(safe-area-inset-right,0px)) + var(--bs) + 10px);
+  --rl0:calc(max(14px,env(safe-area-inset-left,0px)) + 2*var(--ps) + 22px);    /* 左に必要な幅（◀ ▶ ボタン） */
+  --rr0:calc(max(18px,env(safe-area-inset-right,0px)) + var(--bs) + 10px);      /* 右に必要な幅（およぐ・💩ボタン） */
+  --rl:max(var(--rl0),var(--rr0));   /* 左右の余白は同じ幅（広いほうに合わせる）＝水槽が画面の中央に来る */
+  --rr:max(var(--rl0),var(--rr0));
 }
 html,body{height:100%;margin:0;overflow:hidden;touch-action:manipulation;overscroll-behavior:none;
   -webkit-touch-callout:none;-webkit-text-size-adjust:100%;-webkit-user-select:none;user-select:none;
