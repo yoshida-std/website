@@ -266,6 +266,24 @@ function initAudio(){
   if(!ac){ try{ ac=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
   if(ac&&ac.state==='suspended')ac.resume();
 }
+/* ----- BGM（ゲーム中のみ。sound/bgm.mp3 をループ。ポーズで止めて、つづけるで続きから）----- */
+const BGM_VOL=.34;
+let bgmBuf=null, bgmLoading=false, bgmGain=null, bgmSrc=null, bgmAt=0, bgmOff=0;
+function loadBgm(){
+  if(!ac||bgmBuf||bgmLoading)return; bgmLoading=true;
+  fetch('sound/bgm.mp3').then(r=>r.arrayBuffer()).then(a=>new Promise((ok,ng)=>ac.decodeAudioData(a,ok,ng)))
+    .then(b=>{ bgmBuf=b; if(wantBgm&&!bgmSrc)startBgm(); }).catch(()=>{ bgmLoading=false; });
+}
+let wantBgm=false;
+function startBgm(){
+  wantBgm=true; if(!ac)return; loadBgm(); if(!bgmBuf||bgmSrc)return;
+  if(!bgmGain){ bgmGain=ac.createGain(); bgmGain.connect(ac.destination); }
+  bgmGain.gain.value=muted?0:BGM_VOL;
+  const s=ac.createBufferSource(); s.buffer=bgmBuf; s.loop=true; s.connect(bgmGain);
+  s.start(0,bgmOff%bgmBuf.duration); bgmAt=ac.currentTime-bgmOff; bgmSrc=s;
+}
+function pauseBgm(){ if(bgmSrc){ bgmOff=(ac.currentTime-bgmAt)%bgmBuf.duration; try{bgmSrc.stop();}catch(e){} bgmSrc=null; } }
+function stopBgm(){ pauseBgm(); bgmOff=0; wantBgm=false; }
 function tone(f,d,type,v,to,delay){
   if(!ac||muted||state==='title')return;
   const t0=ac.currentTime+(delay||0);
@@ -335,7 +353,7 @@ function updateHud(){
   bp.classList.toggle('off',P.stomach<=0); bp.classList.toggle('full',P.stomach>=FULL);
 }
 function startGame(){
-  initAudio(); setState('ready'); resetGame(); readyPending=false;
+  initAudio(); stopBgm(); startBgm(); setState('ready'); resetGame(); readyPending=false;
   $('title').hidden=true; $('help').hidden=true; $('over').hidden=true; $('pause').hidden=true;
   $('hud').hidden=false; $('pauseBtn').hidden=false;
   showReady();
@@ -357,14 +375,15 @@ function startPlay(){
   $('ready').hidden=true; setState('play'); spawnT=1.2; releaseInput();
 }
 function toTitle(){
+  stopBgm();
   setState('title'); resetGame(); readyPending=false; setupDemo();
   $('help').hidden=true; $('title').hidden=false; $('over').hidden=true; $('pause').hidden=true; $('ready').hidden=true;
   $('hud').hidden=true; $('pauseBtn').hidden=true;
 }
-function pauseGame(){ if(state!=='play')return; setState('pause'); $('pause').hidden=false; releaseInput(); }
-function resumeGame(){ if(state!=='pause')return; setState('play'); $('pause').hidden=true; }
+function pauseGame(){ if(state!=='play')return; pauseBgm(); setState('pause'); $('pause').hidden=false; releaseInput(); }
+function resumeGame(){ if(state!=='pause')return; startBgm(); setState('play'); $('pause').hidden=true; }
 function gameOver(win){
-  won=!!win; setState('over'); overT=1.0; releaseInput(); won?sfx.win():sfx.over();
+  stopBgm(); won=!!win; setState('over'); overT=1.0; releaseInput(); won?sfx.win():sfx.over();
   if(eaten>best){ best=eaten; newBest=true; try{localStorage.setItem('chibiupa_best',best)}catch(e){} }
   updateHud();
 }
@@ -406,7 +425,7 @@ $('pauseBtn').onclick=pauseGame;
 $('resumeBtn').onclick=resumeGame;
 $('restartBtn').onclick=startGame;
 $('toTitleBtn').onclick=toTitle;
-$('soundBtn').onclick=()=>{ muted=!muted; $('soundBtn').textContent=muted?'おと OFF':'おと ON'; };
+$('soundBtn').onclick=()=>{ muted=!muted; $('soundBtn').textContent=muted?'おと OFF':'おと ON'; if(bgmGain)bgmGain.gain.value=muted?0:BGM_VOL; };
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){ pauseGame(); if(ac)ac.suspend(); } else if(ac&&ac.state==='suspended'&&!muted)ac.resume();
 });
@@ -1018,7 +1037,7 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 resetGame(); setupDemo(); requestAnimationFrame(loop);
-window.__game={P,setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
+window.__game={P,get bgm(){return {loaded:!!bgmBuf,playing:!!bgmSrc,dur:bgmBuf&&bgmBuf.duration,vol:bgmGain&&bgmGain.gain.value}},setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
 </script>
 </body>
 </html>
