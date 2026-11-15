@@ -34,14 +34,17 @@ body[data-state=title] #stage{left:0;right:0}
   --botL:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--ps) + 10px);                       /* ◀ ▶ ボタンの上まで */
   --botR:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--bs) + 10px + var(--pp) + 10px);   /* 💩・およぐ ボタンの上まで */
   --sw:min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
-           calc((100vh - 16px - var(--botL)) * .5621),calc((100vh - 16px - var(--botR)) * .5621));
+           calc((100vh - 16px - var(--botL)) * .8432),calc((100vh - 16px - var(--botR)) * .8432));
 }
 @supports (height:100dvh){:root{
   --sw:min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
-           calc((100dvh - 16px - var(--botL)) * .5621),calc((100dvh - 16px - var(--botR)) * .5621));
+           calc((100dvh - 16px - var(--botL)) * .8432),calc((100dvh - 16px - var(--botR)) * .8432));
 }}
 body[data-stage="1"]{--botR:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--bs) + 10px)}   /* ステージ1は💩ボタンがない */
-.side{position:fixed;top:8px;width:var(--sw);aspect-ratio:380/676;height:auto;object-fit:contain;pointer-events:none;opacity:0;transition:opacity .4s;display:none}
+.side{position:fixed;top:8px;width:var(--sw);aspect-ratio:190/225.33;height:auto;pointer-events:none;opacity:0;transition:opacity .4s;display:none;
+  background-repeat:no-repeat;background-size:200% 300%;background-position:0% 0%}   /* シート（2列×3段）の1マスだけを見せる */
+.side.flip{animation:sideIn .5s ease-out}
+@keyframes sideIn{from{opacity:0;transform:translateX(14px) scale(.94)}to{opacity:1;transform:none}}
 .side.on{opacity:1}
 body:not([data-state=title]) .side{display:block}
 #sideL{left:calc((env(safe-area-inset-left,0px) + var(--rl) - var(--sw))/2)}
@@ -49,8 +52,8 @@ body:not([data-state=title]) .side{display:block}
 /* 左の余白のロゴ: GIFの下から ◀ ▶ ボタンの上までの空きに、はみ出さずに収める */
 #sideLogo{position:fixed;display:none;pointer-events:none;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35));
   left:calc(env(safe-area-inset-left,0px) + 6px);width:calc(var(--rl) - env(safe-area-inset-left,0px) - 12px);
-  top:calc(8px + var(--sw)/.5621 + 10px);height:calc(100vh - var(--botL) - (8px + var(--sw)/.5621 + 10px))}
-@supports (height:100dvh){#sideLogo{height:calc(100dvh - var(--botL) - (8px + var(--sw)/.5621 + 10px))}}
+  top:calc(8px + var(--sw)/.8432 + 10px);height:calc(100vh - var(--botL) - (8px + var(--sw)/.8432 + 10px))}
+@supports (height:100dvh){#sideLogo{height:calc(100dvh - var(--botL) - (8px + var(--sw)/.8432 + 10px))}}
 body:not([data-state=title]) #sideLogo{display:block}   /* タイトルのデモは画面の横いっぱい */
 #cv{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px #cfe0e8,0 0 24px rgba(0,0,0,.4)}
 
@@ -176,8 +179,8 @@ a.btn{text-decoration:none;text-align:center;box-sizing:border-box}
 </head>
 <body data-state="title">
 <!-- 水槽の左右の余白に、ランダムなスタンプのアニメGIFを置く（タイトル中は水槽が横いっぱいなので出さない） -->
-<img class="side" id="sideL" alt="" draggable="false">
-<img class="side" id="sideR" alt="" draggable="false">
+<div class="side" id="sideL"></div>
+<div class="side" id="sideR"></div>
 <img id="sideLogo" src="img/logo.png" alt="" draggable="false">   <!-- 左の余白の、GIFの下の空き -->
 <div id="stage"><canvas id="cv"></canvas></div>
 
@@ -451,16 +454,25 @@ function resetGame(){
   inp.edge=0;
   updateHud();
 }
-// 左右の余白のアニメGIF（img/side/side1〜5.gif。縦長のスタンプ6体ぶん）。ゲームの開始・ステージの切り替えごとに、左右ちがうものをランダムに選ぶ
-const SIDE_N=5;
+// 左右の余白のアニメGIF（img/side/side1〜5.gif。縦長のシート＝スタンプ6体が2列×3段）。
+// ゲームの開始・ステージの切り替えごとに、左右ちがうシートをランダムに選び、そのシートの6体を1体ずつ、一定時間（SIDE_MS）ごとにスライドのように切り替えて見せる
+const SIDE_N=5, SIDE_MS=3200;
+const sideCell={sideL:0,sideR:0};
+function showCell(el,i){
+  const c=((i%6)+6)%6; sideCell[el.id]=c;
+  el.style.backgroundPosition=(c%2?'100%':'0%')+' '+(Math.floor(c/2)*50)+'%';   // 2列×3段（左上→右上→左中…の順）
+  el.classList.remove('flip'); void el.offsetWidth; el.classList.add('flip');
+}
 function rollSides(){
   const a=Math.floor(Math.random()*SIDE_N); let b=Math.floor(Math.random()*(SIDE_N-1)); if(b>=a)b++;
   for(const [id,k] of [['sideL',a],['sideR',b]]){
     const el=$(id), url='img/side/side'+(k+1)+'.gif';
-    if(el.getAttribute('src')===url){ el.classList.add('on'); continue; }
-    el.classList.remove('on'); el.onload=()=>el.classList.add('on'); el.src=url;
+    el.classList.remove('on');
+    const im=new Image(); im.onload=()=>{ el.style.backgroundImage='url('+url+')'; showCell(el,Math.floor(Math.random()*6)); el.classList.add('on'); }; im.src=url;
   }
 }
+setInterval(()=>{ if(state!=='title')showCell($('sideL'),sideCell.sideL+1); },SIDE_MS);
+setTimeout(()=>setInterval(()=>{ if(state!=='title')showCell($('sideR'),sideCell.sideR+1); },SIDE_MS),SIDE_MS/2);   // 右は半分ずらして、左右が同時に変わらないように
 // 新しい水槽（ステージ n）で始める。にごり・おなか・エサは全部リセット
 function startStage(n){
   stage=n; stageEaten=0; lost=0; dirt=0; dirtTarget=0; P.stomach=0;
