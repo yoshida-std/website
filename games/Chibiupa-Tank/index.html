@@ -29,15 +29,23 @@ canvas{touch-action:none;display:block}
 [hidden]{display:none!important}
 #stage{position:fixed;top:0;bottom:0;left:var(--rl);right:var(--rr)}
 body[data-state=title] #stage{left:0;right:0}
-.side{position:fixed;top:0;height:100%;box-sizing:border-box;padding:8px 6px;object-fit:contain;pointer-events:none;opacity:0;transition:opacity .4s;display:none}
+/* 左右の余白のアニメGIF: 左右は**同じ大きさ**（--sw）。左右それぞれの「余白の幅」と「ボタンの上までの高さ」から入る大きさを出して、いちばん小さいものに合わせる */
+:root{
+  --botL:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--ps) + 10px);                       /* ◀ ▶ ボタンの上まで */
+  --botR:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--bs) + 10px + var(--pp) + 10px);   /* 💩・およぐ ボタンの上まで */
+  --sw:min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
+           calc((100vh - 16px - var(--botL)) * .5621),calc((100vh - 16px - var(--botR)) * .5621));
+}
+@supports (height:100dvh){:root{
+  --sw:min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
+           calc((100dvh - 16px - var(--botL)) * .5621),calc((100dvh - 16px - var(--botR)) * .5621));
+}}
+body[data-stage="1"]{--botR:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--bs) + 10px)}   /* ステージ1は💩ボタンがない */
+.side{position:fixed;top:8px;width:var(--sw);aspect-ratio:380/676;height:auto;object-fit:contain;pointer-events:none;opacity:0;transition:opacity .4s;display:none}
 .side.on{opacity:1}
 body:not([data-state=title]) .side{display:block}
-#sideL{left:0;width:var(--rl);padding-left:calc(env(safe-area-inset-left,0px) + 6px);
-  padding-bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--ps) + 10px)}   /* ◀ ▶ ボタンの上まで */
-#sideR{right:0;width:var(--rr);padding-right:calc(env(safe-area-inset-right,0px) + 6px);
-  padding-bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--bs) + 10px + var(--pp) + 10px)}   /* 💩・およぐ ボタンの上まで */
-body[data-stage="1"] #sideR{padding-bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--bs) + 10px)}   /* ステージ1は💩ボタンがない */
-.side{object-position:center top}   /* タイトルのデモは画面の横いっぱい */
+#sideL{left:calc((env(safe-area-inset-left,0px) + var(--rl) - var(--sw))/2)}
+#sideR{right:calc((env(safe-area-inset-right,0px) + var(--rr) - var(--sw))/2)}   /* タイトルのデモは画面の横いっぱい */
 #cv{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px #cfe0e8,0 0 24px rgba(0,0,0,.4)}
 
 /* HUD（水面より上の空きスペースに重ねる） */
