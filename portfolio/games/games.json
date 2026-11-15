@@ -1,6 +1,15 @@
 {
   "items": [
     {
+      "id": "chibiupa-tank",
+      "title": "ちびうぱのエサキャッチ！",
+      "description": "水そうを泳いで、落ちてくるエサをパクッ！全10ステージと、どこまで食べられるか競う「とことん」。うんちやヌマエビ、ポンプの水流もあるキャッチゲーム。",
+      "path": "../../games/Chibiupa-Tank/",
+      "image": "../img/games/chibiupa-tank.jpg",
+      "orientation": "landscape",
+      "published": "2026-11-15"
+    },
+    {
       "id": "knife-master",
       "title": "ナイフマスター",
       "description": "敵が階段にたどりつく前に、ナイフを投げてたおせ！距離をとって戦い、仲間を呼んで足止めもできる横スクロールアクション。",
