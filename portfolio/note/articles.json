@@ -2,6 +2,13 @@
   "profile": "https://note.com/yoshida_std",
   "items": [
     {
+      "title": "ゲーム制作日記【2026/11/15】ちびうぱのゲーム",
+      "url": "https://note.com/yoshida_std/n/n6393d863d30c",
+      "image": "https://assets.st-note.com/production/uploads/images/336493958/rectangle_large_type_2_1da74af1e0d1aa6cd3e227fe2dc74a2b.png?width=800",
+      "date": "2026-11-15T19:53:31+09:00",
+      "summary": "ヨシダです。 気分転換にブラウザゲーム作りました ちびうぱのエサキャッチ！ yoshida-std.github.io"
+    },
+    {
       "title": "スタンプ制作日記【2026/11/14】たいじろうデカ文字",
       "url": "https://note.com/yoshida_std/n/n94e2427a22d7",
       "image": "https://assets.st-note.com/production/uploads/images/336002338/rectangle_large_type_2_8c388e1598700f8c8c4aa762f1b7da55.png?width=800",
@@ -63,13 +70,6 @@
       "image": "https://assets.st-note.com/production/uploads/images/332863033/rectangle_large_type_2_a0f9dfbc795051394eb7ef03900585f6.png?width=800",
       "date": "2026-11-06T18:01:18+09:00",
       "summary": "ヨシダです！ 前回の記事の続きです！ プロトタイプはできた！だがしかし！ ということで、こだわりと調整をして仕上げていきました。"
-    },
-    {
-      "title": "ゲーム制作日記【2026/11/5】FC版の制作 前編",
-      "url": "https://note.com/yoshida_std/n/n4b46be777a56",
-      "image": "https://assets.st-note.com/production/uploads/images/332592852/rectangle_large_type_2_81778a822dea550441bfa5812afed6a6.png?width=800",
-      "date": "2026-11-05T20:42:27+09:00",
-      "summary": "ヨシダです！ ROROSUKEさんの記事をみて、MSXの記事から✨✨して見ていて、自分でもすっごくファミコンソフトを作りたくなりました。"
     }
   ]
 }
