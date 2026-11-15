@@ -301,17 +301,19 @@ a.btn{text-decoration:none;text-align:center;box-sizing:border-box}
 
 <div id="rotate"><span class="ic">📱</span>スマホを よこむきにしてね</div>
 
+<!-- 共通のLINEスタンプ誘導ボタン（common/line-promo）。キーワード「ちびうぱ」の名前のものを出す。タイトルの間だけ表示（syncPromo） -->
+<script src="../../common/line-promo/line-sticker-promo.js" data-match="ちびうぱ" data-position="bottom-right" data-auto-show="false"></script>
 <script>
 document.body.dataset.state='title';
 /* ===== タッチ・ズーム・長押しの抑止（ボタンとメニューは除く） ===== */
-const KEEP='button,.menu';
+const KEEP='button,.menu,.sp-modal';   // .sp-modal ＝ LINEスタンプ一覧（共通部品）。リンクのタップとスクロールを止めない
 document.addEventListener('touchstart',e=>{ if(e.touches.length>1||!e.target.closest(KEEP))e.preventDefault(); },{passive:false});
 let lastTouchEnd=0;
 document.addEventListener('touchend',e=>{ const t=Date.now(); if(t-lastTouchEnd<350&&!e.target.closest(KEEP))e.preventDefault(); lastTouchEnd=t; },{passive:false});
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 ['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
 document.addEventListener('contextmenu',e=>{ if(e.target.id!=='shareImg')e.preventDefault(); });   // シェア画像だけは長押し保存を許す
-document.addEventListener('touchmove',e=>{ if(!e.target.closest('.card'))e.preventDefault(); },{passive:false});
+document.addEventListener('touchmove',e=>{ if(!e.target.closest('.card,.sp-modal'))e.preventDefault(); },{passive:false});
 
 /* ===== 基本 ===== */
 const $=id=>document.getElementById(id);
@@ -463,7 +465,9 @@ const plants=[0.04,0.1,0.17,0.46,0.52,0.83,0.9,0.96].map((x,i)=>({x,h:rnd(70,120
 const stones=Array.from({length:26},()=>({x:Math.random(),y:Math.random(),r:rnd(2,5),c:rnd(0,1)}));
 
 function level(){ if(mode==='toko')return Math.min(14,Math.floor(eaten/5)+Math.floor(lost*.4)); return Math.min(12,Math.round((stage-1)*1.2)+Math.floor((stageEaten+lost*2)/5)); }
-function setState(s){ const was=state; state=s; document.body.dataset.state=s; if((was==='title')!==(s==='title'))resize(); }   // タイトルだけ水槽の枠の広さがちがう
+// LINEスタンプボタン: タイトルで、せつめい・ランキングを開いていないときだけ出す
+function syncPromo(){ if(!window.StickerPromo)return; const on=state==='title'&&$('help').hidden&&$('rank').hidden; on?StickerPromo.show():StickerPromo.hide(); }
+function setState(s){ const was=state; state=s; document.body.dataset.state=s; if((was==='title')!==(s==='title'))resize(); syncPromo(); }   // タイトルだけ水槽の枠の広さがちがう
 
 function resetGame(){
   eaten=0; won=false; tokoPumps=[]; lastRank=null; clearPending=false; trans=null; net=null; banner=null; parts=[];
@@ -668,11 +672,12 @@ function renderRank(){
 }
 function showRank(from,m){
   rankFrom=from; rankMode=m||rankMode; renderRank();
-  $('rank').hidden=false; $('title').hidden=true; $('over').hidden=true;
+  $('rank').hidden=false; $('title').hidden=true; $('over').hidden=true; syncPromo();
 }
 function closeRank(){
   $('rank').hidden=true;
   if(rankFrom==='over')$('over').hidden=false; else $('title').hidden=false;
+  syncPromo();
 }
 function startPlay(){
   if(state!=='ready'||$('ready').hidden)return;
@@ -729,7 +734,7 @@ $('shareModal').addEventListener('click',e=>{ if(e.target.id==='shareModal')clos
 $('tabStage').onclick=()=>{ rankMode='stage'; renderRank(); };
 $('tabToko').onclick=()=>{ rankMode='toko'; renderRank(); };
 $('rank').addEventListener('click',e=>{ if(e.target.id==='rank')closeRank(); });
-const showHelp=on=>{ $('help').hidden=!on; $('title').hidden=on; };   // 説明を開いている間は、タイトルのカードを隠す
+const showHelp=on=>{ $('help').hidden=!on; $('title').hidden=on; syncPromo(); };   // 説明を開いている間は、タイトルのカードを隠す
 $('helpBtn').onclick=()=>showHelp(true);
 $('helpClose').onclick=()=>showHelp(false);
 $('help').addEventListener('click',e=>{ if(e.target.id==='help')showHelp(false); });
@@ -1447,7 +1452,7 @@ function loop(now){
   draw();
   requestAnimationFrame(loop);
 }
-resetGame(); setupDemo(); requestAnimationFrame(loop);
+resetGame(); setupDemo(); syncPromo(); requestAnimationFrame(loop);
 window.__game={P,get sfxLoaded(){return !!sfxBuf.poop},get sfxFilePlayed(){return sfxFilePlayed},rollSides,shareResult,composeResultImage,shareInfo,get shareBlob(){return shareBlob},SHARE,xIntentUrl,gp,pollPad,get mode(){return mode},get tokoPumps(){return tokoPumps},loadRank,addRank,showRank,get lastRank(){return lastRank},bestFor,RK,gameOver,startGame,get bgm(){return {loaded:!!bgmBuf,playing:!!bgmSrc,dur:bgmBuf&&bgmBuf.duration,vol:bgmGain&&bgmGain.gain.value}},setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
 </script>
 </body>
