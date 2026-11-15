@@ -36,20 +36,21 @@ canvas{touch-action:none;display:block}
 body[data-state=title] #stage{left:0;right:0}
 /* 左右の余白のアニメGIF: 左右は**同じ大きさ**（--sw）。左右それぞれの「余白の幅」と「ボタンの上までの高さ」から入る大きさを出して、いちばん小さいものに合わせる */
 :root{
+  --sscale:.85;   /* 左右の枠の大きさ（入る最大の大きさに対する割合。1＝いっぱい）*/
   --sp:0px;                                                   /* 枠の内側の余白（なし。のぞき見のスタンプの切れ目を、枠の左端にぴったり付けるため） */
   --sh:calc((var(--sw) - 2*var(--sp))/.8432 + 2*var(--sp));   /* 枠の高さ（中の1マスの縦横比 190:225.33 を保つ） */
   --botL:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--ps) + 10px);                       /* ◀ ▶ ボタンの上まで */
   --botR:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--bs) + 10px + var(--pp) + 10px);   /* 💩・およぐ ボタンの上まで */
-  --sw:min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
-           calc((100vh - 16px - var(--botL) - 2*var(--sp)) * .8432 + 2*var(--sp)),calc((100vh - 16px - var(--botR) - 2*var(--sp)) * .8432 + 2*var(--sp)));
+  --sw:calc(var(--sscale) * min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
+           calc((100vh - 16px - var(--botL) - 2*var(--sp)) * .8432 + 2*var(--sp)),calc((100vh - 16px - var(--botR) - 2*var(--sp)) * .8432 + 2*var(--sp))));
 }
 @supports (height:100dvh){:root{
-  --sw:min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
-           calc((100dvh - 16px - var(--botL) - 2*var(--sp)) * .8432 + 2*var(--sp)),calc((100dvh - 16px - var(--botR) - 2*var(--sp)) * .8432 + 2*var(--sp)));
+  --sw:calc(var(--sscale) * min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
+           calc((100dvh - 16px - var(--botL) - 2*var(--sp)) * .8432 + 2*var(--sp)),calc((100dvh - 16px - var(--botR) - 2*var(--sp)) * .8432 + 2*var(--sp))));
 }}
 body[data-stage="1"]{--botR:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--bs) + 10px)}   /* ステージ1は💩ボタンがない */
 .side{position:fixed;top:8px;width:var(--sw);height:var(--sh);box-sizing:border-box;padding:var(--sp);pointer-events:none;opacity:0;transition:opacity .4s;display:none;
-  background-color:#fbfcff;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,.28);   /* 白に近い背景の角丸の枠 */
+  background-color:#fbfcff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.28);   /* 白に近い背景の角丸の枠 */
   background-repeat:no-repeat;background-origin:content-box;background-size:200% 300%;background-position:0% 0%}   /* シート（2列×3段）の1マスだけを、枠の内側に見せる */
 .side.flip{animation:sideIn .5s ease-out}
 @keyframes sideIn{from{opacity:0;transform:translateX(14px) scale(.94)}to{opacity:1;transform:none}}
@@ -385,11 +386,25 @@ function playSfxFile(k,vol){
   if(!ac||muted||state==='title'||!sfxBuf[k])return false;
   const s=ac.createBufferSource(), g=ac.createGain(); s.buffer=sfxBuf[k]; g.gain.value=vol; s.connect(g); g.connect(ac.destination); s.start(); sfxFilePlayed++; return true;
 }
-function initAudio(){
-  if(!ac){ try{ ac=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
-  loadSfxFile('poop','sound/poop.wav');
-  if(ac&&ac.state==='suspended')ac.resume();
+/* iOS（とくにホーム画面から起動したアプリ）では、音の状態が 'suspended' だけでなく 'interrupted'（電話・アプリの切り替えなどで中断）になる。
+   'suspended' のときだけ再開していると、中断のままずっと無音になるので、「running 以外」なら、ユーザーの操作のたびに再開する。
+   あわせて、無音の1サンプルを鳴らして音を有効にする（iOSの定番の方法）。 */
+function unlockAudio(){
+  if(!ac)return;
+  if(ac.state!=='running'){ try{ const p=ac.resume(); if(p&&p.catch)p.catch(()=>{}); }catch(e){} }
+  if(!ac._unlocked){
+    try{ const b=ac.createBuffer(1,1,22050), src=ac.createBufferSource(); src.buffer=b; src.connect(ac.destination); src.start(0); ac._unlocked=true; }catch(e){}
+  }
 }
+function initAudio(){
+  try{ if(navigator.audioSession)navigator.audioSession.type='playback'; }catch(e){}   // iOS: 消音スイッチがONでも鳴らす（対応しているブラウザだけ）
+  if(!ac){
+    try{ ac=new (window.AudioContext||window.webkitAudioContext)(); ac.onstatechange=()=>{ if(ac.state!=='running')ac._unlocked=false; }; }catch(e){}
+  }
+  loadSfxFile('poop','sound/poop.wav');
+  unlockAudio();
+}
+['pointerup','touchend','click','keydown'].forEach(t=>document.addEventListener(t,()=>{ if(ac&&ac.state!=='running')unlockAudio(); },true));   // 中断・一時停止からの復帰（iOSは、ユーザーの操作のなかで再開しないと鳴らない）
 /* ----- BGM（ゲーム中のみ。sound/bgm.mp3 をループ。ポーズで止めて、つづけるで続きから）----- */
 const BGM_VOL=.34;
 let bgmBuf=null, bgmLoading=false, bgmGain=null, bgmSrc=null, bgmAt=0, bgmOff=0;
@@ -746,8 +761,10 @@ $('resumeBtn').onclick=resumeGame;
 $('restartBtn').onclick=()=>startGame(mode);
 $('toTitleBtn').onclick=toTitle;
 $('soundBtn').onclick=()=>{ muted=!muted; $('soundBtn').textContent=muted?'おと OFF':'おと ON'; if(bgmGain)bgmGain.gain.value=muted?0:BGM_VOL; };
+addEventListener('pageshow',()=>{ if(ac&&!muted)unlockAudio(); });
+addEventListener('focus',()=>{ if(ac&&!muted)unlockAudio(); });
 document.addEventListener('visibilitychange',()=>{
-  if(document.hidden){ pauseGame(); if(ac)ac.suspend(); } else if(ac&&ac.state==='suspended'&&!muted)ac.resume();
+  if(document.hidden){ pauseGame(); if(ac)ac.suspend(); } else if(ac&&!muted)unlockAudio();
 });
 
 /* ===== ゲームパッド（Gamepad API。標準配置のコントローラー）=====
@@ -1453,7 +1470,7 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 resetGame(); setupDemo(); syncPromo(); requestAnimationFrame(loop);
-window.__game={P,get sfxLoaded(){return !!sfxBuf.poop},get sfxFilePlayed(){return sfxFilePlayed},rollSides,shareResult,composeResultImage,shareInfo,get shareBlob(){return shareBlob},SHARE,xIntentUrl,gp,pollPad,get mode(){return mode},get tokoPumps(){return tokoPumps},loadRank,addRank,showRank,get lastRank(){return lastRank},bestFor,RK,gameOver,startGame,get bgm(){return {loaded:!!bgmBuf,playing:!!bgmSrc,dur:bgmBuf&&bgmBuf.duration,vol:bgmGain&&bgmGain.gain.value}},setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
+window.__game={P,get ac(){return ac},get sfxLoaded(){return !!sfxBuf.poop},get sfxFilePlayed(){return sfxFilePlayed},rollSides,shareResult,composeResultImage,shareInfo,get shareBlob(){return shareBlob},SHARE,xIntentUrl,gp,pollPad,get mode(){return mode},get tokoPumps(){return tokoPumps},loadRank,addRank,showRank,get lastRank(){return lastRank},bestFor,RK,gameOver,startGame,get bgm(){return {loaded:!!bgmBuf,playing:!!bgmSrc,dur:bgmBuf&&bgmBuf.duration,vol:bgmGain&&bgmGain.gain.value}},setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
 </script>
 </body>
 </html>
