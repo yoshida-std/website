@@ -173,6 +173,7 @@ body[data-stage="1"] #bP{display:none!important}
     <p><b>とことん</b>は、ステージ5の大きさの水そうで、どこまで食べられるかをきそうモード。5つ きえるまで つづいて、とちゅうで<b>ポンプ</b>がふえていくよ。<b>ステージ</b>と<b>とことん</b>は、ランキングが べつべつ。</p>
     <p>エサを<b>10こ</b>食べると おなかいっぱいで<b>うごきがにぶく</b>なるよ。<b>💩ボタン</b>でうんちをすると元にもどるけど、底に4秒おくと水がよごれる（エサ2つ分）。ときどき左右から入ってくる<b>スポイト</b>の先でうんちをすると、すいとってくれるよ！</p>
     <p>たまに落ちてくる<b>ヌマエビ</b>は食べると3点。食べずにおくと、底を歩いて<b>底のエサやうんちを食べてくれる</b>よ（最大4ひき）。</p>
+    <p><b>ゲームパッド</b>も つかえるよ。スティック／十字キーで よこに、<b>A・B</b>で およぐ、<b>X・Y</b>で うんち、<b>START</b>で ポーズ。メニューは <b>A</b>で けってい、<b>B</b>で もどる（タイトルは A＝ステージ、X＝とことん、Y＝ランキング）。</p>
     <p>◀ ▶ でよこにすすむ ／ <b>およぐ</b>でふわっとうえへ（ちょっとずつしずむよ）</p>
     <button class="btn" id="helpClose">とじる</button>
   </div>
@@ -528,6 +529,53 @@ document.addEventListener('visibilitychange',()=>{
   if(document.hidden){ pauseGame(); if(ac)ac.suspend(); } else if(ac&&ac.state==='suspended'&&!muted)ac.resume();
 });
 
+/* ===== ゲームパッド（Gamepad API。標準配置のコントローラー）=====
+   スティック／十字キー: よこ ／ A・B・RB・RT: およぐ ／ X・Y・LB: うんち ／ START: ポーズ
+   メニュー: A=けってい、B=もどる（タイトル: A=ステージ X=とことん Y=ランキング BACK=せつめい）*/
+const gp={ax:0,prev:[],on:false,held:false};
+function pollPad(){
+  const list=navigator.getGamepads?navigator.getGamepads():[];
+  let pad=null; for(const p of list){ if(p&&p.connected&&p.buttons&&p.buttons.length>=10){ pad=p; break; } }
+  if(!pad){ gp.ax=0; gp.prev=[]; if(gp.held){ inp.held=false; gp.held=false; } return; }
+  if(!gp.on){ gp.on=true; if(state==='title'){ parts.push({k:'txt',x:W/2,y:H-60,vy:-12,life:2.4,s:'ゲームパッド OK！',c:'#3aa7c9',sm:1}); } }
+  const b=pad.buttons.map(x=>!!(x&&x.pressed)), prev=gp.prev, pr=i=>b[i]&&!prev[i];
+  const sx=pad.axes[0]||0, dead=.3;
+  let ax=Math.abs(sx)>dead?(sx-Math.sign(sx)*dead)/(1-dead):0;
+  if(b[14])ax=-1; if(b[15])ax=1;
+  gp.ax=(state==='play'||state==='ready'||state==='title')?clamp(ax,-1,1):0;
+  let used=false;
+  const A=pr(0), B=pr(1), X=pr(2), Y=pr(3), BACK=pr(8), START=pr(9);
+  if(state==='title'){
+    if(!$('rank').hidden){ if(B||A){ closeRank(); } else if(pr(14)||pr(4)){ rankMode='stage'; renderRank(); } else if(pr(15)||pr(5)){ rankMode='toko'; renderRank(); } used=true; }
+    else if(!$('help').hidden){ if(A||B||BACK)showHelp(false); used=true; }
+    else if(A){ startGame('stage'); used=true; }
+    else if(X){ startGame('toko'); used=true; }
+    else if(Y){ showRank('title','stage'); used=true; }
+    else if(BACK){ showHelp(true); used=true; }
+  }else if(state==='ready'){
+    if(A||START){ startPlay(); used=true; }
+  }else if(state==='play'){
+    if(START){ pauseGame(); used=true; }
+  }else if(state==='pause'){
+    if(START||A||B){ resumeGame(); used=true; }
+  }else if(state==='over'){   // ゲームオーバー／クリアのウィンドウが出てから（出る前は何もしない）
+    if(!$('rank').hidden){ if(B||A)closeRank(); else if(pr(14)||pr(4)){ rankMode='stage'; renderRank(); } else if(pr(15)||pr(5)){ rankMode='toko'; renderRank(); } used=true; }
+    else if(!$('over').hidden){
+      if(A){ startGame(mode); used=true; }
+      else if(B){ toTitle(); used=true; }
+      else if(Y){ showRank('over',mode); used=true; }
+    }
+  }
+  // 操作（メニューで使ったボタンは、ゲームの操作にしない）
+  if(state==='play'&&!used){
+    const held=b[0]||b[1]||b[5]||b[7];
+    if(held&&!gp.held){ inp.edge=.12; inp.heldT=0; inp.held=true; gp.held=true; }
+    if(!held&&gp.held){ inp.held=false; gp.held=false; }
+    if(pr(2)||pr(3)||pr(4))doPoop();
+  }else if(gp.held){ inp.held=false; gp.held=false; }
+  gp.prev=b;
+}
+
 /* ===== ゲーム進行 ===== */
 const isFull=()=>P.stomach>=FULL;
 function stroke(cd,silent){
@@ -606,7 +654,7 @@ function doPoop(){
   updateHud();
 }
 function updatePlayer(dt,auto){
-  let dir=(inp.r?1:0)-(inp.l?1:0);
+  let dir=clamp((inp.r?1:0)-(inp.l?1:0)+gp.ax,-1,1);   // タッチ／キーボード＋ゲームパッド（スティックは傾けた分だけ）
   if(auto){
     let tg=null, best=1e9;
     for(const f of foods.concat(shrimps)){ if(f.state==='air')continue; const d=Math.abs(f.x-P.x)+Math.abs(f.y-P.y)*.6; if(d<best){best=d;tg=f;} }
@@ -614,7 +662,7 @@ function updatePlayer(dt,auto){
     else{ dir=Math.sin(T*.5)>0?1:-1; if(P.y>H*.52&&P.cd<=0)stroke(.5,true); }
     if(state==='title')P.stomach=0;
   }
-  if(dir)P.face=dir;
+  if(Math.abs(dir)>.05)P.face=Math.sign(dir);
   const slow=isFull();
   P.vx+=(dir*(slow?80:150)-P.vx)*Math.min(1,dt*(dir?4:2.2));
   P.vy=Math.min(P.vy+(slow?330:260)*dt,slow?115:85);
@@ -1145,6 +1193,7 @@ function drawFeeder(){
 let last=performance.now(), frameNo=0;
 function loop(now){
   const dt=Math.min(.033,(now-last)/1000); last=now;
+  pollPad();
   if(matchMedia('(orientation:portrait)').matches&&state==='play')pauseGame();
   if(((frameNo=(frameNo||0)+1)&15)===0&&viewKey()!==sizeKey)resize();   // 画面の大きさが変わっていたら測り直す
   if(state!=='pause')update(dt);
@@ -1152,7 +1201,7 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 resetGame(); setupDemo(); requestAnimationFrame(loop);
-window.__game={P,get mode(){return mode},get tokoPumps(){return tokoPumps},loadRank,addRank,showRank,get lastRank(){return lastRank},bestFor,RK,gameOver,startGame,get bgm(){return {loaded:!!bgmBuf,playing:!!bgmSrc,dur:bgmBuf&&bgmBuf.duration,vol:bgmGain&&bgmGain.gain.value}},setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
+window.__game={P,gp,pollPad,get mode(){return mode},get tokoPumps(){return tokoPumps},loadRank,addRank,showRank,get lastRank(){return lastRank},bestFor,RK,gameOver,startGame,get bgm(){return {loaded:!!bgmBuf,playing:!!bgmSrc,dur:bgmBuf&&bgmBuf.duration,vol:bgmGain&&bgmGain.gain.value}},setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
 </script>
 </body>
 </html>
