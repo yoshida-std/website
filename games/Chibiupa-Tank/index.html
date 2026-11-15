@@ -96,7 +96,7 @@ body[data-stage="1"] #bP{display:none!important}
 
 <div id="hud" hidden>
   <div class="chip"><b>ステージ</b><span id="stg">1/5</span></div>
-  <div class="chip"><b>あと</b><span id="goal">8</span></div>
+  <div class="chip"><b>あと</b><span id="goal">12</span></div>
   <div class="chip" title="のこりのエサ"><div id="lives"><i></i><i></i><i></i><i></i><i></i></div></div>
 </div>
 <button id="pauseBtn" hidden>II</button>
@@ -166,8 +166,8 @@ document.addEventListener('touchmove',e=>{ if(!e.target.closest('.card'))e.preve
 /* ===== 基本 ===== */
 const $=id=>document.getElementById(id);
 const H=400, FLOOR=H-38, FULL=10, POOP_REST=4, MAX_SHRIMP=4;
-const GOALS=[8,10,12,14,16];            // ステージごとのクリアに必要な数（エサ1・ヌマエビ3）
-const TW=[.62,.72,.82,.91,1], TH=[.58,.68,.78,.89,1];   // 水槽の幅・水の深さの割合（ステージ5＝いまの大きさ）
+const GOALS=[12,16,20,25,30];            // ステージごとのクリアに必要な数（エサ1・ヌマエビ3）
+const TW=[.62,.72,.82,.91,1], TH=[.89,.89,.89,.89,.89];   // 水槽の幅・水の深さの割合（深さは全ステージ同じ＝ステージ4の高さ。幅だけ大きくなる）
 let W=800, scale=1;
 let WATER=96, TL=0, TR=800;             // いまの水槽の水面・左右のはし
 let stage=1, stageEaten=0, won=false, clearPending=false, trans=null, net=null, banner=null;
