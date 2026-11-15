@@ -69,14 +69,18 @@ body[data-stage="1"] #bP{display:none!important}
 .card{background:var(--panel);border:3px solid var(--line);border-radius:22px;box-shadow:0 5px 0 var(--line);
   padding:12px 20px 14px;text-align:center;max-height:100%;box-sizing:border-box;overflow-y:auto;touch-action:pan-y;max-width:min(520px,100%)}
 .overlay.light{background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none}
-#ready .card{background:rgba(255,248,240,.38);border-color:rgba(239,207,198,.7);box-shadow:none;padding:8px 18px 12px}
-#ready .card h2{text-shadow:2px 2px 0 rgba(255,255,255,.9),0 0 8px rgba(255,255,255,.8)}
-#ready .card p{color:#6b4a58;font-weight:800;text-shadow:0 0 6px #fff,0 0 3px #fff,1px 1px 0 rgba(255,255,255,.9)}
+#ready .card,#over .card,#pause .card{background:rgba(255,248,240,.38);border-color:rgba(239,207,198,.7);box-shadow:none;padding:8px 18px 12px}
+#ready .card h2,#over .card h2,#pause .card h2{text-shadow:2px 2px 0 rgba(255,255,255,.9),0 0 8px rgba(255,255,255,.8)}
+#ready .card p,#over .card p,#pause .card p{color:#6b4a58;font-weight:800;text-shadow:0 0 6px #fff,0 0 3px #fff,1px 1px 0 rgba(255,255,255,.9)}
 #ready .btn{background:rgba(238,127,152,.88)}
-#ready .card h2{font-size:18px;margin:0 0 2px}
-#ready .card p{font-size:10px;margin:2px 0;line-height:1.5}
-#ready .card p.big{font-size:14px!important}
-#ready .btn{font-size:12.5px;padding:6px 10px;margin-top:6px}
+#ready .card h2,#over .card h2,#pause .card h2{font-size:18px;margin:0 0 2px}
+#ready .card p,#over .card p,#pause .card p{font-size:10px;margin:2px 0;line-height:1.5}
+#ready .card p.big,#over .card p.big,#pause .card p.big{font-size:14px!important}
+#over .card p.big{font-size:20px!important}
+#ready .btn,#over .btn,#pause .btn{font-size:12.5px;padding:6px 10px;margin-top:6px}
+#over .btn,#pause .btn{opacity:.92}
+#over .btn,#pause .btn,#ready .btn,#over .card h2,#pause .card h2,#ready .card h2{white-space:nowrap}
+#pause .btns .btn,#over .btns .btn{padding:6px 8px;font-size:11.5px}
 .card h1{font-family:var(--display);font-weight:400;margin:2px 0 0;font-size:clamp(24px,7vh,34px);line-height:1.15;color:var(--pink);
   text-shadow:2px 2px 0 #fff,4px 4px 0 var(--line)}
 .card h2{font-family:var(--display);font-weight:400;margin:2px 0 4px;font-size:26px;color:var(--pink);text-shadow:2px 2px 0 #fff,3px 3px 0 var(--line)}
@@ -142,8 +146,8 @@ body[data-stage="1"] #bP{display:none!important}
   </div>
 </div>
 
-<div id="pause" class="overlay menu" hidden>
-  <div class="card" style="min-width:220px">
+<div id="pause" class="overlay menu light" hidden>
+  <div class="card" style="min-width:210px">
     <h2>ポーズ</h2>
     <button class="btn" id="resumeBtn">つづける</button>
     <button class="btn sub" id="soundBtn">おと ON</button>
@@ -154,8 +158,8 @@ body[data-stage="1"] #bP{display:none!important}
   </div>
 </div>
 
-<div id="over" class="overlay menu" hidden>
-  <div class="card" style="min-width:250px">
+<div id="over" class="overlay menu light" hidden>
+  <div class="card" style="min-width:230px">
     <h2 id="oTitle">みずが にごっちゃった…</h2>
     <p id="oStage"></p>
     <p>たべたエサ</p>
