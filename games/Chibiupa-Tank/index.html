@@ -73,6 +73,10 @@ body[data-stage="1"] #bP{display:none!important}
 #ready .card h2{text-shadow:2px 2px 0 rgba(255,255,255,.9),0 0 8px rgba(255,255,255,.8)}
 #ready .card p{color:#6b4a58;font-weight:800;text-shadow:0 0 6px #fff,0 0 3px #fff,1px 1px 0 rgba(255,255,255,.9)}
 #ready .btn{background:rgba(238,127,152,.88)}
+#ready .card h2{font-size:18px;margin:0 0 2px}
+#ready .card p{font-size:10px;margin:2px 0;line-height:1.5}
+#ready .card p.big{font-size:14px!important}
+#ready .btn{font-size:12.5px;padding:6px 10px;margin-top:6px}
 .card h1{font-family:var(--display);font-weight:400;margin:2px 0 0;font-size:clamp(24px,7vh,34px);line-height:1.15;color:var(--pink);
   text-shadow:2px 2px 0 #fff,4px 4px 0 var(--line)}
 .card h2{font-family:var(--display);font-weight:400;margin:2px 0 4px;font-size:26px;color:var(--pink);text-shadow:2px 2px 0 #fff,3px 3px 0 var(--line)}
@@ -130,9 +134,9 @@ body[data-stage="1"] #bP{display:none!important}
 </div>
 
 <div id="ready" class="overlay menu light" hidden>
-  <div class="card" style="min-width:240px">
+  <div class="card" style="min-width:190px">
     <h2 id="rTitle">ステージ 1</h2>
-    <p id="rGoal" class="big" style="font-size:22px"></p>
+    <p id="rGoal" class="big"></p>
     <p id="rNote"></p>
     <button class="btn" id="goBtn">スタート</button>
   </div>
