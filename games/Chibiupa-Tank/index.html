@@ -370,8 +370,19 @@ addEventListener('resize',resize); addEventListener('orientationchange',()=>{ se
 
 /* ===== 音 ===== */
 let ac=null, muted=false;
+/* ----- 効果音ファイル（sound/*.wav。短いので WAV のまま＝再生の遅れなし。読めなければ合成音）----- */
+const sfxBuf={}; let sfxFilePlayed=0;
+function loadSfxFile(k,url){
+  if(!ac||sfxBuf[k]!==undefined)return; sfxBuf[k]=null;
+  fetch(url).then(r=>r.arrayBuffer()).then(a=>new Promise((ok,ng)=>ac.decodeAudioData(a,ok,ng))).then(b=>{ sfxBuf[k]=b; }).catch(()=>{});
+}
+function playSfxFile(k,vol){
+  if(!ac||muted||state==='title'||!sfxBuf[k])return false;
+  const s=ac.createBufferSource(), g=ac.createGain(); s.buffer=sfxBuf[k]; g.gain.value=vol; s.connect(g); g.connect(ac.destination); s.start(); sfxFilePlayed++; return true;
+}
 function initAudio(){
   if(!ac){ try{ ac=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+  loadSfxFile('poop','sound/poop.wav');
   if(ac&&ac.state==='suspended')ac.resume();
 }
 /* ----- BGM（ゲーム中のみ。sound/bgm.mp3 をループ。ポーズで止めて、つづけるで続きから）----- */
@@ -406,7 +417,7 @@ const sfx={
   plop(){tone(520,.07,'sine',.05,300)},
   eat(){tone(620,.08,'square',.06,940); tone(940,.1,'square',.05,1240,.07)},
   full(){tone(260,.25,'sine',.08,180)},
-  poop(){tone(200,.18,'square',.06,110); tone(150,.2,'square',.05,90,.12)},
+  poop(){ if(!playSfxFile('poop',.55)){ tone(200,.18,'square',.06,110); tone(150,.2,'square',.05,90,.12); } },   // ユーザー提供の効果音（sound/poop.wav）
   pump(){tone(180,.5,'sawtooth',.04,360); tone(520,.2,'sine',.05,900,.2)},
   rank(pos){ const n=pos===1?[523,659,784,1047,1319,1568]:[523,659,784,1047]; n.forEach((f,i)=>tone(f,.26,'triangle',.09,f*1.01,i*.11)); },
   clear(){[523,659,784,1047].forEach((f,i)=>tone(f,.2,'triangle',.08,f*1.02,i*.1))},
@@ -1434,7 +1445,7 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 resetGame(); setupDemo(); requestAnimationFrame(loop);
-window.__game={P,rollSides,shareResult,composeResultImage,shareInfo,get shareBlob(){return shareBlob},SHARE,xIntentUrl,gp,pollPad,get mode(){return mode},get tokoPumps(){return tokoPumps},loadRank,addRank,showRank,get lastRank(){return lastRank},bestFor,RK,gameOver,startGame,get bgm(){return {loaded:!!bgmBuf,playing:!!bgmSrc,dur:bgmBuf&&bgmBuf.duration,vol:bgmGain&&bgmGain.gain.value}},setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
+window.__game={P,get sfxLoaded(){return !!sfxBuf.poop},get sfxFilePlayed(){return sfxFilePlayed},rollSides,shareResult,composeResultImage,shareInfo,get shareBlob(){return shareBlob},SHARE,xIntentUrl,gp,pollPad,get mode(){return mode},get tokoPumps(){return tokoPumps},loadRank,addRank,showRank,get lastRank(){return lastRank},bestFor,RK,gameOver,startGame,get bgm(){return {loaded:!!bgmBuf,playing:!!bgmSrc,dur:bgmBuf&&bgmBuf.duration,vol:bgmGain&&bgmGain.gain.value}},setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
 </script>
 </body>
 </html>

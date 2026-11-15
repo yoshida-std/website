@@ -3,12 +3,13 @@
 スマホ横画面・スクロールなしの固定画面。水そうの中をちびうぱが泳ぎ、上から落ちてくる人工エサをキャッチする。公開URL（まだポートフォリオには載せていない）: `https://yoshida-std.github.io/website/games/Chibiupa-Tank/`
 リポジトリ全体の作業ルールはルートの `CLAUDE.md` を参照。
 
-プッシュ前の確認用 Artifact: `https://claude.ai/artifact/VCdowGubUF6gCxXRSAujKH`（変更のたびにこの URL を更新する。`index.html` と `img/chibiupa.png` `img/logo.png` `img/side/side1〜5.gif` `sound/bgm.mp3` を同じパスで載せる）
+プッシュ前の確認用 Artifact: `https://claude.ai/artifact/VCdowGubUF6gCxXRSAujKH`（変更のたびにこの URL を更新する。`index.html` と `img/chibiupa.png` `img/logo.png` `img/side/side1〜5.gif` `sound/bgm.mp3` `sound/poop.wav` を同じパスで載せる）
 
 ## ファイル
 - `index.html` … 1枚完結（canvas 描画。音は WebAudio の合成音でファイルなし）
 - `sound/bgm.mp3` … ゲーム中のBGM（ユーザー提供の `BGM256-251031-taisetsunaehon-wav.wav`（60.8秒・ステレオ）を mp3 128kbps に変換したもの、約0.95MB。曲名・提供元はファイル名しか分かっていない。ライセンス・クレジット表記の要否はユーザーに確認すること）
 - `img/side/side1〜5.gif` … 水槽の左右の余白に置くアニメGIF（ユーザー提供のもの。ちびうぱのスタンプ6体が2列×3段に並んだ縦長のシートで、元は506×900・20コマ・2秒ループ・約1MB。透明を保ったまま ffmpeg で**元の大きさのまま**64色にして各0.67〜0.8MB（合計約3.8MB）。枠が大きいので、縮めると粗く見える）
+- `sound/poop.wav` … 💩の効果音（ユーザー提供の `monsterpuyon.wav`（0.58秒）の、音のある最初の0.3秒だけを切り出し、モノラル・44.1kHz・16bitのWAVに（約26KB）。短いので mp3 にせず WAV のまま＝再生の遅れなし。曲名・提供元はファイル名しか分かっていない。クレジット表記の要否はユーザーに確認すること）
 - `img/logo.png` … タイトルロゴ（ユーザー提供の画像を余白でトリミングして幅640pxに縮小・256色化したもの）
 - `img/chibiupa.png` … ちびうぱ（ユーザー提供GIFの1コマ目を切り出した透過PNG、174×152）。ゲームでは**頭と顔だけ**をこの絵から使い（`drawPlayer`。y<94 で切り出す）、体（どう体・足・うで・しっぽ）は canvas で描き足している（`drawBody`）
 
@@ -41,6 +42,7 @@
 - ウィンドウ（ステージ開始 `#ready`・ポーズ `#pause`・ゲームオーバー／クリア `#over`）は、後ろのゲーム画面が見えるよう半透明（背景の暗幕なし、カードの背景は約38%）で、文字も小さめ（見出し18px・本文10px・ボタン12.5px）。説明 `#help` も同じ半透明（タイトルはウィンドウなし）
 - **ホーム画面から起動したとき**ポーズボタンが押せない不具合の対策: 画面の上のふち近く（上から6px）のタップは、iOSのスタンドアロンではシステムのジェスチャーに先に取られることがあるので、HUDとポーズボタンを上から26pxに下げ（`--edge:20px`）、ポーズボタンの押せる範囲を見た目より10pxずつ広げた（`#pauseBtn::before`）。回転後の大きさのずれ対策として `orientationchange` でも `resize` し、縦向き判定は `matchMedia('(orientation:portrait)')`。**実機のホーム画面起動では未確認**（この環境では再現できない）
 - **画面の大きさの測り方**（ホーム画面から起動したとき、iPhone（ノッチあり）でタイトルのデモが拡大して見える報告の対策。**実機では未確認**）: `resize()` は `#stage` の枠だけでなく `innerWidth/innerHeight` と `visualViewport` の小さいほうを使い、見えている範囲より大きくならないようにする。`viewKey()` が変わったら（起動直後や回転後に取得値がずれる対策）、16フレームごとの確認・`orientationchange`（150ms・600ms後）・`visualViewport` の resize でも測り直す。`visualViewport.scale≠1` のときは `fixZoom()` でviewportのmetaを一瞬変えて拡大をリセット
+- **💩の効果音**: うんちをするたび（`doPoop` → `sfx.poop`）に `sound/poop.wav` を鳴らす（`playSfxFile`。「あそぶ」を押したときに `initAudio` が読み込む。音量 `.55`。音OFF・タイトル中は鳴らさない）。読めなかったときは、これまでの合成音
 - **BGM**: ゲーム中だけ（`ready`・`play`・`trans`）ループで流す。「あそぶ」で最初から（AudioContext をこのタップで作る）。ポーズで止め、「つづける」で続きから。ゲームオーバー・クリア・タイトルへ戻ると止める。タイトル（デモ）は無音。音ON/OFFで消える。音量 `BGM_VOL=.34`（効果音より控えめ）。Web Audio の `AudioBufferSource.loop`（Mogurush と同じ作り）
 - ベストは `localStorage` の `chibiupa_best`
 - 縦向きだと「よこむきにしてね」を出して自動ポーズ。タッチ抑止はルート CLAUDE.md の方針どおり（`KEEP='button,.menu'`）
