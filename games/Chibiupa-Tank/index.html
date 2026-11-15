@@ -68,6 +68,7 @@ body[data-stage="1"] #bP{display:none!important}
   backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);padding:10px;box-sizing:border-box}
 .card{background:var(--panel);border:3px solid var(--line);border-radius:22px;box-shadow:0 5px 0 var(--line);
   padding:12px 20px 14px;text-align:center;max-height:100%;box-sizing:border-box;overflow-y:auto;touch-action:pan-y;max-width:min(520px,100%)}
+.overlay.light{background:rgba(14,70,96,.15);backdrop-filter:none;-webkit-backdrop-filter:none}
 .card h1{font-family:var(--display);font-weight:400;margin:2px 0 0;font-size:clamp(24px,7vh,34px);line-height:1.15;color:var(--pink);
   text-shadow:2px 2px 0 #fff,4px 4px 0 var(--line)}
 .card h2{font-family:var(--display);font-weight:400;margin:2px 0 4px;font-size:26px;color:var(--pink);text-shadow:2px 2px 0 #fff,3px 3px 0 var(--line)}
@@ -114,13 +115,22 @@ body[data-stage="1"] #bP{display:none!important}
         <h1>ちびうぱの<br>エサキャッチ！</h1>
       </div>
     </div>
-    <p>ぜんぶで<b>5ステージ</b>。ステージごとに決まった数のエサを食べるとクリア！ 水そうは、あみですくわれて、だんだん大きくなるよ。</p>
+    <p>ぜんぶで<b>10ステージ</b>。ステージごとに決まった数のエサを食べるとクリア！ 水そうは、あみですくわれて、5ステージ目まで だんだん大きくなるよ。途中からは<b>ポンプ</b>の水流も出てくるよ。</p>
     <p>水そうに落ちてくる<b>エサ</b>を、およいでパクッ！底にとどいたエサは少しするときえるよ。<b>5つ</b>きえると水がにごって、ゲームオーバー。</p>
     <p>エサを<b>10こ</b>食べると おなかいっぱいで<b>うごきがにぶく</b>なるよ。<b>💩ボタン</b>でうんちをすると元にもどるけど、底に4秒おくと水がよごれる（エサ2つ分）。ときどき左右から入ってくる<b>スポイト</b>の先でうんちをすると、すいとってくれるよ！</p>
     <p>たまに落ちてくる<b>ヌマエビ</b>は食べると3点。食べずにおくと、底を歩いて<b>底のエサやうんちを食べてくれる</b>よ（最大4ひき）。</p>
     <p>◀ ▶ でよこにすすむ ／ <b>およぐ</b>でふわっとうえへ（ちょっとずつしずむよ）</p>
     <button class="btn" id="startBtn">あそぶ</button>
     <div class="copy">©YoshidaStudio, ©PANICPUMPKIN</div>
+  </div>
+</div>
+
+<div id="ready" class="overlay menu light" hidden>
+  <div class="card" style="min-width:240px">
+    <h2 id="rTitle">ステージ 1</h2>
+    <p id="rGoal" class="big" style="font-size:22px"></p>
+    <p id="rNote"></p>
+    <button class="btn" id="goBtn">スタート</button>
   </div>
 </div>
 
@@ -166,10 +176,15 @@ document.addEventListener('touchmove',e=>{ if(!e.target.closest('.card'))e.preve
 /* ===== 基本 ===== */
 const $=id=>document.getElementById(id);
 const H=400, FLOOR=H-38, FULL=10, POOP_REST=4, MAX_SHRIMP=4;
-const GOALS=[12,16,20,25,30];            // ステージごとのクリアに必要な数（エサ1・ヌマエビ3）
+const STAGES=10;
+const GOALS=[12,16,20,25,30,32,35,38,41,45];            // ステージごとのクリアに必要な数（エサ1・ヌマエビ3）
+const PUMP_X=[[],[],[],[],[],[.5],[.3],[.28,.72],[.22,.6],[.2,.5,.8]];   // ポンプの位置（水槽の幅に対する割合）。ステージ6から
+const PUMP_HW=34;   // 水流のはば（ポンプの中心から左右）
+const STAGE_NOTE={1:'◀ ▶ でよこに、およぐ でうえに すすむよ',2:'ヌマエビと スポイトが でてくるよ',6:'ポンプの水流が でてくるよ！ したから うえへ ながされるよ',8:'ポンプが ふえるよ',10:'さいごの ステージ！'};
 const TW=[.62,.72,.82,.91,1], TH=[.89,.89,.89,.89,.89];   // 水槽の幅・水の深さの割合（深さは全ステージ同じ＝ステージ4の高さ。幅だけ大きくなる）
 let W=800, scale=1;
 let WATER=96, TL=0, TR=800;             // いまの水槽の水面・左右のはし
+let PUMPS=[], readyPending=false;
 let stage=1, stageEaten=0, won=false, clearPending=false, trans=null, net=null, banner=null;
 const cv=$('cv'), ctx=cv.getContext('2d');
 const sprite=new Image(); sprite.src='img/chibiupa.png';
@@ -190,10 +205,17 @@ function resize(){
   applyTank(tankFor(stage));
 }
 function tankFor(n){
-  const i=clamp(n,1,5)-1, w=W*TW[i], depth=(H-96)*TH[i], L=(W-w)/2;
-  return {L,R:L+w,WT:H-depth,w,depth};
+  const i=clamp(Math.min(n,5),1,5)-1, w=W*TW[i], depth=(H-96)*TH[i], L=(W-w)/2;   // 大きさが変わるのは5ステージ目まで
+  return {L,R:L+w,WT:H-depth,w,depth,pumps:(PUMP_X[clamp(n,1,STAGES)-1]||[]).map(f=>L+w*f)};
 }
-function applyTank(t){ WATER=t.WT; TL=t.L; TR=t.R; }
+function applyTank(t){ WATER=t.WT; TL=t.L; TR=t.R; PUMPS=t.pumps; }
+// ポンプの水流の強さ（0〜1）。ポンプの真上ほど強く、はしほど弱い。水面より上と、ポンプの下には出ない
+function flowAt(x,y){
+  if(!PUMPS.length||y<WATER||y>FLOOR+8)return 0;
+  let f=0;
+  for(const px of PUMPS){ const dx=Math.abs(x-px); if(dx<PUMP_HW){ const u=1-dx/PUMP_HW; f+=u*u*(3-2*u); } }
+  return Math.min(1,f)*(.85+.15*Math.sin(T*1.8));
+}
 addEventListener('resize',resize); resize();
 
 /* ===== 音 ===== */
@@ -244,7 +266,7 @@ const specks=Array.from({length:70},()=>({x:Math.random(),y:Math.random(),r:rnd(
 const plants=[0.04,0.1,0.17,0.46,0.52,0.83,0.9,0.96].map((x,i)=>({x,h:rnd(70,120),w:rnd(10,18),c:i%2,ph:rnd(0,6)}));
 const stones=Array.from({length:26},()=>({x:Math.random(),y:Math.random(),r:rnd(2,5),c:rnd(0,1)}));
 
-function level(){ return Math.min(12,(stage-1)*2+Math.floor((stageEaten+lost*2)/5)); }
+function level(){ return Math.min(12,Math.round((stage-1)*1.2)+Math.floor((stageEaten+lost*2)/5)); }
 function setState(s){ state=s; document.body.dataset.state=s; }
 
 function resetGame(){
@@ -265,20 +287,31 @@ function startStage(n){
   updateHud();
 }
 function updateHud(){
-  $('stg').textContent=stage+'/5'; $('goal').textContent=Math.max(0,GOALS[stage-1]-stageEaten);
+  $('stg').textContent=stage+'/'+STAGES; $('goal').textContent=Math.max(0,GOALS[stage-1]-stageEaten);
   [...$('lives').children].forEach((el,i)=>el.classList.toggle('off',i>=5-lost));
   const bp=$('bP'); bp.style.setProperty('--st',Math.min(100,P.stomach*100/FULL));
   bp.classList.toggle('off',P.stomach<=0); bp.classList.toggle('full',P.stomach>=FULL);
 }
 function startGame(){
-  initAudio(); resetGame(); setState('play');
+  initAudio(); resetGame(); setState('ready'); readyPending=false;
   $('title').hidden=true; $('over').hidden=true; $('pause').hidden=true;
   $('hud').hidden=false; $('pauseBtn').hidden=false;
-  banner={text:'ステージ 1',sub:GOALS[0]+'こ たべよう！',t:0,max:2.2};
+  showReady();
+}
+// ステージのはじまり: 演出が終わったら「スタート」ボタンを出して、タップするまで始まらない
+function showReady(){
+  $('rTitle').textContent='ステージ '+stage;
+  $('rGoal').textContent='エサを '+GOALS[stage-1]+'こ たべよう！';
+  $('rNote').textContent=STAGE_NOTE[stage]||''; $('rNote').hidden=!STAGE_NOTE[stage];
+  $('ready').hidden=false;
+}
+function startPlay(){
+  if(state!=='ready'||$('ready').hidden)return;
+  $('ready').hidden=true; setState('play'); spawnT=1.2; releaseInput();
 }
 function toTitle(){
-  setState('title'); resetGame();
-  $('title').hidden=false; $('over').hidden=true; $('pause').hidden=true;
+  setState('title'); resetGame(); readyPending=false;
+  $('title').hidden=false; $('over').hidden=true; $('pause').hidden=true; $('ready').hidden=true;
   $('hud').hidden=true; $('pauseBtn').hidden=true;
 }
 function pauseGame(){ if(state!=='play')return; setState('pause'); $('pause').hidden=false; releaseInput(); }
@@ -303,6 +336,7 @@ bindPad('bS',()=>{inp.held=true;inp.heldT=0;inp.edge=.12},()=>inp.held=false);
 bindPad('bP',()=>doPoop(),()=>{});
 const keyMap={ArrowLeft:'l',KeyA:'l',ArrowRight:'r',KeyD:'r'};
 addEventListener('keydown',e=>{
+  if(state==='ready'){ if(e.code==='Enter'||e.code==='Space'){ startPlay(); e.preventDefault(); } return; }
   if(state!=='play')return;
   if(keyMap[e.code]){inp[keyMap[e.code]]=true;e.preventDefault();}
   if(['Space','ArrowUp','KeyW'].includes(e.code)){ if(!e.repeat){inp.edge=.12;inp.heldT=0;} inp.held=true; e.preventDefault(); }
@@ -314,6 +348,7 @@ addEventListener('keyup',e=>{
   if(['Space','ArrowUp','KeyW'].includes(e.code))inp.held=false;
 });
 $('startBtn').onclick=startGame;
+$('goBtn').onclick=startPlay;
 $('retryBtn').onclick=startGame;
 $('over2Title').onclick=toTitle;
 $('pauseBtn').onclick=pauseGame;
@@ -393,6 +428,8 @@ function updatePlayer(dt,auto){
   const slow=isFull();
   P.vx+=(dir*(slow?80:150)-P.vx)*Math.min(1,dt*(dir?4:2.2));
   P.vy=Math.min(P.vy+(slow?330:260)*dt,slow?115:85);
+  const fl=flowAt(P.x,P.y);   // ポンプの水流: 上へ流され、横の動きには抵抗がかかる
+  if(fl>0){ P.vy+=(-130*fl-P.vy)*Math.min(1,dt*8*fl); P.vx*=Math.max(0,1-2.4*fl*dt); }
   P.cd-=dt;
   if(!auto){
     if(inp.held)inp.heldT+=dt;
@@ -442,10 +479,11 @@ function update(dt){
       f.x=f.base+Math.sin(T*2+f.ph)*3; f.y=WATER+1+Math.sin(T*3+f.ph);
       f.timer-=dt; if(f.timer<=0){f.state='sink';f.sinkT=0;}
     }else if(f.state==='sink'){
-      f.sinkT+=dt; f.y+=f.sv*dt;
+      f.sinkT+=dt; f.y=Math.max(WATER+1,f.y+(f.sv-155*flowAt(f.x,f.y))*dt);
       f.x=clamp(f.base+Math.sin(f.sinkT*f.freq+f.ph)*f.amp*Math.min(1,f.sinkT*1.5),TL+20,TR-20);
       if(f.y>=FLOOR+3+f.jit){f.y=FLOOR+3+f.jit;f.state='rest';f.timer=f.rest;f.restMax=f.rest;}
     }else if(f.state==='rest'){
+      if(flowAt(f.x,f.y-14)>.4){ f.state='sink'; f.sinkT=0; f.base=f.x; f.y-=4; continue; }   // ポンプの水流にふき上げられる
       f.timer-=dt;
       if(f.timer<=0&&playing){ foods.splice(i,1); miss(f); continue; }
     }
@@ -467,16 +505,20 @@ function update(dt){
       s.x=s.base+Math.sin(T*2+s.ph)*3; s.y=WATER+1+Math.sin(T*3+s.ph);
       s.timer-=dt; if(s.timer<=0){s.state='sink';s.sinkT=0;}
     }else if(s.state==='sink'){
-      s.sinkT+=dt; s.y+=s.sv*dt;
+      s.sinkT+=dt; s.y=Math.max(WATER+1,s.y+(s.sv-155*flowAt(s.x,s.y))*dt);
       s.x=clamp(s.base+Math.sin(s.sinkT*s.freq+s.ph)*s.amp*Math.min(1,s.sinkT*1.5),TL+20,TR-20);
       if(s.y>=FLOOR+4){ s.y=FLOOR+4; s.state='walk'; s.wait=rnd(.3,.8); }
     }else{
       s.moving=false;
       if(s.eatT>0)s.eatT-=dt;
       else{
-        if(!s.tp||(foods.indexOf(s.tp)<0&&poops.indexOf(s.tp)<0)||s.tp.state!=='rest'){
+        // 底のうんちがあれば、エサより先にそちらへ向かう（エサをねらっていても、うんちが出たら乗りかえる）
+        const free=f=>f.state==='rest'&&!shrimps.some(o=>o!==s&&o.tp===f);
+        const hasPoop=poops.some(free);
+        const valid=s.tp&&(foods.indexOf(s.tp)>=0||poops.indexOf(s.tp)>=0)&&s.tp.state==='rest';
+        if(!valid||(hasPoop&&foods.indexOf(s.tp)>=0)){
           s.tp=null; let best=1e9;
-          for(const f of foods.concat(poops)) if(f.state==='rest'){ const d=Math.abs(f.x-s.x); if(d<best&&!shrimps.some(o=>o!==s&&o.tp===f)){best=d;s.tp=f;} }
+          for(const f of (hasPoop?poops:foods)) if(free(f)){ const d=Math.abs(f.x-s.x); if(d<best){best=d;s.tp=f;} }
         }
         if(s.tp){
           const dx=s.tp.x-s.x;
@@ -510,7 +552,7 @@ function update(dt){
   for(let i=poops.length-1;i>=0;i--){
     const q=poops[i];
     if(q.state==='sink'){
-      q.sinkT+=dt; q.y+=q.sv*dt;
+      q.sinkT+=dt; q.y=Math.max(WATER+4,q.y+(q.sv-155*flowAt(q.x,q.y))*dt);
       const d=droppers.find(v=>v.st==='stay');
       if(d){
         const tx=dropX(d), dx=tx-q.x, dy=d.y-q.y, dist=Math.hypot(dx,dy);
@@ -525,6 +567,7 @@ function update(dt){
       q.x=clamp(q.base+Math.sin(q.sinkT*2+q.ph)*q.amp,TL+14,TR-14);
       if(q.y>=FLOOR+4){ q.y=FLOOR+4; q.state='rest'; q.timer=POOP_REST; }
     }else if(q.state==='rest'){
+      if(flowAt(q.x,q.y-14)>.4){ q.state='sink'; q.sinkT=0; q.base=q.x; q.y-=4; continue; }
       q.timer-=dt;
       if(q.timer<=0&&playing){ poops.splice(i,1); miss(q,2); }
     }
@@ -538,13 +581,15 @@ function update(dt){
     else if(p.k==='txt'){p.y+=p.vy*dt;}
     else if(p.k==='drip'){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;}
   }
+  if(state!=='trans')for(const px of PUMPS)if(Math.random()<dt*9)parts.push({k:'bub',x:px+rnd(-12,12),y:FLOOR-12,vy:-rnd(70,120),r:rnd(1.5,3.5),life:3});
   if(Math.random()<dt*(state==='title'?1.5:.8))parts.push({k:'bub',x:rnd(TL+30,TR-30),y:FLOOR,vy:-rnd(25,45),r:rnd(2,5),life:9});
   // 水のよごれ
   dirt+=(dirtTarget-dirt)*Math.min(1,dt*.8);
   if(state==='over'&&overT>0){ overT-=dt; if(overT<=0){
-    $('oTitle').textContent=won?'ぜんぶ クリア！':'みずが にごっちゃった…'; $('oStage').textContent=won?'5ステージを ぜんぶ クリアしたよ！':'ステージ '+stage+' で ゲームオーバー'; $('oScore').textContent=eaten; $('oBest').textContent=(newBest?'ベスト こうしん！ ':'ベスト ')+best; $('over').hidden=false; } }
-  if(clearPending){ clearPending=false; if(state==='play'){ stage>=5?gameOver(true):startTrans(); } }
+    $('oTitle').textContent=won?'ぜんぶ クリア！':'みずが にごっちゃった…'; $('oStage').textContent=won?STAGES+'ステージを ぜんぶ クリアしたよ！':'ステージ '+stage+' で ゲームオーバー'; $('oScore').textContent=eaten; $('oBest').textContent=(newBest?'ベスト こうしん！ ':'ベスト ')+best; $('over').hidden=false; } }
+  if(clearPending){ clearPending=false; if(state==='play'){ stage>=STAGES?gameOver(true):startTrans(); } }
   updateNet(dt);
+  if(state==='ready'&&readyPending&&!net){ readyPending=false; showReady(); }
   if(banner){ banner.t+=dt; if(banner.t>=banner.max)banner=null; }
 }
 
@@ -585,9 +630,26 @@ function drawTankBack(tk,d,tx){
   for(let x=L;x<=R+20;x+=20)c.lineTo(x,FLOOR+3+Math.sin(x*.03)*3);
   c.lineTo(R,H); c.lineTo(L,H); c.closePath(); c.fill();
   for(const s of stones){ c.fillStyle=s.c>.5?'rgba(180,150,110,.6)':'rgba(255,255,255,.5)'; c.beginPath(); c.arc(L+s.x*w,FLOOR+10+s.y*(H-FLOOR-14),s.r,0,6.28); c.fill(); }
+  for(const px of tk.pumps)drawPump(px,WT,d);
   // にごり（水全体）
   if(d>0.005){ c.fillStyle=`rgba(96,84,28,${.5*d})`; c.fillRect(L,WT,w,H-WT); }
   c.restore();
+}
+function drawPump(px,WT,d){
+  const c=ctx, hw=PUMP_HW;
+  // 水流（上へ流れるすじ）
+  const g=c.createLinearGradient(0,WT,0,FLOOR); g.addColorStop(0,'rgba(255,255,255,0)'); g.addColorStop(1,'rgba(255,255,255,.14)');
+  c.fillStyle=g; c.fillRect(px-hw,WT,hw*2,FLOOR-WT);
+  c.save(); c.lineCap='round'; c.lineWidth=2.2; c.strokeStyle=`rgba(255,255,255,${.34*(1-d*.5)})`; c.setLineDash([10,18]);
+  for(let i=-2;i<=2;i++){ c.lineDashOffset=T*75+i*9; const x=px+i*hw*.36+Math.sin(T*2+i)*2;
+    c.beginPath(); c.moveTo(x,WT+2); c.lineTo(x,FLOOR-16); c.stroke(); }
+  c.restore();
+  // ポンプ本体
+  c.lineJoin='round'; c.lineWidth=2.2; c.strokeStyle='#34444f';
+  c.fillStyle='#8da0ad'; c.beginPath(); c.moveTo(px-10,FLOOR-4); c.lineTo(px-7,FLOOR-15); c.lineTo(px+7,FLOOR-15); c.lineTo(px+10,FLOOR-4); c.closePath(); c.fill(); c.stroke();
+  c.fillStyle='#6f8391'; c.beginPath(); c.roundRect(px-17,FLOOR-6,34,19,5); c.fill(); c.stroke();
+  c.strokeStyle='#34444f'; c.lineWidth=1.4; for(let i=-2;i<=2;i++){ c.beginPath(); c.moveTo(px+i*5,FLOOR-1); c.lineTo(px+i*5,FLOOR+9); c.stroke(); }
+  c.fillStyle=Math.sin(T*6)>0?'#7fe08a':'#3f8f4a'; c.beginPath(); c.arc(px+12,FLOOR-1,1.8,0,6.283); c.fill();
 }
 function drawTankFront(tk,d,tx){
   const c=ctx, {L,R,WT,w}=tk;
@@ -685,7 +747,7 @@ function startTrans(){
   releaseInput(); setState('trans');
   trans={ph:'clear',t:0,from:stage,to:stage+1,oldX:0,newX:W,showTanks:false,oldDirt:dirt,x0:0,y0:0};
   net={x:P.x,y:-80,rot:0,carry:false,rising:false};
-  banner={text:'ステージ クリア！',sub:stage+' / 5',t:0,max:1.8};
+  banner={text:'ステージ クリア！',sub:stage+' / '+STAGES,t:0,max:1.8};
 }
 function updateTrans(dt){
   const tr=trans, oldTk=tankFor(tr.from), newTk=tankFor(tr.to);
@@ -722,8 +784,7 @@ function updateTrans(dt){
     P.x=x; P.y=y; P.vx=0; P.vy=50; P.sq=1;
     net.carry=false; net.rising=true;
     for(let i=0;i<8;i++)parts.push({k:'bub',x:x+rnd(-20,20),y:y+rnd(-10,10),vy:-rnd(30,70),r:rnd(2,4),life:1.4});
-    trans=null; setState('play');
-    banner={text:'ステージ '+to,sub:GOALS[to-1]+'こ たべよう！',t:0,max:2.2};
+    trans=null; setState('ready'); readyPending=true; banner=null;
   }
 }
 function updateNet(dt){
@@ -897,7 +958,7 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 resetGame(); requestAnimationFrame(loop);
-window.__game={P,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
+window.__game={P,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
 </script>
 </body>
 </html>
