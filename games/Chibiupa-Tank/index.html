@@ -31,18 +31,21 @@ canvas{touch-action:none;display:block}
 body[data-state=title] #stage{left:0;right:0}
 /* 左右の余白のアニメGIF: 左右は**同じ大きさ**（--sw）。左右それぞれの「余白の幅」と「ボタンの上までの高さ」から入る大きさを出して、いちばん小さいものに合わせる */
 :root{
+  --sp:5px;                                                   /* 枠の内側の余白 */
+  --sh:calc((var(--sw) - 2*var(--sp))/.8432 + 2*var(--sp));   /* 枠の高さ（中の1マスの縦横比 190:225.33 を保つ） */
   --botL:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--ps) + 10px);                       /* ◀ ▶ ボタンの上まで */
   --botR:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--bs) + 10px + var(--pp) + 10px);   /* 💩・およぐ ボタンの上まで */
   --sw:min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
-           calc((100vh - 16px - var(--botL)) * .8432),calc((100vh - 16px - var(--botR)) * .8432));
+           calc((100vh - 16px - var(--botL) - 2*var(--sp)) * .8432 + 2*var(--sp)),calc((100vh - 16px - var(--botR) - 2*var(--sp)) * .8432 + 2*var(--sp)));
 }
 @supports (height:100dvh){:root{
   --sw:min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
-           calc((100dvh - 16px - var(--botL)) * .8432),calc((100dvh - 16px - var(--botR)) * .8432));
+           calc((100dvh - 16px - var(--botL) - 2*var(--sp)) * .8432 + 2*var(--sp)),calc((100dvh - 16px - var(--botR) - 2*var(--sp)) * .8432 + 2*var(--sp)));
 }}
 body[data-stage="1"]{--botR:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--bs) + 10px)}   /* ステージ1は💩ボタンがない */
-.side{position:fixed;top:8px;width:var(--sw);aspect-ratio:190/225.33;height:auto;pointer-events:none;opacity:0;transition:opacity .4s;display:none;
-  background-repeat:no-repeat;background-size:200% 300%;background-position:0% 0%}   /* シート（2列×3段）の1マスだけを見せる */
+.side{position:fixed;top:8px;width:var(--sw);height:var(--sh);box-sizing:border-box;padding:var(--sp);pointer-events:none;opacity:0;transition:opacity .4s;display:none;
+  background-color:#fbfcff;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,.28);   /* 白に近い背景の角丸の枠 */
+  background-repeat:no-repeat;background-origin:content-box;background-size:200% 300%;background-position:0% 0%}   /* シート（2列×3段）の1マスだけを、枠の内側に見せる */
 .side.flip{animation:sideIn .5s ease-out}
 @keyframes sideIn{from{opacity:0;transform:translateX(14px) scale(.94)}to{opacity:1;transform:none}}
 .side.on{opacity:1}
@@ -52,8 +55,8 @@ body:not([data-state=title]) .side{display:block}
 /* 左の余白のロゴ: GIFの下から ◀ ▶ ボタンの上までの空きに、はみ出さずに収める */
 #sideLogo{position:fixed;display:none;pointer-events:none;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35));
   left:calc(env(safe-area-inset-left,0px) + 6px);width:calc(var(--rl) - env(safe-area-inset-left,0px) - 12px);
-  top:calc(8px + var(--sw)/.8432 + 10px);height:calc(100vh - var(--botL) - (8px + var(--sw)/.8432 + 10px))}
-@supports (height:100dvh){#sideLogo{height:calc(100dvh - var(--botL) - (8px + var(--sw)/.8432 + 10px))}}
+  top:calc(8px + var(--sh) + 10px);height:calc(100vh - var(--botL) - (8px + var(--sh) + 10px))}
+@supports (height:100dvh){#sideLogo{height:calc(100dvh - var(--botL) - (8px + var(--sh) + 10px))}}
 body:not([data-state=title]) #sideLogo{display:block}   /* タイトルのデモは画面の横いっぱい */
 #cv{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px #cfe0e8,0 0 24px rgba(0,0,0,.4)}
 
@@ -456,7 +459,7 @@ function resetGame(){
 }
 // 左右の余白のアニメGIF（img/side/side1〜5.gif。縦長のシート＝スタンプ6体が2列×3段）。
 // ゲームの開始・ステージの切り替えごとに、左右ちがうシートをランダムに選び、そのシートの6体を1体ずつ、一定時間（SIDE_MS）ごとにスライドのように切り替えて見せる
-const SIDE_N=5, SIDE_MS=3200;
+const SIDE_N=5, SIDE_MS=10000;   // 切り替えの間隔（ms）
 const sideCell={sideL:0,sideR:0};
 function showCell(el,i){
   const c=((i%6)+6)%6; sideCell[el.id]=c;
