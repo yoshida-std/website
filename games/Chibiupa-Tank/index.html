@@ -26,6 +26,7 @@ img{-webkit-user-drag:none}
 canvas{touch-action:none;display:block}
 [hidden]{display:none!important}
 #stage{position:fixed;top:0;bottom:0;left:var(--rl);right:var(--rr)}
+body[data-state=title] #stage{left:0;right:0}   /* タイトルのデモは画面の横いっぱい */
 #cv{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px #cfe0e8,0 0 24px rgba(0,0,0,.4)}
 
 /* HUD（水面より上の空きスペースに重ねる） */
@@ -190,6 +191,7 @@ body[data-stage="1"] #bP{display:none!important}
 <div id="rotate"><span class="ic">📱</span>スマホを よこむきにしてね</div>
 
 <script>
+document.body.dataset.state='title';
 /* ===== タッチ・ズーム・長押しの抑止（ボタンとメニューは除く） ===== */
 const KEEP='button,.menu';
 document.addEventListener('touchstart',e=>{ if(e.touches.length>1||!e.target.closest(KEEP))e.preventDefault(); },{passive:false});
@@ -294,7 +296,7 @@ const plants=[0.04,0.1,0.17,0.46,0.52,0.83,0.9,0.96].map((x,i)=>({x,h:rnd(70,120
 const stones=Array.from({length:26},()=>({x:Math.random(),y:Math.random(),r:rnd(2,5),c:rnd(0,1)}));
 
 function level(){ return Math.min(12,Math.round((stage-1)*1.2)+Math.floor((stageEaten+lost*2)/5)); }
-function setState(s){ state=s; document.body.dataset.state=s; }
+function setState(s){ const was=state; state=s; document.body.dataset.state=s; if((was==='title')!==(s==='title'))resize(); }   // タイトルだけ水槽の枠の広さがちがう
 
 function resetGame(){
   eaten=0; newBest=false; won=false; clearPending=false; trans=null; net=null; banner=null; parts=[];
@@ -320,7 +322,7 @@ function updateHud(){
   bp.classList.toggle('off',P.stomach<=0); bp.classList.toggle('full',P.stomach>=FULL);
 }
 function startGame(){
-  initAudio(); resetGame(); setState('ready'); readyPending=false;
+  initAudio(); setState('ready'); resetGame(); readyPending=false;
   $('title').hidden=true; $('help').hidden=true; $('over').hidden=true; $('pause').hidden=true;
   $('hud').hidden=false; $('pauseBtn').hidden=false;
   showReady();
