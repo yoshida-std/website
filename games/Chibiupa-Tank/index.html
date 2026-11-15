@@ -13,6 +13,7 @@
   --font:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Hiragino Kaku Gothic ProN",sans-serif;
   --display:"Mochiy Pop One","M PLUS Rounded 1c",sans-serif;
   color-scheme:light;
+  --edge:20px;   /* 画面の上のふちから離す（ホーム画面から起動したとき、ふち近くのタップはシステムのジェスチャーに取られることがある） */
   --ps:clamp(46px,17vh,70px); --bs:clamp(56px,22vh,86px);
   --rl:calc(max(14px,env(safe-area-inset-left,0px)) + 2*var(--ps) + 22px);
   --rr:calc(max(18px,env(safe-area-inset-right,0px)) + var(--bs) + 10px);
@@ -30,7 +31,7 @@ body[data-state=title] #stage{left:0;right:0}   /* タイトルのデモは画�
 #cv{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px #cfe0e8,0 0 24px rgba(0,0,0,.4)}
 
 /* HUD（水面より上の空きスペースに重ねる） */
-#hud{position:fixed;left:calc(var(--rl) + 6px);top:max(6px,env(safe-area-inset-top));
+#hud{position:fixed;left:calc(var(--rl) + 6px);top:calc(max(6px,env(safe-area-inset-top,0px)) + var(--edge));
   display:flex;gap:4px;align-items:center;pointer-events:none}
 .chip{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:2px 7px;box-shadow:0 2px 0 var(--line);
   display:flex;align-items:center;gap:4px;height:30px;box-sizing:border-box}
@@ -39,9 +40,10 @@ body[data-state=title] #stage{left:0;right:0}   /* タイトルのデモは画�
 #lives{display:flex;gap:3px}
 #lives i{width:12px;height:12px;border-radius:50%;box-sizing:border-box;background:radial-gradient(circle at 35% 30%,#f6c27a,#c9772e);border:2px solid #9a5a22;transition:all .3s}
 #lives i.off{background:#d9d2cc;border-color:#b3a9a2;opacity:.55}
-#pauseBtn{position:fixed;right:calc(var(--rr) + 6px);top:max(6px,env(safe-area-inset-top));height:30px;min-width:44px;
+#pauseBtn{position:fixed;right:calc(var(--rr) + 6px);top:calc(max(6px,env(safe-area-inset-top,0px)) + var(--edge));height:30px;min-width:44px;
   border:2px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:0 2px 0 var(--line);color:var(--pink);
   font-family:var(--display);font-size:13px;padding:0 10px}
+#pauseBtn::before{content:"";position:absolute;inset:-10px}   /* 押せる範囲を見た目より広く */
 
 /* 操作パッド */
 .pad{position:fixed;bottom:max(14px,env(safe-area-inset-bottom));display:none;align-items:center;justify-content:center;
@@ -70,12 +72,24 @@ body[data-stage="1"] #bP{display:none!important}
 .card{background:var(--panel);border:3px solid var(--line);border-radius:22px;box-shadow:0 5px 0 var(--line);
   padding:12px 20px 14px;text-align:center;max-height:100%;box-sizing:border-box;overflow-y:auto;touch-action:pan-y;max-width:min(520px,100%)}
 .overlay.light{background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none}
-#ready .card,#over .card,#pause .card,#help .card{background:rgba(255,248,240,.38);border-color:rgba(239,207,198,.7);box-shadow:none;padding:8px 18px 12px}
-#ready .card h2,#over .card h2,#pause .card h2,#help .card h2{text-shadow:2px 2px 0 rgba(255,255,255,.9),0 0 8px rgba(255,255,255,.8)}
-#ready .card p,#over .card p,#pause .card p,#help .card p{color:#6b4a58;font-weight:800;text-shadow:0 0 6px #fff,0 0 3px #fff,1px 1px 0 rgba(255,255,255,.9)}
+#ready .card,#over .card,#pause .card,#help .card,#rank .card{background:rgba(255,248,240,.38);border-color:rgba(239,207,198,.7);box-shadow:none;padding:8px 18px 12px}
+#ready .card h2,#over .card h2,#pause .card h2,#help .card h2,#rank .card h2{text-shadow:2px 2px 0 rgba(255,255,255,.9),0 0 8px rgba(255,255,255,.8)}
+#ready .card p,#over .card p,#pause .card p,#help .card p,#rank .card p{color:#6b4a58;font-weight:800;text-shadow:0 0 6px #fff,0 0 3px #fff,1px 1px 0 rgba(255,255,255,.9)}
 #ready .btn{background:rgba(238,127,152,.88)}
-#ready .card h2,#over .card h2,#pause .card h2,#help .card h2{font-size:18px;margin:0 0 2px}
-#ready .card p,#over .card p,#pause .card p,#help .card p{font-size:10px;margin:2px 0;line-height:1.5}
+#ready .card h2,#over .card h2,#pause .card h2,#help .card h2,#rank .card h2{font-size:18px;margin:0 0 2px}
+#ready .card p,#over .card p,#pause .card p,#help .card p,#rank .card p{font-size:10px;margin:2px 0;line-height:1.5}
+#rank .card{background:rgba(255,248,240,.62)}
+#rankList{list-style:none;margin:6px 0;padding:0;text-align:left}
+#rankList li{display:grid;grid-template-columns:34px 1fr auto;gap:6px;align-items:center;padding:3px 8px;border-radius:9px;font-size:12px;font-weight:800;color:#5b3f4d;text-shadow:0 0 5px #fff}
+#rankList li:nth-child(odd){background:rgba(255,255,255,.3)}
+#rankList li .n{font-family:var(--display);font-weight:400;color:#e0527a;text-align:center}
+#rankList li .d{font-size:10px;color:#8a6c79;font-weight:500}
+#rankList li.me{background:rgba(255,214,102,.75);animation:meb .7s ease-in-out infinite alternate}
+@keyframes meb{to{background:rgba(255,236,160,.95)}}
+#rankList li.empty{display:block;text-align:center;color:#8a6c79;font-weight:500}
+.rankin{font-family:var(--display);font-size:15px!important;color:#e0527a!important;animation:pop .6s cubic-bezier(.2,1.6,.4,1) both}
+.rankin.first{font-size:18px!important;color:#e08a00!important}
+@keyframes pop{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
 #help .card{background:rgba(255,248,240,.6)}
 #help .card p{text-align:left;font-size:11px;margin:4px 0}
 #help .card p b{color:#e0527a}
@@ -83,17 +97,23 @@ body[data-stage="1"] #bP{display:none!important}
 #title{flex-direction:column;gap:clamp(8px,2.4vh,16px);padding-bottom:clamp(14px,5vh,34px)}
 #title .logo{height:clamp(90px,40vh,190px);width:auto;max-width:86vw;display:block;filter:drop-shadow(0 3px 6px rgba(20,60,90,.35))}
 #title .tbtns{display:flex;flex-direction:column;align-items:center;gap:8px}
+#title .trow{display:flex;gap:10px;justify-content:center}
 #title .btn{margin:0}
-#title #startBtn{width:clamp(150px,38vw,220px);font-size:18px;padding:9px 12px}
-#title #helpBtn{width:clamp(110px,26vw,150px);font-size:13px;padding:6px 10px}
+#title #startBtn,#title #tokoBtn{width:clamp(120px,24vw,170px);font-size:17px;padding:9px 10px}
+#title #rankBtn,#title #helpBtn{width:clamp(100px,19vw,130px);font-size:13px;padding:6px 8px}
+.btn.toko{background:#f2a23a;box-shadow:0 4px 0 #c7791c}
+.padfocus{outline:3px solid #ffd84a;outline-offset:3px;filter:brightness(1.08);transform:scale(1.06);animation:padf .6s ease-in-out infinite alternate}
+@keyframes padf{to{outline-color:#fff6c2}}
+.btn.toko:active{box-shadow:0 1px 0 #c7791c}
 #title .copy{position:fixed;left:50%;transform:translateX(-50%);bottom:max(8px,env(safe-area-inset-bottom,0px));white-space:nowrap;
   font-size:10px;font-weight:800;color:#5b3f4d;text-shadow:0 0 5px #fff,0 0 3px #fff,0 0 2px #fff;margin:0}
 #ready .card p.big,#over .card p.big,#pause .card p.big{font-size:14px!important}
 #over .card p.big{font-size:20px!important}
+#over .btns .btn{padding:6px 8px}
 #ready .btn,#over .btn,#pause .btn,#help .btn{font-size:12.5px;padding:6px 10px;margin-top:6px}
 #over .btn,#pause .btn{opacity:.92}
 #over .btn,#pause .btn,#ready .btn,#over .card h2,#pause .card h2,#ready .card h2{white-space:nowrap}
-#pause .btns .btn,#over .btns .btn{padding:6px 8px;font-size:11.5px}
+#pause .btns .btn,#over .btns .btn,#rank .tabs .btn{padding:6px 8px;font-size:11.5px}
 .card h1{font-family:var(--display);font-weight:400;margin:2px 0 0;font-size:clamp(24px,7vh,34px);line-height:1.15;color:var(--pink);
   text-shadow:2px 2px 0 #fff,4px 4px 0 var(--line)}
 .card h2{font-family:var(--display);font-weight:400;margin:2px 0 4px;font-size:26px;color:var(--pink);text-shadow:2px 2px 0 #fff,3px 3px 0 var(--line)}
@@ -121,8 +141,8 @@ body[data-stage="1"] #bP{display:none!important}
 <div id="stage"><canvas id="cv"></canvas></div>
 
 <div id="hud" hidden>
-  <div class="chip"><b>ステージ</b><span id="stg">1/5</span></div>
-  <div class="chip"><b>あと</b><span id="goal">12</span></div>
+  <div class="chip"><b id="stgL">ステージ</b><span id="stg">1/5</span></div>
+  <div class="chip"><b id="goalL">あと</b><span id="goal">12</span></div>
   <div class="chip" title="のこりのエサ"><div id="lives"><i></i><i></i><i></i><i></i><i></i></div></div>
 </div>
 <button id="pauseBtn" hidden>II</button>
@@ -135,8 +155,14 @@ body[data-stage="1"] #bP{display:none!important}
 <div id="title" class="overlay menu light">
   <img class="logo" src="img/logo.png" alt="ちびうぱのエサキャッチ！" draggable="false">
   <div class="tbtns">
-    <button class="btn" id="startBtn">あそぶ</button>
-    <button class="btn sub" id="helpBtn">せつめい</button>
+    <div class="trow">
+      <button class="btn" id="startBtn">ステージ</button>
+      <button class="btn toko" id="tokoBtn">とことん</button>
+    </div>
+    <div class="trow">
+      <button class="btn sub" id="rankBtn">ランキング</button>
+      <button class="btn sub" id="helpBtn">せつめい</button>
+    </div>
   </div>
   <div class="copy">©YoshidaStudio, ©PANICPUMPKIN</div>
 </div>
@@ -146,8 +172,10 @@ body[data-stage="1"] #bP{display:none!important}
     <h2>あそびかた</h2>
     <p>ぜんぶで<b>10ステージ</b>。ステージごとに決まった数のエサを食べるとクリア！ 水そうは、あみですくわれて、5ステージ目まで だんだん大きくなるよ。途中からは<b>ポンプ</b>の水流も出てくるよ。</p>
     <p>水そうに落ちてくる<b>エサ</b>を、およいでパクッ！底にとどいたエサは少しするときえるよ。<b>5つ</b>きえると水がにごって、ゲームオーバー。</p>
+    <p><b>とことん</b>は、ステージ5の大きさの水そうで、どこまで食べられるかをきそうモード。5つ きえるまで つづいて、とちゅうで<b>ポンプ</b>がふえていくよ。<b>ステージ</b>と<b>とことん</b>は、ランキングが べつべつ。</p>
     <p>エサを<b>10こ</b>食べると おなかいっぱいで<b>うごきがにぶく</b>なるよ。<b>💩ボタン</b>でうんちをすると元にもどるけど、底に4秒おくと水がよごれる（エサ2つ分）。ときどき左右から入ってくる<b>スポイト</b>の先でうんちをすると、すいとってくれるよ！</p>
     <p>たまに落ちてくる<b>ヌマエビ</b>は食べると3点。食べずにおくと、底を歩いて<b>底のエサやうんちを食べてくれる</b>よ（最大4ひき）。</p>
+    <p><b>ゲームパッド</b>も つかえるよ。スティック／十字キーで よこに、<b>A・B</b>で およぐ、<b>X・Y</b>で うんち、<b>START</b>で ポーズ。メニューは 十字キー／スティックで ボタンをえらんで、<b>A</b>で けってい、<b>B</b>で もどる。</p>
     <p>◀ ▶ でよこにすすむ ／ <b>およぐ</b>でふわっとうえへ（ちょっとずつしずむよ）</p>
     <button class="btn" id="helpClose">とじる</button>
   </div>
@@ -159,6 +187,19 @@ body[data-stage="1"] #bP{display:none!important}
     <p id="rGoal" class="big"></p>
     <p id="rNote"></p>
     <button class="btn" id="goBtn">スタート</button>
+  </div>
+</div>
+
+<div id="rank" class="overlay menu light" hidden>
+  <div class="card" style="min-width:270px">
+    <h2>ランキング</h2>
+    <div class="btns tabs">
+      <button class="btn" id="tabStage">ステージ</button>
+      <button class="btn sub" id="tabToko">とことん</button>
+    </div>
+    <ol id="rankList"></ol>
+    <p id="rankNote">この たんまつの なかだけの きろくだよ</p>
+    <button class="btn" id="rankClose">とじる</button>
   </div>
 </div>
 
@@ -180,9 +221,11 @@ body[data-stage="1"] #bP{display:none!important}
     <p id="oStage"></p>
     <p>たべたエサ</p>
     <p class="big"><span id="oScore">0</span> こ</p>
+    <p id="oRank" class="rankin" hidden></p>
     <p id="oBest">ベスト 0</p>
     <div class="btns">
       <button class="btn" id="retryBtn">もういちど</button>
+      <button class="btn sub" id="overRank">ランキング</button>
       <button class="btn sub" id="over2Title">タイトルへ</button>
     </div>
   </div>
@@ -214,6 +257,8 @@ const TW=[.62,.72,.82,.91,1], TH=[.89,.89,.89,.89,.89];   // 水槽の幅・水�
 let W=800, scale=1;
 let WATER=96, TL=0, TR=800;             // いまの水槽の水面・左右のはし
 let PUMPS=[], readyPending=false;
+let mode='stage';           // 'stage'=ステージ制 / 'toko'=とことん（タイトルのデモ中は 'stage'）
+let tokoPumps=[];           // とことんで、とちゅうで足されたポンプの位置（水槽の幅に対する割合）
 let stage=1, stageEaten=0, won=false, clearPending=false, trans=null, net=null, banner=null;
 const cv=$('cv'), ctx=cv.getContext('2d');
 const sprite=new Image(); sprite.src='img/chibiupa.png';
@@ -221,9 +266,20 @@ const rnd=(a,b)=>a+Math.random()*(b-a);
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 const lerp=(a,b,t)=>a+(b-a)*t;
 
+// 画面の大きさ。ホーム画面から起動すると、起動直後や回転のあとに、取得した大きさが実際の画面とずれることがあるので、
+// 見えている範囲（visualViewport / innerWidth・innerHeight）より大きくならないようにし、変わったら測り直す
+let sizeKey='';
+function viewKey(){ const sr=$('stage').getBoundingClientRect(), vv=window.visualViewport; return Math.round(sr.width)+'x'+Math.round(sr.height)+'/'+innerWidth+'x'+innerHeight+'/'+(vv?Math.round(vv.width)+'x'+Math.round(vv.height)+'@'+vv.scale.toFixed(2):''); }
+function fixZoom(){   // iOSで回転のあとに画面が拡大されたままになるのを戻す
+  const vv=window.visualViewport, m=document.querySelector('meta[name=viewport]');
+  if(!vv||!m||Math.abs(vv.scale-1)<.01)return;
+  const c=m.content; m.content=c.replace('initial-scale=1','initial-scale=1.0001'); setTimeout(()=>{m.content=c},60);
+}
 function resize(){
-  const sr=$('stage').getBoundingClientRect();
-  const iw=sr.width, ih=sr.height;
+  fixZoom();
+  const sr=$('stage').getBoundingClientRect(), vv=window.visualViewport;
+  const iw=Math.min(sr.width,innerWidth,vv?vv.width*vv.scale:innerWidth), ih=Math.min(sr.height,innerHeight,vv?vv.height*vv.scale:innerHeight);
+  sizeKey=viewKey();
   const asp=clamp(iw/ih,1.1,2.4);
   W=Math.round(H*asp);
   let cw,ch; if(iw/ih>asp){ch=ih;cw=ih*asp}else{cw=iw;ch=iw/asp}
@@ -235,7 +291,7 @@ function resize(){
 }
 function tankFor(n){
   const i=clamp(Math.min(n,5),1,5)-1, w=W*TW[i], depth=(H-96)*TH[i], L=(W-w)/2;   // 大きさが変わるのは5ステージ目まで
-  return {L,R:L+w,WT:H-depth,w,depth,pumps:(PUMP_X[clamp(n,1,STAGES)-1]||[]).map(f=>L+w*f)};
+  return {L,R:L+w,WT:H-depth,w,depth,pumps:((mode==='toko')?tokoPumps:(PUMP_X[clamp(n,1,STAGES)-1]||[])).map(f=>L+w*f)};
 }
 function applyTank(t){ WATER=t.WT; TL=t.L; TR=t.R; PUMPS=t.pumps; }
 // ポンプの水流の強さ（0〜1）。ポンプの真上ほど強く、はしほど弱い。水面より上と、ポンプの下には出ない
@@ -245,7 +301,7 @@ function flowAt(x,y){
   for(const px of PUMPS){ const dx=Math.abs(x-px); if(dx<PUMP_HW){ const u=1-dx/PUMP_HW; f+=u*u*(3-2*u); } }
   return Math.min(1,f)*(.85+.15*Math.sin(T*1.8));
 }
-addEventListener('resize',resize); resize();
+addEventListener('resize',resize); addEventListener('orientationchange',()=>{ setTimeout(resize,150); setTimeout(resize,600); }); if(window.visualViewport)visualViewport.addEventListener('resize',resize); resize();   // ホーム画面起動では回転後に大きさが遅れて変わることがある
 
 /* ===== 音 ===== */
 let ac=null, muted=false;
@@ -253,6 +309,24 @@ function initAudio(){
   if(!ac){ try{ ac=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
   if(ac&&ac.state==='suspended')ac.resume();
 }
+/* ----- BGM（ゲーム中のみ。sound/bgm.mp3 をループ。ポーズで止めて、つづけるで続きから）----- */
+const BGM_VOL=.34;
+let bgmBuf=null, bgmLoading=false, bgmGain=null, bgmSrc=null, bgmAt=0, bgmOff=0;
+function loadBgm(){
+  if(!ac||bgmBuf||bgmLoading)return; bgmLoading=true;
+  fetch('sound/bgm.mp3').then(r=>r.arrayBuffer()).then(a=>new Promise((ok,ng)=>ac.decodeAudioData(a,ok,ng)))
+    .then(b=>{ bgmBuf=b; if(wantBgm&&!bgmSrc)startBgm(); }).catch(()=>{ bgmLoading=false; });
+}
+let wantBgm=false;
+function startBgm(){
+  wantBgm=true; if(!ac)return; loadBgm(); if(!bgmBuf||bgmSrc)return;
+  if(!bgmGain){ bgmGain=ac.createGain(); bgmGain.connect(ac.destination); }
+  bgmGain.gain.value=muted?0:BGM_VOL;
+  const s=ac.createBufferSource(); s.buffer=bgmBuf; s.loop=true; s.connect(bgmGain);
+  s.start(0,bgmOff%bgmBuf.duration); bgmAt=ac.currentTime-bgmOff; bgmSrc=s;
+}
+function pauseBgm(){ if(bgmSrc){ bgmOff=(ac.currentTime-bgmAt)%bgmBuf.duration; try{bgmSrc.stop();}catch(e){} bgmSrc=null; } }
+function stopBgm(){ pauseBgm(); bgmOff=0; wantBgm=false; }
 function tone(f,d,type,v,to,delay){
   if(!ac||muted||state==='title')return;
   const t0=ac.currentTime+(delay||0);
@@ -268,6 +342,8 @@ const sfx={
   eat(){tone(620,.08,'square',.06,940); tone(940,.1,'square',.05,1240,.07)},
   full(){tone(260,.25,'sine',.08,180)},
   poop(){tone(200,.18,'square',.06,110); tone(150,.2,'square',.05,90,.12)},
+  pump(){tone(180,.5,'sawtooth',.04,360); tone(520,.2,'sine',.05,900,.2)},
+  rank(pos){ const n=pos===1?[523,659,784,1047,1319,1568]:[523,659,784,1047]; n.forEach((f,i)=>tone(f,.26,'triangle',.09,f*1.01,i*.11)); },
   clear(){[523,659,784,1047].forEach((f,i)=>tone(f,.2,'triangle',.08,f*1.02,i*.1))},
   win(){[523,659,784,1047,1319].forEach((f,i)=>tone(f,.24,'triangle',.09,f*1.01,i*.13))},
   net(){tone(520,.45,'sawtooth',.03,180)},
@@ -282,10 +358,22 @@ const sfx={
 /* ===== 状態 ===== */
 let state='title';       // title | play | pause | over
 let T=0;                 // 経過時間（波・ゆれ用）
-let eaten=0, lost=0, best=0;
-try{ best=+localStorage.getItem('chibiupa_best')||0; }catch(e){}
+let eaten=0, lost=0;
+const TOKO_PUMP_AT=[25,60,100], TOKO_PUMP_X=[.5,.22,.78];   // 何個たべたときに、どこへ足すか
+let lastRank=null;          // 直前のゲームのランクイン {mode,pos,t}
+/* ----- ランキング（この端末の localStorage。ステージ制ととことんは別。10位まで）----- */
+const RK={stage:'chibiupa_rank_stage',toko:'chibiupa_rank_toko'}, RANK_MAX=10;
+function loadRank(m){ try{ const a=JSON.parse(localStorage.getItem(RK[m])||'[]'); return Array.isArray(a)?a.filter(e=>e&&typeof e.s==='number').slice(0,RANK_MAX):[]; }catch(e){ return []; } }
+function addRank(m,e){   // 順位（1〜10）、ランク外は 0
+  const a=loadRank(m); a.push(e);
+  a.sort((x,y)=>y.s-x.s||(y.st||0)-(x.st||0)||x.t-y.t);
+  const pos=a.indexOf(e)+1, kept=a.slice(0,RANK_MAX);
+  try{ localStorage.setItem(RK[m],JSON.stringify(kept)); }catch(err){}
+  return pos<=RANK_MAX?pos:0;
+}
+const bestFor=m=>{ const a=loadRank(m); return a.length?a[0].s:0; };
 let dirt=0, dirtTarget=0;
-let spawnT=1.2, overT=0, newBest=false;
+let spawnT=1.2, overT=0;
 const P={x:300,y:220,vx:0,vy:0,face:1,cd:0,sq:0,munch:0,ph:0,swim:0,near:false,stomach:0};
 const MUNCH=.55;
 let foods=[], parts=[], queue=[], poops=[], droppers=[], shrimps=[], dropT=9;
@@ -295,12 +383,12 @@ const specks=Array.from({length:70},()=>({x:Math.random(),y:Math.random(),r:rnd(
 const plants=[0.04,0.1,0.17,0.46,0.52,0.83,0.9,0.96].map((x,i)=>({x,h:rnd(70,120),w:rnd(10,18),c:i%2,ph:rnd(0,6)}));
 const stones=Array.from({length:26},()=>({x:Math.random(),y:Math.random(),r:rnd(2,5),c:rnd(0,1)}));
 
-function level(){ return Math.min(12,Math.round((stage-1)*1.2)+Math.floor((stageEaten+lost*2)/5)); }
+function level(){ if(mode==='toko')return Math.min(14,Math.floor(eaten/5)+Math.floor(lost*.4)); return Math.min(12,Math.round((stage-1)*1.2)+Math.floor((stageEaten+lost*2)/5)); }
 function setState(s){ const was=state; state=s; document.body.dataset.state=s; if((was==='title')!==(s==='title'))resize(); }   // タイトルだけ水槽の枠の広さがちがう
 
 function resetGame(){
-  eaten=0; newBest=false; won=false; clearPending=false; trans=null; net=null; banner=null; parts=[];
-  startStage(1);
+  eaten=0; won=false; tokoPumps=[]; lastRank=null; clearPending=false; trans=null; net=null; banner=null; parts=[];
+  startStage(mode==='toko'?5:1);
   const mid=(TL+TR)/2, dep=H-WATER;
   Object.assign(P,{x:mid,y:WATER+Math.min(120,dep*.5),vx:0,vy:0,face:1,cd:0,sq:0,munch:0,ph:0,swim:0,near:false,stomach:0});
   inp.edge=0;
@@ -316,22 +404,25 @@ function startStage(n){
   updateHud();
 }
 function updateHud(){
-  $('stg').textContent=stage+'/'+STAGES; $('goal').textContent=Math.max(0,GOALS[stage-1]-stageEaten);
+  if(mode==='toko'){ $('stgL').textContent='たべた'; $('stg').textContent=eaten; $('goalL').textContent='ベスト'; $('goal').textContent=Math.max(bestFor('toko'),eaten); }
+  else{ $('stgL').textContent='ステージ'; $('stg').textContent=stage+'/'+STAGES; $('goalL').textContent='あと'; $('goal').textContent=Math.max(0,GOALS[stage-1]-stageEaten); }
   [...$('lives').children].forEach((el,i)=>el.classList.toggle('off',i>=5-lost));
   const bp=$('bP'); bp.style.setProperty('--st',Math.min(100,P.stomach*100/FULL));
   bp.classList.toggle('off',P.stomach<=0); bp.classList.toggle('full',P.stomach>=FULL);
 }
-function startGame(){
-  initAudio(); setState('ready'); resetGame(); readyPending=false;
-  $('title').hidden=true; $('help').hidden=true; $('over').hidden=true; $('pause').hidden=true;
+function startGame(m){
+  mode=m==='toko'?'toko':'stage';
+  initAudio(); stopBgm(); startBgm(); setState('ready'); resetGame(); readyPending=false;
+  $('title').hidden=true; $('help').hidden=true; $('rank').hidden=true; $('over').hidden=true; $('pause').hidden=true;
   $('hud').hidden=false; $('pauseBtn').hidden=false;
   showReady();
 }
 // ステージのはじまり: 演出が終わったら「スタート」ボタンを出して、タップするまで始まらない
 function showReady(){
-  $('rTitle').textContent='ステージ '+stage;
-  $('rGoal').textContent='エサを '+GOALS[stage-1]+'こ たべよう！';
-  $('rNote').textContent=STAGE_NOTE[stage]||''; $('rNote').hidden=!STAGE_NOTE[stage];
+  const note=mode==='toko'?'5つ きえたら おしまい。とちゅうで ポンプが ふえていくよ':(STAGE_NOTE[stage]||'');
+  $('rTitle').textContent=mode==='toko'?'とことん':'ステージ '+stage;
+  $('rGoal').textContent=mode==='toko'?'どこまで たべられるかな？':'エサを '+GOALS[stage-1]+'こ たべよう！';
+  $('rNote').textContent=note; $('rNote').hidden=!note;
   $('ready').hidden=false;
 }
 // タイトルの背景: いちばん大きい水槽（ステージ5）で、ウパが自動でエサを追いかけて食べるデモ
@@ -339,20 +430,55 @@ function setupDemo(){
   startStage(5); spawnT=.6;
   Object.assign(P,{x:(TL+TR)/2,y:WATER+110,vx:0,vy:0,stomach:0});
 }
+// ゲームオーバー／クリアのウィンドウ。ランクインしたら演出（大きな文字・紙ふぶき・ファンファーレ）
+function showOver(){
+  const pos=lastRank&&lastRank.pos||0, tk=mode==='toko';
+  $('oTitle').textContent=won?'ぜんぶ クリア！':(tk?'とことん おしまい！':'みずが にごっちゃった…');
+  $('oStage').textContent=tk?'とことん':(won?STAGES+'ステージを ぜんぶ クリアしたよ！':'ステージ '+stage+' で ゲームオーバー');
+  $('oScore').textContent=eaten;
+  $('oBest').textContent='ベスト '+bestFor(mode)+' こ（'+(tk?'とことん':'ステージ')+'）';
+  const r=$('oRank'); r.hidden=!pos; r.classList.toggle('first',pos===1);
+  if(pos){ r.textContent=pos===1?'🏆 1位！ しんきろく！':'ランクイン！ '+pos+'位'; r.style.animation='none'; void r.offsetWidth; r.style.animation=''; sfx.rank(pos); confetti(pos===1?130:70); }
+  $('over').hidden=false;
+}
+function confetti(n){
+  const cols=['#ee7f98','#f2a23a','#ffd84a','#6cc4e0','#8fd18a','#c59af0'];
+  for(let i=0;i<n;i++)parts.push({k:'conf',x:rnd(0,W),y:rnd(-60,-4),vx:rnd(-30,30),vy:rnd(40,120),rot:rnd(0,6.28),vr:rnd(-6,6),c:cols[i%cols.length],w:rnd(5,9),h:rnd(3,6),ph:rnd(0,6.28),life:rnd(3,5)});
+}
+/* ----- ランキング画面 ----- */
+let rankMode='stage', rankFrom='title';
+function renderRank(){
+  $('tabStage').className='btn'+(rankMode==='stage'?'':' sub'); $('tabToko').className='btn'+(rankMode==='toko'?' toko':' sub');
+  const a=loadRank(rankMode), me=lastRank&&lastRank.mode===rankMode?lastRank.t:null;
+  const medal=['🥇','🥈','🥉'], fmt=t=>{ const d=new Date(t); return (d.getMonth()+1)+'/'+d.getDate(); };
+  $('rankList').innerHTML=a.length?a.map((e,i)=>
+    `<li class="${e.t===me?'me':''}"><span class="n">${medal[i]||(i+1)}</span><span>${e.s} こ${rankMode==='stage'?`　<span class="d">${e.w?'ぜんぶクリア！':'ステージ'+e.st+'まで'}</span>`:''}</span><span class="d">${fmt(e.t)}</span></li>`).join('')
+    :'<li class="empty">まだ きろくが ないよ</li>';
+}
+function showRank(from,m){
+  rankFrom=from; rankMode=m||rankMode; renderRank();
+  $('rank').hidden=false; $('title').hidden=true; $('over').hidden=true;
+}
+function closeRank(){
+  $('rank').hidden=true;
+  if(rankFrom==='over')$('over').hidden=false; else $('title').hidden=false;
+}
 function startPlay(){
   if(state!=='ready'||$('ready').hidden)return;
   $('ready').hidden=true; setState('play'); spawnT=1.2; releaseInput();
 }
 function toTitle(){
+  stopBgm(); mode='stage';
   setState('title'); resetGame(); readyPending=false; setupDemo();
-  $('help').hidden=true; $('title').hidden=false; $('over').hidden=true; $('pause').hidden=true; $('ready').hidden=true;
+  $('help').hidden=true; $('rank').hidden=true; $('title').hidden=false; $('over').hidden=true; $('pause').hidden=true; $('ready').hidden=true;
   $('hud').hidden=true; $('pauseBtn').hidden=true;
 }
-function pauseGame(){ if(state!=='play')return; setState('pause'); $('pause').hidden=false; releaseInput(); }
-function resumeGame(){ if(state!=='pause')return; setState('play'); $('pause').hidden=true; }
+function pauseGame(){ if(state!=='play')return; pauseBgm(); setState('pause'); $('pause').hidden=false; releaseInput(); }
+function resumeGame(){ if(state!=='pause')return; startBgm(); setState('play'); $('pause').hidden=true; }
 function gameOver(win){
-  won=!!win; setState('over'); overT=1.0; releaseInput(); won?sfx.win():sfx.over();
-  if(eaten>best){ best=eaten; newBest=true; try{localStorage.setItem('chibiupa_best',best)}catch(e){} }
+  stopBgm(); won=!!win; setState('over'); overT=1.0; releaseInput(); won?sfx.win():sfx.over();
+  lastRank=null;
+  if(eaten>0){ const e={s:eaten,st:stage,w:won?1:0,t:Date.now()}; lastRank={mode,pos:addRank(mode,e),t:e.t}; }
   updateHud();
 }
 
@@ -381,22 +507,106 @@ addEventListener('keyup',e=>{
   if(keyMap[e.code])inp[keyMap[e.code]]=false;
   if(['Space','ArrowUp','KeyW'].includes(e.code))inp.held=false;
 });
-$('startBtn').onclick=startGame;
+$('startBtn').onclick=()=>startGame('stage');
+$('tokoBtn').onclick=()=>startGame('toko');
+$('rankBtn').onclick=()=>showRank('title','stage');
+$('overRank').onclick=()=>showRank('over',mode);
+$('rankClose').onclick=closeRank;
+$('tabStage').onclick=()=>{ rankMode='stage'; renderRank(); };
+$('tabToko').onclick=()=>{ rankMode='toko'; renderRank(); };
+$('rank').addEventListener('click',e=>{ if(e.target.id==='rank')closeRank(); });
 const showHelp=on=>{ $('help').hidden=!on; $('title').hidden=on; };   // 説明を開いている間は、タイトルのカードを隠す
 $('helpBtn').onclick=()=>showHelp(true);
 $('helpClose').onclick=()=>showHelp(false);
 $('help').addEventListener('click',e=>{ if(e.target.id==='help')showHelp(false); });
 $('goBtn').onclick=startPlay;
-$('retryBtn').onclick=startGame;
+$('retryBtn').onclick=()=>startGame(mode);
 $('over2Title').onclick=toTitle;
 $('pauseBtn').onclick=pauseGame;
 $('resumeBtn').onclick=resumeGame;
-$('restartBtn').onclick=startGame;
+$('restartBtn').onclick=()=>startGame(mode);
 $('toTitleBtn').onclick=toTitle;
-$('soundBtn').onclick=()=>{ muted=!muted; $('soundBtn').textContent=muted?'おと OFF':'おと ON'; };
+$('soundBtn').onclick=()=>{ muted=!muted; $('soundBtn').textContent=muted?'おと OFF':'おと ON'; if(bgmGain)bgmGain.gain.value=muted?0:BGM_VOL; };
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){ pauseGame(); if(ac)ac.suspend(); } else if(ac&&ac.state==='suspended'&&!muted)ac.resume();
 });
+
+/* ===== ゲームパッド（Gamepad API。標準配置のコントローラー）=====
+   スティック／十字キー: よこ ／ A・B・RB・RT: およぐ ／ X・Y・LB: うんち ／ START: ポーズ
+   メニュー: A=けってい、B=もどる（タイトル: A=ステージ X=とことん Y=ランキング BACK=せつめい）*/
+const gp={ax:0,prev:[],on:false,held:false};
+let mCont=null, mFocus=null;   // いま操作できるメニューと、選んでいるボタン
+function menuContainer(){
+  if(!$('rank').hidden)return $('rank');
+  if(!$('help').hidden)return $('help');
+  if(state==='title'&&!$('title').hidden)return $('title');
+  if(state==='over'&&!$('over').hidden)return $('over');
+  if(state==='pause'&&!$('pause').hidden)return $('pause');
+  if(state==='ready'&&!$('ready').hidden)return $('ready');
+  return null;
+}
+const menuButtons=c=>[...c.querySelectorAll('button')].filter(b=>b.getClientRects().length>0);
+const defaultMenuButton=c=>{ const bs=menuButtons(c); return bs.find(b=>b.classList.contains('btn')&&!b.classList.contains('sub'))||bs[0]||null; };
+// 押した方向にあるボタンのうち一番近いものへ（まず進行方向の真ん前＝45度以内、なければ斜めも含めて）
+function moveFocus(dx,dy){
+  if(!mCont||!mFocus)return;
+  const r=mFocus.getBoundingClientRect(), cx=r.x+r.width/2, cy=r.y+r.height/2;
+  const cands=[];
+  for(const b of menuButtons(mCont)){
+    if(b===mFocus)continue;
+    const q=b.getBoundingClientRect(), x=q.x+q.width/2-cx, y=q.y+q.height/2-cy;
+    const along=x*dx+y*dy, perp=dx?Math.abs(y):Math.abs(x);
+    if(along>2)cands.push({b,along,perp});
+  }
+  let pool=cands.filter(c=>c.along>=c.perp); if(!pool.length)pool=cands;
+  let best=null, bd=1e9;
+  for(const c of pool){ const d=c.along+c.perp*2; if(d<bd){bd=d;best=c.b;} }
+  if(best){ mFocus.classList.remove('padfocus'); mFocus=best; sfx.plop(); }
+}
+function pollPad(){
+  const list=navigator.getGamepads?navigator.getGamepads():[];
+  let pad=null; for(const p of list){ if(p&&p.connected&&p.buttons&&p.buttons.length>=10){ pad=p; break; } }
+  if(!pad){ gp.ax=0; gp.prev=[]; if(gp.held){ inp.held=false; gp.held=false; } return; }
+  if(!gp.on){ gp.on=true; if(state==='title'){ parts.push({k:'txt',x:W/2,y:H-60,vy:-12,life:2.4,s:'ゲームパッド OK！',c:'#3aa7c9',sm:1}); } }
+  const b=pad.buttons.map(x=>!!(x&&x.pressed)), prev=gp.prev, pr=i=>b[i]&&!prev[i];
+  const sx=pad.axes[0]||0, dead=.3;
+  let ax=Math.abs(sx)>dead?(sx-Math.sign(sx)*dead)/(1-dead):0;
+  if(b[14])ax=-1; if(b[15])ax=1;
+  gp.ax=(state==='play'||state==='ready'||state==='title')?clamp(ax,-1,1):0;
+  // ---- メニュー: 十字キー／スティックでボタンを選び（光る枠）、A=けってい、B=もどる ----
+  const cont=menuContainer();
+  if(cont!==mCont){ if(mFocus)mFocus.classList.remove('padfocus'); mCont=cont; mFocus=cont?defaultMenuButton(cont):null; }
+  const sy=pad.axes[1]||0;
+  const up=pr(12)||(sy<-.6&&!(gp.py<-.6)), down=pr(13)||(sy>.6&&!(gp.py>.6)), left=pr(14)||(sx<-.6&&!(gp.px<-.6)), right=pr(15)||(sx>.6&&!(gp.px>.6));
+  gp.px=sx; gp.py=sy;
+  const A=pr(0), B=pr(1), X=pr(2), Y=pr(3), BACK=pr(8), START=pr(9);
+  let used=false;
+  if(cont){
+    used=true;
+    if(left)moveFocus(-1,0); else if(right)moveFocus(1,0); else if(up)moveFocus(0,-1); else if(down)moveFocus(0,1);
+    const tab=el=>{ if(el&&!el.hidden){ el.click(); mFocus=el; } };
+    if(A){ if(mFocus)mFocus.click(); }
+    else if(B){
+      if(cont.id==='rank')closeRank(); else if(cont.id==='help')showHelp(false);
+      else if(cont.id==='pause')resumeGame(); else if(cont.id==='over')toTitle();
+    }
+    else if(START&&cont.id==='ready')startPlay();
+    else if(START&&cont.id==='pause')resumeGame();
+    else if(cont.id==='rank'){ if(pr(4))tab($('tabStage')); else if(pr(5))tab($('tabToko')); }   // LB・RB でタブ
+    else if(cont.id==='title'){ if(X)startGame('toko'); else if(Y)showRank('title','stage'); else if(BACK)showHelp(true); }   // ショートカット
+    else if(cont.id==='over'){ if(Y)showRank('over',mode); }
+    if(mFocus&&document.body.contains(mFocus))mFocus.classList.add('padfocus');
+  }else if(mFocus){ mFocus.classList.remove('padfocus'); mFocus=null; mCont=null; }
+  if(state==='play'&&START){ pauseGame(); used=true; }
+  // 操作（メニューで使ったボタンは、ゲームの操作にしない）
+  if(state==='play'&&!used){
+    const held=b[0]||b[1]||b[5]||b[7];
+    if(held&&!gp.held){ inp.edge=.12; inp.heldT=0; inp.held=true; gp.held=true; }
+    if(!held&&gp.held){ inp.held=false; gp.held=false; }
+    if(pr(2)||pr(3)||pr(4))doPoop();
+  }else if(gp.held){ inp.held=false; gp.held=false; }
+  gp.prev=b;
+}
 
 /* ===== ゲーム進行 ===== */
 const isFull=()=>P.stomach>=FULL;
@@ -423,7 +633,7 @@ function scheduleDrop(){
   for(let i=0;i<n;i++)queue.push({x:rnd(TL+40,TR-40),sh:false});
   const nsh=shrimps.length+queue.filter(q=>q.sh).length+(feeder.busy&&feeder.kind?1:0);
   if(stage>=2&&stageEaten>=2&&nsh<MAX_SHRIMP&&Math.random()<.2)queue[queue.length-1].sh=true;
-  spawnT=Math.max(1.0,2.6-lv*0.13)*rnd(0.8,1.25);
+  spawnT=Math.max(mode==='toko'?.8:1.0,2.6-lv*0.13)*rnd(0.8,1.25);
 }
 function miss(f,n=1){
   if(state==='title'){ for(let i=0;i<8;i++)parts.push({k:'puff',x:f.x+rnd(-8,8),y:f.y+rnd(-6,4),vx:rnd(-25,25),vy:-rnd(5,25),r:rnd(8,16),life:rnd(1,1.6),max:1.6}); return; }   // デモ中は見た目だけ（にごりも失敗もなし）
@@ -437,7 +647,22 @@ function gainStomach(n){
   const before=P.stomach; P.stomach=Math.min(FULL,P.stomach+n);
   if(before<FULL&&P.stomach>=FULL){ parts.push({k:'txt',x:P.x,y:P.y-34,vy:-18,life:1.8,s:'おなかいっぱい…',c:'#c9863f',sm:1}); sfx.full(); }
 }
-function addProgress(n){ stageEaten+=n; if(stageEaten>=GOALS[stage-1]&&state==='play')clearPending=true; updateHud(); }
+function addProgress(n){
+  stageEaten+=n;
+  if(mode==='toko'){   // とことん: クリアはなし。食べた数でポンプが増える
+    stageEaten=eaten;
+    while(tokoPumps.length<TOKO_PUMP_AT.length&&eaten>=TOKO_PUMP_AT[tokoPumps.length])addTokoPump();
+    updateHud(); return;
+  }
+  if(stageEaten>=GOALS[stage-1]&&state==='play')clearPending=true; updateHud();
+}
+function addTokoPump(){
+  const f=TOKO_PUMP_X[tokoPumps.length]; tokoPumps.push(f); applyTank(tankFor(stage));
+  const x=TL+(TR-TL)*f;
+  for(let i=0;i<12;i++)parts.push({k:'bub',x:x+rnd(-14,14),y:FLOOR-rnd(0,14),vy:-rnd(60,130),r:rnd(2,4),life:2});
+  parts.push({k:'txt',x,y:FLOOR-40,vy:-18,life:2,s:'ポンプが ふえた！',c:'#3aa7c9',sm:1});
+  banner={text:'ポンプ！',sub:'水流が ふえたよ（'+tokoPumps.length+'だい）',t:0,max:1.8}; sfx.pump();
+}
 function eatShrimp(s){
   eaten+=3; addProgress(3); P.munch=MUNCH; sfx.eat(); tone(1240,.12,'square',.05,1660,.14); gainStomach(2);
   for(let i=0;i<9;i++){const a=rnd(0,6.28);parts.push({k:'spark',x:s.x,y:s.y,vx:Math.cos(a)*rnd(30,80),vy:Math.sin(a)*rnd(30,80),life:.6});}
@@ -461,7 +686,7 @@ function doPoop(){
   updateHud();
 }
 function updatePlayer(dt,auto){
-  let dir=(inp.r?1:0)-(inp.l?1:0);
+  let dir=clamp((inp.r?1:0)-(inp.l?1:0)+gp.ax,-1,1);   // タッチ／キーボード＋ゲームパッド（スティックは傾けた分だけ）
   if(auto){
     let tg=null, best=1e9;
     for(const f of foods.concat(shrimps)){ if(f.state==='air')continue; const d=Math.abs(f.x-P.x)+Math.abs(f.y-P.y)*.6; if(d<best){best=d;tg=f;} }
@@ -469,7 +694,7 @@ function updatePlayer(dt,auto){
     else{ dir=Math.sin(T*.5)>0?1:-1; if(P.y>H*.52&&P.cd<=0)stroke(.5,true); }
     if(state==='title')P.stomach=0;
   }
-  if(dir)P.face=dir;
+  if(Math.abs(dir)>.05)P.face=Math.sign(dir);
   const slow=isFull();
   P.vx+=(dir*(slow?80:150)-P.vx)*Math.min(1,dt*(dir?4:2.2));
   P.vy=Math.min(P.vy+(slow?330:260)*dt,slow?115:85);
@@ -626,13 +851,14 @@ function update(dt){
     else if(p.k==='spark'||p.k==='puff'){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.96;p.vy*=.96;}
     else if(p.k==='txt'){p.y+=p.vy*dt;}
     else if(p.k==='drip'){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;}
+    else if(p.k==='conf'){p.x+=(p.vx+Math.sin(T*3+p.ph)*30)*dt;p.y+=p.vy*dt;p.rot+=p.vr*dt;if(p.y>H+10)parts.splice(i,1);}
   }
   if(state!=='trans')for(const px of PUMPS)if(Math.random()<dt*9)parts.push({k:'bub',x:px+rnd(-12,12),y:FLOOR-12,vy:-rnd(70,120),r:rnd(1.5,3.5),life:3});
   if(Math.random()<dt*(state==='title'?1.5:.8))parts.push({k:'bub',x:rnd(TL+30,TR-30),y:FLOOR,vy:-rnd(25,45),r:rnd(2,5),life:9});
   // 水のよごれ
   dirt+=(dirtTarget-dirt)*Math.min(1,dt*.8);
   if(state==='over'&&overT>0){ overT-=dt; if(overT<=0){
-    $('oTitle').textContent=won?'ぜんぶ クリア！':'みずが にごっちゃった…'; $('oStage').textContent=won?STAGES+'ステージを ぜんぶ クリアしたよ！':'ステージ '+stage+' で ゲームオーバー'; $('oScore').textContent=eaten; $('oBest').textContent=(newBest?'ベスト こうしん！ ':'ベスト ')+best; $('over').hidden=false; } }
+    showOver(); } }
   if(clearPending){ clearPending=false; if(state==='play'){ stage>=STAGES?gameOver(true):startTrans(); } }
   updateNet(dt);
   if(state==='ready'&&readyPending&&!net){ readyPending=false; showReady(); }
@@ -737,6 +963,7 @@ function draw(){
     if(p.k==='bub'){ c.strokeStyle='rgba(255,255,255,.8)'; c.fillStyle='rgba(255,255,255,.25)'; c.lineWidth=1.4;
       c.beginPath(); c.arc(p.x,p.y,p.r,0,6.28); c.fill(); c.stroke(); }
     else if(p.k==='spark'){ c.fillStyle=`rgba(255,240,150,${p.life*2})`; c.beginPath(); c.arc(p.x,p.y,3,0,6.28); c.fill(); }
+    else if(p.k==='conf'){ c.save(); c.translate(p.x,p.y); c.rotate(p.rot); c.fillStyle=p.c; c.globalAlpha=Math.min(1,p.life); c.fillRect(-p.w/2,-p.h/2,p.w,p.h); c.restore(); }
     else if(p.k==='drip'){ c.fillStyle=`rgba(190,235,250,${Math.min(1,p.life*2)})`; c.beginPath(); c.arc(p.x,p.y,2.2,0,6.28); c.fill(); }
     else if(p.k==='puff'){ const a=Math.min(1,p.life/p.max*1.3)*.4; c.fillStyle=`rgba(92,76,30,${a})`; c.beginPath(); c.arc(p.x,p.y,p.r,0,6.28); c.fill(); }
     else if(p.k==='rip'){ const r=(1-p.life/.7)*18; c.strokeStyle=`rgba(255,255,255,${p.life})`; c.lineWidth=1.5;
@@ -995,16 +1222,18 @@ function drawFeeder(){
 }
 
 /* ===== ループ ===== */
-let last=performance.now();
+let last=performance.now(), frameNo=0;
 function loop(now){
   const dt=Math.min(.033,(now-last)/1000); last=now;
-  if(innerHeight>innerWidth&&state==='play')pauseGame();
+  pollPad();
+  if(matchMedia('(orientation:portrait)').matches&&state==='play')pauseGame();
+  if(((frameNo=(frameNo||0)+1)&15)===0&&viewKey()!==sizeKey)resize();   // 画面の大きさが変わっていたら測り直す
   if(state!=='pause')update(dt);
   draw();
   requestAnimationFrame(loop);
 }
 resetGame(); setupDemo(); requestAnimationFrame(loop);
-window.__game={P,setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
+window.__game={P,gp,pollPad,get mode(){return mode},get tokoPumps(){return tokoPumps},loadRank,addRank,showRank,get lastRank(){return lastRank},bestFor,RK,gameOver,startGame,get bgm(){return {loaded:!!bgmBuf,playing:!!bgmSrc,dur:bgmBuf&&bgmBuf.duration,vol:bgmGain&&bgmGain.gain.value}},setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
 </script>
 </body>
 </html>
