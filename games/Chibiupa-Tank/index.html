@@ -68,7 +68,11 @@ body[data-stage="1"] #bP{display:none!important}
   backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);padding:10px;box-sizing:border-box}
 .card{background:var(--panel);border:3px solid var(--line);border-radius:22px;box-shadow:0 5px 0 var(--line);
   padding:12px 20px 14px;text-align:center;max-height:100%;box-sizing:border-box;overflow-y:auto;touch-action:pan-y;max-width:min(520px,100%)}
-.overlay.light{background:rgba(14,70,96,.15);backdrop-filter:none;-webkit-backdrop-filter:none}
+.overlay.light{background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none}
+#ready .card{background:rgba(255,248,240,.38);border-color:rgba(239,207,198,.7);box-shadow:none;padding:8px 18px 12px}
+#ready .card h2{text-shadow:2px 2px 0 rgba(255,255,255,.9),0 0 8px rgba(255,255,255,.8)}
+#ready .card p{color:#6b4a58;font-weight:800;text-shadow:0 0 6px #fff,0 0 3px #fff,1px 1px 0 rgba(255,255,255,.9)}
+#ready .btn{background:rgba(238,127,152,.88)}
 .card h1{font-family:var(--display);font-weight:400;margin:2px 0 0;font-size:clamp(24px,7vh,34px);line-height:1.15;color:var(--pink);
   text-shadow:2px 2px 0 #fff,4px 4px 0 var(--line)}
 .card h2{font-family:var(--display);font-weight:400;margin:2px 0 4px;font-size:26px;color:var(--pink);text-shadow:2px 2px 0 #fff,3px 3px 0 var(--line)}
