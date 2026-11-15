@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#8fdcec">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>ちびうぱのエサキャッチ！</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=M+PLUS+Rounded+1c:wght@500;800&display=swap">
@@ -16,8 +19,10 @@
   --edge:20px;   /* 画面の上のふちから離す（ホーム画面から起動したとき、ふち近くのタップはシステムのジェスチャーに取られることがある） */
   --pp:clamp(44px,15vh,60px);   /* 💩ボタンの大きさ */
   --ps:clamp(46px,17vh,70px); --bs:clamp(56px,22vh,86px);
-  --rl:calc(max(14px,env(safe-area-inset-left,0px)) + 2*var(--ps) + 22px);
-  --rr:calc(max(18px,env(safe-area-inset-right,0px)) + var(--bs) + 10px);
+  --rl0:calc(max(14px,env(safe-area-inset-left,0px)) + 2*var(--ps) + 22px);    /* 左に必要な幅（◀ ▶ ボタン） */
+  --rr0:calc(max(18px,env(safe-area-inset-right,0px)) + var(--bs) + 10px);      /* 右に必要な幅（およぐ・💩ボタン） */
+  --rl:max(var(--rl0),var(--rr0));   /* 左右の余白は同じ幅（広いほうに合わせる）＝水槽が画面の中央に来る */
+  --rr:max(var(--rl0),var(--rr0));
 }
 html,body{height:100%;margin:0;overflow:hidden;touch-action:manipulation;overscroll-behavior:none;
   -webkit-touch-callout:none;-webkit-text-size-adjust:100%;-webkit-user-select:none;user-select:none;
@@ -31,17 +36,23 @@ canvas{touch-action:none;display:block}
 body[data-state=title] #stage{left:0;right:0}
 /* 左右の余白のアニメGIF: 左右は**同じ大きさ**（--sw）。左右それぞれの「余白の幅」と「ボタンの上までの高さ」から入る大きさを出して、いちばん小さいものに合わせる */
 :root{
+  --sp:0px;                                                   /* 枠の内側の余白（なし。のぞき見のスタンプの切れ目を、枠の左端にぴったり付けるため） */
+  --sh:calc((var(--sw) - 2*var(--sp))/.8432 + 2*var(--sp));   /* 枠の高さ（中の1マスの縦横比 190:225.33 を保つ） */
   --botL:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--ps) + 10px);                       /* ◀ ▶ ボタンの上まで */
   --botR:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--bs) + 10px + var(--pp) + 10px);   /* 💩・およぐ ボタンの上まで */
   --sw:min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
-           calc((100vh - 16px - var(--botL)) * .5621),calc((100vh - 16px - var(--botR)) * .5621));
+           calc((100vh - 16px - var(--botL) - 2*var(--sp)) * .8432 + 2*var(--sp)),calc((100vh - 16px - var(--botR) - 2*var(--sp)) * .8432 + 2*var(--sp)));
 }
 @supports (height:100dvh){:root{
   --sw:min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
-           calc((100dvh - 16px - var(--botL)) * .5621),calc((100dvh - 16px - var(--botR)) * .5621));
+           calc((100dvh - 16px - var(--botL) - 2*var(--sp)) * .8432 + 2*var(--sp)),calc((100dvh - 16px - var(--botR) - 2*var(--sp)) * .8432 + 2*var(--sp)));
 }}
 body[data-stage="1"]{--botR:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--bs) + 10px)}   /* ステージ1は💩ボタンがない */
-.side{position:fixed;top:8px;width:var(--sw);aspect-ratio:380/676;height:auto;object-fit:contain;pointer-events:none;opacity:0;transition:opacity .4s;display:none}
+.side{position:fixed;top:8px;width:var(--sw);height:var(--sh);box-sizing:border-box;padding:var(--sp);pointer-events:none;opacity:0;transition:opacity .4s;display:none;
+  background-color:#fbfcff;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,.28);   /* 白に近い背景の角丸の枠 */
+  background-repeat:no-repeat;background-origin:content-box;background-size:200% 300%;background-position:0% 0%}   /* シート（2列×3段）の1マスだけを、枠の内側に見せる */
+.side.flip{animation:sideIn .5s ease-out}
+@keyframes sideIn{from{opacity:0;transform:translateX(14px) scale(.94)}to{opacity:1;transform:none}}
 .side.on{opacity:1}
 body:not([data-state=title]) .side{display:block}
 #sideL{left:calc((env(safe-area-inset-left,0px) + var(--rl) - var(--sw))/2)}
@@ -49,8 +60,8 @@ body:not([data-state=title]) .side{display:block}
 /* 左の余白のロゴ: GIFの下から ◀ ▶ ボタンの上までの空きに、はみ出さずに収める */
 #sideLogo{position:fixed;display:none;pointer-events:none;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35));
   left:calc(env(safe-area-inset-left,0px) + 6px);width:calc(var(--rl) - env(safe-area-inset-left,0px) - 12px);
-  top:calc(8px + var(--sw)/.5621 + 10px);height:calc(100vh - var(--botL) - (8px + var(--sw)/.5621 + 10px))}
-@supports (height:100dvh){#sideLogo{height:calc(100dvh - var(--botL) - (8px + var(--sw)/.5621 + 10px))}}
+  top:calc(8px + var(--sh) + 10px);height:calc(100vh - var(--botL) - (8px + var(--sh) + 10px))}
+@supports (height:100dvh){#sideLogo{height:calc(100dvh - var(--botL) - (8px + var(--sh) + 10px))}}
 body:not([data-state=title]) #sideLogo{display:block}   /* タイトルのデモは画面の横いっぱい */
 #cv{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px #cfe0e8,0 0 24px rgba(0,0,0,.4)}
 
@@ -176,8 +187,8 @@ a.btn{text-decoration:none;text-align:center;box-sizing:border-box}
 </head>
 <body data-state="title">
 <!-- 水槽の左右の余白に、ランダムなスタンプのアニメGIFを置く（タイトル中は水槽が横いっぱいなので出さない） -->
-<img class="side" id="sideL" alt="" draggable="false">
-<img class="side" id="sideR" alt="" draggable="false">
+<div class="side" id="sideL"></div>
+<div class="side" id="sideR"></div>
 <img id="sideLogo" src="img/logo.png" alt="" draggable="false">   <!-- 左の余白の、GIFの下の空き -->
 <div id="stage"><canvas id="cv"></canvas></div>
 
@@ -290,17 +301,19 @@ a.btn{text-decoration:none;text-align:center;box-sizing:border-box}
 
 <div id="rotate"><span class="ic">📱</span>スマホを よこむきにしてね</div>
 
+<!-- 共通のLINEスタンプ誘導ボタン（common/line-promo）。キーワード「ちびうぱ」の名前のものを出す。タイトルの間だけ表示（syncPromo） -->
+<script src="../../common/line-promo/line-sticker-promo.js" data-match="ちびうぱ" data-position="bottom-right" data-auto-show="false"></script>
 <script>
 document.body.dataset.state='title';
 /* ===== タッチ・ズーム・長押しの抑止（ボタンとメニューは除く） ===== */
-const KEEP='button,.menu';
+const KEEP='button,.menu,.sp-modal';   // .sp-modal ＝ LINEスタンプ一覧（共通部品）。リンクのタップとスクロールを止めない
 document.addEventListener('touchstart',e=>{ if(e.touches.length>1||!e.target.closest(KEEP))e.preventDefault(); },{passive:false});
 let lastTouchEnd=0;
 document.addEventListener('touchend',e=>{ const t=Date.now(); if(t-lastTouchEnd<350&&!e.target.closest(KEEP))e.preventDefault(); lastTouchEnd=t; },{passive:false});
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 ['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
 document.addEventListener('contextmenu',e=>{ if(e.target.id!=='shareImg')e.preventDefault(); });   // シェア画像だけは長押し保存を許す
-document.addEventListener('touchmove',e=>{ if(!e.target.closest('.card'))e.preventDefault(); },{passive:false});
+document.addEventListener('touchmove',e=>{ if(!e.target.closest('.card,.sp-modal'))e.preventDefault(); },{passive:false});
 
 /* ===== 基本 ===== */
 const $=id=>document.getElementById(id);
@@ -362,8 +375,19 @@ addEventListener('resize',resize); addEventListener('orientationchange',()=>{ se
 
 /* ===== 音 ===== */
 let ac=null, muted=false;
+/* ----- 効果音ファイル（sound/*.wav。短いので WAV のまま＝再生の遅れなし。読めなければ合成音）----- */
+const sfxBuf={}; let sfxFilePlayed=0;
+function loadSfxFile(k,url){
+  if(!ac||sfxBuf[k]!==undefined)return; sfxBuf[k]=null;
+  fetch(url).then(r=>r.arrayBuffer()).then(a=>new Promise((ok,ng)=>ac.decodeAudioData(a,ok,ng))).then(b=>{ sfxBuf[k]=b; }).catch(()=>{});
+}
+function playSfxFile(k,vol){
+  if(!ac||muted||state==='title'||!sfxBuf[k])return false;
+  const s=ac.createBufferSource(), g=ac.createGain(); s.buffer=sfxBuf[k]; g.gain.value=vol; s.connect(g); g.connect(ac.destination); s.start(); sfxFilePlayed++; return true;
+}
 function initAudio(){
   if(!ac){ try{ ac=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+  loadSfxFile('poop','sound/poop.wav');
   if(ac&&ac.state==='suspended')ac.resume();
 }
 /* ----- BGM（ゲーム中のみ。sound/bgm.mp3 をループ。ポーズで止めて、つづけるで続きから）----- */
@@ -398,7 +422,7 @@ const sfx={
   plop(){tone(520,.07,'sine',.05,300)},
   eat(){tone(620,.08,'square',.06,940); tone(940,.1,'square',.05,1240,.07)},
   full(){tone(260,.25,'sine',.08,180)},
-  poop(){tone(200,.18,'square',.06,110); tone(150,.2,'square',.05,90,.12)},
+  poop(){ if(!playSfxFile('poop',.55)){ tone(200,.18,'square',.06,110); tone(150,.2,'square',.05,90,.12); } },   // ユーザー提供の効果音（sound/poop.wav）
   pump(){tone(180,.5,'sawtooth',.04,360); tone(520,.2,'sine',.05,900,.2)},
   rank(pos){ const n=pos===1?[523,659,784,1047,1319,1568]:[523,659,784,1047]; n.forEach((f,i)=>tone(f,.26,'triangle',.09,f*1.01,i*.11)); },
   clear(){[523,659,784,1047].forEach((f,i)=>tone(f,.2,'triangle',.08,f*1.02,i*.1))},
@@ -441,7 +465,9 @@ const plants=[0.04,0.1,0.17,0.46,0.52,0.83,0.9,0.96].map((x,i)=>({x,h:rnd(70,120
 const stones=Array.from({length:26},()=>({x:Math.random(),y:Math.random(),r:rnd(2,5),c:rnd(0,1)}));
 
 function level(){ if(mode==='toko')return Math.min(14,Math.floor(eaten/5)+Math.floor(lost*.4)); return Math.min(12,Math.round((stage-1)*1.2)+Math.floor((stageEaten+lost*2)/5)); }
-function setState(s){ const was=state; state=s; document.body.dataset.state=s; if((was==='title')!==(s==='title'))resize(); }   // タイトルだけ水槽の枠の広さがちがう
+// LINEスタンプボタン: タイトルで、せつめい・ランキングを開いていないときだけ出す
+function syncPromo(){ if(!window.StickerPromo)return; const on=state==='title'&&$('help').hidden&&$('rank').hidden; on?StickerPromo.show():StickerPromo.hide(); }
+function setState(s){ const was=state; state=s; document.body.dataset.state=s; if((was==='title')!==(s==='title'))resize(); syncPromo(); }   // タイトルだけ水槽の枠の広さがちがう
 
 function resetGame(){
   eaten=0; won=false; tokoPumps=[]; lastRank=null; clearPending=false; trans=null; net=null; banner=null; parts=[];
@@ -451,16 +477,30 @@ function resetGame(){
   inp.edge=0;
   updateHud();
 }
-// 左右の余白のアニメGIF（img/side/side1〜5.gif。縦長のスタンプ6体ぶん）。ゲームの開始・ステージの切り替えごとに、左右ちがうものをランダムに選ぶ
-const SIDE_N=5;
+// 左右の余白のアニメGIF（img/side/side1〜5.gif。縦長のシート＝スタンプ6体が2列×3段）。
+// ゲームの開始・ステージの切り替えごとに、左右ちがうシートをランダムに選び、そのシートの6体を1体ずつ、一定時間（SIDE_MS）ごとにスライドのように切り替えて見せる
+const SIDE_N=5, SIDE_MS=10000;   // 切り替えの間隔（ms）
+const sideCell={sideL:0,sideR:0}, sideSheet={sideL:0,sideR:1};
+// 各シート×6体の「切り出す位置（背景の位置 % = x, y）」。シートは均等な格子ではなく、キャラが枠の中でずれていたので、
+// 全コマを重ねたキャラの外枠の中心が、枠の中心になるように1体ずつ計算した（のぞき見のスタンプ＝2枚目の左中だけは、欠けた左端を枠の左端にそろえた）
+const SIDE_POS=[[[4.5,-0.0],[100.0,1.7],[1.1,52.0],[101.8,53.8],[3.2,102.7],[98.4,101.4]],[[0.5,3.5],[99.2,2.5],[3.2,52.7],[100.0,50.0],[-2.4,103.4],[103.7,101.5]],[[-0.8,2.1],[97.1,-0.6],[0.0,53.7],[98.2,51.3],[2.1,98.7],[98.4,102.3]],[[1.1,3.1],[99.2,3.3],[3.2,52.2],[103.2,53.0],[2.4,98.7],[99.2,101.7]],[[0.5,-0.4],[101.1,2.4],[0.0,52.2],[97.4,54.1],[3.2,98.7],[101.8,100.7]]];
+function showCell(el,i){
+  const c=((i%6)+6)%6; sideCell[el.id]=c;
+  const p=SIDE_POS[sideSheet[el.id]][c];   // 2列×3段（左上→右上→左中…の順）
+  el.style.backgroundPosition=p[0]+'% '+p[1]+'%';
+  el.classList.remove('flip'); void el.offsetWidth; el.classList.add('flip');
+}
 function rollSides(){
   const a=Math.floor(Math.random()*SIDE_N); let b=Math.floor(Math.random()*(SIDE_N-1)); if(b>=a)b++;
   for(const [id,k] of [['sideL',a],['sideR',b]]){
     const el=$(id), url='img/side/side'+(k+1)+'.gif';
-    if(el.getAttribute('src')===url){ el.classList.add('on'); continue; }
-    el.classList.remove('on'); el.onload=()=>el.classList.add('on'); el.src=url;
+    sideSheet[id]=k;
+    el.classList.remove('on');
+    const im=new Image(); im.onload=()=>{ el.style.backgroundImage='url('+url+')'; showCell(el,Math.floor(Math.random()*6)); el.classList.add('on'); }; im.src=url;
   }
 }
+setInterval(()=>{ if(state!=='title')showCell($('sideL'),sideCell.sideL+1); },SIDE_MS);
+setTimeout(()=>setInterval(()=>{ if(state!=='title')showCell($('sideR'),sideCell.sideR+1); },SIDE_MS),SIDE_MS/2);   // 右は半分ずらして、左右が同時に変わらないように
 // 新しい水槽（ステージ n）で始める。にごり・おなか・エサは全部リセット
 function startStage(n){
   stage=n; stageEaten=0; lost=0; dirt=0; dirtTarget=0; P.stomach=0;
@@ -632,11 +672,12 @@ function renderRank(){
 }
 function showRank(from,m){
   rankFrom=from; rankMode=m||rankMode; renderRank();
-  $('rank').hidden=false; $('title').hidden=true; $('over').hidden=true;
+  $('rank').hidden=false; $('title').hidden=true; $('over').hidden=true; syncPromo();
 }
 function closeRank(){
   $('rank').hidden=true;
   if(rankFrom==='over')$('over').hidden=false; else $('title').hidden=false;
+  syncPromo();
 }
 function startPlay(){
   if(state!=='ready'||$('ready').hidden)return;
@@ -693,7 +734,7 @@ $('shareModal').addEventListener('click',e=>{ if(e.target.id==='shareModal')clos
 $('tabStage').onclick=()=>{ rankMode='stage'; renderRank(); };
 $('tabToko').onclick=()=>{ rankMode='toko'; renderRank(); };
 $('rank').addEventListener('click',e=>{ if(e.target.id==='rank')closeRank(); });
-const showHelp=on=>{ $('help').hidden=!on; $('title').hidden=on; };   // 説明を開いている間は、タイトルのカードを隠す
+const showHelp=on=>{ $('help').hidden=!on; $('title').hidden=on; syncPromo(); };   // 説明を開いている間は、タイトルのカードを隠す
 $('helpBtn').onclick=()=>showHelp(true);
 $('helpClose').onclick=()=>showHelp(false);
 $('help').addEventListener('click',e=>{ if(e.target.id==='help')showHelp(false); });
@@ -1411,8 +1452,8 @@ function loop(now){
   draw();
   requestAnimationFrame(loop);
 }
-resetGame(); setupDemo(); requestAnimationFrame(loop);
-window.__game={P,rollSides,shareResult,composeResultImage,shareInfo,get shareBlob(){return shareBlob},SHARE,xIntentUrl,gp,pollPad,get mode(){return mode},get tokoPumps(){return tokoPumps},loadRank,addRank,showRank,get lastRank(){return lastRank},bestFor,RK,gameOver,startGame,get bgm(){return {loaded:!!bgmBuf,playing:!!bgmSrc,dur:bgmBuf&&bgmBuf.duration,vol:bgmGain&&bgmGain.gain.value}},setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
+resetGame(); setupDemo(); syncPromo(); requestAnimationFrame(loop);
+window.__game={P,get sfxLoaded(){return !!sfxBuf.poop},get sfxFilePlayed(){return sfxFilePlayed},rollSides,shareResult,composeResultImage,shareInfo,get shareBlob(){return shareBlob},SHARE,xIntentUrl,gp,pollPad,get mode(){return mode},get tokoPumps(){return tokoPumps},loadRank,addRank,showRank,get lastRank(){return lastRank},bestFor,RK,gameOver,startGame,get bgm(){return {loaded:!!bgmBuf,playing:!!bgmSrc,dur:bgmBuf&&bgmBuf.duration,vol:bgmGain&&bgmGain.gain.value}},setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
 </script>
 </body>
 </html>
