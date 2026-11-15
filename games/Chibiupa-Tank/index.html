@@ -45,7 +45,13 @@ body[data-stage="1"]{--botR:calc(max(14px,env(safe-area-inset-bottom,0px)) + var
 .side.on{opacity:1}
 body:not([data-state=title]) .side{display:block}
 #sideL{left:calc((env(safe-area-inset-left,0px) + var(--rl) - var(--sw))/2)}
-#sideR{right:calc((env(safe-area-inset-right,0px) + var(--rr) - var(--sw))/2)}   /* タイトルのデモは画面の横いっぱい */
+#sideR{right:calc((env(safe-area-inset-right,0px) + var(--rr) - var(--sw))/2)}
+/* 左の余白のロゴ: GIFの下から ◀ ▶ ボタンの上までの空きに、はみ出さずに収める */
+#sideLogo{position:fixed;display:none;pointer-events:none;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35));
+  left:calc(env(safe-area-inset-left,0px) + 6px);width:calc(var(--rl) - env(safe-area-inset-left,0px) - 12px);
+  top:calc(8px + var(--sw)/.5621 + 10px);height:calc(100vh - var(--botL) - (8px + var(--sw)/.5621 + 10px))}
+@supports (height:100dvh){#sideLogo{height:calc(100dvh - var(--botL) - (8px + var(--sw)/.5621 + 10px))}}
+body:not([data-state=title]) #sideLogo{display:block}   /* タイトルのデモは画面の横いっぱい */
 #cv{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px #cfe0e8,0 0 24px rgba(0,0,0,.4)}
 
 /* HUD（水面より上の空きスペースに重ねる） */
@@ -172,6 +178,7 @@ a.btn{text-decoration:none;text-align:center;box-sizing:border-box}
 <!-- 水槽の左右の余白に、ランダムなスタンプのアニメGIFを置く（タイトル中は水槽が横いっぱいなので出さない） -->
 <img class="side" id="sideL" alt="" draggable="false">
 <img class="side" id="sideR" alt="" draggable="false">
+<img id="sideLogo" src="img/logo.png" alt="" draggable="false">   <!-- 左の余白の、GIFの下の空き -->
 <div id="stage"><canvas id="cv"></canvas></div>
 
 <div id="hud" hidden>
