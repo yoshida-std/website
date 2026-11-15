@@ -14,6 +14,7 @@
   --display:"Mochiy Pop One","M PLUS Rounded 1c",sans-serif;
   color-scheme:light;
   --edge:20px;   /* 画面の上のふちから離す（ホーム画面から起動したとき、ふち近くのタップはシステムのジェスチャーに取られることがある） */
+  --pp:clamp(44px,15vh,60px);   /* 💩ボタンの大きさ */
   --ps:clamp(46px,17vh,70px); --bs:clamp(56px,22vh,86px);
   --rl:calc(max(14px,env(safe-area-inset-left,0px)) + 2*var(--ps) + 22px);
   --rr:calc(max(18px,env(safe-area-inset-right,0px)) + var(--bs) + 10px);
@@ -27,7 +28,30 @@ img{-webkit-user-drag:none}
 canvas{touch-action:none;display:block}
 [hidden]{display:none!important}
 #stage{position:fixed;top:0;bottom:0;left:var(--rl);right:var(--rr)}
-body[data-state=title] #stage{left:0;right:0}   /* タイトルのデモは画面の横いっぱい */
+body[data-state=title] #stage{left:0;right:0}
+/* 左右の余白のアニメGIF: 左右は**同じ大きさ**（--sw）。左右それぞれの「余白の幅」と「ボタンの上までの高さ」から入る大きさを出して、いちばん小さいものに合わせる */
+:root{
+  --botL:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--ps) + 10px);                       /* ◀ ▶ ボタンの上まで */
+  --botR:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--bs) + 10px + var(--pp) + 10px);   /* 💩・およぐ ボタンの上まで */
+  --sw:min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
+           calc((100vh - 16px - var(--botL)) * .5621),calc((100vh - 16px - var(--botR)) * .5621));
+}
+@supports (height:100dvh){:root{
+  --sw:min(calc(var(--rl) - env(safe-area-inset-left,0px) - 12px),calc(var(--rr) - env(safe-area-inset-right,0px) - 12px),
+           calc((100dvh - 16px - var(--botL)) * .5621),calc((100dvh - 16px - var(--botR)) * .5621));
+}}
+body[data-stage="1"]{--botR:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--bs) + 10px)}   /* ステージ1は💩ボタンがない */
+.side{position:fixed;top:8px;width:var(--sw);aspect-ratio:380/676;height:auto;object-fit:contain;pointer-events:none;opacity:0;transition:opacity .4s;display:none}
+.side.on{opacity:1}
+body:not([data-state=title]) .side{display:block}
+#sideL{left:calc((env(safe-area-inset-left,0px) + var(--rl) - var(--sw))/2)}
+#sideR{right:calc((env(safe-area-inset-right,0px) + var(--rr) - var(--sw))/2)}
+/* 左の余白のロゴ: GIFの下から ◀ ▶ ボタンの上までの空きに、はみ出さずに収める */
+#sideLogo{position:fixed;display:none;pointer-events:none;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35));
+  left:calc(env(safe-area-inset-left,0px) + 6px);width:calc(var(--rl) - env(safe-area-inset-left,0px) - 12px);
+  top:calc(8px + var(--sw)/.5621 + 10px);height:calc(100vh - var(--botL) - (8px + var(--sw)/.5621 + 10px))}
+@supports (height:100dvh){#sideLogo{height:calc(100dvh - var(--botL) - (8px + var(--sw)/.5621 + 10px))}}
+body:not([data-state=title]) #sideLogo{display:block}   /* タイトルのデモは画面の横いっぱい */
 #cv{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px #cfe0e8,0 0 24px rgba(0,0,0,.4)}
 
 /* HUD（水面より上の空きスペースに重ねる） */
@@ -151,6 +175,10 @@ a.btn{text-decoration:none;text-align:center;box-sizing:border-box}
 </style>
 </head>
 <body data-state="title">
+<!-- 水槽の左右の余白に、ランダムなスタンプのアニメGIFを置く（タイトル中は水槽が横いっぱいなので出さない） -->
+<img class="side" id="sideL" alt="" draggable="false">
+<img class="side" id="sideR" alt="" draggable="false">
+<img id="sideLogo" src="img/logo.png" alt="" draggable="false">   <!-- 左の余白の、GIFの下の空き -->
 <div id="stage"><canvas id="cv"></canvas></div>
 
 <div id="hud" hidden>
@@ -423,6 +451,16 @@ function resetGame(){
   inp.edge=0;
   updateHud();
 }
+// 左右の余白のアニメGIF（img/side/side1〜5.gif。縦長のスタンプ6体ぶん）。ゲームの開始・ステージの切り替えごとに、左右ちがうものをランダムに選ぶ
+const SIDE_N=5;
+function rollSides(){
+  const a=Math.floor(Math.random()*SIDE_N); let b=Math.floor(Math.random()*(SIDE_N-1)); if(b>=a)b++;
+  for(const [id,k] of [['sideL',a],['sideR',b]]){
+    const el=$(id), url='img/side/side'+(k+1)+'.gif';
+    if(el.getAttribute('src')===url){ el.classList.add('on'); continue; }
+    el.classList.remove('on'); el.onload=()=>el.classList.add('on'); el.src=url;
+  }
+}
 // 新しい水槽（ステージ n）で始める。にごり・おなか・エサは全部リセット
 function startStage(n){
   stage=n; stageEaten=0; lost=0; dirt=0; dirtTarget=0; P.stomach=0;
@@ -430,6 +468,7 @@ function startStage(n){
   applyTank(tankFor(n));
   feeder.x=(TL+TR)/2; feeder.busy=false; feeder.shake=0;
   document.body.dataset.stage=n;
+  if(state!=='title')rollSides();
   updateHud();
 }
 function updateHud(){
@@ -1373,7 +1412,7 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 resetGame(); setupDemo(); requestAnimationFrame(loop);
-window.__game={P,shareResult,composeResultImage,shareInfo,get shareBlob(){return shareBlob},SHARE,xIntentUrl,gp,pollPad,get mode(){return mode},get tokoPumps(){return tokoPumps},loadRank,addRank,showRank,get lastRank(){return lastRank},bestFor,RK,gameOver,startGame,get bgm(){return {loaded:!!bgmBuf,playing:!!bgmSrc,dur:bgmBuf&&bgmBuf.duration,vol:bgmGain&&bgmGain.gain.value}},setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
+window.__game={P,rollSides,shareResult,composeResultImage,shareInfo,get shareBlob(){return shareBlob},SHARE,xIntentUrl,gp,pollPad,get mode(){return mode},get tokoPumps(){return tokoPumps},loadRank,addRank,showRank,get lastRank(){return lastRank},bestFor,RK,gameOver,startGame,get bgm(){return {loaded:!!bgmBuf,playing:!!bgmSrc,dur:bgmBuf&&bgmBuf.duration,vol:bgmGain&&bgmGain.gain.value}},setupDemo,toTitle,get PUMPS(){return PUMPS},flowAt,startPlay,get readyPending(){return readyPending},STAGES,get stage(){return stage},get stageEaten(){return stageEaten},get trans(){return trans},get net(){return net},get TL(){return TL},get TR(){return TR},get WATER(){return WATER},GOALS,startTrans,startStage,get shrimps(){return shrimps},get queue(){return queue},scheduleDrop,dropShrimp,feeder,setSpawn(v){spawnT=v;dropT=v},get W(){return W},get poops(){return poops},get droppers(){return droppers},doPoop,get foods(){return foods},get lost(){return lost},get eaten(){return eaten},get state(){return state},inp,eat,miss,setDirt(v){dirt=dirtTarget=v}};
 </script>
 </body>
 </html>
