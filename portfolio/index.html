@@ -25,7 +25,7 @@
 <link rel="apple-touch-icon" href="img/icons/apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="ヨシダスタジオ">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 <header class="site-header">
@@ -93,6 +93,7 @@
   <div class="wrap">©YoshidaStudio</div>
 </footer>
 
+<script src="new.js?v=1"></script>
 <script>
 (function () {
   "use strict";
@@ -127,6 +128,7 @@
         a.rel = "noopener";
         var thumb = document.createElement("div");
         thumb.className = "article-thumb";
+        if (YS.isNew(it.date)) thumb.appendChild(YS.newBadge());
         if (safeUrl(it.image)) {
           var img = document.createElement("img");
           img.src = it.image;
@@ -188,6 +190,7 @@
         a.rel = "noopener";
         var thumb = document.createElement("div");
         thumb.className = "short-thumb";
+        if (YS.isNew(it.date)) thumb.appendChild(YS.newBadge());
         if (safeUrl(it.image)) {
           var img = document.createElement("img");
           img.src = it.image;
@@ -211,6 +214,21 @@
     })
     .catch(function () { /* 読めなければショートの欄は出さない */ });
 })();
+
+// 新しいゲーム・キャラクターがあるときは、カードの見出しの横にも「NEW」を付ける
+[["games/", "games/games.json"], ["charip/", "charip/charip.json"]].forEach(function (c) {
+  fetch(c[1], { cache: "no-cache" })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (data) {
+      if (!data || !(data.items || []).some(function (it) { return YS.isNew(it.published); })) return;
+      var h = document.querySelector('.card[href="' + c[0] + '"] h2');
+      if (!h) return;
+      var b = YS.newBadge();
+      b.classList.add("inline");
+      h.appendChild(b);
+    })
+    .catch(function () { /* 読めなければ付けない */ });
+});
 </script>
 </body>
 </html>

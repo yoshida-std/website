@@ -25,7 +25,7 @@
 <link rel="apple-touch-icon" href="../img/icons/apple-touch-icon.png">
 <link rel="manifest" href="../manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="ヨシダスタジオ">
-<link rel="stylesheet" href="../style.css?v=10">
+<link rel="stylesheet" href="../style.css?v=11">
 </head>
 <body>
 <header class="site-header">
@@ -56,6 +56,7 @@
   <div class="wrap">©YoshidaStudio</div>
 </footer>
 
+<script src="../new.js?v=1"></script>
 <script>
 (function () {
   "use strict";
@@ -117,6 +118,7 @@
         a.href = safeUrl(it.path);
         var thumb = document.createElement("div");
         thumb.className = "game-thumb";
+        if (YS.isNew(it.published)) thumb.appendChild(YS.newBadge());
         if (safeUrl(it.image)) {
           // 縦長・横長どちらの画像でも枠に収まるよう、同じ画像をぼかして敷き、その上に全体を出す
           ["bg", "fg"].forEach(function (cls) {
