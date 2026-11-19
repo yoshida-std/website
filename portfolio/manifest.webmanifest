@@ -1,0 +1,16 @@
+{
+  "name": "ヨシダスタジオ ポートフォリオ",
+  "short_name": "ヨシダスタジオ",
+  "description": "ヨシダスタジオの作品紹介。LINEスタンプ・絵文字、ブラウザゲーム、キャラクターIP、自作ファミコンゲームなど。",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#134f7d",
+  "theme_color": "#fafaf7",
+  "icons": [
+    { "src": "img/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "img/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "img/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
