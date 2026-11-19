@@ -75,7 +75,11 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
   - 横向きのゲームは 960×504（枠の比率とほぼ同じ）。縦向きのゲームは、縦画面のスクリーンショット（例: iPhone 13 の 390×844 を 2 倍）をそのまま JPEG にすればよい。枠に全体が収まり、左右は同じ絵をぼかして敷く（CSS の `.game-thumb .bg`）
 - `portfolio/line/index.html` … LINEスタンプ・絵文字の一覧。`common/line-promo/sticker-catalog.json` を `fetch` して表示（カタログが更新されれば自動で反映）。スタンプ／絵文字のタブ、名前の絞り込み（全角半角・カタカナひらがなを区別しない。空白区切りで AND）。20件ずつのページ送り。各アイテムの右上にリンク（LINE STORE の URL）をコピーするボタン。状態は `?type=emoji&q=…&p=2` で URL に残る
   - 並びはカタログの順（新しい順）。`Object.keys` だと数字のキーが小さい順になってしまうので、JSON の文字列からキーの順を拾っている
-- 各ページの `<head>` に OGP（SNS で URL を共有したときのカード）。画像はヘッダー画像 `img/header.jpg`。SNS は相対パスを読めないので、`og:url`・`og:image` は `https://yoshida-std.github.io/website/portfolio/…` の絶対URLで書く。ページを足したら OGP も足す
+- 各ページの `<head>` に OGP（SNS で URL を共有したときのカード）。画像は下の「リンク共有画像」。SNS は相対パスを読めないので、`og:url`・`og:image` は `https://yoshida-std.github.io/website/portfolio/…` の絶対URLで書く。ページを足したら OGP も足す
+- リンク共有画像（OGP）: `portfolio/img/ogp.jpg`（トップ。ヘッダー画像）・`ogp-line.jpg`・`ogp-games.jpg`・`ogp-charip.jpg`・`ogp-famicom.jpg`。すべて 1200×630 で、青い地・左にロボット・右に見出しとサムネイルの共通デザイン。キャラ紹介・ホリホリなどの個別ページは専用の画像（`img/charip/*.jpg` など）を使う。**一覧ページを足したら** `.github/scripts/make_portfolio_ogp.js` の `PAGES` に1つ足して作り直し、そのページの `og:image`・`twitter:image` に指定する（Playwright と npm の `@fontsource/noto-sans-jp` が要る。手順は JS 冒頭。先に `make_portfolio_icons.py` で `robot.png` を作っておく）
+- ホーム画面・タブのアイコン: `portfolio/img/icons/`（`favicon.ico`・`icon-192.png`・`icon-512.png`・`icon-maskable-512.png`・`apple-touch-icon.png`・`robot.png`）。ヘッダー画像のロボットの白い線だけを抜き出して、無地の青（#134f7d）に置いたもの。作り直しは `python .github/scripts/make_portfolio_icons.py`（Pillow）。小さいサイズは線を太くしてある
+- `portfolio/manifest.webmanifest`: 名前「ヨシダスタジオ ポートフォリオ」、短い名前「ヨシダスタジオ」（ホーム画面の名前）、`display: standalone`、`start_url`・`scope` は `portfolio/`、背景色 #134f7d（起動画面）・テーマ色 #fafaf7。ブラウザの外枠で開きたくなければ `display` を `browser` にする
+- **全ページの `<head>`** に、`theme-color`（明るい #fafaf7 / 暗い #17181a）・`icon`（`favicon.ico` と `icon-192.png`）・`apple-touch-icon`・`manifest`・`apple-mobile-web-app-title`（「ヨシダスタジオ」）を入れる。パスは相対で、ページの深さに合わせて `../` の数を変える（`line/` なら `../img/icons/…`、`charip/taijiro/` なら `../../img/icons/…`）。**ページを足したら OGP と一緒に入れる**。ゲーム（`games/`）は別に自前の manifest とアイコンを持つ
 - コピーライトは「©YoshidaStudio」のみ（PANICPUMPKIN は入れない）
 - `portfolio/style.css` … 共通スタイル（PC・スマホ両対応、ダークモード対応）。HTML からは `style.css?v=番号` で読む。**CSS を変えたら全ページの番号を1つ上げる**（上げないと、ブラウザに残った古い CSS で表示が崩れる）
 - ゲームではないので Artifact での確認は不要。動作確認はゲームと同じく `http.server` で配信して Playwright で見る（この環境からは LINE の画像サーバーに接続できないので、画像は表示されない）
