@@ -131,6 +131,21 @@ div.card { opacity: .6; }
   .article-body h3 { font-size: 14px; -webkit-line-clamp: 3; }
 }
 
+/* note の4件目以降（日付とタイトルの文字だけのリンク） */
+.article-links { list-style: none; margin: 12px 0 0; padding: 0; border-top: 1px solid var(--line); }
+.article-links:empty { display: none; }
+.article-links li { border-bottom: 1px solid var(--line); }
+.article-links a {
+  display: flex; align-items: baseline; gap: 14px; padding: 10px 6px;
+  font-size: 14px; line-height: 1.5; color: var(--text); text-decoration: none;
+}
+.article-links a:hover { background: color-mix(in srgb, var(--line) 45%, transparent); }
+.article-links a:hover span { text-decoration: underline; }
+.article-links time { flex: none; width: 5.8em; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.article-links span {
+  min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
 /* トップの YouTube ショート（縦長のサムネイル。スマホは横にスワイプ） */
 .shorts {
   list-style: none; margin: 0; padding: 0; display: grid; gap: 12px;
