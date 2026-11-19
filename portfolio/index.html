@@ -3,12 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ヨシダスタジオ ポートフォリオ</title>
-<meta name="description" content="ヨシダスタジオの作品紹介。LINEスタンプ・絵文字、ブラウザゲーム、制作支援ツール、note記事。">
+<title>ヨシダスタジオ | LINEスタンプ・ブラウザゲーム・キャラクターIP</title>
+<meta name="description" content="ヨシダスタジオの作品をまとめたポートフォリオ。LINEスタンプ・絵文字、スマホで遊べるブラウザゲーム、オリジナルのキャラクター、自作ファミコンゲーム、note と YouTube ショートの最新情報。">
+<link rel="canonical" href="https://yoshida-std.github.io/website/portfolio/">
+<meta name="robots" content="index, follow, max-image-preview:large">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ヨシダスタジオ">
-<meta property="og:title" content="ヨシダスタジオ ポートフォリオ">
-<meta property="og:description" content="ヨシダスタジオの作品紹介。LINEスタンプ・絵文字、ブラウザゲーム、制作支援ツール、note記事。">
+<meta property="og:title" content="ヨシダスタジオ | LINEスタンプ・ブラウザゲーム・キャラクターIP">
+<meta property="og:description" content="ヨシダスタジオの作品をまとめたポートフォリオ。LINEスタンプ・絵文字、スマホで遊べるブラウザゲーム、オリジナルのキャラクター、自作ファミコンゲーム、note と YouTube ショートの最新情報。">
 <meta property="og:url" content="https://yoshida-std.github.io/website/portfolio/">
 <meta property="og:image" content="https://yoshida-std.github.io/website/portfolio/img/ogp.jpg">
 <meta property="og:image:type" content="image/jpeg">
@@ -25,7 +27,45 @@
 <link rel="apple-touch-icon" href="img/icons/apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="ヨシダスタジオ">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=13">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://yoshida-std.github.io/website/portfolio/#org",
+      "name": "ヨシダスタジオ",
+      "alternateName": [
+        "YOSHIDA STUDIO",
+        "Yoshida Studio"
+      ],
+      "url": "https://yoshida-std.github.io/website/portfolio/",
+      "logo": "https://yoshida-std.github.io/website/portfolio/img/icons/icon-512.png",
+      "description": "LINEスタンプ・絵文字、ブラウザゲーム、キャラクターを作っています。",
+      "sameAs": [
+        "https://note.com/yoshida_std",
+        "https://www.youtube.com/channel/UCnCCTBOk6s1M7PFz2q1VZCQ",
+        "https://store.line.me/stickershop/author/112324/ja"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://yoshida-std.github.io/website/portfolio/#website",
+      "name": "ヨシダスタジオ",
+      "alternateName": [
+        "YOSHIDA STUDIO",
+        "ヨシダスタジオ ポートフォリオ"
+      ],
+      "url": "https://yoshida-std.github.io/website/portfolio/",
+      "inLanguage": "ja",
+      "publisher": {
+        "@id": "https://yoshida-std.github.io/website/portfolio/#org"
+      }
+    }
+  ]
+}
+</script>
 </head>
 <body>
 <header class="site-header">
@@ -45,7 +85,7 @@
 <main class="wrap">
   <h1 class="hero">
     <img src="img/header.jpg" srcset="img/header-800.jpg 800w, img/header.jpg 1424w" sizes="(max-width: 1100px) 100vw, 1068px"
-      width="1424" height="748" alt="ヨシダスタジオ YOSHIDA STUDIO">
+      width="1424" height="748" alt="ヨシダスタジオ YOSHIDA STUDIO" fetchpriority="high" decoding="async">
   </h1>
   <p class="lead">LINEスタンプ・絵文字、ブラウザゲーム、キャラクター、制作ツールなどの作品をまとめています。</p>
 
@@ -78,6 +118,7 @@
       <a class="more" id="note-more" href="https://note.com/yoshida_std" target="_blank" rel="noopener">もっと見る →</a>
     </div>
     <ul class="articles" id="note-list"></ul>
+    <ul class="article-links" id="note-links"></ul>
   </section>
 
   <section class="section" id="shorts" hidden>
@@ -87,21 +128,41 @@
     </div>
     <ul class="shorts" id="shorts-list"></ul>
   </section>
+
+  <section class="section about" id="about">
+    <div class="section-head">
+      <h2>ヨシダスタジオについて</h2>
+    </div>
+    <p>ヨシダスタジオは、LINEスタンプ・絵文字、スマホのブラウザで遊べるゲーム、オリジナルのキャラクターなどを作っています。作品は LINE STORE と、このサイトで公開しています。</p>
+    <p>制作の様子は、毎日 note の制作日記に書き、YouTube にショート動画を投稿しています。</p>
+    <ul class="about-links">
+      <li><a href="line/">LINEスタンプ・絵文字</a></li>
+      <li><a href="games/">ブラウザゲーム</a></li>
+      <li><a href="charip/">キャラクターIP</a></li>
+      <li><a href="https://note.com/yoshida_std" target="_blank" rel="noopener">note</a></li>
+      <li><a href="https://www.youtube.com/channel/UCnCCTBOk6s1M7PFz2q1VZCQ" target="_blank" rel="noopener">YouTube</a></li>
+      <li><a href="https://store.line.me/stickershop/author/112324/ja" target="_blank" rel="noopener">LINE STORE</a></li>
+    </ul>
+  </section>
 </main>
 
 <footer class="site-footer">
   <div class="wrap">©YoshidaStudio</div>
 </footer>
 
-<script src="new.js?v=1"></script>
+<script src="new.js?v=2"></script>
 <script>
 (function () {
   "use strict";
   // note の RSS は GitHub Actions が3時間ごとに articles.json に書き出す（新しい順）
   var FEED = "note/articles.json";
-  var COUNT = 3;
+  var CARDS = 3;   // 上位はサムネイル付きのカード
+  var TOTAL = 7;   // 全体の件数。カードより下は文字のリンクだけ
+  // note は毎日増えるので、「NEW」は直近の2日分だけ（14日だと全部に付いてしまう）
+  var NEW_DAYS = 2;
   var section = document.getElementById("note");
   var list = document.getElementById("note-list");
+  var links = document.getElementById("note-links");
 
   function safeUrl(u) {
     return /^https:\/\//.test(u || "") ? u : "";
@@ -116,10 +177,10 @@
   fetch(FEED, { cache: "no-cache" })
     .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(function (data) {
-      var items = (data.items || []).filter(function (it) { return safeUrl(it.url); }).slice(0, COUNT);
+      var items = (data.items || []).filter(function (it) { return safeUrl(it.url); }).slice(0, TOTAL);
       if (!items.length) return;
       if (safeUrl(data.profile)) document.getElementById("note-more").href = data.profile;
-      items.forEach(function (it) {
+      items.slice(0, CARDS).forEach(function (it) {
         var li = document.createElement("li");
         var a = document.createElement("a");
         a.className = "article";
@@ -128,7 +189,7 @@
         a.rel = "noopener";
         var thumb = document.createElement("div");
         thumb.className = "article-thumb";
-        if (YS.isNew(it.date)) thumb.appendChild(YS.newBadge());
+        if (YS.isNew(it.date, NEW_DAYS)) thumb.appendChild(YS.newBadge());
         if (safeUrl(it.image)) {
           var img = document.createElement("img");
           img.src = it.image;
@@ -150,6 +211,23 @@
         a.appendChild(body);
         li.appendChild(a);
         list.appendChild(li);
+      });
+      // カードより下は、日付とタイトルの文字だけのリンク
+      items.slice(CARDS).forEach(function (it) {
+        var li = document.createElement("li");
+        var a = document.createElement("a");
+        a.href = it.url;
+        a.target = "_blank";
+        a.rel = "noopener";
+        var date = document.createElement("time");
+        date.dateTime = it.date || "";
+        date.textContent = formatDate(it.date);
+        var title = document.createElement("span");
+        title.textContent = it.title;
+        a.appendChild(date);
+        a.appendChild(title);
+        li.appendChild(a);
+        links.appendChild(li);
       });
       section.hidden = false;
     })

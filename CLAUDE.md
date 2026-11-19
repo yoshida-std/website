@@ -48,8 +48,9 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 
 段階的に作っている。今あるのはトップ・LINE スタンプ・ブラウザゲーム・キャラクターIP・自作ファミコンゲーム（未リンク）のページ。ツールは「準備中」でリンクなし。note はカードを置かず、トップの最新記事の欄で見せる。YouTube のショートもトップの欄で見せる（ナビの「note」はその欄 `#note` へのリンク）。
 
-- `portfolio/index.html` … トップ（ヘッダー画像、LINEスタンプ・ゲーム・キャラクターIP・ツールのカードと、note の最新記事3件をサムネイル付きで）
+- `portfolio/index.html` … トップ（ヘッダー画像、LINEスタンプ・ゲーム・キャラクターIP・ツールのカードと、note の最新記事7件）
   - ヘッダー画像は `portfolio/img/header.jpg`（1424×748）と `header-800.jpg`（スマホ用の縮小版）。PC では上下を少し切って低めに見せる（ロゴは中央なので切れない）
+  - note は全体7件。上位3件（`CARDS`）はサムネイル付きのカード、4件目以降は日付とタイトルの文字だけのリンク（`.article-links`。4件未満なら出さない）。件数はトップの `CARDS`・`TOTAL`。
   - 記事は `portfolio/note/articles.json` を `fetch` して出す。0件・読めないときは記事の欄ごと出さない。日付は JSON の日付（日本時間）の文字をそのまま出す
   - `articles.json` は `.github/workflows/update-note-feed.yml` が3時間ごとに作り直して `main` にコミットする（`main` でスクリプトか workflow を変えたときと、Actions の画面から手動でも動く）。手で編集しない
   - `.github/scripts/build_note_feed.py` が `https://note.com/yoshida_std/rss` を読み、新しい順に最大10件を書き出す（標準ライブラリだけで動く）。読めない・0件なら更新しない（Actions は失敗になる）
@@ -80,7 +81,11 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 - ホーム画面・タブのアイコン: `portfolio/img/icons/`（`favicon.ico`・`icon-192.png`・`icon-512.png`・`icon-maskable-512.png`・`apple-touch-icon.png`・`robot.png`）。ヘッダー画像のロボットの白い線だけを抜き出して、無地の青（#134f7d）に置いたもの。作り直しは `python .github/scripts/make_portfolio_icons.py`（Pillow）。小さいサイズは線を太くしてある
 - `portfolio/manifest.webmanifest`: 名前「ヨシダスタジオ ポートフォリオ」、短い名前「ヨシダスタジオ」（ホーム画面の名前）、`display: standalone`、`start_url`・`scope` は `portfolio/`、背景色 #134f7d（起動画面）・テーマ色 #fafaf7。ブラウザの外枠で開きたくなければ `display` を `browser` にする
 - **全ページの `<head>`** に、`theme-color`（明るい #fafaf7 / 暗い #17181a）・`icon`（`favicon.ico` と `icon-192.png`）・`apple-touch-icon`・`manifest`・`apple-mobile-web-app-title`（「ヨシダスタジオ」）を入れる。パスは相対で、ページの深さに合わせて `../` の数を変える（`line/` なら `../img/icons/…`、`charip/taijiro/` なら `../../img/icons/…`）。**ページを足したら OGP と一緒に入れる**。ゲーム（`games/`）は別に自前の manifest とアイコンを持つ
-- 「NEW」の目印: 公開日から14日以内のものに付ける（見る人が前に来たかどうかは関係なし）。共通部品は `portfolio/new.js`（`YS.isNew(日付)`・`YS.newBadge()`。日付だけのものは日本時間の0時として扱う。サムネイルの枠は `position: relative` にして左上に重ねる。見出しの横は `.inline`）。付けているのは、トップの note 記事・YouTube ショートのサムネイルと「ブラウザゲーム」「キャラクターIP」のカード（その一覧に新しいものがあるとき）、ゲーム・キャラクターIP・ファミコンの一覧のサムネイル。LINEスタンプは、カタログに日付がないので付けていない。一覧を足すときは、日付の項目（`published` など）を見て `YS.isNew` で付ける。ホーム画面のアイコンの数字のバッジ（Badging API）は、サイトを閉じている間に出すにはプッシュ通知のサーバーが要るので、静的なホスティングでは作れない
+- 「NEW」の目印: 公開日から14日以内のものに付ける（見る人が前に来たかどうかは関係なし）。共通部品は `portfolio/new.js`（`YS.isNew(日付)`・`YS.newBadge()`。日付だけのものは日本時間の0時として扱う。`YS.isNew(日付, 日数)` で期間を変えられる。**note は毎日投稿するので2日以内**（トップの `NEW_DAYS`。14日だと表示中の3件が全部 NEW になる）。サムネイルの枠は `position: relative` にして左上に重ねる。見出しの横は `.inline`）。付けているのは、トップの note 記事・YouTube ショートのサムネイルと「ブラウザゲーム」「キャラクターIP」のカード（その一覧に新しいものがあるとき）、ゲーム・キャラクターIP・ファミコンの一覧のサムネイル。LINEスタンプは、カタログに日付がないので付けていない。一覧を足すときは、日付の項目（`published` など）を見て `YS.isNew` で付ける。ホーム画面のアイコンの数字のバッジ（Badging API）は、サイトを閉じている間に出すにはプッシュ通知のサーバーが要るので、静的なホスティングでは作れない
+- SEO: 全ページの `<head>` に、`<link rel="canonical">`（`og:url` と同じ URL。末尾は `/`）・`<meta name="robots" content="index, follow, max-image-preview:large">`・構造化データ（JSON-LD。トップは `Organization`＋`WebSite`、ほかは `BreadcrumbList`＝トップ > 一覧 > そのページ）を入れる。`title` と `description` はページごとに別の文にする（`description` は70〜120字を目安に。一覧の文は、中身が増えても合うように一般的に書く）。トップの `<h1>` はヘッダー画像で、`alt` が見出しの文
+  - トップの一番下に「ヨシダスタジオについて」（JS なしで読める静的な説明文と、一覧・note・YouTube・LINE STORE へのリンク）。検索に伝わる文章がトップに少なかったため。サイト名（JSON-LD の `WebSite` の `name`）は「ヨシダスタジオ」、別名に `YOSHIDA STUDIO`。公開する内容が増えたら、この文とリンクも合わせる
+  - **ページを足したら**: ① `<head>` に OGP・アイコン・上の SEO 一式を入れる ② `python .github/scripts/make_portfolio_sitemap.py` で `portfolio/sitemap.xml` を作り直す（`index.html` を全部拾う。まだトップ・ナビからリンクしていない公開前のページは、スクリプトの `NOT_YET` に書いてサイトマップから外してある。今は `famicom/`。**`famicom/` を公開してトップ・ナビにリンクするときは、`NOT_YET` から外して作り直す**）
+  - サイトマップ（`https://yoshida-std.github.io/website/portfolio/sitemap.xml`）は、Google Search Console に「URL プレフィックス」で `https://yoshida-std.github.io/website/portfolio/` を登録して、サイトマップとして1回送る。robots.txt はドメインの一番上（`yoshida-std.github.io` のユーザーサイト）にしか効かないので、このリポジトリには置かない
 - コピーライトは「©YoshidaStudio」のみ（PANICPUMPKIN は入れない）
 - `portfolio/style.css` … 共通スタイル（PC・スマホ両対応、ダークモード対応）。HTML からは `style.css?v=番号` で読む。**CSS を変えたら全ページの番号を1つ上げる**（上げないと、ブラウザに残った古い CSS で表示が崩れる）
 - ゲームではないので Artifact での確認は不要。動作確認はゲームと同じく `http.server` で配信して Playwright で見る（この環境からは LINE の画像サーバーに接続できないので、画像は表示されない）
