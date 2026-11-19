@@ -93,13 +93,15 @@
   <div class="wrap">©YoshidaStudio</div>
 </footer>
 
-<script src="new.js?v=1"></script>
+<script src="new.js?v=2"></script>
 <script>
 (function () {
   "use strict";
   // note の RSS は GitHub Actions が3時間ごとに articles.json に書き出す（新しい順）
   var FEED = "note/articles.json";
   var COUNT = 3;
+  // note は毎日増えるので、「NEW」は直近の2日分だけ（14日だと全部に付いてしまう）
+  var NEW_DAYS = 2;
   var section = document.getElementById("note");
   var list = document.getElementById("note-list");
 
@@ -128,7 +130,7 @@
         a.rel = "noopener";
         var thumb = document.createElement("div");
         thumb.className = "article-thumb";
-        if (YS.isNew(it.date)) thumb.appendChild(YS.newBadge());
+        if (YS.isNew(it.date, NEW_DAYS)) thumb.appendChild(YS.newBadge());
         if (safeUrl(it.image)) {
           var img = document.createElement("img");
           img.src = it.image;
