@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>戦え！ゆうしゃ</title>
+<style>
+html,body{height:100%;margin:0;overflow:hidden;touch-action:manipulation;overscroll-behavior:none;
+  -webkit-touch-callout:none;-webkit-text-size-adjust:100%;-webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent;background:#05060f;color:#fff;
+  font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",Meiryo,sans-serif}
+button{touch-action:manipulation;font-family:inherit}
+img{-webkit-user-drag:none}
+canvas{touch-action:none;display:block;position:absolute;left:0;top:0}
+#gl{pointer-events:none}
+#wrap{position:fixed;left:0;top:0;right:0;bottom:0;box-sizing:border-box;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#stage{position:relative;width:100%;height:100%;overflow:hidden}
+#bar{position:absolute;left:6px;right:6px;top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:5px;
+  font-size:12px;background:rgba(8,12,70,.78);border:2px solid #fff;border-radius:8px;padding:5px 7px}
+#bar button{font-size:12px;font-weight:bold;color:#fff;background:#1a2290;border:2px solid #9aa5ff;border-radius:6px;padding:5px 8px}
+#bar button.on{background:#e8b923;color:#222;border-color:#fff}
+#bar{padding-right:44px}
+#bt{position:absolute;right:6px;top:6px;z-index:4;width:34px;height:34px;padding:0;font-size:15px;font-weight:bold;color:#fff;background:rgba(26,34,144,.92);border:2px solid #fff;border-radius:8px}
+#bar #reset{margin-left:auto;background:#6a1a1a;border-color:#ffb0b0}
+#intro{position:absolute;left:10px;right:10px;top:10px;bottom:10px;background:rgba(5,8,50,.96);border:3px solid #fff;border-radius:12px;
+  padding:14px 16px;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;font-size:14px;line-height:1.6;z-index:5}
+#intro h1{font-size:18px;margin:0 0 6px}
+#intro ul{margin:6px 0 8px;padding-left:20px}
+#intro li{margin:3px 0}
+#intro .note{font-size:12px;color:#b9c0ff}
+#intro button{display:block;margin:14px auto 4px;font-size:18px;font-weight:bold;color:#222;background:#e8b923;border:3px solid #fff;border-radius:10px;padding:10px 34px}
+.k{display:inline-block;background:#1a2290;border:1px solid #9aa5ff;border-radius:4px;padding:0 6px;font-weight:bold}
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage">
+<canvas id="gl"></canvas>
+<canvas id="c"></canvas>
+<button id="bt" class="menu" aria-label="うえのウィンドウを かくす／ひらく">▲</button>
+<div id="bar" class="menu">
+  <span>てきのおもさ</span>
+  <button data-w="70">かるい</button><button data-w="100" class="on">ふつう</button><button data-w="160">おもい</button>
+  <span>フリック</span>
+  <button data-flick="hi">びんかん</button><button data-flick="mid" class="on">ふつう</button><button data-flick="lo">にぶめ</button>
+  <button id="reset">やりなおし</button>
+</div>
+<div id="intro" class="menu scrollable">
+  <h1>戦え！ゆうしゃ</h1>
+  <div>あなたは<b>ゆうしゃ</b>。<b>まほうつかい</b>を まもりながら、2たいの てきを たおそう。てきは <b>おしあい・こうげき</b>をした あいてを ねらうようになる（<b>こうげきの ほうが ヘイトがたまる</b>）。</div>
+  <ul>
+    <li>ゆびを <span class="k">↑</span> へ … ロックした てきを <b>おす</b>（おもさ UP）</li>
+    <li>ゆびを <span class="k">← →</span> へ … てきを中心に <b>まわりこむ</b></li>
+    <li>ゆびを <span class="k">↓</span> へ … <b>さがる</b></li>
+    <li>ゆびを <b>とめる／はなす</b> … <b>ふんばる</b>（おもさ さらに UP）</li>
+    <li><b>てきに かさねて フリック</b> … その てきを <b>けんで こうげき</b>（とおくても ふみこむ）。<b>てきに かさなった ところは いどうに ならない</b>。てきの ないところを なぞれば いどう</li>
+    <li>けんを ふるたびに <b>きりょく</b>（ゆうしゃの頭上の青いゲージ）を つかう。<b>ふりまくると いきぎれ</b>で しばらく ふれない。<b>てきが よろけた「スキ」</b>には ダメージ <b>2.2ばい</b>（いなした後が ねらい目）</li>
+    <li><b>「おす」を つづけている間は けんを ふれない</b>（<b>いなす</b>は できる）。ふるときは おすのを やめる</li>
+    <li>フリックが <b>はやいほど</b>・<b>たて／ななめ</b>ほど ダメージ大（<span style="color:#ffe01a">きいろい すうじ</span>）。うしろからは さらに つよい</li>
+    <li>てきの <b>「！」</b>が <b>水いろの「いま！」</b>に かわった ときに フリック＝<b>いなす</b>（せいこうで てきが よろける）。<b>けんを ふった すぐあと（0.5びょう）は いなせない</b>ので、ふりまくると やられる</li>
+    <li>画面を <b>ちょんと タップ</b> … タップした てきを <b>ロック</b>（まわりこみ・おす対象）</li>
+  </ul>
+  <ul>
+    <li>てきが ねらう あいては、<b>おしあい・こうげき</b>で きまる。ターゲットが ない てきは、どひょうを <b>うろうろ</b> あるく</li>
+    <li>ゆうしゃは <b>じどうでは こうげきしない</b>。まほうつかいは はなれた ばしょから じどうで まほうを うつ</li>
+    <li>まほうつかいは、できるだけ <b>てきから はなれた ばしょ</b>へ うごく</li>
+    <li>おして おして おしつづけると「ねばりゲージ」が たまり、てきが はんげきしてくる</li>
+    <li>てきの<b>まえ</b>は つよく、<b>よこ・うしろ</b>は おもさが さがる。どひょうの ふちから そとには でられない</li>
+  </ul>
+  <div class="note">※ 操作感の確認用です。数値はすべて仮で、コマンドなどは未実装です。上のボタンで てきの おもさを切りかえられます。</div>
+  <button id="start">はじめる</button>
+</div>
+</div></div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/+esm","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}
+</script>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
