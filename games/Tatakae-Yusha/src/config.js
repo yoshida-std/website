@@ -7,7 +7,9 @@ export const CFG={
   angleMult:{front:1.0,side:0.7,back:0.5},
   thr:{win:1.25,hold:1.0,lose:0.75},
   gauge:{pushUp:12,normalUp:2,firmDown:5,idleDown:8,reset:60},
-  counter:{tele:0.75,dmg:36,dmgFirm:14,stagger:1.2,reach:0.9,knock:7},
+  counter:{tele:0.75,dmg:36,dmgFirm:14,stagger:1.2,reach:0.9,knock:7,
+    // 痛恨の一撃(ふんばらずに うけた はんげき): ふっとび、しばらく うごけない【仮】
+    crit:{dist:7,stun:2.0,k:6}},
   enemyAtk:{tele:0.7,dmgAlly:15,dmgHero:18,dmgHeroFirm:8,cd:1.0,reachAlly:0.7,reachHero:0.2},
   atkSweep:{tele:0.95,r:2.6,dmgHero:16,dmgHeroFirm:7,dmgAlly:13,knock:1.4},   // なぎはらい(まわり全部)【仮】
   atkCharge:{tele:0.9,track:0.45,speed:20,minD:3.0,maxD:9.5,over:2.0,dmgHero:20,dmgHeroFirm:9,dmgAlly:18,knock:1.2,rest:0.7}, // とっしん【仮】

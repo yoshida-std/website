@@ -288,13 +288,18 @@ export function step(dt){
     const rl=Math.hypot(rx,rz)||0.001;
     h.x=L.x+rx/rl*nd;h.z=L.z+rz/rl*nd;
   }
+  if(h.kx||h.kz){ // 痛恨で ふっとんでいる(だんだん おそくなる)
+    h.x+=h.kx*dt;h.z+=h.kz*dt;const dc=Math.exp(-CFG.counter.crit.k*dt);h.kx*=dc;h.kz*=dc;
+    if(Math.hypot(h.kx,h.kz)<0.3){h.kx=0;h.kz=0;}
+  }
   { // あるきの アニメ用 + ゆうしゃの むき(うしろ・みぎ・ひだり・まえ)
     const lx0=h.lx===undefined?h.x:h.lx,lz0=h.lz===undefined?h.z:h.lz;
     const dxw=h.x-lx0,dzw=h.z-lz0,mvd=Math.hypot(dxw,dzw),spd=mvd/Math.max(dt,0.001);
     const tgt=Math.min(1,spd/(CFG.hero.speed*0.6));
-    h.mv+=(tgt-h.mv)*Math.min(1,dt*12);h.ph+=mvd*2.6;h.lx=h.x;h.lz=h.z;
+    h.mv+=((h.stun>0?0:tgt)-h.mv)*Math.min(1,dt*12);h.ph+=mvd*2.6;h.lx=h.x;h.lz=h.z;
     const yfx=Math.sin(S.cam.yaw),yfz=Math.cos(S.cam.yaw),yrx=yfz,yrz=-yfx; // カメラの前・右
-    if(h.swingV>0){h.fr=0;h.ff=1;h.faceHold=0.35;h.idleT=0;} // 剣をふる間は てきのほうを むく(画面で ふりの むきが そのまま 見える)
+    if(h.stun>0){h.fr=0;h.ff=1;h.idleT=0;} // ふっとび中・うごけない間は まっすぐ(ふっとんでも むきを かえない)
+    else if(h.swingV>0){h.fr=0;h.ff=1;h.faceHold=0.35;h.idleT=0;} // 剣をふる間は てきのほうを むく(画面で ふりの むきが そのまま 見える)
     else if(h.faceHold>0){h.faceHold-=dt;}
     else if(spd>0.9){
       const dr=dxw*yrx+dzw*yrz,df=dxw*yfx+dzw*yfz,l=Math.hypot(dr,df)||1;h.fr=dr/l;h.ff=df/l;h.idleT=0;
@@ -571,10 +576,18 @@ export function step(dt){
       if(parryWindow(e.tele)){parryEnemy(e,h);}
       else if(e.tele<=0){
         if(nd<h.r+e.r+CFG.counter.reach){
-          const dmg=h.stance==='firm'?CFG.counter.dmgFirm:CFG.counter.dmg;
+          const firm=h.stance==='firm',C=CFG.counter,dmg=firm?C.dmgFirm:C.dmg;
           h.hp=Math.max(0,h.hp-dmg);h.flash=0.3;S.shake=Math.max(S.shake,0.5);
-          h.x-=nx/nd*1.0;h.z-=nz/nd*1.0;
-          addPop(h.x,h.z,2.6,'-'+dmg,'#ff8a3a',40,'はんげき！',false);
+          if(firm){ // ふんばって たえた: ダメージ小・ふっとばない
+            h.x-=nx/nd*1.0;h.z-=nz/nd*1.0;
+            addPop(h.x,h.z,2.6,'-'+dmg,'#ff8a3a',40,'はんげき！',false);
+          }else{ // 痛恨の一撃: ふっとび、しばらく うごけない
+            const K=C.crit,v=K.dist*K.k;
+            h.kx=-nx/nd*v;h.kz=-nz/nd*v;h.stun=h.stunMax=K.stun;h.pushT=0;
+            S.shake=Math.max(S.shake,1.0);
+            addPop(h.x,h.z,2.6,'-'+dmg,'#ff4a2a',56,'つうこんの いちげき！',false);
+            try{if(navigator.vibrate)navigator.vibrate([40,30,60]);}catch(_){}
+          }
           e.gauge=CFG.gauge.reset;
         }else{addText('からぶり',e.x,e.z,2.4,'#cccccc');e.gauge=0;}
       }

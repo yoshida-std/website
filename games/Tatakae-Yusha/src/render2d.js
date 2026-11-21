@@ -186,6 +186,19 @@ export function heroParts(h){
   // ふるときは からだも ひねり、うえへ ふれば のけぞり したへ ふれば まえへ かたむく
   const lean=0.24*pk+0.05*fk+0.035*br*fk-0.14*swVv*swQ,twist=0.3*swU*swQ*cy0;
   if(lean||twist){const lo=[{t:'y',a:twist,p:[0,0.7,0]},{t:'x',a:lean,p:[0,0.7,0]}];for(let i=legCount;i<parts.length;i++)parts[i].ops=parts[i].ops.concat(lo);}
+  // 痛恨の一撃で ふっとぶ(ユーザー指示 2026-11-21): うしろむきに 1回転して とび、あおむけに たおれ、しばらく して おきあがる
+  if(h&&h.stun>0&&h.stunMax>0){
+    const ST=h.stunMax,ht=ST-h.stun,FL=0.5,GU=0.5,LY=[0,0.12,-0.22];
+    let ang,air=0,piv=LY;
+    if(ht<FL){const u=ht/FL,e=1-(1-u)*(1-u);ang=-(Math.PI*2+Math.PI/2)*e;air=2.6*4*u*(1-u);piv=[0,1.0-0.88*u,-0.22*u];}
+    else if(ht<ST-GU)ang=-Math.PI/2;
+    else{const v=Math.min(1,(ht-(ST-GU))/GU),e=v*v*(3-2*v);ang=-Math.PI/2*(1-e);}
+    const to=[{t:'x',a:ang,p:piv}];
+    for(const pt of parts){
+      pt.ops=pt.ops.concat(to);
+      if(air){pt.c=[pt.c[0],pt.c[1]+air,pt.c[2]];pt.ops=pt.ops.map(o=>({t:o.t,a:o.a,p:[o.p[0],o.p[1]+air,o.p[2]]}));}
+    }
+  }
   return {parts,yaw};
 }
 export function drawHero(x,y,s,fl,h){const m=heroParts(h);h3render(m.parts,x,y,s,fl,m.yaw,0);}
@@ -518,7 +531,7 @@ export function charOverlay(it,blink){
       ctx.stroke();ctx.restore();
     }
     const top=proj(it.c.l,it.c.d,2.35);
-    bar(top.x-22,top.y-1,44,5,h.sta/CFG.sta.max,h.tired?'#ff5a4a':'#7cdcff');
+    if(!(h.stun>0))bar(top.x-22,top.y-1,44,5,h.sta/CFG.sta.max,h.tired?'#ff5a4a':'#7cdcff');
     if(h.tired)txt('いきぎれ',top.x,top.y+16,12,'#ff9a90','center',3);
   }else if(it.k==='e'){
     const e=it.e;
