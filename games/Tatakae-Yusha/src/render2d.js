@@ -7,6 +7,8 @@ import {S,inp} from './logic.js';
 
 // ================= 描画 =================
 export let V=null;
+// てきの 見た目の大きさ(当たり判定 e.r に かける。ロジックは かえない)。ユーザー指示「2まわり大きく」2026-11-21【仮】
+export const ENEMY_LOOK=1.4;
 export function toCam(x,z){const rx=x-V.camX,rz=z-V.camZ;return {l:rx*V.rx+rz*V.rz,d:rx*V.fx+rz*V.fz};}
 export function proj(l,d,hgt){return {x:CW/2+l*V.F/d,y:V.HZ+(V.CAMH-hgt)*V.F/d};}
 export const NEAR=0.35;
@@ -270,7 +272,7 @@ export function enemyParts(eyeCol,tint,sc,yaw,mv,ph,atk,stag,dash){
   if(stag)ln.push({t:'z',a:Math.sin(t*18)*0.09,p:[0,0,0]});
   if(dash)ln.push({t:'x',a:0.35,p:[0,0.5,0]});
   if(ln.length)h3leanAll(parts,ln);
-  return {parts,yaw,scale:sc*0.8};
+  return {parts,yaw,scale:sc*0.8*ENEMY_LOOK};
 }
 export function drawEnemy(x,y,s,fl,eyeCol,tint,sc,yaw,mv,ph,atk,stag,dash){const m=enemyParts(eyeCol,tint,sc,yaw,mv,ph,atk,stag,dash);h3render(m.parts,x,y,s*m.scale,fl,m.yaw,0);}
 export function bar(x,y,w,hh,ratio,col){
@@ -489,16 +491,17 @@ export function charOverlay(it,blink){
   }else if(it.k==='e'){
     const e=it.e;
     const teleOn=e.tele>0,atkOn=e.atkTele>0;
-    e.sc=s;e.sx=p.x;e.sy=p.y-s*e.r*1.3;e.shw=Math.max(18,s*e.r*1.25);e.shh=Math.max(24,s*e.r*1.45); // タップ・フリック判定用の画面位置と大きさ
+    const er=e.r*ENEMY_LOOK; // 見た目の大きさ
+    e.sc=s;e.sx=p.x;e.sy=p.y-s*er*1.3;e.shw=Math.max(18,s*er*1.25);e.shh=Math.max(24,s*er*1.45); // タップ・フリック判定用の画面位置と大きさ
     if(inp.down&&inp.onEnemy===e.i){ctx.save();ctx.strokeStyle='#ffe01a';ctx.lineWidth=3;ctx.globalAlpha=0.85;ctx.beginPath();ctx.ellipse(e.sx,e.sy,e.shw+8,e.shh+8,0,0,Math.PI*2);ctx.stroke();ctx.restore();}
-    const top=proj(it.c.l,it.c.d,2.9*e.r+0.2);
+    const top=proj(it.c.l,it.c.d,2.9*er+0.2);
     const lab=LETTER[e.i]+'▶'+(e.target?TGT_JP[e.target]:'なし');
     const edge=e.target==='hero'?'#ffd36a':(e.target==='ally'?'#c9a0ff':'#8890b0');
     bubble(lab,top.x,top.y,e.tflash>0&&blink?13:11,edge);
     // ねばりゲージ(小)
     bar(top.x-22,top.y+11,44,5,e.gauge/100,e.gauge>=80?'#ff5a4a':'#ffb030');
     bar(top.x-22,top.y+18,44,5,e.hp/e.maxHp,'#5ad06a');
-    const top2=proj(it.c.l,it.c.d,2.9*e.r+0.2+0.8);
+    const top2=proj(it.c.l,it.c.d,2.9*er+0.2+0.8);
     if(teleOn){const w=e.tele<=CFG.parryWin;txt(w?'いま！':'！',top2.x,top2.y-6,Math.max(22,s*0.9)*(w?1.15:1),w?'#7cf5ff':'#ff4040','center',4);}
     else if(atkOn){const w=e.target==='hero'&&e.atkTele<=CFG.parryWin;txt(w?'いま！':'！',top2.x,top2.y-6,Math.max(20,s*0.8)*(w?1.15:1),w?'#7cf5ff':(e.target==='hero'?'#ff9a30':'#ffd000'),'center',4);txt(KIND_JP[e.atkKind]||'',top2.x,top2.y-30,13,'#ffd0a0','center',3);}
     else if(e.stagger>0)txt('ふらふら…',top2.x,top2.y-4,15,'#9fe8ff','center',3);
@@ -527,7 +530,7 @@ export function drawEffects(flyCb){
       const tt=Math.max(0,f.t-k*0.04),gx=f.x0+f.vx*tt,gy=f.y0+f.vy*tt,sc=1+0.9*tt;
       ctx.save();ctx.translate(gx,gy);ctx.rotate(f.spin*tt);
       ctx.globalAlpha=k===0?1:0.16*(4-k);
-      drawEnemy(0,f.s*sc*f.r*1.3,f.s*sc,k===0&&f.t<0.1,'#ffffff',f.color,f.r,0,0,0,false,true,false);
+      drawEnemy(0,f.s*sc*f.r*ENEMY_LOOK*1.3,f.s*sc,k===0&&f.t<0.1,'#ffffff',f.color,f.r,0,0,0,false,true,false);
       ctx.restore();
     }
     ctx.globalAlpha=1;

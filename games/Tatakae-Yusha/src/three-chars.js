@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import {LineSegments2} from 'three/addons/lines/LineSegments2.js';
 import {LineSegmentsGeometry} from 'three/addons/lines/LineSegmentsGeometry.js';
 import {LineMaterial} from 'three/addons/lines/LineMaterial.js';
-import {heroParts,allyParts,enemyParts} from './render2d.js';
+import {heroParts,allyParts,enemyParts,ENEMY_LOOK} from './render2d.js';
 
 // ---- 箱の ひな形(1×1×1) ----
 const FACES=[]; // {n:[法線], q:[4つの角]}(外から見て 反時計まわり)
@@ -150,7 +150,7 @@ export function makeChars(scene,flyScene){
           m.set(ep.parts,1,k===0&&f.t<0.1,s*ep.scale);
           m.obj.scale.setScalar(s*ep.scale);
           m.outer.position.set(gx,-gy,0);m.outer.rotation.z=-f.spin*tt;
-          m.inner.position.set(0,-s*f.r*1.3,0);
+          m.inner.position.set(0,-s*f.r*ENEMY_LOOK*1.3,0);
           m.obj.rotation.y=ep.yaw;
           m.outer.visible=true;m.outer.renderOrder=4-k;
           opacity(m,k===0?1:0.16*(4-k));
