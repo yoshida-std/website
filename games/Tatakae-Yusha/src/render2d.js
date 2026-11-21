@@ -69,9 +69,10 @@ export function h3apply(p,ops){
   }
   return [x,y,z];
 }
-const H3FACES=[[0,2,6,4],[1,5,7,3],[0,4,5,1],[2,3,7,6],[0,1,3,2],[4,6,7,5]];
-const H3L=(()=>{const l=[-0.45,0.85,0.55],n=Math.hypot(l[0],l[1],l[2]);return [l[0]/n,l[1]/n,l[2]/n];})();
-export function drawHero(x,y,s,fl,h){
+export const H3FACES=[[0,2,6,4],[1,5,7,3],[0,4,5,1],[2,3,7,6],[0,1,3,2],[4,6,7,5]];
+export const H3L=(()=>{const l=[-0.45,0.85,0.55],n=Math.hypot(l[0],l[1],l[2]);return [l[0]/n,l[1]/n,l[2]/n];})();
+// 部品のリストを つくる(Canvas 2D と WebGL の両方で つかう)
+export function heroParts(h){
   const t=performance.now()/1000,mv=h?(h.mv||0):0,ph=h?(h.ph||0):0,yaw=h&&h.yaw3!==undefined?h.yaw3:Math.PI;
   const swT=h&&h.swingT>0?h.swingT:0,pr=swT>0?1-swT/0.2:0,sa=h?(h.swingAng||0):0;
   const vert=Math.abs(Math.sin(sa))>0.75;
@@ -159,9 +160,10 @@ export function drawHero(x,y,s,fl,h){
   B(-0.47,0.70+bob,0.74,0.04,0.07,1.0,'#aab6c8',ra);                   // むね
   B(-0.38,0.70+bob,1.30,0.12,0.04,0.14,'#e4eaf3',ra);                  // きっさき
   B(-0.38,0.70+bob,1.38,0.05,0.04,0.06,'#e4eaf3',ra);
-  h3render(parts,x,y,s,fl,yaw,0);
+  return {parts,yaw};
 }
-function h3render(parts,x,y,s,fl,yaw,lean){
+export function drawHero(x,y,s,fl,h){const m=heroParts(h);h3render(m.parts,x,y,s,fl,m.yaw,0);}
+export function h3render(parts,x,y,s,fl,yaw,lean){
   const cy0=Math.cos(yaw),sy0=Math.sin(yaw),PITCH=0.38,cp=Math.cos(PITCH),sp=Math.sin(PITCH);
   const faces=[];
   for(const pt of parts){
@@ -204,7 +206,7 @@ export function faceTo(o,tx,tz,rate){
   if(Math.hypot(dl,dd)>0.05){const ta=Math.atan2(dl,-dd);let da=ta-(o.yaw3===undefined?Math.PI:o.yaw3);da=Math.atan2(Math.sin(da),Math.cos(da));o.yaw3=(o.yaw3===undefined?Math.PI:o.yaw3)+Math.max(-rate*dt,Math.min(rate*dt,da));}
   else if(o.yaw3===undefined)o.yaw3=Math.PI;
 }
-export function drawAlly(x,y,s,fl,yaw,mv,ph,cast){
+export function allyParts(yaw,mv,ph,cast){
   const t=performance.now()/1000,bob=Math.sin(t*2.3)*0.02-Math.abs(Math.sin(ph))*0.05*mv;
   const parts=[],B=(cx,cy,cz,sx,sy,sz,col,ops,bias)=>parts.push({c:[cx,cy,cz],s:[sx,sy,sz],col,ops:ops||[],bias:bias||0});
   const sw=Math.sin(ph)*0.5*mv;
@@ -229,10 +231,11 @@ export function drawAlly(x,y,s,fl,yaw,mv,ph,cast){
   const pul=0.14+0.04*Math.sin(t*6)+0.08*Math.min(1,cast||0);
   B(0.34,0.82+bob,1.05,pul*1.5,pul*1.5,pul*1.5,'#7cf5ff',ra,0.05);   // たま
   B(0.34,0.82+bob,0.9,0.16,0.16,0.06,'#e0b84a',ra);
-  h3render(parts,x,y,s,fl,yaw,0);
+  return {parts,yaw};
 }
+export function drawAlly(x,y,s,fl,yaw,mv,ph,cast){const m=allyParts(yaw,mv,ph,cast);h3render(m.parts,x,y,s,fl,m.yaw,0);}
 // てき: どっしりした「どすこいオーガ」。あたまに つの、おなかが ふくらみ、まわしを しめる
-export function drawEnemy(x,y,s,fl,eyeCol,tint,sc,yaw,mv,ph,atk,stag,dash){
+export function enemyParts(eyeCol,tint,sc,yaw,mv,ph,atk,stag,dash){
   yaw=yaw===undefined?Math.PI:yaw;mv=mv||0;ph=ph||0;
   const t=performance.now()/1000,bob=Math.sin(t*1.7)*0.02-Math.abs(Math.sin(ph))*0.06*mv;
   const dk=h3mix(tint,0.68),lt=h3mix(tint,1.22),skin=tint;
@@ -267,8 +270,9 @@ export function drawEnemy(x,y,s,fl,eyeCol,tint,sc,yaw,mv,ph,atk,stag,dash){
   if(stag)ln.push({t:'z',a:Math.sin(t*18)*0.09,p:[0,0,0]});
   if(dash)ln.push({t:'x',a:0.35,p:[0,0.5,0]});
   if(ln.length)h3leanAll(parts,ln);
-  h3render(parts,x,y,s*sc*0.8,fl,yaw,0);
+  return {parts,yaw,scale:sc*0.8};
 }
+export function drawEnemy(x,y,s,fl,eyeCol,tint,sc,yaw,mv,ph,atk,stag,dash){const m=enemyParts(eyeCol,tint,sc,yaw,mv,ph,atk,stag,dash);h3render(m.parts,x,y,s*m.scale,fl,m.yaw,0);}
 export function bar(x,y,w,hh,ratio,col){
   ctx.fillStyle='#000';ctx.fillRect(x,y,w,hh);
   ctx.fillStyle=col;ctx.fillRect(x+1,y+1,Math.max(0,(w-2)*Math.max(0,Math.min(1,ratio))),hh-2);

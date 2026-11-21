@@ -13,7 +13,7 @@ import {CFG} from './config.js';
 import {ctx as hudCtx,CW,CH,DPR,onResize} from './screen.js';
 import {S} from './logic.js';
 import {V,NEAR,setupView,toCam,proj,drawBackdrop,drawArena,drawGroundMarks,charList,charPre,charOverlay,drawEffects,drawHud,useCtx} from './render2d.js';
-import {makeChars} from './three-chars.js';
+import {makeChars,setLineResolution} from './three-chars.js';
 
 THREE.ColorManagement.enabled=false; // 色は Canvas 2D と同じ値のまま あつかう(sRGB→リニア変換をしない)
 
@@ -172,7 +172,7 @@ function setup(){
   const dl=new THREE.DirectionalLight(0xffffff,0.62*Math.PI);
   dl.position.set(-0.45,0.85,0.55);cam.add(dl);cam.add(dl.target);dl.target.position.set(0,0,0);
   charScene.add(cam);
-  const chars=makeChars(THREE,charScene);
+  const chars=makeChars(charScene);
   R={renderer,glCv,bgCv,bgCtx:bgCv.getContext('2d'),cam,ortho,floor,floorMat,floorScene,batch,markScene,charScene,P:makePainter(batch),chars,w:0,h:0,dpr:0};
   onResize(fit);fit();
 }
@@ -182,6 +182,7 @@ function fit(){
   R.w=CW;R.h=CH;R.dpr=DPR;
   R.renderer.setPixelRatio(DPR);R.renderer.setSize(CW,CH);
   R.bgCv.width=Math.round(CW*DPR);R.bgCv.height=Math.round(CH*DPR);R.bgCv.style.width=CW+'px';R.bgCv.style.height=CH+'px';
+  setLineResolution(CW,CH);
   R.ortho.left=0;R.ortho.right=CW;R.ortho.top=0;R.ortho.bottom=-CH;R.ortho.updateProjectionMatrix();
 }
 // カメラを ロジックの V(移行元と同じ)に あわせる。ox,oy は 画面のゆれ(px)

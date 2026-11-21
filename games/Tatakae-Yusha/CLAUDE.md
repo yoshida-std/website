@@ -18,7 +18,8 @@
 - `src/main.js` … スマホのブラウザ動作の抑止・ループ・上のウィンドウのボタン・`window.__sumo`
 - `src/render3d.js` … Three.js（WebGL）の描画。#bg（夜空。まだ 2D）→ #gl（床・しるし・キャラ）→ #c（HUD。移行元の 2D のコード）の順に重ねる
 - `src/three-chars.js` … キャラの 3D モデル（`{obj, update}` の形。glTF に差し替えやすくする）
-- Three.js は importmap で `https://cdn.jsdelivr.net/npm/three@0.186.1/+esm` から読む（バージョン固定）
+- Three.js は importmap で `https://cdn.jsdelivr.net/npm/three@0.186.1/+esm`、追加部品（太い線）は `three/addons/` → `…/three@0.186.1/examples/jsm/` から読む（バージョン固定）
+- 箱モデルの形・アニメは `render2d.js` の `heroParts` / `allyParts` / `enemyParts`（部品のリストを返す）を 2D と WebGL で共用する
 - Three.js は部品を作るときに `Math.random` を使うので、`withOwnRandom` で別の乱数に切りかえてから作る（ゲームの乱数の並びを変えないため）
 - アンチエイリアスは DPR 2 以上では切っている（スマホで重くなるため）
 - `tools/bot.js` … ボット（headless）。使い方は JS 冒頭。`node tools/bot.js --compare prototype-2d.html,index.html` で移行元と勝敗・時間・毎フレームの状態を比べる
@@ -60,7 +61,7 @@
 ## WebGL化（進め方）
 0. ロジックを ES モジュールに分ける（描画は Canvas 2D のまま）… 済み
 1. 床・カメラ（キャラは仮の円柱）… 済み（`src/render3d.js`・`src/three-chars.js`。`?r=2d` で移行元の描画、`?fps=1` でフレームレート表示）
-2. 勇者
+2. 勇者 … 済み（`three-chars.js` の `BoxModel`。移行元の `heroParts` の部品リストから、毎フレーム 面のメッシュ1つと ふちの太い線（`LineSegments2`、太さ 0.032 は世界の長さ）1つを作る。キャラ1人あたり描画2回）
 3. まほうつかい・敵・止めの演出
 4. 背景・仕上げ（フレームレート・読み込みサイズ・メモリ）
 5. ボットで移行前と比べる
