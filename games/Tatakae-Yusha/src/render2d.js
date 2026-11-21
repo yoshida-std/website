@@ -685,9 +685,11 @@ export function drawHud(){
 
   if(S.over&&S.overT>=overShowT(S.over)){
     ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(0,0,CW,CH);
-    txt(S.over==='win'?'てきを ぜんぶ たおした！':(S.over==='hero'?'ゆうしゃは たおれた…':'まほうつかいが たおれた…'),CW/2,CH*0.38,22,S.over==='win'?'#ffe36a':'#fff','center',5);
-    txt((S.over==='win'?'クリアタイム  ':'もちこたえた時間  ')+S.t.toFixed(1)+' びょう',CW/2,CH*0.38+36,18,'#ffe36a','center',4);
-    if(S.overT>overReadyT(S.over))txt('タップで もういちど',CW/2,CH*0.38+76,16,'#cfd4ff','center',3);
+    // ゆうしゃが たおれた ときは 演出(倒れた ゆうしゃと てき)と かさならないよう、文字を 上へ あげる
+    const TY=S.over==='hero'?Math.max(BAR_H+58,CH*0.15):CH*0.38;
+    txt(S.over==='win'?'てきを ぜんぶ たおした！':(S.over==='hero'?'ゆうしゃは たおれた…':'まほうつかいが たおれた…'),CW/2,TY,22,S.over==='win'?'#ffe36a':'#fff','center',5);
+    txt((S.over==='win'?'クリアタイム  ':'もちこたえた時間  ')+S.t.toFixed(1)+' びょう',CW/2,TY+36,18,'#ffe36a','center',4);
+    if(S.overT>overReadyT(S.over))txt('タップで もういちど',CW/2,TY+76,16,'#cfd4ff','center',3);
   }
 }
 
