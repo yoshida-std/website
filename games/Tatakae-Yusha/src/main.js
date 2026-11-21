@@ -1,5 +1,5 @@
 // 移行元: prototype-2d.html の該当部分をそのまま移したもの(import/export だけ足した)
-import {CAMKEY,FLICKKEY,setCamKey,setFlickKey,setET,CFG} from './config.js';
+import {FLICKKEY,setFlickKey,setET,CFG} from './config.js';
 import {stage,barEl,BAR_HIDDEN,measureBar,resize,setBarHidden,CW} from './screen.js';
 import {S,running,setRunning,inp,init,step,tapLock,enemyAt,checkFlick} from './logic.js';
 import {render as render2d} from './render2d.js';
@@ -42,15 +42,6 @@ document.getElementById('start').addEventListener('click',()=>{
   resize();init();setRunning(true);
 });
 document.getElementById('reset').addEventListener('click',()=>{init();});
-function setCam(k){
-  setCamKey(k);
-  document.querySelectorAll('#bar button[data-cam]').forEach(x=>x.classList.toggle('on',x.dataset.cam===k));
-  try{localStorage.setItem('sumo_cam',k);}catch(_){}
-}
-document.querySelectorAll('#bar button[data-cam]').forEach(b=>{
-  b.addEventListener('click',()=>setCam(b.dataset.cam));
-});
-setCam(CAMKEY);
 // うえのウィンドウ(せってい)を かくす／ひらく
 const btEl=document.getElementById('bt');
 function applyBar(){

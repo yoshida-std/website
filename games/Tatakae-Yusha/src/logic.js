@@ -293,11 +293,11 @@ export function step(dt){
     if(e.tele<=0&&e.atkTele<=0){
       const best=HT.hero>=HT.ally?'hero':'ally';
       if(!e.target){
-        if(HT[best]>=HC.acquire){e.target=best;e.tflash=1.0;addText('ねらわれた！ ('+(best==='hero'?'ゆうしゃ':'まほう')+')',e.x,e.z,3.6,'#ffd0a0');}
+        if(HT[best]>=HC.acquire){e.target=best;e.tflash=1.0;}
       }else{
         const other=e.target==='hero'?'ally':'hero';
-        if(HT[other]>HT[e.target]*HC.switchRatio&&HT[other]>=HC.acquire){e.target=other;e.tflash=1.0;addText('ねらいを かえた！',e.x,e.z,3.6,'#ffd0a0');}
-        else if(HT.hero<HC.lose&&HT.ally<HC.lose){e.target=null;addText('ねらいを うしなった',e.x,e.z,3.6,'#cfd4ff');}
+        if(HT[other]>HT[e.target]*HC.switchRatio&&HT[other]>=HC.acquire){e.target=other;e.tflash=1.0;}
+        else if(HT.hero<HC.lose&&HT.ally<HC.lose){e.target=null;}
       }
     }
     // ターゲットなし: 土俵をうろうろ歩く(ときどき立ちどまる)
@@ -516,15 +516,8 @@ export function step(dt){
     }
   }
 
-  // --- どひょうの外 ---
-  {
-    const dx=h.x-A.cx,dz=h.z-A.cz,d=Math.hypot(dx,dz)||0.001;
-    if(d>A.R-0.1){
-      h.hp=Math.max(0,h.hp-CFG.outDamage);h.stun=1.0;h.flash=0.3;S.shake=Math.max(S.shake,0.4);
-      const nr=A.R-1.8;h.x=A.cx+dx/d*nr;h.z=A.cz+dz/d*nr;
-      addText('ばがい！ -'+CFG.outDamage,h.x,h.z,2.4,'#ff6060');
-    }
-  }
+  // --- どひょうの外(ダメージなし。ふちで とまる。ユーザー指示 2026-11-21) ---
+  clampArena(h,h.r);
   for(const e of E)clampArena(e,e.r);
   clampArena(a,a.r);
 

@@ -18,23 +18,15 @@ export const CFG={
   pushLock:0.3, // 「おす」を この秒数 つづけている間は 剣を ふれない【仮】
   aggro:7.5, // ターゲットなしの敵が、この近さに入った味方に気づく距離【仮】
   planW:{hit:0.4,sweep:0.35,charge:0.25},
-  hate:{decay:1.5,decayK:0.18,pushPush:2,pushHold:0.8,acquire:8,lose:3,switchRatio:1.15,perDmg:2,perDmgAlly:4.5,max:200},
-  outDamage:10
+  hate:{decay:1.5,decayK:0.18,pushPush:2,pushHold:0.8,acquire:8,lose:3,switchRatio:1.15,perDmg:2,perDmgAlly:4.5,max:200}
 };
-// 視野の3段階(カメラの引き・高さ・画角)【仮】
-export const CAMS={
-  narrow:{back:4.5,h:3.4,fov:1.0},
-  normal:{back:6.2,h:4.8,fov:0.9},
-  wide:{back:8.2,h:5.2,fov:0.85}
-};
+// 視野は「ひろい」に決定(ユーザー指示 2026-11-21)。カメラの引き・高さ・画角【仮】
+export const CAM={back:8.2,h:5.2,fov:0.85};
 export const FLICKS={hi:{h:380,v:800,d:30},mid:{h:450,v:900,d:36},lo:{h:600,v:1100,d:48}}; // 速さ(px/秒)・距離(px)【仮】
 export let FLICKKEY='mid';
 try{const k=localStorage.getItem('sumo_flick');if(k&&FLICKS[k])FLICKKEY=k;}catch(_){}
 export let FLICK=FLICKS[FLICKKEY];
 export const HERO_Y=0.5; // ゆうしゃの足もとの画面たて位置(0=上 1=下)【仮】
-export let CAMKEY='normal';
-try{const k=localStorage.getItem('sumo_cam');if(k&&CAMS[k])CAMKEY=k;}catch(_){}
-export let CAM=CAMS[CAMKEY];
 export const ENEMY_TYPES={
   70:{w:70,hp:190,speed:4.3,r:0.85,color:'#7fb36b',color2:'#6fa8c7',name:'かるい てき'},
   100:{w:100,hp:260,speed:3.4,r:1.0,color:'#8a8f9a',color2:'#a39a86',name:'ふつうの てき'},
@@ -45,6 +37,5 @@ export const LETTER=['A','B'];
 export const KIND_JP={hit:'たたきつけ',sweep:'なぎはらい',charge:'とっしん'};
 export function pickPlan(){const w=CFG.planW;let r=Math.random()*(w.hit+w.sweep+w.charge);if((r-=w.hit)<0)return 'hit';if((r-=w.sweep)<0)return 'sweep';return 'charge';}
 // 設定の切りかえ(UI から呼ぶ。import した変数は外から代入できないため)
-export function setCamKey(k){CAMKEY=k;CAM=CAMS[k];}
 export function setFlickKey(k){FLICKKEY=k;FLICK=FLICKS[k];}
 export function setET(w){ET=ENEMY_TYPES[w];}

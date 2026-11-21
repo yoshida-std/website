@@ -288,7 +288,6 @@ export function bubble(label,x,y,fs,edge){
 }
 const STANCE_JP={push:'おす',firm:'ふんばる',normal:'まわりこみ・さがる'};
 const ANGLE_JP={front:'まえ',side:'よこ',back:'うしろ'};
-const TGT_JP={ally:'まほう',hero:'ゆうしゃ'};
 
 
 // ================= 背景(夜の遺跡の闘技場ふう。添付イメージにあわせた色づかい) =================
@@ -401,12 +400,6 @@ export function drawGroundMarks(P){
   const h=S.hero,a=S.ally,E=S.enemies.filter(e=>!e.dead),L=S.enemies[S.lock];
   // てきのねらい線と、てきのまえ
   for(const e of E){
-    if(e.target){
-      const tgt=e.target==='hero'?h:a;
-      P.dash([8,7]);
-      P.seg(toCam(e.x,e.z),toCam(tgt.x,tgt.z),e.target==='hero'?'rgba(255,200,90,.75)':'rgba(190,130,255,.7)',e.tflash>0?4:2);
-      P.dash([]);
-    }
     const pts=[toCam(e.x,e.z)];const base=Math.atan2(e.fz,e.fx);
     for(let i=-4;i<=4;i++){const t=base+i/4*0.61;pts.push(toCam(e.x+Math.cos(t)*3.4,e.z+Math.sin(t)*3.4));}
     P.fillPoly(pts,'rgba(255,80,60,.11)');
@@ -496,9 +489,6 @@ export function charOverlay(it,blink){
     e.sc=s;e.sx=p.x;e.sy=p.y-s*er*1.3;e.shw=Math.max(18,s*er*1.25);e.shh=Math.max(24,s*er*1.45); // タップ・フリック判定用の画面位置と大きさ
     if(inp.down&&inp.onEnemy===e.i){ctx.save();ctx.strokeStyle='#ffe01a';ctx.lineWidth=3;ctx.globalAlpha=0.85;ctx.beginPath();ctx.ellipse(e.sx,e.sy,e.shw+8,e.shh+8,0,0,Math.PI*2);ctx.stroke();ctx.restore();}
     const top=proj(it.c.l,it.c.d,2.9*er+0.2);
-    const lab=LETTER[e.i]+'▶'+(e.target?TGT_JP[e.target]:'なし');
-    const edge=e.target==='hero'?'#ffd36a':(e.target==='ally'?'#c9a0ff':'#8890b0');
-    bubble(lab,top.x,top.y,e.tflash>0&&blink?13:11,edge);
     // ねばりゲージ(小)
     bar(top.x-22,top.y+11,44,5,e.gauge/100,e.gauge>=80?'#ff5a4a':'#ffb030');
     bar(top.x-22,top.y+18,44,5,e.hp/e.maxHp,'#5ad06a');
@@ -606,7 +596,7 @@ export function drawHud(){
     else if(R>=CFG.thr.hold){label='きっこう（あしどめ）';lc='#ffe36a';}
     else if(R>=CFG.thr.lose){label='おされている…';lc='#ffa860';}
     else{label='とっぱされた！';lc='#ff6060';}
-  }else{label='てきが せまってくる';lc='#cfd4ff';}
+  }else{label='';}
   txt(label,CW/2,LY,22,lc,'center',5);
   if(info.contact)txt('おもさ '+Math.round(info.wh)+' vs '+Math.round(info.we)+'  ('+ANGLE_JP[info.angle]+'から)',CW/2,LY+24,12,'#fff','center',3);
 
@@ -626,7 +616,7 @@ export function drawHud(){
   txt('ヘイト '+LETTER[S.lock],PX+12,y,fs+1,'#9fe8ff');
   {const bw=(PW-110-18)/2;bar(PX+92,y-6,bw,12,L.hate.hero/60,'#ffd36a');bar(PX+92+bw+6,y-6,bw,12,L.hate.ally/60,'#c9a0ff');
    txt('ゆ',PX+92+bw/2,y,10,'#222','center');txt('ま',PX+92+bw+6+bw/2,y,10,'#222','center');
-   txt(L.target?(L.target==='hero'?'▶ゆうしゃ':'▶まほう'):'ねらいなし',PX+PW-12,y,fs-1,'#cfd4ff','right');}
+  }
   y+=fs*1.9;
   const hint=['↑おす ←→まわりこみ ↓さがる／とめる＝ふんばる','てきに かさねて フリック＝こうげき（はやい・たてほど つよい）','ちょんとタップ＝ロック／「いま！」のフリック＝いなす（ふった直後は×）'];
   for(const l of hint){if(y<PY+PH-4){txt(l,PX+12,y,fs-1,'#c8cdff');y+=fs*1.45;}}
