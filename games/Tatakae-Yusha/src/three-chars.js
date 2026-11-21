@@ -131,7 +131,7 @@ export function makeChars(scene,flyScene){
         const eye=teleOn?'#ff2020':(atkOn?'#ffd000':null);
         let tint=e.color;if(teleOn&&blink)tint='#c04a40';
         const air=e.air||0;
-        const ep=enemyParts(eye,tint,e.r,e.yaw3,e.mv3||0,e.ph3||0,teleOn||atkOn||air>0.05,e.stagger>0,e.dash>0); // 空中は りょううでを ふりあげる
+        const ep=enemyParts(eye,tint,e.r,e.yaw3,e.mv3||0,e.ph3||0,teleOn||atkOn||air>0.05||e.beat===1,e.stagger>0,e.dash>0||e.beat===2); // 空中・ボコるときは りょううでを ふりあげる / たたきつけるとき まえかがみ
         m.set(ep.parts,ep.scale,e.flash>0&&blink);
         m.obj.position.set(e.x,air,-e.z);m.obj.rotation.y=worldYaw(S,ep.yaw);
       });

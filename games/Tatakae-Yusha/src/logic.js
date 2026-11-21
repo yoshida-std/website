@@ -15,7 +15,7 @@ function makeEnemy(i,x,z){
 export function init(){
   S={
     t:0,over:null,overT:0,shake:0,texts:[],pops:[],lock:0,
-    hero:{x:0,z:7.8,r:CFG.hero.r,hp:CFG.hero.hp,stun:0,flash:0,stance:'firm',pushK:0,firmK:1,swingCd:0,swingT:0,swingV:0,pushT:0,sta:100,tired:false,noParry:0,ph:0,mv:0,fr:0,ff:1,yaw3:Math.PI,faceHold:0,idleT:0},
+    hero:{x:0,z:7.8,r:CFG.hero.r,hp:CFG.hero.hp,stun:0,flash:0,stance:'firm',pushK:0,firmK:1,hitT:-1,dead:false,hitK:0,swingCd:0,swingT:0,swingV:0,pushT:0,sta:100,tired:false,noParry:0,ph:0,mv:0,fr:0,ff:1,yaw3:Math.PI,faceHold:0,idleT:0},
     ally:{x:0,z:5.4,r:CFG.ally.r,hp:CFG.ally.hp,flash:0,castT:1.0},
     enemies:[makeEnemy(0,-3.5,17.5),makeEnemy(1,3.5,18.5)],beams:[],fly:[],sparks:[],rings:[],
     cam:{yaw:0}
@@ -75,6 +75,42 @@ function stepIntro(dt){
   for(const q of S.pops)q.life-=dt;S.pops=S.pops.filter(q=>q.life>0);
   for(const r of S.rings)r.t+=dt;S.rings=S.rings.filter(r=>r.t<r.max);
   if(I.t>=INTRO.dur){S.intro=null;S.enemies.forEach(e=>{e.air=0;});S.cam.yaw=introEnd().yaw;}
+}
+// ---- ゆうしゃが まけたとき(ユーザー指示 2026-11-21): たおれて、てきに かこまれて ボコボコに される ----
+export function beatPhase(e){return ((e.beatT||0)*2.2+e.i*0.5)%1;} // 0〜0.6: ふりあげる / 0.6〜0.85: たたきつける / のこり: もどす
+export function defeatCam(S0){ // ゆっくり ゆうしゃへ よりながら、すこし まわりこむ
+  const D=S0.defeat,h=S0.hero,k=ease3(D.t/2.4),yaw=D.yaw+0.55*k,back=CAM.back+(4.6-CAM.back)*k;
+  return {cx:h.x-Math.sin(yaw)*back,cz:h.z-Math.cos(yaw)*back,yaw,h:CAM.h+(2.9-CAM.h)*k,fov:CAM.fov,fpx:h.x,fpz:h.z,yf:HERO_Y+0.06*k};
+}
+function stepDefeat(dt){
+  const D=S.defeat,h=S.hero;D.t+=dt;
+  h.hitK=Math.max(0,h.hitK-dt*5);h.flash=Math.max(0,h.flash-dt);
+  if(h.hitT>=0)h.hitT+=dt; // ふっとんで しんだ ときは そのまま ふっとびを つづける
+  if(h.kx||h.kz){h.x+=h.kx*dt;h.z+=h.kz*dt;const dc=Math.exp(-CFG.counter.crit.k*dt);h.kx*=dc;h.kz*=dc;if(Math.hypot(h.kx,h.kz)<0.3){h.kx=0;h.kz=0;}}
+  clampArena(h,h.r);
+  const fx=Math.sin(D.yaw),fz=Math.cos(D.yaw),rx=fz,rz=-fx; // たおれた ときの カメラの まえ・みぎ
+  let side=0;
+  for(const e of S.enemies){
+    if(e.dead)continue;
+    // かこむ いち: ゆうしゃの まえの ひだり・みぎ
+    const sd=side++%2?1:-1,tx=h.x+fx*1.2+rx*1.85*sd,tz=h.z+fz*1.2+rz*1.85*sd;
+    const dx=tx-e.x,dz=tz-e.z,dd=Math.hypot(dx,dz);
+    if(dd>0.15){const sp=Math.min(dd/Math.max(dt,0.001),9),m=Math.min(dd,sp*dt);e.x+=dx/dd*m;e.z+=dz/dd*m;}
+    const hx=h.x-e.x,hz=h.z-e.z,hl=Math.hypot(hx,hz)||1;e.fx+=(hx/hl-e.fx)*Math.min(1,dt*10);e.fz+=(hz/hl-e.fz)*Math.min(1,dt*10);
+    e.kx=0;e.kz=0;
+    if(dd<0.6&&D.t>0.5){ // ついたら ボコボコ
+      const was=beatPhase(e);e.beatT+=dt;const ph=beatPhase(e);
+      e.beat=ph<0.6?1:(ph<0.85?2:0);
+      if(was<0.6&&ph>=0.6){ // たたきつけた！
+        h.hitK=1;h.flash=0.12;S.shake=Math.max(S.shake,0.45);
+        addText(['ドガッ！','ボコッ！','ドスッ！','バキッ！'][(e.beatN=(e.beatN||0)+1)%4],h.x+(Math.random()-0.5)*1.2,h.z,2.0+Math.random()*0.8,'#ffd0a0');
+        try{if(navigator.vibrate)navigator.vibrate(18);}catch(_){}
+      }
+    }else e.beat=0;
+  }
+  S.cam.yaw=defeatCam(S).yaw;
+  for(const t of S.texts)t.life-=dt;S.texts=S.texts.filter(t=>t.life>0);
+  for(const q of S.pops)q.life-=dt;S.pops=S.pops.filter(q=>q.life>0);
 }
 // タップで とばす(はじまった ばかりは さけて、ゆびの まちがいを ふせぐ)
 export function skipIntro(){
@@ -142,7 +178,7 @@ export function tapLock(x,y){ // タップした位置に一番近いてきを�
 }
 cv.addEventListener('pointerdown',e=>{
   e.preventDefault();
-  if(S&&S.over){if(S.overT>(S.over==='win'?1.4:0.7))init();return;}
+  if(S&&S.over){if(S.overT>overReadyT(S.over))init();return;}
   if(!running||inp.down)return;
   if(S&&S.intro){if(S.intro.t>0.4)skipIntro();return;} // スタートの演出中は タップで とばす
   const p=pos(e);inp.down=true;inp.id=e.pointerId;inp.ox=p.x;inp.oy=p.y;inp.x=p.x;inp.y=p.y;inp.sx=p.x;inp.sy=p.y;
@@ -187,7 +223,16 @@ function separate(a,b,wa,wb){ // 重さの比で重なりを解消
   if(d<rs){const nx=dx/d,nz=dz/d,dep=rs-d,sa=wb/(wa+wb),sb=wa/(wa+wb);
     a.x-=nx*dep*sa;a.z-=nz*dep*sa;b.x+=nx*dep*sb;b.z+=nz*dep*sb;}
 }
-function endGame(kind){S.over=kind;S.overT=0;inp.down=false;inp.fwd=0;inp.lat=0;}
+// けっかの 表示と タップで もういちど が できる までの 時間(ゆうしゃが たおれたときは 演出の あと)
+export function overReadyT(kind){return kind==='win'?1.4:(kind==='hero'?3.0:0.7);}
+export function overShowT(kind){return kind==='win'?1.0:(kind==='hero'?2.6:0);}
+function endGame(kind){
+  S.over=kind;S.overT=0;inp.down=false;inp.fwd=0;inp.lat=0;inp.flickPending=false;
+  if(kind==='hero'){ // ゆうしゃが たおれた: てきに かこまれて ボコボコに される演出
+    S.defeat={t:0,yaw:S.cam.yaw};S.hero.dead=true;S.hero.stance='normal';
+    for(const e of S.enemies){e.tele=0;e.atkTele=0;e.dash=0;e.beat=0;e.beatT=0;e.beatN=0;}
+  }
+}
 function parryWindow(rem){ // 「！」のさいごの すこしの間に ふったフリックだけが いなしになる
   const d=performance.now()-inp.flickT,W=CFG.parryWin;
   return inp.parryOK&&rem<=W&&d<200&&d<=(W-rem)*1000+40;
@@ -246,14 +291,14 @@ function fixLock(){
 
 export function step(dt){
   stepFx(dt);
-  if(S.over){S.overT+=dt;S.shake=Math.max(0,S.shake-dt);return;}
+  if(S.over){S.overT+=dt;S.shake=Math.max(0,S.shake-dt);if(S.defeat)stepDefeat(dt);return;}
   if(S.intro){stepIntro(dt);return;} // スタートの演出の間は ゲームを とめる
   S.t+=dt;
   const h=S.hero,a=S.ally,A=CFG.arena;
   fixLock();
   const E=S.enemies.filter(e=>!e.dead);
   let L=S.enemies[S.lock];
-  h.stun=Math.max(0,h.stun-dt);h.flash=Math.max(0,h.flash-dt);a.flash=Math.max(0,a.flash-dt);
+  h.stun=Math.max(0,h.stun-dt);if(h.hitT>=0){h.hitT+=dt;if(h.hitT>=(h.stunMax||0))h.hitT=-1;}h.flash=Math.max(0,h.flash-dt);a.flash=Math.max(0,a.flash-dt);
   S.shake=Math.max(0,S.shake-dt*1.6);
   for(const b of S.beams)b.life-=dt;
   S.beams=S.beams.filter(b=>b.life>0);
@@ -583,7 +628,7 @@ export function step(dt){
             addPop(h.x,h.z,2.6,'-'+dmg,'#ff8a3a',40,'はんげき！',false);
           }else{ // 痛恨の一撃: ふっとび、しばらく うごけない
             const K=C.crit,v=K.dist*K.k;
-            h.kx=-nx/nd*v;h.kz=-nz/nd*v;h.stun=h.stunMax=K.stun;h.pushT=0;
+            h.kx=-nx/nd*v;h.kz=-nz/nd*v;h.stun=h.stunMax=K.stun;h.hitT=0;h.pushT=0;
             S.shake=Math.max(S.shake,1.0);
             addPop(h.x,h.z,2.6,'-'+dmg,'#ff4a2a',56,'つうこんの いちげき！',false);
             try{if(navigator.vibrate)navigator.vibrate([40,30,60]);}catch(_){}

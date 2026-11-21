@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import {CFG} from './config.js';
 import {ctx as hudCtx,CW,CH,DPR,onResize} from './screen.js';
 import {S,INTRO} from './logic.js';
-import {V,NEAR,ENEMY_LOOK,setupView,toCam,proj,drawGroundMarks,charList,charPre,charOverlay,drawEffects,drawHud} from './render2d.js';
+import {V,NEAR,ENEMY_LOOK,blinkNow,setupView,toCam,proj,drawGroundMarks,charList,charPre,charOverlay,drawEffects,drawHud} from './render2d.js';
 import {makeChars,setLineResolution} from './three-chars.js';
 import {makeBackdrop} from './backdrop3d.js';
 
@@ -246,7 +246,7 @@ function drawGL(h,A,ox,oy,list){
    for(const e of E){const k=1-Math.min(1,(e.air||0)/INTRO.air); // 空中の てきは 着地点に ちいさい かげ→ ちかづくほど おおきく こく
      R.P.groundCircle(e.x,e.z,e.r*ENEMY_LOOK*1.25*(0.35+0.65*k),'rgba(0,0,0,'+(0.12+0.18*k).toFixed(3)+')',null,0,32);}}
   drawGroundMarks(R.P);R.batch.end();
-  const blink=Math.floor(S.t*14)%2===0;
+  const blink=blinkNow();
   for(const it of list){if(it.c.d<NEAR)continue;charPre(it);}
   const flying=R.chars.update(S,blink);
   const r=R.renderer;
@@ -268,7 +268,7 @@ export function render(){
   const list=charList();
   withOwnRandom(()=>drawGL(h,A,ox,oy,list));
   // HUD(Canvas 2D。移行元のコード)
-  const blink=Math.floor(S.t*14)%2===0;
+  const blink=blinkNow();
   const c=hudCtx;
   c.setTransform(DPR,0,0,DPR,0,0);c.clearRect(0,0,CW,CH);
   c.save();c.translate(ox,oy);

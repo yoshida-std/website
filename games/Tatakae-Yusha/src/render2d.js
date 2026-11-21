@@ -3,7 +3,7 @@ import {CFG,CAM,HERO_Y,LETTER,KIND_JP} from './config.js';
 import {ctx as ctx0,CW,CH,DPR,BAR_H,FONT} from './screen.js';
 let ctx=ctx0;
 export function useCtx(c){ctx=c||ctx0;}
-import {S,inp,introState} from './logic.js';
+import {S,inp,introState,defeatCam,beatPhase,overShowT,overReadyT} from './logic.js';
 
 // ================= 描画 =================
 export let V=null;
@@ -73,6 +73,8 @@ export function h3apply(p,ops){
 }
 export const H3FACES=[[0,2,6,4],[1,5,7,3],[0,4,5,1],[2,3,7,6],[0,1,3,2],[4,6,7,5]];
 export const H3L=(()=>{const l=[-0.45,0.85,0.55],n=Math.hypot(l[0],l[1],l[2]);return [l[0]/n,l[1]/n,l[2]/n];})();
+// 白くひかる てんめつ(ゲームの じかんが とまる 演出の間も うごく)
+export function blinkNow(){return Math.floor((S.t+(S.overT||0)+(S.intro?S.intro.t:0))*14)%2===0;}
 // 部品のリストを つくる(Canvas 2D と WebGL の両方で つかう)
 export function heroParts(h){
   const t=performance.now()/1000,mv=h?(h.mv||0):0,ph=h?(h.ph||0):0,yaw=h&&h.yaw3!==undefined?h.yaw3:Math.PI;
@@ -186,20 +188,29 @@ export function heroParts(h){
   // ふるときは からだも ひねり、うえへ ふれば のけぞり したへ ふれば まえへ かたむく
   const lean=0.24*pk+0.05*fk+0.035*br*fk-0.14*swVv*swQ,twist=0.3*swU*swQ*cy0;
   if(lean||twist){const lo=[{t:'y',a:twist,p:[0,0.7,0]},{t:'x',a:lean,p:[0,0.7,0]}];for(let i=legCount;i<parts.length;i++)parts[i].ops=parts[i].ops.concat(lo);}
-  // 痛恨の一撃で ふっとぶ(ユーザー指示 2026-11-21): うしろむきに 1回転して とび、あおむけに たおれ、しばらく して おきあがる
-  if(h&&h.stun>0&&h.stunMax>0){
-    const ST=h.stunMax,ht=ST-h.stun,FL=0.5,GU=0.5,LY=[0,0.12,-0.22];
-    let ang,air=0,piv=LY;
-    if(ht<FL){const u=ht/FL,e=1-(1-u)*(1-u);ang=-(Math.PI*2+Math.PI/2)*e;air=2.6*4*u*(1-u);piv=[0,1.0-0.88*u,-0.22*u];}
-    else if(ht<ST-GU)ang=-Math.PI/2;
-    else{const v=Math.min(1,(ht-(ST-GU))/GU),e=v*v*(3-2*v);ang=-Math.PI/2*(1-e);}
+  // 痛恨の一撃で ふっとぶ / まけて たおれる(ユーザー指示 2026-11-21): うしろむきに 1回転して とび、あおむけに たおれ、(たおれたままでなければ)おきあがる
+  let yawOut=yaw;
+  const crit=h&&h.hitT>=0&&h.stunMax>0,fallen=h&&h.dead&&!crit;
+  if(crit||fallen){
+    const LY=[0,0.12,-0.22],FL=0.5,GU=0.5;
+    let ang,air=0,piv=LY,yo=0;
+    if(crit){
+      const ST=h.stunMax,ht=h.hitT;
+      if(ht<FL){const u=ht/FL,e=1-(1-u)*(1-u);ang=-(Math.PI*2+Math.PI/2)*e;air=2.6*4*u*(1-u);piv=[0,1.0-0.88*u,-0.22*u];yo=Math.PI/2*e;}
+      else if(h.dead||ht<ST-GU){ang=-Math.PI/2;yo=Math.PI/2;}
+      else{const v=Math.min(1,(ht-(ST-GU))/GU),e=v*v*(3-2*v);ang=-Math.PI/2*(1-e);yo=Math.PI/2*(1-e);}
+    }else{ // まけた: うしろへ ばたりと たおれる
+      const u=Math.min(1,(S.defeat?S.defeat.t:0)/0.45);ang=-Math.PI/2*u*u;yo=Math.PI/2*u*u*(3-2*u); // たおれながら よこむきに まわる
+    }
+    if(h.dead&&(h.hitK||0)>0)air+=0.14*h.hitK; // ボコられるたびに からだが はねる
+    yawOut=yaw+yo;
     const to=[{t:'x',a:ang,p:piv}];
     for(const pt of parts){
       pt.ops=pt.ops.concat(to);
       if(air){pt.c=[pt.c[0],pt.c[1]+air,pt.c[2]];pt.ops=pt.ops.map(o=>({t:o.t,a:o.a,p:[o.p[0],o.p[1]+air,o.p[2]]}));}
     }
   }
-  return {parts,yaw};
+  return {parts,yaw:yawOut};
 }
 export function drawHero(x,y,s,fl,h){const m=heroParts(h);h3render(m.parts,x,y,s,fl,m.yaw,0);}
 export function h3render(parts,x,y,s,fl,yaw,lean){
@@ -425,8 +436,8 @@ export const P2D={
   dot:(m,col)=>{if(m.d>NEAR){const p=proj(m.l,m.d,0.05);ctx.beginPath();ctx.arc(p.x,p.y,Math.max(4,V.F/m.d*0.18),0,Math.PI*2);ctx.fillStyle=col;ctx.globalAlpha=0.9;ctx.fill();ctx.globalAlpha=1;}}
 };
 export function setupView(){
-  if(S.intro){ // スタートの演出: カメラが てきを 大きく うつし、ゲームの いちまで ひく
-    const I=introState(S),fx=Math.sin(I.yaw),fz=Math.cos(I.yaw),F0=CW*I.fov;
+  if(S.intro||S.defeat){ // スタートの演出(てきを 大きく うつして ひく)/ まけたときの カメラ(ゆうしゃへ よる)
+    const I=S.intro?introState(S):defeatCam(S),fx=Math.sin(I.yaw),fz=Math.cos(I.yaw),F0=CW*I.fov;
     const Df=Math.max(0.6,(I.fpx-I.cx)*fx+(I.fpz-I.cz)*fz); // 注目している 点までの きょり
     V={camX:I.cx,camZ:I.cz,fx,fz,rx:fz,rz:-fx,F:F0,HZ:CH*I.yf-I.h*F0/Df,CAMH:I.h};
     return V;
@@ -508,7 +519,7 @@ function charModel(it,blink){
     const e=it.e,teleOn=e.tele>0,atkOn=e.atkTele>0;
     const eye=teleOn?'#ff2020':(atkOn?'#ffd000':null);
     let tint=e.color;if(teleOn&&blink)tint='#c04a40';
-    drawEnemy(p.x,p.y,s,e.flash>0&&blink,eye,tint,e.r,e.yaw3,e.mv3||0,e.ph3||0,teleOn||atkOn||air>0.05,e.stagger>0,e.dash>0); // 空中は りょううでを ふりあげて おちてくる
+    drawEnemy(p.x,p.y,s,e.flash>0&&blink,eye,tint,e.r,e.yaw3,e.mv3||0,e.ph3||0,teleOn||atkOn||air>0.05||e.beat===1,e.stagger>0,e.dash>0||e.beat===2); // 空中・ボコるとき は りょううでを ふりあげる / たたきつける とき まえかがみ
   }
 }
 // キャラの うえの 表示(剣の軌跡・かまえ・ゲージ・ねらい・「！」)。てきの 画面上の位置(タップ・フリック判定用)も ここで きめる
@@ -531,8 +542,8 @@ export function charOverlay(it,blink){
       ctx.stroke();ctx.restore();
     }
     const top=proj(it.c.l,it.c.d,2.35);
-    if(!(h.stun>0))bar(top.x-22,top.y-1,44,5,h.sta/CFG.sta.max,h.tired?'#ff5a4a':'#7cdcff');
-    if(h.tired)txt('いきぎれ',top.x,top.y+16,12,'#ff9a90','center',3);
+    if(!(h.stun>0)&&!h.dead)bar(top.x-22,top.y-1,44,5,h.sta/CFG.sta.max,h.tired?'#ff5a4a':'#7cdcff');
+    if(h.tired&&!h.dead)txt('いきぎれ',top.x,top.y+16,12,'#ff9a90','center',3);
   }else if(it.k==='e'){
     const e=it.e;
     if((e.air||0)>0.05)return; // 空中の 間は ゲージや 文字を 出さない
@@ -672,11 +683,11 @@ export function drawHud(){
   const hint=['↑おす ←→まわりこみ ↓さがる／とめる＝ふんばる','てきに かさねて フリック＝こうげき（はやい・たてほど つよい）','ちょんとタップ＝ロック／「いま！」のフリック＝いなす（ふった直後は×）'];
   for(const l of hint){if(y<PY+PH-4){txt(l,PX+12,y,fs-1,'#c8cdff');y+=fs*1.45;}}
 
-  if(S.over&&(S.over!=='win'||S.overT>1.0)){
+  if(S.over&&S.overT>=overShowT(S.over)){
     ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(0,0,CW,CH);
     txt(S.over==='win'?'てきを ぜんぶ たおした！':(S.over==='hero'?'ゆうしゃは たおれた…':'まほうつかいが たおれた…'),CW/2,CH*0.38,22,S.over==='win'?'#ffe36a':'#fff','center',5);
     txt((S.over==='win'?'クリアタイム  ':'もちこたえた時間  ')+S.t.toFixed(1)+' びょう',CW/2,CH*0.38+36,18,'#ffe36a','center',4);
-    if(S.overT>(S.over==='win'?1.4:0.7))txt('タップで もういちど',CW/2,CH*0.38+76,16,'#cfd4ff','center',3);
+    if(S.overT>overReadyT(S.over))txt('タップで もういちど',CW/2,CH*0.38+76,16,'#cfd4ff','center',3);
   }
 }
 
@@ -696,7 +707,7 @@ export function render(){
   drawGroundMarks();
 
   // キャラクター(奥から手前)
-  const blink=Math.floor(S.t*14)%2===0;
+  const blink=blinkNow();
   for(const it of charList()){
     if(it.c.d<NEAR)continue;
     charPre(it);charModel(it,blink);charOverlay(it,blink);
