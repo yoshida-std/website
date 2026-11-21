@@ -369,13 +369,14 @@ function drawFloor(h,A){
 // どひょう(まるい闘技場)。ふちの金色の線が 場外の目じるし
 export function drawArena(A,P){
   P=P||P2D;
-  P.groundCircle(A.cx,A.cz,A.R,'#566384',null,0,56);
+  const K=A.R/11; // 土俵の大きさに あわせて 線の こまかさを ふやす
+  P.groundCircle(A.cx,A.cz,A.R,'#566384',null,0,Math.round(56*K));
   P.groundCircle(A.cx,A.cz,A.R*0.66,null,'rgba(225,195,115,.30)',1.5,48);
   P.groundCircle(A.cx,A.cz,A.R*0.33,null,'rgba(225,195,115,.30)',1.5,36);
-  for(let i=0;i<16;i++){const t=i/16*Math.PI*2;P.seg(toCam(A.cx,A.cz),toCam(A.cx+Math.cos(t)*A.R,A.cz+Math.sin(t)*A.R),'rgba(225,195,115,.16)',1.2);}
-  for(let i=0;i<48;i++){const t=i/48*Math.PI*2,c=Math.cos(t),s2=Math.sin(t);P.seg(toCam(A.cx+c*(A.R-1.3),A.cz+s2*(A.R-1.3)),toCam(A.cx+c*(A.R-0.7),A.cz+s2*(A.R-0.7)),'rgba(225,195,115,.55)',2);}
-  P.groundCircle(A.cx,A.cz,A.R,null,'#e0bd6a',4,56);
-  P.groundCircle(A.cx,A.cz,A.R-0.6,null,'rgba(224,189,106,.5)',1.5,56);
+  for(let n1=Math.round(16*K),i=0;i<n1;i++){const t=i/n1*Math.PI*2;P.seg(toCam(A.cx,A.cz),toCam(A.cx+Math.cos(t)*A.R,A.cz+Math.sin(t)*A.R),'rgba(225,195,115,.16)',1.2);}
+  for(let n2=Math.round(48*K),i=0;i<n2;i++){const t=i/n2*Math.PI*2,c=Math.cos(t),s2=Math.sin(t);P.seg(toCam(A.cx+c*(A.R-1.3),A.cz+s2*(A.R-1.3)),toCam(A.cx+c*(A.R-0.7),A.cz+s2*(A.R-0.7)),'rgba(225,195,115,.55)',2);}
+  P.groundCircle(A.cx,A.cz,A.R,null,'#e0bd6a',4,Math.round(56*K));
+  P.groundCircle(A.cx,A.cz,A.R-0.6,null,'rgba(224,189,106,.5)',1.5,Math.round(56*K));
 }
 
 // ---- 1フレームの描画を、部品に分けたもの(WebGL 版も 同じ部品を つかう) ----

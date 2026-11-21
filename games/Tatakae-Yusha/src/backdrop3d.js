@@ -19,9 +19,9 @@ function hs(n){n=n|0;n=Math.imul(n^(n>>>16),0x45d9f3b);n=Math.imul(n^(n>>>16),0x
 const hexRGB=h=>[parseInt(h.slice(1,3),16)/255,parseInt(h.slice(3,5),16)/255,parseInt(h.slice(5,7),16)/255];
 
 // ---- 壁の かたち(輪の まわりに 箱を ならべて、1つの ジオメトリに まとめる) ----
-const WALL_R=38;      // 輪の はんけい(闘技場の 中心から。外わく R=11 の 外)
-const WALL_H=16;      // 壁の たかさ
-const BAYS=40;        // 壁の ひろがり(1つぶんは およそ 6)
+const WALL_R=60;      // 輪の はんけい(闘技場の 中心から。土俵の はんけい R=22 と、カメラが 引いたぶんの 外)
+const WALL_H=22;      // 壁の たかさ
+const BAYS=64;        // 壁の ひろがり(1つぶんは およそ 6)
 function makeWall(){
   const A=CFG.arena,pos=[],col=[];
   // ローカル(lx=接線 / ly=上 / lz=外むき)→ 世界(Three.js の 座標。ロジックの z は 逆むき)
@@ -134,7 +134,7 @@ export function makeBackdrop(scene){
   const lines=new LineSegments2(lg,lm);lines.renderOrder=-9.5;lines.frustumCulled=false;root.add(lines);
   // 遺跡の壁(世界に 固定。空のように カメラには ついてこない)
   const wall=makeWall();
-  scene.fog=new THREE.Fog(0x5073b9,30,170);
+  scene.fog=new THREE.Fog(0x5073b9,45,260);
   const wallMesh=new THREE.Mesh(wall.geo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide}));
   wallMesh.frustumCulled=false;scene.add(wallMesh);
   // たいまつ

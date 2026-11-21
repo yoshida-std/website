@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import {CFG} from './config.js';
 import {ctx as hudCtx,CW,CH,DPR,onResize} from './screen.js';
 import {S} from './logic.js';
-import {V,NEAR,setupView,toCam,proj,drawArena,drawGroundMarks,charList,charPre,charOverlay,drawEffects,drawHud} from './render2d.js';
+import {V,NEAR,ENEMY_LOOK,setupView,toCam,proj,drawGroundMarks,charList,charPre,charOverlay,drawEffects,drawHud} from './render2d.js';
 import {makeChars,setLineResolution} from './three-chars.js';
 import {makeBackdrop} from './backdrop3d.js';
 
@@ -109,39 +109,66 @@ function makePainter(B){
   return {dash:a=>{dash=a&&a.length?a:null;},seg,fillPoly,groundCircle,dot};
 }
 
-// ---- 石だたみの床(シェーダー。移行元の drawFloor の グラデーション・しきいし・かすみ) ----
+// ---- 石だたみの床(シェーダー) ----
+// 大きな石板を ずらして ならべ(目地・ふちの ハイライト・石ごとの 色むら・よごれ)、
+// 土俵の中は すこし あかるく、金の 輪・きざみ・放射線を 象がんのように 入れる。
+// ゆうしゃの足もとの 位置や 視野は 画面の たて位置(地平線 HZ)から きめる(移行元と同じ)
 const FLOOR_VS=`
 varying vec3 vW;
 void main(){vec4 w=modelMatrix*vec4(position,1.0);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`;
 const FLOOR_FS=`
 precision highp float;
 varying vec3 vW;
-uniform vec2 uHero;   // ゆうしゃの位置(ロジックの x,z)
+uniform vec3 uArena;   // 土俵の中心 x, z と 半径
 uniform float uHZ,uCH,uDPR,uResH,uOy;
-float lineA(float d,float lw,float fw){ // d: 線までの きょり(px)。とおくで 線が こむときは 平均の こさに する
-  float a=clamp(lw*0.5+0.5-d,0.0,1.0);
-  return mix(a,clamp(lw*fw,0.0,1.0),smoothstep(0.25,0.7,fw));
-}
+float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
+  return mix(mix(h21(i),h21(i+vec2(1.,0.)),f.x),mix(h21(i+vec2(0.,1.)),h21(i+vec2(1.,1.)),f.x),f.y);}
+float band(float d,float hw,float fw){return 1.0-smoothstep(hw,hw+fw,abs(d));}
 void main(){
   float sy=(uResH-gl_FragCoord.y)/uDPR-uOy; // 画面の上からの px
   float t=clamp((sy-uHZ)/(uCH-uHZ),0.0,1.0);
-  vec3 c0=vec3(39.,50.,79.)/255.,c1=vec3(56.,68.,106.)/255.,c2=vec3(75.,87.,122.)/255.;
-  vec3 col=t<0.45?mix(c0,c1,t/0.45):mix(c1,c2,(t-0.45)/0.55);
-  vec2 p=vec2(vW.x,-vW.z);
-  vec3 lc=vec3(8.,12.,32.)/255.;
-  if(abs(p.x-uHero.x)<=72.0&&abs(p.y-uHero.y)<=72.0){
-    const float GS=2.6;
-    vec2 g=p/GS,fw=max(fwidth(g),vec2(1e-4));
-    vec2 dp=abs(fract(g+0.5)-0.5)/fw;
-    col=mix(col,lc,0.55*lineA(dp.x,1.2,fw.x));   // たての つなぎめ
-    col=mix(col,lc,0.55*lineA(dp.y,1.2,fw.y));   // よこの つなぎめ
-    float off=mod(floor(g.y),2.0)>0.5?0.5:0.0;    // ならびを ずらした 石のつなぎめ
-    float dj=abs(fract(g.x-off+0.5)-0.5)/fw.x;
-    col=mix(col,lc,0.32*lineA(dj,1.0,fw.x));
-  }
+  // 石の もとの色: とおくは くらく、てまえは あかるい
+  vec3 c0=vec3(64.,70.,94.)/255.,c1=vec3(98.,101.,118.)/255.,c2=vec3(132.,130.,138.)/255.;
+  vec3 base=t<0.45?mix(c0,c1,t/0.45):mix(c1,c2,(t-0.45)/0.55);
+  vec2 p=vec2(vW.x,-vW.z);            // ロジックの x, z
+  vec2 fp=fwidth(p);float fw=max(max(fp.x,fp.y),1e-4);
+  float det=clamp(1.0-(fw-0.08)/0.3,0.0,1.0); // とおくでは こまかい模様を うすくする(ちらつき防止)
+  // --- 石板 ---
+  const vec2 SL=vec2(4.4,3.0);
+  vec2 q=p/SL;float row=floor(q.y);q.x+=mod(row,2.0)*0.5;
+  vec2 cell=floor(q),f=fract(q);
+  float id=h21(cell+vec2(row*3.1,7.7)),id2=h21(cell*1.7+vec2(3.3,1.9));
+  vec3 col=base*(0.88+0.24*id);
+  col*=mix(vec3(0.94,0.98,1.06),vec3(1.08,1.0,0.90),id2);   // 石ごとに あたたかい色・つめたい色
+  float n=vn(p*0.45)*0.5+vn(p*1.9)*0.3+vn(p*7.0)*0.2;      // よごれ・すりへり
+  col*=mix(1.0,0.80+0.34*n,det);
+  vec2 ed=min(f,1.0-f)*SL;float edge=min(ed.x,ed.y);
+  float gap=1.0-smoothstep(0.03,0.03+fw*1.5,edge);        // 目地
+  float bev=smoothstep(0.32,0.0,edge-0.03)*(1.0-gap);      // 石の ふちの あかるい 面とり
+  col=mix(col,col*1.2,bev*0.55*det);
+  col=mix(col,vec3(0.05,0.06,0.11),gap*0.75*det);
+  // --- 土俵 ---
+  vec2 dc=p-uArena.xy;float r=length(dc),R=uArena.z,fr=max(fwidth(r),1e-4);
+  float ang=atan(dc.y,dc.x);
+  float inside=1.0-smoothstep(R-fr,R+fr,r);
+  col=mix(col,col*vec3(1.05,1.06,1.10)*1.08,inside);       // 土俵の 中は すこし あかるく
+  vec3 gold=vec3(224.,189.,106.)/255.*(0.92+0.12*n);
+  float a=band(r-R,0.22,fr)*0.92;                          // ふちの 金の線(場外の目じるし)
+  a=max(a,band(r-(R-0.75),0.08,fr)*0.5);
+  a=max(a,band(r-0.66*R,0.07,fr)*0.42);
+  a=max(a,band(r-0.33*R,0.07,fr)*0.42);
+  a=max(a,band(r-0.1*R,0.05,fr)*0.35);
+  float tk=step(abs(fract(ang/6.2831853*96.0)-0.5),0.09)*step(R-1.45,r)*step(r,R-0.9); // ふちの うちがわの きざみ
+  a=max(a,tk*0.6*det);
+  float da=abs(fract(ang/6.2831853*24.0+0.5)-0.5)*(6.2831853/24.0);
+  float rad=(1.0-smoothstep(0.04,0.04+fw*1.4,r*da))*step(r,R-0.4)*step(0.33*R,r)*0.12; // 放射線
+  a=max(a,rad);
+  col=mix(col,gold,a);
+  col*=mix(1.0,0.82,smoothstep(R+5.0,R+14.0,r));           // 土俵から とおいところは すこし くらく
   // とおくは かすんで みえる
   float hz=clamp(1.0-(sy-uHZ)/90.0,0.0,1.0)*step(uHZ,sy);
-  col=mix(col,vec3(80.,115.,185.)/255.,0.42*hz);
+  col=mix(col,vec3(80.,115.,185.)/255.,0.40*hz);
   gl_FragColor=vec4(col,1.0);
 }`;
 
@@ -157,11 +184,17 @@ function setup(){
   const ortho=new THREE.OrthographicCamera(0,100,0,-100,-10000,10000);
   // 床
   const floorMat=new THREE.ShaderMaterial({vertexShader:FLOOR_VS,fragmentShader:FLOOR_FS,depthWrite:true,
-    uniforms:{uHero:{value:new THREE.Vector2()},uHZ:{value:0},uCH:{value:1},uDPR:{value:1},uResH:{value:1},uOy:{value:0}}});
+    uniforms:{uArena:{value:new THREE.Vector3(CFG.arena.cx,CFG.arena.cz,CFG.arena.R)},uHZ:{value:0},uCH:{value:1},uDPR:{value:1},uResH:{value:1},uOy:{value:0}}});
   floorMat.extensions={derivatives:true};
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(6000,6000).rotateX(-Math.PI/2),floorMat);
   floor.frustumCulled=false;
   const floorScene=new THREE.Scene();floorScene.add(floor);
+  // 土俵の まわりの だんだん(のぼり階段)。上の面は 床と おなじ シェーダー、たて面は 暗い色
+  {
+    const A=CFG.arena,flat=(a,b,y)=>{const m=new THREE.Mesh(new THREE.RingGeometry(a,b,96,1).rotateX(-Math.PI/2),floorMat);m.position.set(A.cx,y,-A.cz);m.frustumCulled=false;return m;};
+    const riser=(r,y0,y1)=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,y1-y0,96,1,true),new THREE.MeshBasicMaterial({color:0x2c3350,side:THREE.DoubleSide}));m.position.set(A.cx,(y0+y1)/2,-A.cz);m.frustumCulled=false;return m;};
+    floorScene.add(riser(A.R+0.45,0,0.45),flat(A.R+0.45,A.R+3.1,0.45),riser(A.R+3.1,0.45,0.9),flat(A.R+3.1,3000,0.9));
+  }
   const bd=makeBackdrop(floorScene); // 夜空・遺跡の壁・たいまつ
   // 闘技場・ゆかの しるし
   const batch=new Batch(60000);
@@ -205,8 +238,13 @@ function drawGL(h,A,ox,oy,list){
   R.bd.update(R.cam.position,Math.atan(V.HZ/V.F),performance.now()/1000,DPR);
   const u=R.floorMat.uniforms;
   R.floor.position.set(Math.round(h.x),0,-Math.round(h.z));
-  u.uHero.value.set(h.x,h.z);u.uHZ.value=V.HZ;u.uCH.value=CH;u.uDPR.value=DPR;u.uResH.value=R.glCv.height;u.uOy.value=oy;
-  R.batch.begin(ox,oy);drawArena(A,R.P);drawGroundMarks(R.P);R.batch.end();
+  u.uHZ.value=V.HZ;u.uCH.value=CH;u.uDPR.value=DPR;u.uResH.value=R.glCv.height;u.uOy.value=oy;
+  R.batch.begin(ox,oy);
+  // キャラの かげ(土俵の石の 色は シェーダー。ここでは やわらかい かげだけ)
+  {const E=S.enemies.filter(e=>!e.dead),sh='rgba(0,0,0,.30)';
+   R.P.groundCircle(h.x,h.z,h.r*1.7,sh,null,0,24);R.P.groundCircle(S.ally.x,S.ally.z,S.ally.r*1.8,sh,null,0,24);
+   for(const e of E)R.P.groundCircle(e.x,e.z,e.r*ENEMY_LOOK*1.25,sh,null,0,32);}
+  drawGroundMarks(R.P);R.batch.end();
   const blink=Math.floor(S.t*14)%2===0;
   for(const it of list){if(it.c.d<NEAR)continue;charPre(it);}
   const flying=R.chars.update(S,blink);

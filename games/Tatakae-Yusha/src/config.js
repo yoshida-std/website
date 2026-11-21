@@ -1,6 +1,6 @@
 // 移行元: prototype-2d.html の該当部分をそのまま移したもの(import/export だけ足した)
 export const CFG={
-  arena:{cx:0,cz:11,R:11},
+  arena:{cx:0,cz:11,R:22},
   hero:{r:0.6,w:100,speed:5.2,hp:100,dmg:8,swingCd:0.35,swingReach:2.2,backBonus:1.3},
   ally:{r:0.5,w:60,hp:120,speed:1.9,keep:2.6,fear:3.6,dmg:8,castInt:2.2,range:16},
   stanceMult:{push:1.3,firm:1.6,normal:1.0},
