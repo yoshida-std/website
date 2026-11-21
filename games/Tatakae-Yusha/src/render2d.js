@@ -76,8 +76,8 @@ export const H3L=(()=>{const l=[-0.45,0.85,0.55],n=Math.hypot(l[0],l[1],l[2]);re
 // 部品のリストを つくる(Canvas 2D と WebGL の両方で つかう)
 export function heroParts(h){
   const t=performance.now()/1000,mv=h?(h.mv||0):0,ph=h?(h.ph||0):0,yaw=h&&h.yaw3!==undefined?h.yaw3:Math.PI;
-  const swT=h&&h.swingT>0?h.swingT:0,pr=swT>0?1-swT/0.2:0,sa=h?(h.swingAng||0):0;
-  const vert=Math.abs(Math.sin(sa))>0.75;
+  // 剣ふりの 見た目の長さ(0.34秒。ためる→ふりぬく→のこし。logic の swingV)
+  const SWDUR=0.34,swV=h&&h.swingV>0?h.swingV:0,pr=swV>0?1-swV/SWDUR:0,sa=h?(h.swingAng||0):0;
   const cy0=Math.cos(yaw),sy0=Math.sin(yaw);
   const PITCH=0.38,cp=Math.cos(PITCH),sp=Math.sin(PITCH);
   const parts=[];
@@ -146,19 +146,31 @@ export function heroParts(h){
   B(0.38,0.89+bob,0,0.225,0.05,0.225,'#e0b84a',la);
   B(0.38,0.68+bob,0,0.13,0.11,0.13,'#e8b184',la);
   // ---- みぎうで + 広刃の剣(フリックで ふる) ----
-  const a0=-1.15+0.55*fk-0.3*pk+0.05*pk*sp11;let aA=a0,bA=0.29*pk,swK=0;
-  if(swT>0){
-    swK=Math.min(1,pr*8,(1-pr)*8); // ふる とちゅうは ひらいた うでを もどす
-    if(vert)aA=a0-1.0*Math.sin(2*Math.PI*pr);
-    else{
-      aA=a0+0.25*Math.sin(pr*Math.PI);
-      // フリックの 画面での むきに あわせて ふる向きを きめる
-      const tipX=b=>{const p=h3apply([-0.38,0.7,1.2],[{t:'x',a:aA,p:[-0.38,1.34,0]},{t:'y',a:b,p:[-0.38,1.34,0]}]);return p[0]*cy0+p[2]*sy0;};
-      const sign=((tipX(0.4)-tipX(-0.4))*Math.cos(sa)>=0)?1:-1;
-      bA=sign*1.35*(2*pr-1)*Math.min(1,Math.sin(pr*Math.PI)*1.8);
-    }
+  const a0=-1.15+0.55*fk-0.3*pk+0.05*pk*sp11;let aA=a0,bA=0.29*pk,swK=0,swQ=0,swU=0,swVv=0,swingOps=[];
+  const PB=[-0.38,1.34+bob,0];
+  if(swV>0){
+    // フリックの 画面での むき(右=+u 上=+v)に そって、肩を中心に 剣を 大きく ふる。
+    // ふる面の 軸は「正面」と「ふりの むき」に 垂直: Rz(φ)·Rx(θ)·Rz(-φ)
+    const u=Math.cos(sa),v=-Math.sin(sa);swU=u;swVv=v;
+    swK=Math.min(1,pr/0.12,(1-pr)/0.15);                 // ふる間は ポーズの うでの ひらきを もどす
+    aA=a0*(1-swK)-0.9*swK;bA*=(1-swK);
+    const TH=1.25+0.35*Math.abs(u);                      // よこぶりは 大きく(約92°)、たてぶりは すこし 小さく
+    const phi=Math.atan2(-Math.cos(sa),Math.sin(sa));
+    // 進行: 0〜0.2 ためる(はんたいがわへ) / 0.2〜0.62 ふりぬく / 0.62〜 のこし → もとへ
+    let q;
+    if(pr<0.2)q=-0.85*Math.sin(pr/0.2*Math.PI/2);
+    else if(pr<0.62){const x=(pr-0.2)/0.42;q=-0.85+1.85*(x*x*(3-2*x));}
+    else q=1-0.12*((pr-0.62)/0.38);
+    q*=Math.min(1,(1-pr)/0.2);
+    // +か- か: 先が 画面で フリックの むきへ うごくように きめる
+    const PT=[-0.38,1.34,0];
+    const tip=th=>{const p=h3apply([-0.38,0.7,1.2],[{t:'x',a:-0.9,p:PT},{t:'z',a:-phi,p:PT},{t:'x',a:th,p:PT},{t:'z',a:phi,p:PT}]);return [p[0]*cy0+p[2]*sy0,p[1]];};
+    const t1=tip(0.35),t2=tip(-0.35);
+    const sgn=((t1[0]-t2[0])*u+(t1[1]-t2[1])*v>=0)?1:-1;
+    swQ=q;
+    swingOps=[{t:'z',a:-phi,p:PB},{t:'x',a:sgn*TH*q,p:PB},{t:'z',a:phi,p:PB}];
   }
-  const ra=[{t:'x',a:aA,p:[-0.38,1.34+bob,0]},{t:'y',a:bA,p:[-0.38,1.34+bob,0]},{t:'z',a:-(0.55+0.07*br)*fk*(1-swK),p:[-0.38,1.34+bob,0]}];
+  const ra=[{t:'x',a:aA,p:PB},{t:'y',a:bA,p:PB},{t:'z',a:-(0.55+0.07*br)*fk*(1-swK),p:PB}].concat(swingOps);
   B(-0.38,1.19+bob,0,0.16,0.3,0.16,'#e8b184',ra);
   B(-0.38,0.89+bob,0,0.21,0.3,0.21,'#8d96a8',ra);
   B(-0.38,0.89+bob,0,0.225,0.05,0.225,'#e0b84a',ra);
@@ -171,8 +183,9 @@ export function heroParts(h){
   B(-0.38,0.70+bob,1.30,0.12,0.04,0.14,'#e4eaf3',ra);                  // きっさき
   B(-0.38,0.70+bob,1.38,0.05,0.04,0.06,'#e4eaf3',ra);
   // からだ(足より うえ)を こしを中心に かたむける: おす=まえへ、ふんばる=こきゅうで ゆらぐ
-  const lean=0.24*pk+0.05*fk+0.035*br*fk;
-  if(lean){const lo=[{t:'x',a:lean,p:[0,0.7,0]}];for(let i=legCount;i<parts.length;i++)parts[i].ops=parts[i].ops.concat(lo);}
+  // ふるときは からだも ひねり、うえへ ふれば のけぞり したへ ふれば まえへ かたむく
+  const lean=0.24*pk+0.05*fk+0.035*br*fk-0.14*swVv*swQ,twist=0.3*swU*swQ*cy0;
+  if(lean||twist){const lo=[{t:'y',a:twist,p:[0,0.7,0]},{t:'x',a:lean,p:[0,0.7,0]}];for(let i=legCount;i<parts.length;i++)parts[i].ops=parts[i].ops.concat(lo);}
   return {parts,yaw};
 }
 export function drawHero(x,y,s,fl,h){const m=heroParts(h);h3render(m.parts,x,y,s,fl,m.yaw,0);}
@@ -476,14 +489,15 @@ export function charOverlay(it,blink){
   const h=S.hero;
   const p=proj(it.c.l,it.c.d,0),s=V.F/it.c.d;
   if(it.k==='h'){
-    if(h.swingT>0){ // けんの軌跡(フリックしたむきに ふる)
-      const pr=1-h.swingT/0.2,ang=h.swingAng||0,ux=Math.cos(ang),uy=Math.sin(ang);
-      const cx0=p.x,cy0=p.y-s*1.2,L0=s*1.6;
-      const t0=Math.max(0,pr-0.55),t1=Math.min(1,pr+0.15),N=10;
-      ctx.save();ctx.strokeStyle='#ffffff';ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=Math.max(5,s*0.16);ctx.globalAlpha=0.95*(1-pr*0.5);
+    if(h.swingV>0&&1-h.swingV/0.34>=0.2){ // けんの軌跡(フリックしたむきに 大きく ふる。ふりぬく間だけ)
+      const ph0=1-h.swingV/0.34,ang=h.swingAng||0,ux=Math.cos(ang),uy=Math.sin(ang);
+      const pr=Math.min(1,(ph0-0.2)/0.42);
+      const cx0=p.x,cy0=p.y-s*1.3,L0=s*2.1;
+      const t0=Math.max(0,pr-0.6),t1=pr,N=12;
+      ctx.save();ctx.strokeStyle='#ffffff';ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=Math.max(5,s*0.2);ctx.globalAlpha=0.95*(1-Math.min(1,Math.max(0,(ph0-0.62)/0.3)));
       ctx.beginPath();
       for(let k=0;k<=N;k++){
-        const t=t0+(t1-t0)*k/N,lx=(t*2-1)*L0,bow=-(1-(t*2-1)*(t*2-1))*s*0.5;
+        const t=t0+(t1-t0)*k/N,lx=(t*2-1)*L0,bow=-(1-(t*2-1)*(t*2-1))*s*0.6;
         const X=cx0+ux*lx-uy*bow,Y=cy0+uy*lx+ux*bow;
         if(k)ctx.lineTo(X,Y);else ctx.moveTo(X,Y);
       }

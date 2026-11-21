@@ -15,7 +15,7 @@ function makeEnemy(i,x,z){
 export function init(){
   S={
     t:0,over:null,overT:0,shake:0,texts:[],pops:[],lock:0,
-    hero:{x:0,z:7.8,r:CFG.hero.r,hp:CFG.hero.hp,stun:0,flash:0,stance:'firm',pushK:0,firmK:1,swingCd:0,swingT:0,pushT:0,sta:100,tired:false,noParry:0,ph:0,mv:0,fr:0,ff:1,yaw3:Math.PI,faceHold:0,idleT:0},
+    hero:{x:0,z:7.8,r:CFG.hero.r,hp:CFG.hero.hp,stun:0,flash:0,stance:'firm',pushK:0,firmK:1,swingCd:0,swingT:0,swingV:0,pushT:0,sta:100,tired:false,noParry:0,ph:0,mv:0,fr:0,ff:1,yaw3:Math.PI,faceHold:0,idleT:0},
     ally:{x:0,z:5.4,r:CFG.ally.r,hp:CFG.ally.hp,flash:0,castT:1.0},
     enemies:[makeEnemy(0,-3.5,17.5),makeEnemy(1,3.5,18.5)],beams:[],fly:[],sparks:[],
     cam:{yaw:0}
@@ -232,7 +232,7 @@ export function step(dt){
     const tgt=Math.min(1,spd/(CFG.hero.speed*0.6));
     h.mv+=(tgt-h.mv)*Math.min(1,dt*12);h.ph+=mvd*2.6;h.lx=h.x;h.lz=h.z;
     const yfx=Math.sin(S.cam.yaw),yfz=Math.cos(S.cam.yaw),yrx=yfz,yrz=-yfx; // カメラの前・右
-    if(h.swingT>0){h.fr=Math.cos(h.swingAng||0);h.ff=-Math.sin(h.swingAng||0);h.faceHold=0.35;h.idleT=0;}
+    if(h.swingV>0){h.fr=0;h.ff=1;h.faceHold=0.35;h.idleT=0;} // 剣をふる間は てきのほうを むく(画面で ふりの むきが そのまま 見える)
     else if(h.faceHold>0){h.faceHold-=dt;}
     else if(spd>0.9){
       const dr=dxw*yrx+dzw*yrz,df=dxw*yfx+dzw*yfz,l=Math.hypot(dr,df)||1;h.fr=dr/l;h.ff=df/l;h.idleT=0;
@@ -412,7 +412,7 @@ export function step(dt){
   for(const e of E)separate(a,e,CFG.ally.w,e.w);
 
   // --- ゆうしゃのこうげき(フリックで けんを ふる) ---
-  h.swingCd=Math.max(0,h.swingCd-dt);h.swingT=Math.max(0,h.swingT-dt);
+  h.swingCd=Math.max(0,h.swingCd-dt);h.swingT=Math.max(0,h.swingT-dt);h.swingV=Math.max(0,h.swingV-dt);
   h.noParry=Math.max(0,h.noParry-dt);
   h.sta=Math.min(CFG.sta.max,h.sta+CFG.sta.regen*dt);
   if(h.tired&&h.sta>=CFG.sta.recover)h.tired=false;
@@ -432,7 +432,7 @@ export function step(dt){
       const spM=Math.max(0.8,Math.min(2.0,0.6+peak/1500));
       h.sta-=CFG.sta.base+CFG.sta.perPower*(spM-0.8); // はやく つよく ふるほど きりょくを つかう
       if(h.sta<=0){h.sta=0;h.tired=true;}
-      h.swingCd=CFG.hero.swingCd;h.swingT=0.2;h.swingAng=Math.atan2(inp.flickDy||0,inp.flickDx||1);
+      h.swingCd=CFG.hero.swingCd;h.swingT=0.2;h.swingV=0.34;h.swingAng=Math.atan2(inp.flickDy||0,inp.flickDx||1);
       const fxw=Math.sin(S.cam.yaw),fzw=Math.cos(S.cam.yaw);
       let tg=null,bd=1e9,lunge=false,far=false;
       const fe=inp.flickEnemy>=0?S.enemies[inp.flickEnemy]:null;
