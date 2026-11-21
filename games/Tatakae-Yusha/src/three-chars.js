@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import {LineSegments2} from 'three/addons/lines/LineSegments2.js';
 import {LineSegmentsGeometry} from 'three/addons/lines/LineSegmentsGeometry.js';
 import {LineMaterial} from 'three/addons/lines/LineMaterial.js';
-import {heroParts} from './render2d.js';
+import {heroParts,allyParts,enemyParts} from './render2d.js';
 
 // ---- 箱の ひな形(1×1×1) ----
 const FACES=[]; // {n:[法線], q:[4つの角]}(外から見て 反時計まわり)
@@ -74,8 +74,8 @@ class BoxModel{
     this.lines=new LineSegments2(this.lg,this.lmat);this.lines.frustumCulled=false;
     this.obj=new THREE.Group();this.obj.add(this.mesh,this.lines);
   }
-  // parts: 移行元の 部品のリスト。scale: 大きさ。flash: 白く光る
-  set(parts,scale,flash){
+  // parts: 移行元の 部品のリスト。scale: 大きさ。flash: 白く光る。lineScale: ふちの線の太さの倍率(省略は scale)
+  set(parts,scale,flash,lineScale){
     const n=Math.min(parts.length,this.max),P=this.pos,N=this.nor,C=this.col,L=this.lbuf.array;
     let v=0,e=0;
     for(let i=0;i<n;i++){
@@ -93,45 +93,71 @@ class BoxModel{
     this.lbuf.needsUpdate=true;this.lg.instanceCount=e;
     this.mesh.material=flash?this.matFlash:this.mat;
     this.lines.material=flash?this.lmatFlash:this.lmat;
-    this.lmat.linewidth=this.lmatFlash.linewidth=0.032;
+    this.lmat.linewidth=this.lmatFlash.linewidth=0.032*(lineScale===undefined?scale:lineScale); // 移行元も 大きさに あわせて 太くなる
     this.obj.scale.setScalar(scale);
   }
 }
 
-export function makeChars(scene){
-  // 段階2: ゆうしゃは 箱モデル。まほうつかい・てきは まだ 仮の円柱
-  function pillar(r,hgt,col){
-    const g=new THREE.Group();
-    const mat=new THREE.MeshLambertMaterial({color:col});
-    const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,hgt,16),mat);m.position.y=hgt/2;g.add(m);
-    const nose=new THREE.Mesh(new THREE.BoxGeometry(r*0.5,r*0.5,r*0.6),mat);nose.position.set(0,hgt*0.8,r);g.add(nose); // むきが わかるように
-    scene.add(g);
-    return {obj:g,mat,base:new THREE.Color(col)};
-  }
-  const hero=new BoxModel(80);scene.add(hero.obj);
-  const ally=pillar(0.33,2.2,0x6a46b8);
-  const enemies=[];
-  const WHITE=new THREE.Color(0xffffff);
-  function flash(c,on){c.mat.color.copy(on?WHITE:c.base);}
+export function makeChars(scene,flyScene){
+  const hero=new BoxModel(80),ally=new BoxModel(60);scene.add(hero.obj,ally.obj);
+  const enemies=[];   // てき1体に 1つ
+  const flyPool=[];   // 止めの演出(ざんぞう4つ × とんでいる数)
   // 画面から見た むき(yaw3。0=カメラのほうを向く)→ 世界の むき
   const worldYaw=(S,yaw3)=>-S.cam.yaw+(yaw3===undefined?Math.PI:yaw3);
+  function opacity(m,al){
+    const tr=al<1;
+    for(const mt of [m.mat,m.matFlash]){mt.transparent=tr;mt.opacity=al;}
+    m.lmat.opacity=0.85*al;m.lmatFlash.opacity=al;m.lmatFlash.transparent=tr;
+  }
   return {
     update(S,blink){
       const h=S.hero,a=S.ally;
+      // ゆうしゃ
       const hp=heroParts(h);
       hero.set(hp.parts,1,h.flash>0&&blink);
       hero.obj.position.set(h.x,0,-h.z);hero.obj.rotation.y=worldYaw(S,hp.yaw);
-      ally.obj.position.set(a.x,0,-a.z);ally.obj.rotation.y=worldYaw(S,a.yaw3);flash(ally,a.flash>0&&blink);
+      // まほうつかい(むき・あるきは 描画の faceTo が きめる。移行元と同じ)
+      const ap=allyParts(a.yaw3,a.mv3||0,a.ph3||0,a.castT<0.5?1-a.castT/0.5:0);
+      ally.set(ap.parts,1,a.flash>0&&blink);
+      ally.obj.position.set(a.x,0,-a.z);ally.obj.rotation.y=worldYaw(S,ap.yaw);
+      // てき
       S.enemies.forEach((e,i)=>{
-        let c=enemies[i];
-        if(!c||c.color!==e.color){if(c)scene.remove(c.obj);c=enemies[i]=pillar(0.75,2.4,e.color);c.color=e.color;}
-        c.obj.visible=!e.dead;
+        let m=enemies[i];
+        if(!m){m=enemies[i]=new BoxModel(80);scene.add(m.obj);}
+        m.obj.visible=!e.dead;
         if(e.dead)return;
-        const sc=e.r*0.8;c.obj.scale.set(sc,sc,sc);
-        c.obj.position.set(e.x,0,-e.z);c.obj.rotation.y=worldYaw(S,e.yaw3);
-        const teleOn=e.tele>0;
-        c.mat.color.set(e.flash>0&&blink?0xffffff:(teleOn&&blink?0xc04a40:e.color));
+        const teleOn=e.tele>0,atkOn=e.atkTele>0;
+        const eye=teleOn?'#ff2020':(atkOn?'#ffd000':null);
+        let tint=e.color;if(teleOn&&blink)tint='#c04a40';
+        const ep=enemyParts(eye,tint,e.r,e.yaw3,e.mv3||0,e.ph3||0,teleOn||atkOn,e.stagger>0,e.dash>0);
+        m.set(ep.parts,ep.scale,e.flash>0&&blink);
+        m.obj.position.set(e.x,0,-e.z);m.obj.rotation.y=worldYaw(S,ep.yaw);
       });
+      // 止めをさされて 画面の外へ とんでいく てき(画面の座標 px で うごく。移行元と同じ計算)
+      // 移行元の 箱モデルは 0.38 だけ 上から見た形で 描いていたので、同じ かたむきを つける
+      let k0=0;
+      for(const f of S.fly){
+        for(let k=3;k>=0;k--){
+          let m=flyPool[k0];
+          if(!m){
+            m=flyPool[k0]=new BoxModel(80);
+            m.outer=new THREE.Group();m.inner=new THREE.Group();
+            m.outer.add(m.inner);m.inner.add(m.obj);m.inner.rotation.x=0.38;flyScene.add(m.outer);
+          }
+          k0++;
+          const tt=Math.max(0,f.t-k*0.04),gx=f.x0+f.vx*tt,gy=f.y0+f.vy*tt,sc=1+0.9*tt,s=f.s*sc;
+          const ep=enemyParts('#ffffff',f.color,f.r,0,0,0,false,true,false);
+          m.set(ep.parts,1,k===0&&f.t<0.1,s*ep.scale);
+          m.obj.scale.setScalar(s*ep.scale);
+          m.outer.position.set(gx,-gy,0);m.outer.rotation.z=-f.spin*tt;
+          m.inner.position.set(0,-s*f.r*1.3,0);
+          m.obj.rotation.y=ep.yaw;
+          m.outer.visible=true;m.outer.renderOrder=4-k;
+          opacity(m,k===0?1:0.16*(4-k));
+        }
+      }
+      for(let i=k0;i<flyPool.length;i++)flyPool[i].outer.visible=false;
+      return k0>0;
     }
   };
 }

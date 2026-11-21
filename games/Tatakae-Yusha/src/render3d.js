@@ -154,7 +154,7 @@ function setup(){
   // 3D のカメラ(投影行列は 毎フレーム じぶんで つくる)
   const cam=new THREE.PerspectiveCamera();cam.rotation.order='YXZ';
   // 画面の座標(px)の カメラ: (0,0)=左上、y は 下むきが +(頂点は -y で 置く)
-  const ortho=new THREE.OrthographicCamera(0,100,0,-100,-1,1);
+  const ortho=new THREE.OrthographicCamera(0,100,0,-100,-10000,10000);
   // 床
   const floorMat=new THREE.ShaderMaterial({vertexShader:FLOOR_VS,fragmentShader:FLOOR_FS,depthWrite:true,
     uniforms:{uHero:{value:new THREE.Vector2()},uHZ:{value:0},uCH:{value:1},uDPR:{value:1},uResH:{value:1},uOy:{value:0}}});
@@ -172,8 +172,12 @@ function setup(){
   const dl=new THREE.DirectionalLight(0xffffff,0.62*Math.PI);
   dl.position.set(-0.45,0.85,0.55);cam.add(dl);cam.add(dl.target);dl.target.position.set(0,0,0);
   charScene.add(cam);
-  const chars=makeChars(charScene);
-  R={renderer,glCv,bgCv,bgCtx:bgCv.getContext('2d'),cam,ortho,floor,floorMat,floorScene,batch,markScene,charScene,P:makePainter(batch),chars,w:0,h:0,dpr:0};
+  // 止めの演出(画面の座標 px で描く。ひかりは キャラと同じ)
+  const flyScene=new THREE.Scene();
+  flyScene.add(new THREE.AmbientLight(0xffffff,0.52*Math.PI));
+  const fdl=new THREE.DirectionalLight(0xffffff,0.62*Math.PI);fdl.position.set(-0.45,0.85,0.55);flyScene.add(fdl);
+  const chars=makeChars(charScene,flyScene);
+  R={renderer,glCv,bgCv,bgCtx:bgCv.getContext('2d'),cam,ortho,floor,floorMat,floorScene,batch,markScene,charScene,flyScene,P:makePainter(batch),chars,w:0,h:0,dpr:0};
   onResize(fit);fit();
 }
 function fit(){
@@ -204,12 +208,13 @@ function drawGL(h,A,ox,oy,list){
   R.batch.begin(ox,oy);drawArena(A,R.P);drawGroundMarks(R.P);R.batch.end();
   const blink=Math.floor(S.t*14)%2===0;
   for(const it of list){if(it.c.d<NEAR)continue;charPre(it);}
-  R.chars.update(S,blink);
+  const flying=R.chars.update(S,blink);
   const r=R.renderer;
   r.clear();
   r.render(R.floorScene,R.cam);
   r.render(R.markScene,R.ortho);
   r.render(R.charScene,R.cam);
+  if(flying){r.clearDepth();r.render(R.flyScene,R.ortho);}
 }
 
 export function render(){
@@ -232,7 +237,7 @@ export function render(){
   c.setTransform(DPR,0,0,DPR,0,0);c.clearRect(0,0,CW,CH);
   c.save();c.translate(ox,oy);
   for(const it of list){if(it.c.d<NEAR)continue;charOverlay(it,blink);}
-  drawEffects();
+  drawEffects(()=>{}); // 止めの演出は WebGL で描いた
   c.restore();
   drawHud();
   if(SHOW_FPS){

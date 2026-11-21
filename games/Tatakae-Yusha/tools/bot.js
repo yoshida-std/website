@@ -8,6 +8,7 @@
 //          チェックサムも くらべるので、ロジックが 完全に同じかも わかる
 //   オプション: --seeds 20  --policy smart,spam  --weight 70,100,160  --maxT 180
 //   --cam narrow|normal|wide … 視野
+//   --shotFly 0.15 … 止めの演出が 0.15秒 すすんだところで止めて 画面を保存
 //   --shot 600 --out dir … 各ページで 1戦目を 600フレームで止めて 画面を PNG に保存(見た目の比較用)
 //
 // しくみ:
@@ -33,7 +34,7 @@ const SEEDS=+(opt('seeds')||20);
 const POLICIES=(opt('policy')||'smart,spam').split(',');
 const WEIGHTS=(opt('weight')||'70,100,160').split(',');
 const MAXT=+(opt('maxT')||180);
-const SHOT=+(opt('shot')||0),OUT=opt('out')||'.';
+const SHOT=+(opt('shot')||0),SHOTFLY=+(opt('shotFly')||0),OUT=opt('out')||'.';
 
 const MIME={'.html':'text/html; charset=utf-8','.js':'text/javascript','.md':'text/markdown','.json':'application/json','.png':'image/png'};
 function serve(){
@@ -57,7 +58,7 @@ function setup(){
   window.__adv=ms=>{T+=ms;};
   window.requestAnimationFrame=()=>0;
 }
-function runBot({seed,policy,weight,maxT,stopAt,trace}){
+function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace}){
   const G=window.__sumo,cv=document.getElementById('c');
   document.getElementById('intro').style.display='none';
   window.__seed(seed);
@@ -94,7 +95,7 @@ function runBot({seed,policy,weight,maxT,stopAt,trace}){
   const mix=v=>{const s=v.toFixed(4);for(let i=0;i<s.length;i++){hash^=s.charCodeAt(i);hash=Math.imul(hash,16777619)>>>0;}};
   while(true){
     const S=G.S;
-    if(S.over||S.t>=maxT||(stopAt&&frames>=stopAt))break;
+    if((S.over&&!stopFly)||S.t>=maxT||(stopAt&&frames>=stopAt)||(stopFly&&S.fly.some(f=>f.t>=stopFly)))break;
     if(!q.length)plan();
     if(q.length)q.shift()();
     window.__adv(1000/60);G.step(1/60);G.render();frames++;
@@ -129,8 +130,8 @@ function runBot({seed,policy,weight,maxT,stopAt,trace}){
     await page.goto(`http://127.0.0.1:${port}/${pg}`);
     await page.waitForFunction(()=>window.__sumo,null,{timeout:15000});
     res[pg]=[];
-    if(SHOT){
-      await page.evaluate(runBot,{seed:1,policy:POLICIES[0],weight:WEIGHTS[0],maxT:MAXT,stopAt:SHOT});
+    if(SHOT||SHOTFLY){
+      await page.evaluate(runBot,{seed:1,policy:POLICIES[0],weight:WEIGHTS[0],maxT:MAXT,stopAt:SHOT,stopFly:SHOTFLY});
       await page.screenshot({path:path.join(OUT,pg.replace(/\W+/g,'_')+'.png')});
       await ctx.close();continue;
     }
@@ -142,7 +143,7 @@ function runBot({seed,policy,weight,maxT,stopAt,trace}){
     await ctx.close();
   }
   await browser.close();srv.close();
-  if(SHOT){console.log('画面を保存しました:',OUT);return;}
+  if(SHOT||SHOTFLY){console.log('画面を保存しました:',OUT);return;}
   // まとめ
   for(const pg of PAGES){
     console.log('\n== '+pg+' ==');
