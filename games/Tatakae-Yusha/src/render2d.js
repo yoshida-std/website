@@ -310,7 +310,6 @@ export function bubble(label,x,y,fs,edge){
   ctx.strokeStyle=edge;ctx.lineWidth=1.5;ctx.stroke();
   txt(label,x,y,fs,'#fff','center');
 }
-const STANCE_JP={push:'おす',firm:'ふんばる',normal:'まわりこみ・さがる'};
 const ANGLE_JP={front:'まえ',side:'よこ',back:'うしろ'};
 
 
@@ -519,7 +518,6 @@ export function charOverlay(it,blink){
       ctx.stroke();ctx.restore();
     }
     const top=proj(it.c.l,it.c.d,2.35);
-    bubble(STANCE_JP[h.stance]||'',top.x,top.y-14,11,h.stance==='push'?'#ffe36a':(h.stance==='firm'?'#7cdcff':'#9aa5ff'));
     bar(top.x-22,top.y-1,44,5,h.sta/CFG.sta.max,h.tired?'#ff5a4a':'#7cdcff');
     if(h.tired)txt('いきぎれ',top.x,top.y+16,12,'#ff9a90','center',3);
   }else if(it.k==='e'){
@@ -629,7 +627,6 @@ export function drawHud(){
   const info=L.info;
   const HY=BAR_H+16,LY=BAR_H+46;
   txt('じかん  '+S.t.toFixed(1)+' びょう',12,HY,14,'#fff','left',3);
-  txt('ロック: てき'+LETTER[S.lock],CW-12,HY,13,'#fff','right',3);
   let label='',lc='#fff';
   if(info.contact){
     const R=info.R;
