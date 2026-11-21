@@ -78,9 +78,9 @@ function stepIntro(dt){
 }
 // ---- ゆうしゃが まけたとき(ユーザー指示 2026-11-21): たおれて、てきに かこまれて ボコボコに される ----
 export function beatPhase(e){return ((e.beatT||0)*2.2+e.i*0.5)%1;} // 0〜0.6: ふりあげる / 0.6〜0.85: たたきつける / のこり: もどす
-export function defeatCam(S0){ // ゆっくり ゆうしゃへ よりながら、すこし まわりこむ
-  const D=S0.defeat,h=S0.hero,k=ease3(D.t/2.4),yaw=D.yaw+0.55*k,back=CAM.back+(4.6-CAM.back)*k;
-  return {cx:h.x-Math.sin(yaw)*back,cz:h.z-Math.cos(yaw)*back,yaw,h:CAM.h+(2.9-CAM.h)*k,fov:CAM.fov,fpx:h.x,fpz:h.z,yf:HERO_Y+0.06*k};
+export function defeatCam(S0){ // カメラを たかく あげて、ゆうしゃを 見おろす。ゆっくり よりながら、すこし まわりこむ
+  const D=S0.defeat,h=S0.hero,k=ease3(D.t/2.0),yaw=D.yaw+0.45*k,back=CAM.back+(6.2-CAM.back)*k;
+  return {cx:h.x-Math.sin(yaw)*back,cz:h.z-Math.cos(yaw)*back,yaw,h:CAM.h+(11-CAM.h)*k,fov:CAM.fov,fpx:h.x,fpz:h.z,yf:HERO_Y+0.04*k};
 }
 function stepDefeat(dt){
   const D=S.defeat,h=S.hero;D.t+=dt;
