@@ -82,11 +82,15 @@ export function heroParts(h){
   const PITCH=0.38,cp=Math.cos(PITCH),sp=Math.sin(PITCH);
   const parts=[];
   const B=(cx,cy,cz,sx,sy,sz,col,ops,bias)=>parts.push({c:[cx,cy,cz],s:[sx,sy,sz],col,ops:ops||[],bias:bias||0});
-  const bob=Math.sin(t*2)*0.012-Math.abs(Math.sin(ph))*0.04*mv;
+  // おす・ふんばるの ポーズ(ユーザー指示 2026-11-21)
+  //  おす: りょうてを まえに のばして おす。からだを まえに かたむけ、足は 前後に ひらく
+  //  ふんばる: りょうあしを ひらき、りょううでも ひらきぎみに。こきゅうの ように からだが ゆれる
+  const pk=h?(h.pushK||0):0,fk=h?(h.firmK||0):0,br=Math.sin(t*3.0);
+  const bob=Math.sin(t*2)*0.012-Math.abs(Math.sin(ph))*0.04*mv+fk*(-0.05+0.022*br)-pk*0.02;
   // ---- 足(あるくと こうごに ふる) ----
   const legSw=Math.sin(ph)*0.75*mv;
   for(const sx of [-1,1]){
-    const px=sx*0.14,ops=[{t:'x',a:sx*legSw,p:[px,0.68,0]}];
+    const px=sx*0.14,ops=[{t:'x',a:sx*legSw*(1-0.5*pk)+pk*(sx>0?-0.42:0.32),p:[px,0.68,0]},{t:'z',a:sx*0.36*fk,p:[px,0.68,0]}];
     B(px,0.40,0,0.2,0.56,0.22,'#e3a97c',ops);           // あし
     B(px,0.19,0.01,0.215,0.2,0.235,'#f1ece0',ops);       // しろい たび
     B(px,0.07,0.07,0.24,0.1,0.36,'#7a5230',ops);         // わらじ
@@ -132,15 +136,19 @@ export function heroParts(h){
     B(sx*0.235+sx*0.012,1.7+bob,0.0,0.02,0.1,0.07,'#d99f72',bo,0.01); // みみ
   }
   B(0,1.58+bob,0.212,0.1,0.028,0.02,'#8a3a3a',bo,0.03);
-  // ---- ひだりうで(こて・あるくと ふる) ----
-  const la=[{t:'x',a:-Math.sin(ph)*0.7*mv,p:[0.38,1.34+bob,0]}];
+  const legCount=parts.length; // ここまでが 足。これより うえが からだ(かたむける)
+  // ---- ひだりうで(こて・あるくと ふる。おす: まえへ のばす。ふんばる: ひらく) ----
+  const sp11=Math.sin(t*11);
+  const aL=-Math.sin(ph)*0.7*mv*(1-pk)+pk*(-1.45+0.05*sp11)+fk*(-0.15);
+  const la=[{t:'x',a:aL,p:[0.38,1.34+bob,0]},{t:'y',a:-0.29*pk,p:[0.38,1.34+bob,0]},{t:'z',a:(0.55+0.07*br)*fk,p:[0.38,1.34+bob,0]}];
   B(0.38,1.19+bob,0,0.16,0.3,0.16,'#e8b184',la);
   B(0.38,0.89+bob,0,0.21,0.3,0.21,'#8d96a8',la);
   B(0.38,0.89+bob,0,0.225,0.05,0.225,'#e0b84a',la);
   B(0.38,0.68+bob,0,0.13,0.11,0.13,'#e8b184',la);
   // ---- みぎうで + 広刃の剣(フリックで ふる) ----
-  const a0=-1.15;let aA=a0,bA=0;
+  const a0=-1.15+0.55*fk-0.3*pk+0.05*pk*sp11;let aA=a0,bA=0.29*pk,swK=0;
   if(swT>0){
+    swK=Math.min(1,pr*8,(1-pr)*8); // ふる とちゅうは ひらいた うでを もどす
     if(vert)aA=a0-1.0*Math.sin(2*Math.PI*pr);
     else{
       aA=a0+0.25*Math.sin(pr*Math.PI);
@@ -150,7 +158,7 @@ export function heroParts(h){
       bA=sign*1.35*(2*pr-1)*Math.min(1,Math.sin(pr*Math.PI)*1.8);
     }
   }
-  const ra=[{t:'x',a:aA,p:[-0.38,1.34+bob,0]},{t:'y',a:bA,p:[-0.38,1.34+bob,0]}];
+  const ra=[{t:'x',a:aA,p:[-0.38,1.34+bob,0]},{t:'y',a:bA,p:[-0.38,1.34+bob,0]},{t:'z',a:-(0.55+0.07*br)*fk*(1-swK),p:[-0.38,1.34+bob,0]}];
   B(-0.38,1.19+bob,0,0.16,0.3,0.16,'#e8b184',ra);
   B(-0.38,0.89+bob,0,0.21,0.3,0.21,'#8d96a8',ra);
   B(-0.38,0.89+bob,0,0.225,0.05,0.225,'#e0b84a',ra);
@@ -162,6 +170,9 @@ export function heroParts(h){
   B(-0.47,0.70+bob,0.74,0.04,0.07,1.0,'#aab6c8',ra);                   // むね
   B(-0.38,0.70+bob,1.30,0.12,0.04,0.14,'#e4eaf3',ra);                  // きっさき
   B(-0.38,0.70+bob,1.38,0.05,0.04,0.06,'#e4eaf3',ra);
+  // からだ(足より うえ)を こしを中心に かたむける: おす=まえへ、ふんばる=こきゅうで ゆらぐ
+  const lean=0.24*pk+0.05*fk+0.035*br*fk;
+  if(lean){const lo=[{t:'x',a:lean,p:[0,0.7,0]}];for(let i=legCount;i<parts.length;i++)parts[i].ops=parts[i].ops.concat(lo);}
   return {parts,yaw};
 }
 export function drawHero(x,y,s,fl,h){const m=heroParts(h);h3render(m.parts,x,y,s,fl,m.yaw,0);}

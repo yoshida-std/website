@@ -15,7 +15,7 @@ function makeEnemy(i,x,z){
 export function init(){
   S={
     t:0,over:null,overT:0,shake:0,texts:[],pops:[],lock:0,
-    hero:{x:0,z:7.8,r:CFG.hero.r,hp:CFG.hero.hp,stun:0,flash:0,stance:'firm',swingCd:0,swingT:0,pushT:0,sta:100,tired:false,noParry:0,ph:0,mv:0,fr:0,ff:1,yaw3:Math.PI,faceHold:0,idleT:0},
+    hero:{x:0,z:7.8,r:CFG.hero.r,hp:CFG.hero.hp,stun:0,flash:0,stance:'firm',pushK:0,firmK:1,swingCd:0,swingT:0,pushT:0,sta:100,tired:false,noParry:0,ph:0,mv:0,fr:0,ff:1,yaw3:Math.PI,faceHold:0,idleT:0},
     ally:{x:0,z:5.4,r:CFG.ally.r,hp:CFG.ally.hp,flash:0,castT:1.0},
     enemies:[makeEnemy(0,-3.5,17.5),makeEnemy(1,3.5,18.5)],beams:[],fly:[],sparks:[],
     cam:{yaw:0}
@@ -206,6 +206,9 @@ export function step(dt){
     else stance='normal';
   }
   h.stance=stance;
+  // 「おす」「ふんばる」の ポーズの つよさ(0〜1。なめらかに かわる。見た目だけに つかう)
+  h.pushK=(h.pushK||0)+((stance==='push'?1:0)-(h.pushK||0))*Math.min(1,dt*9);
+  h.firmK=(h.firmK||0)+((stance==='firm'?1:0)-(h.firmK||0))*Math.min(1,dt*9);
   h.pushT=stance==='push'?h.pushT+dt:0;
 
   // --- ゆうしゃの移動(ロックしたてきを中心にした相対操作) ---
