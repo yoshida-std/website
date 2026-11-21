@@ -1,13 +1,15 @@
 // 移行元: prototype-2d.html の該当部分をそのまま移したもの(import/export だけ足した)
 import {CFG,CAM,HERO_Y,LETTER,KIND_JP} from './config.js';
-import {ctx,CW,CH,DPR,BAR_H,FONT} from './screen.js';
+import {ctx as ctx0,CW,CH,DPR,BAR_H,FONT} from './screen.js';
+let ctx=ctx0;
+export function useCtx(c){ctx=c||ctx0;}
 import {S,inp} from './logic.js';
 
 // ================= 描画 =================
-let V=null;
-function toCam(x,z){const rx=x-V.camX,rz=z-V.camZ;return {l:rx*V.rx+rz*V.rz,d:rx*V.fx+rz*V.fz};}
-function proj(l,d,hgt){return {x:CW/2+l*V.F/d,y:V.HZ+(V.CAMH-hgt)*V.F/d};}
-const NEAR=0.35;
+export let V=null;
+export function toCam(x,z){const rx=x-V.camX,rz=z-V.camZ;return {l:rx*V.rx+rz*V.rz,d:rx*V.fx+rz*V.fz};}
+export function proj(l,d,hgt){return {x:CW/2+l*V.F/d,y:V.HZ+(V.CAMH-hgt)*V.F/d};}
+export const NEAR=0.35;
 function clipPoly(p){
   const out=[];
   for(let i=0;i<p.length;i++){
@@ -38,7 +40,7 @@ function groundCircle(cx,cz,r,fill,stroke,lw,n){
   if(fill)fillPoly(p,fill);
   if(stroke)strokeLoop(p,stroke,lw||2);
 }
-function txt(s,x,y,size,color,align,stroke){
+export function txt(s,x,y,size,color,align,stroke){
   ctx.font='bold '+size+'px '+FONT;ctx.textAlign=align||'left';ctx.textBaseline='middle';
   if(stroke){ctx.lineWidth=stroke;ctx.strokeStyle='rgba(0,0,0,.85)';ctx.lineJoin='round';ctx.strokeText(s,x,y);}
   ctx.fillStyle=color;ctx.fillText(s,x,y);
@@ -55,7 +57,7 @@ function h3col(hex,f){
   let c=H3C[hex];if(!c){c=[parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)];H3C[hex]=c;}
   return 'rgb('+Math.min(255,Math.round(c[0]*f))+','+Math.min(255,Math.round(c[1]*f))+','+Math.min(255,Math.round(c[2]*f))+')';
 }
-function h3apply(p,ops){
+export function h3apply(p,ops){
   let x=p[0],y=p[1],z=p[2];
   for(const o of ops){
     x-=o.p[0];y-=o.p[1];z-=o.p[2];
@@ -69,7 +71,7 @@ function h3apply(p,ops){
 }
 const H3FACES=[[0,2,6,4],[1,5,7,3],[0,4,5,1],[2,3,7,6],[0,1,3,2],[4,6,7,5]];
 const H3L=(()=>{const l=[-0.45,0.85,0.55],n=Math.hypot(l[0],l[1],l[2]);return [l[0]/n,l[1]/n,l[2]/n];})();
-function drawHero(x,y,s,fl,h){
+export function drawHero(x,y,s,fl,h){
   const t=performance.now()/1000,mv=h?(h.mv||0):0,ph=h?(h.ph||0):0,yaw=h&&h.yaw3!==undefined?h.yaw3:Math.PI;
   const swT=h&&h.swingT>0?h.swingT:0,pr=swT>0?1-swT/0.2:0,sa=h?(h.swingAng||0):0;
   const vert=Math.abs(Math.sin(sa))>0.75;
@@ -194,7 +196,7 @@ function h3render(parts,x,y,s,fl,yaw,lean){
 function h3mix(hex,f){const c=[1,3,5].map(i=>Math.max(0,Math.min(255,Math.round(parseInt(hex.slice(i,i+2),16)*f))));return '#'+c.map(v=>v.toString(16).padStart(2,'0')).join('');}
 function h3leanAll(parts,ops){for(const pt of parts)pt.ops=pt.ops.concat(ops);}
 // まほうつかい: 星のぼうしの ローブ。つえの たまが ひかる
-function faceTo(o,tx,tz,rate){
+export function faceTo(o,tx,tz,rate){
   const now=performance.now()/1000,dt=Math.min(0.05,Math.max(0,now-(o._tt||now)));o._tt=now;
   const dx=o.x-(o._px===undefined?o.x:o._px),dz=o.z-(o._pz===undefined?o.z:o._pz);o._px=o.x;o._pz=o.z;
   const sp=dt>0?Math.hypot(dx,dz)/dt:0;o.mv3=Math.min(1,sp/2.5);o.ph3=(o.ph3||0)+Math.min(sp,8)*dt*3.2;
@@ -202,7 +204,7 @@ function faceTo(o,tx,tz,rate){
   if(Math.hypot(dl,dd)>0.05){const ta=Math.atan2(dl,-dd);let da=ta-(o.yaw3===undefined?Math.PI:o.yaw3);da=Math.atan2(Math.sin(da),Math.cos(da));o.yaw3=(o.yaw3===undefined?Math.PI:o.yaw3)+Math.max(-rate*dt,Math.min(rate*dt,da));}
   else if(o.yaw3===undefined)o.yaw3=Math.PI;
 }
-function drawAlly(x,y,s,fl,yaw,mv,ph,cast){
+export function drawAlly(x,y,s,fl,yaw,mv,ph,cast){
   const t=performance.now()/1000,bob=Math.sin(t*2.3)*0.02-Math.abs(Math.sin(ph))*0.05*mv;
   const parts=[],B=(cx,cy,cz,sx,sy,sz,col,ops,bias)=>parts.push({c:[cx,cy,cz],s:[sx,sy,sz],col,ops:ops||[],bias:bias||0});
   const sw=Math.sin(ph)*0.5*mv;
@@ -230,7 +232,7 @@ function drawAlly(x,y,s,fl,yaw,mv,ph,cast){
   h3render(parts,x,y,s,fl,yaw,0);
 }
 // てき: どっしりした「どすこいオーガ」。あたまに つの、おなかが ふくらみ、まわしを しめる
-function drawEnemy(x,y,s,fl,eyeCol,tint,sc,yaw,mv,ph,atk,stag,dash){
+export function drawEnemy(x,y,s,fl,eyeCol,tint,sc,yaw,mv,ph,atk,stag,dash){
   yaw=yaw===undefined?Math.PI:yaw;mv=mv||0;ph=ph||0;
   const t=performance.now()/1000,bob=Math.sin(t*1.7)*0.02-Math.abs(Math.sin(ph))*0.06*mv;
   const dk=h3mix(tint,0.68),lt=h3mix(tint,1.22),skin=tint;
@@ -267,12 +269,12 @@ function drawEnemy(x,y,s,fl,eyeCol,tint,sc,yaw,mv,ph,atk,stag,dash){
   if(ln.length)h3leanAll(parts,ln);
   h3render(parts,x,y,s*sc*0.8,fl,yaw,0);
 }
-function bar(x,y,w,hh,ratio,col){
+export function bar(x,y,w,hh,ratio,col){
   ctx.fillStyle='#000';ctx.fillRect(x,y,w,hh);
   ctx.fillStyle=col;ctx.fillRect(x+1,y+1,Math.max(0,(w-2)*Math.max(0,Math.min(1,ratio))),hh-2);
   ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.strokeRect(x+0.5,y+0.5,w-1,hh-1);
 }
-function bubble(label,x,y,fs,edge){
+export function bubble(label,x,y,fs,edge){
   ctx.font='bold '+fs+'px '+FONT;const w=ctx.measureText(label).width+12;
   ctx.fillStyle='rgba(8,12,70,.82)';rr(x-w/2,y-fs/2-3,w,fs+6,8);ctx.fill();
   ctx.strokeStyle=edge;ctx.lineWidth=1.5;ctx.stroke();
@@ -291,7 +293,7 @@ const CONSTEL=[ // 星座(0〜1の座標。画面の横いっぱいを 1 まわ�
   [[0.46,0.55],[0.55,0.30],[0.68,0.34],[0.74,0.58],[0.55,0.30]],
   [[0.84,0.22],[0.92,0.36],[0.98,0.20]]
 ];
-function drawBackdrop(){
+export function drawBackdrop(){
   const HZ=V.HZ,t=performance.now()/1000,yaw=S.cam.yaw;
   // よぞら
   const sg=ctx.createLinearGradient(0,0,0,HZ);sg.addColorStop(0,'#070b25');sg.addColorStop(0.6,'#13204a');sg.addColorStop(1,'#2b4676');
@@ -357,126 +359,149 @@ function drawFloor(h,A){
   // とおくは かすんで みえる
   const hz=ctx.createLinearGradient(0,HZ,0,HZ+90);hz.addColorStop(0,'rgba(80,115,185,.42)');hz.addColorStop(1,'rgba(80,115,185,0)');
   ctx.fillStyle=hz;ctx.fillRect(-20,HZ,CW+40,90);
-  // どひょう(まるい闘技場)。ふちの金色の線が 場外の目じるし
-  groundCircle(A.cx,A.cz,A.R,'#566384',null,0,56);
-  groundCircle(A.cx,A.cz,A.R*0.66,null,'rgba(225,195,115,.30)',1.5,48);
-  groundCircle(A.cx,A.cz,A.R*0.33,null,'rgba(225,195,115,.30)',1.5,36);
-  for(let i=0;i<16;i++){const t=i/16*Math.PI*2;seg(toCam(A.cx,A.cz),toCam(A.cx+Math.cos(t)*A.R,A.cz+Math.sin(t)*A.R),'rgba(225,195,115,.16)',1.2);}
-  for(let i=0;i<48;i++){const t=i/48*Math.PI*2,c=Math.cos(t),s2=Math.sin(t);seg(toCam(A.cx+c*(A.R-1.3),A.cz+s2*(A.R-1.3)),toCam(A.cx+c*(A.R-0.7),A.cz+s2*(A.R-0.7)),'rgba(225,195,115,.55)',2);}
-  groundCircle(A.cx,A.cz,A.R,null,'#e0bd6a',4,56);
-  groundCircle(A.cx,A.cz,A.R-0.6,null,'rgba(224,189,106,.5)',1.5,56);
+}
+// どひょう(まるい闘技場)。ふちの金色の線が 場外の目じるし
+export function drawArena(A,P){
+  P=P||P2D;
+  P.groundCircle(A.cx,A.cz,A.R,'#566384',null,0,56);
+  P.groundCircle(A.cx,A.cz,A.R*0.66,null,'rgba(225,195,115,.30)',1.5,48);
+  P.groundCircle(A.cx,A.cz,A.R*0.33,null,'rgba(225,195,115,.30)',1.5,36);
+  for(let i=0;i<16;i++){const t=i/16*Math.PI*2;P.seg(toCam(A.cx,A.cz),toCam(A.cx+Math.cos(t)*A.R,A.cz+Math.sin(t)*A.R),'rgba(225,195,115,.16)',1.2);}
+  for(let i=0;i<48;i++){const t=i/48*Math.PI*2,c=Math.cos(t),s2=Math.sin(t);P.seg(toCam(A.cx+c*(A.R-1.3),A.cz+s2*(A.R-1.3)),toCam(A.cx+c*(A.R-0.7),A.cz+s2*(A.R-0.7)),'rgba(225,195,115,.55)',2);}
+  P.groundCircle(A.cx,A.cz,A.R,null,'#e0bd6a',4,56);
+  P.groundCircle(A.cx,A.cz,A.R-0.6,null,'rgba(224,189,106,.5)',1.5,56);
 }
 
-export function render(){
-  ctx.setTransform(DPR,0,0,DPR,0,0);
-  ctx.clearRect(0,0,CW,CH);
-  const h=S.hero,a=S.ally,A=CFG.arena,E=S.enemies.filter(e=>!e.dead),L=S.enemies[S.lock];
-  const yaw=S.cam.yaw,fx=Math.sin(yaw),fz=Math.cos(yaw);
+// ---- 1フレームの描画を、部品に分けたもの(WebGL 版も 同じ部品を つかう) ----
+// setupView: カメラ(V)を きめる。ゆうしゃの足もとが 画面のたて半分あたりに くるよう、地平線の位置を決める
+// ゆかに描く道具(Canvas 2D 版)。WebGL 版は render3d.js に 同じ形のものがある
+export const P2D={
+  dash:a=>ctx.setLineDash(a),
+  seg:(a,b,col,lw)=>seg(a,b,col,lw),
+  fillPoly:(pts,fill)=>fillPoly(pts,fill),
+  groundCircle:(cx,cz,r,fill,stroke,lw,n)=>groundCircle(cx,cz,r,fill,stroke,lw,n),
+  dot:(m,col)=>{if(m.d>NEAR){const p=proj(m.l,m.d,0.05);ctx.beginPath();ctx.arc(p.x,p.y,Math.max(4,V.F/m.d*0.18),0,Math.PI*2);ctx.fillStyle=col;ctx.globalAlpha=0.9;ctx.fill();ctx.globalAlpha=1;}}
+};
+export function setupView(){
+  const h=S.hero,yaw=S.cam.yaw,fx=Math.sin(yaw),fz=Math.cos(yaw);
   const F0=CW*CAM.fov;
-  // ゆうしゃの足もとが 画面のたて半分あたりに くるよう、地平線の位置を決める
   V={camX:h.x-fx*CAM.back,camZ:h.z-fz*CAM.back,fx,fz,rx:fz,rz:-fx,F:F0,HZ:CH*HERO_Y-CAM.h*F0/CAM.back,CAMH:CAM.h};
-  ctx.save();
-  if(S.shake>0)ctx.translate((Math.random()-.5)*S.shake*14,(Math.random()-.5)*S.shake*14);
-
-  // 空・遠くの遺跡・石だたみの地面
-  drawBackdrop();
-  drawFloor(h,A);
-
+  return V;
+}
+// ゆかの しるし(ねらい線・てきのまえ・こうげきの よこく・当たり円・おしあいの色)
+export function drawGroundMarks(P){
+  P=P||P2D;
+  const h=S.hero,a=S.ally,E=S.enemies.filter(e=>!e.dead),L=S.enemies[S.lock];
   // てきのねらい線と、てきのまえ
   for(const e of E){
     if(e.target){
       const tgt=e.target==='hero'?h:a;
-      ctx.setLineDash([8,7]);
-      seg(toCam(e.x,e.z),toCam(tgt.x,tgt.z),e.target==='hero'?'rgba(255,200,90,.75)':'rgba(190,130,255,.7)',e.tflash>0?4:2);
-      ctx.setLineDash([]);
+      P.dash([8,7]);
+      P.seg(toCam(e.x,e.z),toCam(tgt.x,tgt.z),e.target==='hero'?'rgba(255,200,90,.75)':'rgba(190,130,255,.7)',e.tflash>0?4:2);
+      P.dash([]);
     }
     const pts=[toCam(e.x,e.z)];const base=Math.atan2(e.fz,e.fx);
     for(let i=-4;i<=4;i++){const t=base+i/4*0.61;pts.push(toCam(e.x+Math.cos(t)*3.4,e.z+Math.sin(t)*3.4));}
-    fillPoly(pts,'rgba(255,80,60,.11)');
+    P.fillPoly(pts,'rgba(255,80,60,.11)');
     if(e.atkTele>0){ // こうげきの よこく(ゆかに赤い範囲)
       const pr=1-e.atkTele/(e.atkMax||1);
       if(e.atkKind==='sweep'){
-        groundCircle(e.x,e.z,e.r+CFG.atkSweep.r,'rgba(255,60,40,'+(0.10+0.14*pr)+')','rgba(255,110,80,.85)',2.5,40);
+        P.groundCircle(e.x,e.z,e.r+CFG.atkSweep.r,'rgba(255,60,40,'+(0.10+0.14*pr)+')','rgba(255,110,80,.85)',2.5,40);
       }else if(e.atkKind==='charge'){
         const lw=8+10*pr;
-        seg(toCam(e.x,e.z),toCam(e.cx,e.cz),'rgba(255,70,50,'+(0.35+0.3*pr)+')',lw);
-        groundCircle(e.cx,e.cz,e.r*0.7,null,'rgba(255,110,80,.9)',2.5,20);
+        P.seg(toCam(e.x,e.z),toCam(e.cx,e.cz),'rgba(255,70,50,'+(0.35+0.3*pr)+')',lw);
+        P.groundCircle(e.cx,e.cz,e.r*0.7,null,'rgba(255,110,80,.9)',2.5,20);
       }
     }
   }
   // 当たり円
   const st=h.stance;
-  groundCircle(h.x,h.z,h.r,st==='firm'?'rgba(90,200,255,.45)':(st==='push'?'rgba(255,220,90,.45)':'rgba(120,160,255,.3)'),'#8cf',2);
-  if(st==='firm')groundCircle(h.x,h.z,h.r+0.22,null,'rgba(120,220,255,.6)',2);
-  groundCircle(a.x,a.z,a.r,'rgba(170,120,255,.3)','#c9a0ff',2);
+  P.groundCircle(h.x,h.z,h.r,st==='firm'?'rgba(90,200,255,.45)':(st==='push'?'rgba(255,220,90,.45)':'rgba(120,160,255,.3)'),'#8cf',2);
+  if(st==='firm')P.groundCircle(h.x,h.z,h.r+0.22,null,'rgba(120,220,255,.6)',2);
+  P.groundCircle(a.x,a.z,a.r,'rgba(170,120,255,.3)','#c9a0ff',2);
   for(const e of E){
     const teleOn=e.tele>0;
-    groundCircle(e.x,e.z,e.r,(teleOn?'rgba(255,60,60,.5)':'rgba(255,110,90,.28)'),teleOn?'#ff5050':'#ff9a8a',2);
-    if(e===L)groundCircle(e.x,e.z,e.r+0.3,null,'#ffffff',3);
+    P.groundCircle(e.x,e.z,e.r,(teleOn?'rgba(255,60,60,.5)':'rgba(255,110,90,.28)'),teleOn?'#ff5050':'#ff9a8a',2);
+    if(e===L)P.groundCircle(e.x,e.z,e.r+0.3,null,'#ffffff',3);
     if(e.info.contact){
       const R=e.info.R;
       const col=R>=CFG.thr.win?'#7dff9a':(R>=CFG.thr.hold?'#ffe36a':(R>=CFG.thr.lose?'#ffa860':'#ff6060'));
       const m=toCam((h.x+e.x)/2,(h.z+e.z)/2);
-      if(m.d>NEAR){const p=proj(m.l,m.d,0.05);ctx.beginPath();ctx.arc(p.x,p.y,Math.max(4,V.F/m.d*0.18),0,Math.PI*2);ctx.fillStyle=col;ctx.globalAlpha=0.9;ctx.fill();ctx.globalAlpha=1;}
+      P.dot(m,col);
     }
   }
-
-  // キャラクター(奥から手前)
+}
+// キャラクターの ならび(奥から手前)
+export function charList(){
+  const h=S.hero,a=S.ally,E=S.enemies.filter(e=>!e.dead);
   const list=[];
   list.push({d:toCam(h.x,h.z).d,k:'h',c:toCam(h.x,h.z)});
   list.push({d:toCam(a.x,a.z).d,k:'a',c:toCam(a.x,a.z)});
   for(const e of E){const c=toCam(e.x,e.z);list.push({d:c.d,k:'e',c,e});}
   list.sort((p,q)=>q.d-p.d);
-  const blink=Math.floor(S.t*14)%2===0;
-  for(const it of list){
-    if(it.c.d<NEAR)continue;
-    const p=proj(it.c.l,it.c.d,0),s=V.F/it.c.d;
-    if(it.k==='h'){
-      drawHero(p.x,p.y,s,h.flash>0&&blink,h);
-      if(h.swingT>0){ // けんの軌跡(フリックしたむきに ふる)
-        const pr=1-h.swingT/0.2,ang=h.swingAng||0,ux=Math.cos(ang),uy=Math.sin(ang);
-        const cx0=p.x,cy0=p.y-s*1.2,L0=s*1.6;
-        const t0=Math.max(0,pr-0.55),t1=Math.min(1,pr+0.15),N=10;
-        ctx.save();ctx.strokeStyle='#ffffff';ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=Math.max(5,s*0.16);ctx.globalAlpha=0.95*(1-pr*0.5);
-        ctx.beginPath();
-        for(let k=0;k<=N;k++){
-          const t=t0+(t1-t0)*k/N,lx=(t*2-1)*L0,bow=-(1-(t*2-1)*(t*2-1))*s*0.5;
-          const X=cx0+ux*lx-uy*bow,Y=cy0+uy*lx+ux*bow;
-          if(k)ctx.lineTo(X,Y);else ctx.moveTo(X,Y);
-        }
-        ctx.stroke();ctx.restore();
-      }
-      const top=proj(it.c.l,it.c.d,2.35);
-      bubble(STANCE_JP[h.stance]||'',top.x,top.y-14,11,h.stance==='push'?'#ffe36a':(h.stance==='firm'?'#7cdcff':'#9aa5ff'));
-      bar(top.x-22,top.y-1,44,5,h.sta/CFG.sta.max,h.tired?'#ff5a4a':'#7cdcff');
-      if(h.tired)txt('いきぎれ',top.x,top.y+16,12,'#ff9a90','center',3);
-    }else if(it.k==='a'){
-      {const ta=E.filter(q=>q.hp>0).sort((m,n)=>Math.hypot(m.x-a.x,m.z-a.z)-Math.hypot(n.x-a.x,n.z-a.z))[0];
-        faceTo(a,ta?ta.x:a.x,ta?ta.z:a.z+1,9);
-        drawAlly(p.x,p.y,s,a.flash>0&&blink,a.yaw3,a.mv3||0,a.ph3||0,a.castT<0.5?1-a.castT/0.5:0);}
-    }else{
-      const e=it.e;
-      const teleOn=e.tele>0,atkOn=e.atkTele>0;
-      const eye=teleOn?'#ff2020':(atkOn?'#ffd000':null);
-      let tint=e.color;if(teleOn&&blink)tint='#c04a40';
-      {const tg=e.target==='hero'?h:(e.target==='ally'?a:h);
-      faceTo(e,tg.x,tg.z,7);
-      drawEnemy(p.x,p.y,s,e.flash>0&&blink,eye,tint,e.r,e.yaw3,e.mv3||0,e.ph3||0,teleOn||atkOn,e.stagger>0,e.dash>0);}
-      e.sc=s;e.sx=p.x;e.sy=p.y-s*e.r*1.3;e.shw=Math.max(18,s*e.r*1.25);e.shh=Math.max(24,s*e.r*1.45); // タップ・フリック判定用の画面位置と大きさ
-      if(inp.down&&inp.onEnemy===e.i){ctx.save();ctx.strokeStyle='#ffe01a';ctx.lineWidth=3;ctx.globalAlpha=0.85;ctx.beginPath();ctx.ellipse(e.sx,e.sy,e.shw+8,e.shh+8,0,0,Math.PI*2);ctx.stroke();ctx.restore();}
-      const top=proj(it.c.l,it.c.d,2.9*e.r+0.2);
-      const lab=LETTER[e.i]+'▶'+(e.target?TGT_JP[e.target]:'なし');
-      const edge=e.target==='hero'?'#ffd36a':(e.target==='ally'?'#c9a0ff':'#8890b0');
-      bubble(lab,top.x,top.y,e.tflash>0&&blink?13:11,edge);
-      // ねばりゲージ(小)
-      bar(top.x-22,top.y+11,44,5,e.gauge/100,e.gauge>=80?'#ff5a4a':'#ffb030');
-      bar(top.x-22,top.y+18,44,5,e.hp/e.maxHp,'#5ad06a');
-      const top2=proj(it.c.l,it.c.d,2.9*e.r+0.2+0.8);
-      if(teleOn){const w=e.tele<=CFG.parryWin;txt(w?'いま！':'！',top2.x,top2.y-6,Math.max(22,s*0.9)*(w?1.15:1),w?'#7cf5ff':'#ff4040','center',4);}
-      else if(atkOn){const w=e.target==='hero'&&e.atkTele<=CFG.parryWin;txt(w?'いま！':'！',top2.x,top2.y-6,Math.max(20,s*0.8)*(w?1.15:1),w?'#7cf5ff':(e.target==='hero'?'#ff9a30':'#ffd000'),'center',4);txt(KIND_JP[e.atkKind]||'',top2.x,top2.y-30,13,'#ffd0a0','center',3);}
-      else if(e.stagger>0)txt('ふらふら…',top2.x,top2.y-4,15,'#9fe8ff','center',3);
-    }
+  return list;
+}
+// キャラの むき(まほうつかい・てき)。描くまえに よぶ
+export function charPre(it){
+  const h=S.hero,a=S.ally,E=S.enemies.filter(e=>!e.dead);
+  if(it.k==='a'){const ta=E.filter(q=>q.hp>0).sort((m,n)=>Math.hypot(m.x-a.x,m.z-a.z)-Math.hypot(n.x-a.x,n.z-a.z))[0];faceTo(a,ta?ta.x:a.x,ta?ta.z:a.z+1,9);}
+  else if(it.k==='e'){const e=it.e,tg=e.target==='hero'?h:(e.target==='ally'?a:h);faceTo(e,tg.x,tg.z,7);}
+}
+// キャラの からだ(Canvas 2D の ローポリ箱モデル)
+function charModel(it,blink){
+  const h=S.hero,a=S.ally;
+  const p=proj(it.c.l,it.c.d,0),s=V.F/it.c.d;
+  if(it.k==='h')drawHero(p.x,p.y,s,h.flash>0&&blink,h);
+  else if(it.k==='a')drawAlly(p.x,p.y,s,a.flash>0&&blink,a.yaw3,a.mv3||0,a.ph3||0,a.castT<0.5?1-a.castT/0.5:0);
+  else{
+    const e=it.e,teleOn=e.tele>0,atkOn=e.atkTele>0;
+    const eye=teleOn?'#ff2020':(atkOn?'#ffd000':null);
+    let tint=e.color;if(teleOn&&blink)tint='#c04a40';
+    drawEnemy(p.x,p.y,s,e.flash>0&&blink,eye,tint,e.r,e.yaw3,e.mv3||0,e.ph3||0,teleOn||atkOn,e.stagger>0,e.dash>0);
   }
+}
+// キャラの うえの 表示(剣の軌跡・かまえ・ゲージ・ねらい・「！」)。てきの 画面上の位置(タップ・フリック判定用)も ここで きめる
+export function charOverlay(it,blink){
+  const h=S.hero;
+  const p=proj(it.c.l,it.c.d,0),s=V.F/it.c.d;
+  if(it.k==='h'){
+    if(h.swingT>0){ // けんの軌跡(フリックしたむきに ふる)
+      const pr=1-h.swingT/0.2,ang=h.swingAng||0,ux=Math.cos(ang),uy=Math.sin(ang);
+      const cx0=p.x,cy0=p.y-s*1.2,L0=s*1.6;
+      const t0=Math.max(0,pr-0.55),t1=Math.min(1,pr+0.15),N=10;
+      ctx.save();ctx.strokeStyle='#ffffff';ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=Math.max(5,s*0.16);ctx.globalAlpha=0.95*(1-pr*0.5);
+      ctx.beginPath();
+      for(let k=0;k<=N;k++){
+        const t=t0+(t1-t0)*k/N,lx=(t*2-1)*L0,bow=-(1-(t*2-1)*(t*2-1))*s*0.5;
+        const X=cx0+ux*lx-uy*bow,Y=cy0+uy*lx+ux*bow;
+        if(k)ctx.lineTo(X,Y);else ctx.moveTo(X,Y);
+      }
+      ctx.stroke();ctx.restore();
+    }
+    const top=proj(it.c.l,it.c.d,2.35);
+    bubble(STANCE_JP[h.stance]||'',top.x,top.y-14,11,h.stance==='push'?'#ffe36a':(h.stance==='firm'?'#7cdcff':'#9aa5ff'));
+    bar(top.x-22,top.y-1,44,5,h.sta/CFG.sta.max,h.tired?'#ff5a4a':'#7cdcff');
+    if(h.tired)txt('いきぎれ',top.x,top.y+16,12,'#ff9a90','center',3);
+  }else if(it.k==='e'){
+    const e=it.e;
+    const teleOn=e.tele>0,atkOn=e.atkTele>0;
+    e.sc=s;e.sx=p.x;e.sy=p.y-s*e.r*1.3;e.shw=Math.max(18,s*e.r*1.25);e.shh=Math.max(24,s*e.r*1.45); // タップ・フリック判定用の画面位置と大きさ
+    if(inp.down&&inp.onEnemy===e.i){ctx.save();ctx.strokeStyle='#ffe01a';ctx.lineWidth=3;ctx.globalAlpha=0.85;ctx.beginPath();ctx.ellipse(e.sx,e.sy,e.shw+8,e.shh+8,0,0,Math.PI*2);ctx.stroke();ctx.restore();}
+    const top=proj(it.c.l,it.c.d,2.9*e.r+0.2);
+    const lab=LETTER[e.i]+'▶'+(e.target?TGT_JP[e.target]:'なし');
+    const edge=e.target==='hero'?'#ffd36a':(e.target==='ally'?'#c9a0ff':'#8890b0');
+    bubble(lab,top.x,top.y,e.tflash>0&&blink?13:11,edge);
+    // ねばりゲージ(小)
+    bar(top.x-22,top.y+11,44,5,e.gauge/100,e.gauge>=80?'#ff5a4a':'#ffb030');
+    bar(top.x-22,top.y+18,44,5,e.hp/e.maxHp,'#5ad06a');
+    const top2=proj(it.c.l,it.c.d,2.9*e.r+0.2+0.8);
+    if(teleOn){const w=e.tele<=CFG.parryWin;txt(w?'いま！':'！',top2.x,top2.y-6,Math.max(22,s*0.9)*(w?1.15:1),w?'#7cf5ff':'#ff4040','center',4);}
+    else if(atkOn){const w=e.target==='hero'&&e.atkTele<=CFG.parryWin;txt(w?'いま！':'！',top2.x,top2.y-6,Math.max(20,s*0.8)*(w?1.15:1),w?'#7cf5ff':(e.target==='hero'?'#ff9a30':'#ffd000'),'center',4);txt(KIND_JP[e.atkKind]||'',top2.x,top2.y-30,13,'#ffd0a0','center',3);}
+    else if(e.stagger>0)txt('ふらふら…',top2.x,top2.y-4,15,'#9fe8ff','center',3);
+  }
+}
+// こうげきのビーム・浮かぶ文字・ダメージ数字(flyCb: 止めの演出を 自分で描くとき)
+export function drawEffects(flyCb){
   // こうげきのビーム
   for(const b of S.beams){
     const c1=toCam(b.x1,b.z1),c2=toCam(b.x2,b.z2);
@@ -492,7 +517,8 @@ export function render(){
     ctx.globalAlpha=Math.min(1,t.life*2);txt(t.s,p.x,p.y,18,t.color,'center',4);ctx.globalAlpha=1;
   }
   // 止めをさされて 画面の外へ とんでいく てき
-  for(const f of S.fly){
+  if(flyCb)flyCb();
+  else for(const f of S.fly){
     for(let k=3;k>=0;k--){
       const tt=Math.max(0,f.t-k*0.04),gx=f.x0+f.vx*tt,gy=f.y0+f.vy*tt,sc=1+0.9*tt;
       ctx.save();ctx.translate(gx,gy);ctx.rotate(f.spin*tt);
@@ -529,8 +555,10 @@ export function render(){
     if(q.sub)txt(q.sub,px,py-fs2*0.72,Math.max(13,fs2*0.38),'#ffe36a','center',4);
     ctx.globalAlpha=1;
   }
-  ctx.restore();
-
+}
+// 画面に固定の表示(指のあと・スティック・上のHUD・下のウィンドウ・おわりの表示)
+export function drawHud(){
+  const h=S.hero,a=S.ally,L=S.enemies[S.lock];
   // 指のあと(はやく うごかしたときの軌跡。フリックがみとめられると輪が出る)
   {
     const nowT=performance.now();
@@ -601,4 +629,30 @@ export function render(){
     txt((S.over==='win'?'クリアタイム  ':'もちこたえた時間  ')+S.t.toFixed(1)+' びょう',CW/2,CH*0.38+36,18,'#ffe36a','center',4);
     if(S.overT>(S.over==='win'?1.4:0.7))txt('タップで もういちど',CW/2,CH*0.38+76,16,'#cfd4ff','center',3);
   }
+}
+
+// Canvas 2D の 1フレーム(移行元と 同じ順番で 描く)
+export function render(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.clearRect(0,0,CW,CH);
+  const h=S.hero,A=CFG.arena;
+  setupView();
+  ctx.save();
+  if(S.shake>0)ctx.translate((Math.random()-.5)*S.shake*14,(Math.random()-.5)*S.shake*14);
+
+  // 空・遠くの遺跡・石だたみの地面
+  drawBackdrop();
+  drawFloor(h,A);
+  drawArena(A);
+  drawGroundMarks();
+
+  // キャラクター(奥から手前)
+  const blink=Math.floor(S.t*14)%2===0;
+  for(const it of charList()){
+    if(it.c.d<NEAR)continue;
+    charPre(it);charModel(it,blink);charOverlay(it,blink);
+  }
+  drawEffects();
+  ctx.restore();
+  drawHud();
 }

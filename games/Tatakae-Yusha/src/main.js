@@ -2,7 +2,10 @@
 import {CAMKEY,FLICKKEY,setCamKey,setFlickKey,setET,CFG} from './config.js';
 import {stage,barEl,BAR_HIDDEN,measureBar,resize,setBarHidden,CW} from './screen.js';
 import {S,running,setRunning,inp,init,step,tapLock,enemyAt,checkFlick} from './logic.js';
-import {render} from './render2d.js';
+import {render as render2d} from './render2d.js';
+import {render as render3d} from './render3d.js';
+// ふだんは WebGL。?r=2d で 移行元と同じ Canvas 2D の描画(くらべる用)
+const render=new URLSearchParams(location.search).get('r')==='2d'?render2d:render3d;
 
 // ---- スマホのブラウザ動作の抑止(ダブルタップ拡大・ピンチ・長押し・スクロール) ----
 (function(){

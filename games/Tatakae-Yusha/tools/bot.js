@@ -7,6 +7,8 @@
 //        … 同じ乱数の種で 両方を遊び、勝敗・時間を ならべる。毎フレームの状態(位置・HP)の
 //          チェックサムも くらべるので、ロジックが 完全に同じかも わかる
 //   オプション: --seeds 20  --policy smart,spam  --weight 70,100,160  --maxT 180
+//   --cam narrow|normal|wide … 視野
+//   --shot 600 --out dir … 各ページで 1戦目を 600フレームで止めて 画面を PNG に保存(見た目の比較用)
 //
 // しくみ:
 //   - Math.random を 種つきの乱数に、performance.now を 1/60秒ずつ進む にせの時計にかえる
@@ -31,6 +33,7 @@ const SEEDS=+(opt('seeds')||20);
 const POLICIES=(opt('policy')||'smart,spam').split(',');
 const WEIGHTS=(opt('weight')||'70,100,160').split(',');
 const MAXT=+(opt('maxT')||180);
+const SHOT=+(opt('shot')||0),OUT=opt('out')||'.';
 
 const MIME={'.html':'text/html; charset=utf-8','.js':'text/javascript','.md':'text/markdown','.json':'application/json','.png':'image/png'};
 function serve(){
@@ -54,7 +57,7 @@ function setup(){
   window.__adv=ms=>{T+=ms;};
   window.requestAnimationFrame=()=>0;
 }
-function runBot({seed,policy,weight,maxT}){
+function runBot({seed,policy,weight,maxT,stopAt,trace}){
   const G=window.__sumo,cv=document.getElementById('c');
   document.getElementById('intro').style.display='none';
   window.__seed(seed);
@@ -87,21 +90,22 @@ function runBot({seed,policy,weight,maxT}){
     if(gap>0.6&&!hold){const [x,y]=freeSpot();hold=[x,y-60];q.push(()=>ev('pointerdown',x,y),()=>ev('pointermove',x,y-60));}
     else if(gap<=0.3&&hold)release();
   }
-  let frames=0;
+  let frames=0;const tr=[];
   const mix=v=>{const s=v.toFixed(4);for(let i=0;i<s.length;i++){hash^=s.charCodeAt(i);hash=Math.imul(hash,16777619)>>>0;}};
   while(true){
     const S=G.S;
-    if(S.over||S.t>=maxT)break;
+    if(S.over||S.t>=maxT||(stopAt&&frames>=stopAt))break;
     if(!q.length)plan();
     if(q.length)q.shift()();
     window.__adv(1000/60);G.step(1/60);G.render();frames++;
     const h=S.hero,a=S.ally;
     mix(h.x);mix(h.z);mix(h.hp);mix(a.x);mix(a.z);mix(a.hp);
     for(const e of S.enemies){mix(e.x);mix(e.z);mix(e.hp);}
+    if(trace)tr.push(hash.toString(16)+' t='+S.t.toFixed(3)+' h='+h.x.toFixed(4)+','+h.z.toFixed(4)+' hp='+h.hp+' sx='+S.enemies.map(e=>(e.sx||0).toFixed(2)+'/'+(e.sy||0).toFixed(2)).join(' ')+' fl='+G.inp.flickT+' pend='+G.inp.flickPending);
   }
   const S=G.S;
   return {over:S.over||'timeout',t:+S.t.toFixed(2),heroHp:S.hero.hp,allyHp:S.ally.hp,
-    enemyHp:S.enemies.reduce((s,e)=>s+e.hp,0),swings,parries,frames,hash:hash.toString(16)};
+    enemyHp:S.enemies.reduce((s,e)=>s+e.hp,0),swings,parries,frames,hash:hash.toString(16),trace:trace?tr:undefined};
 }
 
 (async()=>{
@@ -112,24 +116,33 @@ function runBot({seed,policy,weight,maxT}){
     const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1,hasTouch:true});
     if(process.env.THREE_DIR){
       await ctx.route(/cdn\.jsdelivr\.net\/npm\/three@[^/]+\/(.*)$/,(route)=>{
-        const m=route.request().url().match(/three@[^/]+\/(.*)$/);
-        route.fulfill({path:path.join(process.env.THREE_DIR,m[1]),contentType:'text/javascript'});
+        // +esm は build/three.module.js、そこから読む ./three.core.js などは build/ の同じ名前
+        let f=route.request().url().match(/three@[^/]+\/(.*)$/)[1];
+        f=f==='+esm'?'build/three.module.js':(f.includes('/')?f:'build/'+f);
+        route.fulfill({path:path.join(process.env.THREE_DIR,f),contentType:'text/javascript'});
       });
     }
     await ctx.addInitScript(setup);
+    if(opt('cam'))await ctx.addInitScript(k=>{try{localStorage.setItem('sumo_cam',k);}catch(_){}},opt('cam'));
     const page=await ctx.newPage();
     const errs=[];page.on('pageerror',e=>errs.push(String(e)));
     await page.goto(`http://127.0.0.1:${port}/${pg}`);
     await page.waitForFunction(()=>window.__sumo,null,{timeout:15000});
     res[pg]=[];
+    if(SHOT){
+      await page.evaluate(runBot,{seed:1,policy:POLICIES[0],weight:WEIGHTS[0],maxT:MAXT,stopAt:SHOT});
+      await page.screenshot({path:path.join(OUT,pg.replace(/\W+/g,'_')+'.png')});
+      await ctx.close();continue;
+    }
     for(const policy of POLICIES)for(const weight of WEIGHTS)for(let s=1;s<=SEEDS;s++){
-      const r=await page.evaluate(runBot,{seed:s,policy,weight,maxT:MAXT});
+      const r=await page.evaluate(runBot,{seed:s,policy,weight,maxT:MAXT,trace:!!opt('trace')});
       res[pg].push({policy,weight,seed:s,...r});
     }
     if(errs.length)console.log(pg,'のエラー:',errs.slice(0,5));
     await ctx.close();
   }
   await browser.close();srv.close();
+  if(SHOT){console.log('画面を保存しました:',OUT);return;}
   // まとめ
   for(const pg of PAGES){
     console.log('\n== '+pg+' ==');
@@ -147,6 +160,8 @@ function runBot({seed,policy,weight,maxT}){
     const sameOutcome=A.filter((r,i)=>r.over===B[i].over).length;
     console.log(`\n毎フレームの状態が完全に一致: ${same}/${A.length} 戦`);
     console.log(`勝敗が一致: ${sameOutcome}/${A.length} 戦`);
+    if(opt('trace'))A.forEach((r,i)=>{const t2=B[i].trace,k=r.trace.findIndex((x,j)=>x!==t2[j]);
+      if(k>=0)console.log(`seed ${r.seed} ${r.policy}: ${k} フレーム目で ずれた\n  A ${r.trace[k-1]}\n  B ${t2[k-1]}\n  A ${r.trace[k]}\n  B ${t2[k]}`);});
   }
   if(opt('json'))fs.writeFileSync(opt('json'),JSON.stringify(res,null,1));
 })().catch(e=>{console.error(e);process.exit(1);});
