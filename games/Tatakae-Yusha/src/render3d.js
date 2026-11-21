@@ -1,8 +1,7 @@
 // WebGL(Three.js)の描画。ロジックは そのまま、描画だけを 差しかえる
 //
 // かさね順(下から):
-//   #bg … 夜空・遠くの遺跡(いまは Canvas 2D のまま。段階4で 3D にする)
-//   #gl … Three.js。①石だたみの床(シェーダー) ②闘技場とゆかの しるし(画面の座標で描く) ③キャラ
+//   #gl … Three.js。①夜空・星・遺跡の壁・たいまつ(backdrop3d.js) ②石だたみの床(シェーダー) ③闘技場とゆかの しるし(画面の座標で描く) ④キャラ
 //   #c  … HUD(名前・HPバー・ダメージ数字・下のウィンドウ)。移行元の Canvas 2D のコードを そのまま使う。指の操作も ここで受ける
 //
 // カメラ: 移行元の proj() と同じ「視線は水平・画像の中心を 地平線(HZ)へ ずらした」透視投影を、
@@ -12,8 +11,9 @@ import * as THREE from 'three';
 import {CFG} from './config.js';
 import {ctx as hudCtx,CW,CH,DPR,onResize} from './screen.js';
 import {S} from './logic.js';
-import {V,NEAR,setupView,toCam,proj,drawBackdrop,drawArena,drawGroundMarks,charList,charPre,charOverlay,drawEffects,drawHud,useCtx} from './render2d.js';
+import {V,NEAR,setupView,toCam,proj,drawArena,drawGroundMarks,charList,charPre,charOverlay,drawEffects,drawHud} from './render2d.js';
 import {makeChars,setLineResolution} from './three-chars.js';
+import {makeBackdrop} from './backdrop3d.js';
 
 THREE.ColorManagement.enabled=false; // 色は Canvas 2D と同じ値のまま あつかう(sRGB→リニア変換をしない)
 
@@ -129,7 +129,7 @@ void main(){
   vec3 col=t<0.45?mix(c0,c1,t/0.45):mix(c1,c2,(t-0.45)/0.55);
   vec2 p=vec2(vW.x,-vW.z);
   vec3 lc=vec3(8.,12.,32.)/255.;
-  if(abs(p.x-uHero.x)<=46.0&&abs(p.y-uHero.y)<=46.0){
+  if(abs(p.x-uHero.x)<=72.0&&abs(p.y-uHero.y)<=72.0){
     const float GS=2.6;
     vec2 g=p/GS,fw=max(fwidth(g),vec2(1e-4));
     vec2 dp=abs(fract(g+0.5)-0.5)/fw;
@@ -146,7 +146,7 @@ void main(){
 }`;
 
 function setup(){
-  const glCv=document.getElementById('gl'),bgCv=document.getElementById('bg');
+  const glCv=document.getElementById('gl');
   // アンチエイリアスは 画素の こまかい画面(DPR 2以上)では 切る(スマホで おもくなるため)
   const renderer=new THREE.WebGLRenderer({canvas:glCv,antialias:(window.devicePixelRatio||1)<2,alpha:true,powerPreference:'high-performance'});
   renderer.outputColorSpace=THREE.LinearSRGBColorSpace;
@@ -162,6 +162,7 @@ function setup(){
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(6000,6000).rotateX(-Math.PI/2),floorMat);
   floor.frustumCulled=false;
   const floorScene=new THREE.Scene();floorScene.add(floor);
+  const bd=makeBackdrop(floorScene); // 夜空・遺跡の壁・たいまつ
   // 闘技場・ゆかの しるし
   const batch=new Batch(60000);
   const markScene=new THREE.Scene();markScene.add(batch.mesh);
@@ -177,7 +178,7 @@ function setup(){
   flyScene.add(new THREE.AmbientLight(0xffffff,0.52*Math.PI));
   const fdl=new THREE.DirectionalLight(0xffffff,0.62*Math.PI);fdl.position.set(-0.45,0.85,0.55);flyScene.add(fdl);
   const chars=makeChars(charScene,flyScene);
-  R={renderer,glCv,bgCv,bgCtx:bgCv.getContext('2d'),cam,ortho,floor,floorMat,floorScene,batch,markScene,charScene,flyScene,P:makePainter(batch),chars,w:0,h:0,dpr:0};
+  R={renderer,glCv,bd,cam,ortho,floor,floorMat,floorScene,batch,markScene,charScene,flyScene,P:makePainter(batch),chars,w:0,h:0,dpr:0};
   onResize(fit);fit();
 }
 function fit(){
@@ -185,7 +186,6 @@ function fit(){
   if(R.w===CW&&R.h===CH&&R.dpr===DPR)return;
   R.w=CW;R.h=CH;R.dpr=DPR;
   R.renderer.setPixelRatio(DPR);R.renderer.setSize(CW,CH);
-  R.bgCv.width=Math.round(CW*DPR);R.bgCv.height=Math.round(CH*DPR);R.bgCv.style.width=CW+'px';R.bgCv.style.height=CH+'px';
   setLineResolution(CW,CH);
   R.ortho.left=0;R.ortho.right=CW;R.ortho.top=0;R.ortho.bottom=-CH;R.ortho.updateProjectionMatrix();
 }
@@ -202,6 +202,7 @@ function placeCamera(ox,oy){
 
 function drawGL(h,A,ox,oy,list){
   placeCamera(ox,oy);
+  R.bd.update(R.cam.position,Math.atan(V.HZ/V.F),performance.now()/1000,DPR);
   const u=R.floorMat.uniforms;
   R.floor.position.set(Math.round(h.x),0,-Math.round(h.z));
   u.uHero.value.set(h.x,h.z);u.uHZ.value=V.HZ;u.uCH.value=CH;u.uDPR.value=DPR;u.uResH.value=R.glCv.height;u.uOy.value=oy;
@@ -224,11 +225,7 @@ export function render(){
   setupView();
   let ox=0,oy=0;
   if(S.shake>0){ox=(Math.random()-.5)*S.shake*14;oy=(Math.random()-.5)*S.shake*14;} // 移行元と おなじ じゅんばんで 乱数を つかう
-  // 夜空・遠くの遺跡(Canvas 2D)
-  const b=R.bgCtx;
-  b.setTransform(DPR,0,0,DPR,0,0);b.clearRect(0,0,CW,CH);
-  useCtx(b);b.save();b.translate(ox,oy);drawBackdrop();b.restore();useCtx(null);
-  // WebGL: 床 → 闘技場・しるし → キャラ
+  // WebGL: 夜空・遺跡 → 床 → 闘技場・しるし → キャラ
   const list=charList();
   withOwnRandom(()=>drawGL(h,A,ox,oy,list));
   // HUD(Canvas 2D。移行元のコード)

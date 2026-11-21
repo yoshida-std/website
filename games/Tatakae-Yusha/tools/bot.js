@@ -8,6 +8,7 @@
 //          チェックサムも くらべるので、ロジックが 完全に同じかも わかる
 //   オプション: --seeds 20  --policy smart,spam  --weight 70,100,160  --maxT 180
 //   --cam narrow|normal|wide … 視野
+//   --hidebar 1 … 上の設定ウィンドウを かくして 撮る(背景を見る用)
 //   --shotFly 0.15 … 止めの演出が 0.15秒 すすんだところで止めて 画面を保存
 //   --shot 600 --out dir … 各ページで 1戦目を 600フレームで止めて 画面を PNG に保存(見た目の比較用)
 //
@@ -124,6 +125,7 @@ function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace}){
       });
     }
     await ctx.addInitScript(setup);
+    if(opt('hidebar'))await ctx.addInitScript(()=>{try{localStorage.setItem('sumo_bar','0');}catch(_){}});
     if(opt('cam'))await ctx.addInitScript(k=>{try{localStorage.setItem('sumo_cam',k);}catch(_){}},opt('cam'));
     const page=await ctx.newPage();
     const errs=[];page.on('pageerror',e=>errs.push(String(e)));

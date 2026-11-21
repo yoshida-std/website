@@ -43,7 +43,8 @@ function partXform(ops){
 }
 
 const OUTLINE=0x0c0e26; // 移行元の ふちの色 rgba(12,14,38,.85)
-const lineMats=[];      // 画面の大きさが かわったら resolution を あわせる
+const lineMats=[];
+export function trackLineMat(m){lineMats.push(m);}      // 画面の大きさが かわったら resolution を あわせる
 export function setLineResolution(w,h){for(const m of lineMats)m.resolution.set(w,h);}
 
 // ---- 箱モデル(部品の数の 上限 maxParts)----
