@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import {CFG} from './config.js';
 import {ctx as hudCtx,CW,CH,DPR,onResize} from './screen.js';
-import {S} from './logic.js';
+import {S,INTRO} from './logic.js';
 import {V,NEAR,ENEMY_LOOK,setupView,toCam,proj,drawGroundMarks,charList,charPre,charOverlay,drawEffects,drawHud} from './render2d.js';
 import {makeChars,setLineResolution} from './three-chars.js';
 import {makeBackdrop} from './backdrop3d.js';
@@ -243,7 +243,8 @@ function drawGL(h,A,ox,oy,list){
   // キャラの かげ(土俵の石の 色は シェーダー。ここでは やわらかい かげだけ)
   {const E=S.enemies.filter(e=>!e.dead),sh='rgba(0,0,0,.30)';
    R.P.groundCircle(h.x,h.z,h.r*1.7,sh,null,0,24);R.P.groundCircle(S.ally.x,S.ally.z,S.ally.r*1.8,sh,null,0,24);
-   for(const e of E)R.P.groundCircle(e.x,e.z,e.r*ENEMY_LOOK*1.25,sh,null,0,32);}
+   for(const e of E){const k=1-Math.min(1,(e.air||0)/INTRO.air); // 空中の てきは 着地点に ちいさい かげ→ ちかづくほど おおきく こく
+     R.P.groundCircle(e.x,e.z,e.r*ENEMY_LOOK*1.25*(0.35+0.65*k),'rgba(0,0,0,'+(0.12+0.18*k).toFixed(3)+')',null,0,32);}}
   drawGroundMarks(R.P);R.batch.end();
   const blink=Math.floor(S.t*14)%2===0;
   for(const it of list){if(it.c.d<NEAR)continue;charPre(it);}

@@ -1,7 +1,7 @@
 // 移行元: prototype-2d.html の該当部分をそのまま移したもの(import/export だけ足した)
 import {FLICKKEY,setFlickKey,setET,CFG} from './config.js';
 import {stage,barEl,BAR_HIDDEN,measureBar,resize,setBarHidden,CW} from './screen.js';
-import {S,running,setRunning,inp,init,step,tapLock,enemyAt,checkFlick} from './logic.js';
+import {S,running,setRunning,inp,init,step,tapLock,enemyAt,checkFlick,skipIntro} from './logic.js';
 import {render as render2d} from './render2d.js';
 import {render as render3d} from './render3d.js';
 // ふだんは WebGL。?r=2d で 移行元と同じ Canvas 2D の描画(くらべる用)
@@ -66,4 +66,4 @@ document.querySelectorAll('#bar button[data-w]').forEach(b=>{
     init();
   });
 });
-window.__sumo={init,step,render,tapLock,enemyAt,checkFlick,get S(){return S;},inp,CFG};
+window.__sumo={init,step,render,skipIntro,tapLock,enemyAt,checkFlick,get S(){return S;},inp,CFG};

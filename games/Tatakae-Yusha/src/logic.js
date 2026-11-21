@@ -1,5 +1,5 @@
 // 移行元: prototype-2d.html の該当部分をそのまま移したもの(import/export だけ足した)
-import {CFG,FLICK,HERO_Y,ET,LETTER,pickPlan} from './config.js';
+import {CFG,CAM,FLICK,HERO_Y,ET,LETTER,pickPlan} from './config.js';
 import {cv,CW,CH} from './screen.js';
 
 // ================= 状態 =================
@@ -10,16 +10,76 @@ function makeEnemy(i,x,z){
   return {i,x,z,r:ET.r,w:ET.w,speed:ET.speed,color:i===0?ET.color:ET.color2,
     fx:0,fz:-1,gauge:0,tele:0,atkTele:0,atkCd:1.2+i*0.6,stagger:0,flash:0,kx:0,kz:0,
     flankDir:Math.random()<0.5?1:-1,flankT:1.5,target:null,hp:ET.hp,maxHp:ET.hp,dead:false,hate:{hero:0,ally:0},
-    tflash:0,sx:0,sy:0,shw:0,shh:0,sc:30,atkKind:'hit',atkMax:0.7,plan:pickPlan(),dash:0,dashLeft:0,dx:0,dz:1,cx:0,cz:0,hitH:false,hitA:false,info:{contact:false,R:0,wh:0,we:0,angle:'front'}};
+    air:0,tflash:0,sx:0,sy:0,shw:0,shh:0,sc:30,atkKind:'hit',atkMax:0.7,plan:pickPlan(),dash:0,dashLeft:0,dx:0,dz:1,cx:0,cz:0,hitH:false,hitA:false,info:{contact:false,R:0,wh:0,we:0,angle:'front'}};
 }
 export function init(){
   S={
     t:0,over:null,overT:0,shake:0,texts:[],pops:[],lock:0,
     hero:{x:0,z:7.8,r:CFG.hero.r,hp:CFG.hero.hp,stun:0,flash:0,stance:'firm',pushK:0,firmK:1,swingCd:0,swingT:0,swingV:0,pushT:0,sta:100,tired:false,noParry:0,ph:0,mv:0,fr:0,ff:1,yaw3:Math.PI,faceHold:0,idleT:0},
     ally:{x:0,z:5.4,r:CFG.ally.r,hp:CFG.ally.hp,flash:0,castT:1.0},
-    enemies:[makeEnemy(0,-3.5,17.5),makeEnemy(1,3.5,18.5)],beams:[],fly:[],sparks:[],
+    enemies:[makeEnemy(0,-3.5,17.5),makeEnemy(1,3.5,18.5)],beams:[],fly:[],sparks:[],rings:[],
     cam:{yaw:0}
   };
+  // ゲームスタートの演出(ユーザー指示 2026-11-21): カメラが てきを 大きく うつし、てきが 地面に おりたつ。そのあと カメラが ひいて ゲームの いちへ
+  S.intro={t:0,skip:false};
+  S.enemies.forEach(e=>{e.air=INTRO.air;});
+  S.cam.yaw=introState(S).yaw;
+}
+
+// ---- スタート演出 ----
+export const INTRO={
+  dur:4.3,            // ぜんたいの 長さ(秒)
+  start:[0.25,1.75],  // てきA・てきB が おちはじめる 時間
+  fall:0.6,           // おちる 時間
+  air:9,              // おちはじめる たかさ(クローズアップの 画面の うえはし あたりから おちてくる)
+  D:3.6,hh:1.9,fov:0.8,yf:0.66, // クローズアップの カメラ: てきとの きょり・たかさ・画角・てきの足もとの 画面たて位置
+  panA:1.4,panB:2.2,holdB:2.8   // A を うつす→B へ うつる(panA〜panB)→B を うつす→ひく(holdB〜dur)
+};
+const ease3=x=>{x=Math.max(0,Math.min(1,x));return x*x*(3-2*x);};
+function introKf(i){ // てきi の 足もとを 大きく うつす カメラ
+  const h=S.hero,e=S.enemies[i],dx=e.x-h.x,dz=e.z-h.z,d=Math.hypot(dx,dz)||1,ux=dx/d,uz=dz/d;
+  return {cx:e.x-ux*INTRO.D,cz:e.z-uz*INTRO.D,yaw:Math.atan2(ux,uz),h:INTRO.hh,fov:INTRO.fov,fpx:e.x,fpz:e.z,yf:INTRO.yf};
+}
+function introEnd(){ // ゲームの ふだんの カメラ(ゆうしゃの 足もとが 画面のたて半分)
+  const h=S.hero,L=S.enemies[0],yaw=Math.atan2(L.x-h.x,L.z-h.z);
+  return {cx:h.x-Math.sin(yaw)*CAM.back,cz:h.z-Math.cos(yaw)*CAM.back,yaw,h:CAM.h,fov:CAM.fov,fpx:h.x,fpz:h.z,yf:HERO_Y};
+}
+export function introState(S0){
+  const t=S0.intro.t;
+  const K0=introKf(0),K1=introKf(1),K2=introEnd();
+  let a=K0,b=K0,k=0;
+  if(t>=INTRO.holdB){a=K1;b=K2;k=ease3((t-INTRO.holdB)/(INTRO.dur-INTRO.holdB));k=k*k*(3-2*k);}
+  else if(t>=INTRO.panB){a=K1;b=K1;}
+  else if(t>=INTRO.panA){a=K0;b=K1;k=ease3((t-INTRO.panA)/(INTRO.panB-INTRO.panA));}
+  const m=(p,q)=>p+(q-p)*k;
+  return {cx:m(a.cx,b.cx),cz:m(a.cz,b.cz),yaw:a.yaw+Math.atan2(Math.sin(b.yaw-a.yaw),Math.cos(b.yaw-a.yaw))*k,
+    h:m(a.h,b.h),fov:m(a.fov,b.fov),fpx:m(a.fpx,b.fpx),fpz:m(a.fpz,b.fpz),yf:m(a.yf,b.yf)};
+}
+function stepIntro(dt){
+  const I=S.intro;I.t+=dt;
+  S.shake=Math.max(0,S.shake-dt*1.6);
+  S.enemies.forEach((e,i)=>{
+    const tau=I.t-INTRO.start[i],was=e.air;
+    if(tau<0)e.air=INTRO.air;
+    else if(tau<INTRO.fall){const r=tau/INTRO.fall;e.air=INTRO.air*(1-r*r);}
+    else e.air=0;
+    if(was>0&&e.air<=0&&!I.skip){ // おりたった！
+      S.shake=Math.max(S.shake,0.7);
+      addText('ドシン！',e.x,e.z,3.6,'#ffe9b0');
+      S.rings.push({x:e.x,z:e.z,t:0,max:0.8,r:e.r});
+      try{if(navigator.vibrate)navigator.vibrate(30);}catch(_){}
+    }
+  });
+  S.cam.yaw=introState(S).yaw;
+  for(const t of S.texts)t.life-=dt;S.texts=S.texts.filter(t=>t.life>0);
+  for(const q of S.pops)q.life-=dt;S.pops=S.pops.filter(q=>q.life>0);
+  for(const r of S.rings)r.t+=dt;S.rings=S.rings.filter(r=>r.t<r.max);
+  if(I.t>=INTRO.dur){S.intro=null;S.enemies.forEach(e=>{e.air=0;});S.cam.yaw=introEnd().yaw;}
+}
+// タップで とばす(はじまった ばかりは さけて、ゆびの まちがいを ふせぐ)
+export function skipIntro(){
+  if(!S||!S.intro)return;
+  S.intro.skip=true;S.intro.t=INTRO.dur;stepIntro(0);
 }
 function addText(s,x,z,hgt,color){S.texts.push({s,x,z,h:hgt,color,life:1.1});}
 // ダメージ数字(おおきく、はねるように表示)
@@ -84,6 +144,7 @@ cv.addEventListener('pointerdown',e=>{
   e.preventDefault();
   if(S&&S.over){if(S.overT>(S.over==='win'?1.4:0.7))init();return;}
   if(!running||inp.down)return;
+  if(S&&S.intro){if(S.intro.t>0.4)skipIntro();return;} // スタートの演出中は タップで とばす
   const p=pos(e);inp.down=true;inp.id=e.pointerId;inp.ox=p.x;inp.oy=p.y;inp.x=p.x;inp.y=p.y;inp.sx=p.x;inp.sy=p.y;
   inp.t0=performance.now();inp.travel=0;inp.fwd=0;inp.lat=0;
   inp.onEnemy=enemyAt(p.x,p.y);inp.noMove=inp.onEnemy>=0; // てきに重なった操作は いどうに しない
@@ -186,6 +247,7 @@ function fixLock(){
 export function step(dt){
   stepFx(dt);
   if(S.over){S.overT+=dt;S.shake=Math.max(0,S.shake-dt);return;}
+  if(S.intro){stepIntro(dt);return;} // スタートの演出の間は ゲームを とめる
   S.t+=dt;
   const h=S.hero,a=S.ally,A=CFG.arena;
   fixLock();

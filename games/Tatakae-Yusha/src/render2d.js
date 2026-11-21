@@ -3,7 +3,7 @@ import {CFG,CAM,HERO_Y,LETTER,KIND_JP} from './config.js';
 import {ctx as ctx0,CW,CH,DPR,BAR_H,FONT} from './screen.js';
 let ctx=ctx0;
 export function useCtx(c){ctx=c||ctx0;}
-import {S,inp} from './logic.js';
+import {S,inp,introState} from './logic.js';
 
 // ================= 描画 =================
 export let V=null;
@@ -413,6 +413,12 @@ export const P2D={
   dot:(m,col)=>{if(m.d>NEAR){const p=proj(m.l,m.d,0.05);ctx.beginPath();ctx.arc(p.x,p.y,Math.max(4,V.F/m.d*0.18),0,Math.PI*2);ctx.fillStyle=col;ctx.globalAlpha=0.9;ctx.fill();ctx.globalAlpha=1;}}
 };
 export function setupView(){
+  if(S.intro){ // スタートの演出: カメラが てきを 大きく うつし、ゲームの いちまで ひく
+    const I=introState(S),fx=Math.sin(I.yaw),fz=Math.cos(I.yaw),F0=CW*I.fov;
+    const Df=Math.max(0.6,(I.fpx-I.cx)*fx+(I.fpz-I.cz)*fz); // 注目している 点までの きょり
+    V={camX:I.cx,camZ:I.cz,fx,fz,rx:fz,rz:-fx,F:F0,HZ:CH*I.yf-I.h*F0/Df,CAMH:I.h};
+    return V;
+  }
   const h=S.hero,yaw=S.cam.yaw,fx=Math.sin(yaw),fz=Math.cos(yaw);
   const F0=CW*CAM.fov;
   V={camX:h.x-fx*CAM.back,camZ:h.z-fz*CAM.back,fx,fz,rx:fz,rz:-fx,F:F0,HZ:CH*HERO_Y-CAM.h*F0/CAM.back,CAMH:CAM.h};
@@ -424,6 +430,7 @@ export function drawGroundMarks(P){
   const h=S.hero,a=S.ally,E=S.enemies.filter(e=>!e.dead),L=S.enemies[S.lock];
   // てきのねらい線と、てきのまえ
   for(const e of E){
+    if((e.air||0)>0.05)continue; // 空中の てきの しるしは 着地してから
     const pts=[toCam(e.x,e.z)];const base=Math.atan2(e.fz,e.fx);
     for(let i=-4;i<=4;i++){const t=base+i/4*0.61;pts.push(toCam(e.x+Math.cos(t)*3.4,e.z+Math.sin(t)*3.4));}
     P.fillPoly(pts,'rgba(255,80,60,.11)');
@@ -444,6 +451,7 @@ export function drawGroundMarks(P){
   if(st==='firm')P.groundCircle(h.x,h.z,h.r+0.22,null,'rgba(120,220,255,.6)',2);
   P.groundCircle(a.x,a.z,a.r,'rgba(170,120,255,.3)','#c9a0ff',2);
   for(const e of E){
+    if((e.air||0)>0.05)continue;
     const teleOn=e.tele>0;
     P.groundCircle(e.x,e.z,e.r,(teleOn?'rgba(255,60,60,.5)':'rgba(255,110,90,.28)'),teleOn?'#ff5050':'#ff9a8a',2);
     if(e===L)P.groundCircle(e.x,e.z,e.r+0.3,null,'#ffffff',3);
@@ -453,6 +461,12 @@ export function drawGroundMarks(P){
       const m=toCam((h.x+e.x)/2,(h.z+e.z)/2);
       P.dot(m,col);
     }
+  }
+  // 着地の しょうげきは(ひろがる 輪)
+  for(const r of S.rings||[]){
+    const k=r.t/r.max,rad=r.r*(1.1+3.2*k),al=0.85*(1-k);
+    P.groundCircle(r.x,r.z,rad,null,'rgba(255,240,200,'+al.toFixed(3)+')',5*(1-k)+1.5,40);
+    P.groundCircle(r.x,r.z,rad*0.62,null,'rgba(255,200,120,'+(al*0.7).toFixed(3)+')',3*(1-k)+1,32);
   }
 }
 // キャラクターの ならび(奥から手前)
@@ -474,14 +488,15 @@ export function charPre(it){
 // キャラの からだ(Canvas 2D の ローポリ箱モデル)
 function charModel(it,blink){
   const h=S.hero,a=S.ally;
-  const p=proj(it.c.l,it.c.d,0),s=V.F/it.c.d;
+  const air=it.k==='e'?(it.e.air||0):0; // 空中の てきは たかさぶん 上に ずらす
+  const p=proj(it.c.l,it.c.d,air),s=V.F/it.c.d;
   if(it.k==='h')drawHero(p.x,p.y,s,h.flash>0&&blink,h);
   else if(it.k==='a')drawAlly(p.x,p.y,s,a.flash>0&&blink,a.yaw3,a.mv3||0,a.ph3||0,a.castT<0.5?1-a.castT/0.5:0);
   else{
     const e=it.e,teleOn=e.tele>0,atkOn=e.atkTele>0;
     const eye=teleOn?'#ff2020':(atkOn?'#ffd000':null);
     let tint=e.color;if(teleOn&&blink)tint='#c04a40';
-    drawEnemy(p.x,p.y,s,e.flash>0&&blink,eye,tint,e.r,e.yaw3,e.mv3||0,e.ph3||0,teleOn||atkOn,e.stagger>0,e.dash>0);
+    drawEnemy(p.x,p.y,s,e.flash>0&&blink,eye,tint,e.r,e.yaw3,e.mv3||0,e.ph3||0,teleOn||atkOn||air>0.05,e.stagger>0,e.dash>0); // 空中は りょううでを ふりあげて おちてくる
   }
 }
 // キャラの うえの 表示(剣の軌跡・かまえ・ゲージ・ねらい・「！」)。てきの 画面上の位置(タップ・フリック判定用)も ここで きめる
@@ -509,6 +524,7 @@ export function charOverlay(it,blink){
     if(h.tired)txt('いきぎれ',top.x,top.y+16,12,'#ff9a90','center',3);
   }else if(it.k==='e'){
     const e=it.e;
+    if((e.air||0)>0.05)return; // 空中の 間は ゲージや 文字を 出さない
     const teleOn=e.tele>0,atkOn=e.atkTele>0;
     const er=e.r*ENEMY_LOOK; // 見た目の大きさ
     e.sc=s;e.sx=p.x;e.sy=p.y-s*er*1.3;e.shw=Math.max(18,s*er*1.25);e.shh=Math.max(24,s*er*1.45); // タップ・フリック判定用の画面位置と大きさ
