@@ -3,7 +3,7 @@
 ドラクエ10の戦闘「相撲システム」を発展させた、スマホ縦画面・ブラウザのソロゲーム（制作中。ポートフォリオにはまだ載せていない）。公開URL: `https://yoshida-std.github.io/website/games/Tatakae-Yusha/`
 リポジトリ全体の作業ルールはルートの `CLAUDE.md` を参照。
 
-プッシュ前の確認用 Artifact: （まだない。最初に公開したら URL をここに書く）。`index.html` と、`files` で `src/*.js` を同じパスで載せる
+プッシュ前の確認用 Artifact: `https://claude.ai/artifact/WwVmu9QYrayLdxw3Jn8GzQ`（変更のたびにこの URL を更新する。`index.html` と、`files` で `src/*.js` を同じパスで載せる。Artifact 側が外枠を付けるので、載せるときは `<!DOCTYPE>` `<html>` `<head>` `<body>` と charset・viewport の meta を外したコピーを使う）
 
 設計書は `docs/new-sumo-system-design-v3.md`（現行DQ10の整理は `docs/dq10-sumo-system-spec.md`）。作業前に必ず読むこと。数値は【仮】で、調整前提。
 
@@ -16,7 +16,11 @@
 - `src/logic.js` … 状態 `S`・入力 `inp`・`step()`。プロトタイプのコードをそのまま移したもの
 - `src/render2d.js` … Canvas 2D の描画（プロトタイプのまま）
 - `src/main.js` … スマホのブラウザ動作の抑止・ループ・上のウィンドウのボタン・`window.__sumo`
-- Three.js（WebGL）に描画を差し替え中（下の「WebGL化」）。Three.js は importmap で `https://cdn.jsdelivr.net/npm/three@0.186.1/...` から読む（バージョン固定）
+- `src/render3d.js` … Three.js（WebGL）の描画。#bg（夜空。まだ 2D）→ #gl（床・しるし・キャラ）→ #c（HUD。移行元の 2D のコード）の順に重ねる
+- `src/three-chars.js` … キャラの 3D モデル（`{obj, update}` の形。glTF に差し替えやすくする）
+- Three.js は importmap で `https://cdn.jsdelivr.net/npm/three@0.186.1/+esm` から読む（バージョン固定）
+- Three.js は部品を作るときに `Math.random` を使うので、`withOwnRandom` で別の乱数に切りかえてから作る（ゲームの乱数の並びを変えないため）
+- アンチエイリアスは DPR 2 以上では切っている（スマホで重くなるため）
 - `tools/bot.js` … ボット（headless）。使い方は JS 冒頭。`node tools/bot.js --compare prototype-2d.html,index.html` で移行元と勝敗・時間・毎フレームの状態を比べる
 - この作業環境からは cdn.jsdelivr.net に接続できない。確認は `npm i three@0.186.1` をスクラッチに入れ、ボットは環境変数 `THREE_DIR` にその `node_modules/three` を指定する（Playwright で CDN への要求をそこへ回す）
 
@@ -55,7 +59,7 @@
 
 ## WebGL化（進め方）
 0. ロジックを ES モジュールに分ける（描画は Canvas 2D のまま）… 済み
-1. 床・カメラ（キャラは仮の円柱）
+1. 床・カメラ（キャラは仮の円柱）… 済み（`src/render3d.js`・`src/three-chars.js`。`?r=2d` で移行元の描画、`?fps=1` でフレームレート表示）
 2. 勇者
 3. まほうつかい・敵・止めの演出
 4. 背景・仕上げ（フレームレート・読み込みサイズ・メモリ）
