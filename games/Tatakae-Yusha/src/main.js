@@ -1,6 +1,6 @@
 // 移行元: prototype-2d.html の該当部分をそのまま移したもの(import/export だけ足した)
-import {FLICKKEY,setFlickKey,setET,CFG,ET,ENEMY_TYPES} from './config.js';
-import {stage,barEl,BAR_HIDDEN,measureBar,resize,setBarHidden,CW} from './screen.js';
+import {setET,CFG,ET,ENEMY_TYPES} from './config.js';
+import {stage,resize,CW} from './screen.js';
 import {S,running,setRunning,inp,init,step,tapLock,enemyAt,checkFlick,skipIntro,stageId,setParty,getParty,partyKey,KINDS,KIND_LIST,formationId,setFormation} from './logic.js';
 import {STAGES,stageById,stageWeight} from './stages.js';
 import {FORMATIONS,formationById} from './formations.js';
@@ -182,7 +182,7 @@ function showStages(){setRunning(false);buildStageList();document.getElementById
 function pickStage(id){
   lastStage=id;played=true;try{localStorage.setItem('ty_stage',id);}catch(_){}
   stagesEl.style.display='none';
-  resize();init(id);setRunning(true);syncWeightButtons();
+  resize();init(id);setRunning(true);
 }
 // タイトル: 「はじめる」→ ステージ選択 / 「せつめい」→ 説明の画面(「もどる」でタイトルへ)
 const titleEl=document.getElementById('title'),helpEl=document.getElementById('intro');
@@ -196,35 +196,14 @@ document.getElementById('party-back').addEventListener('click',()=>{partyEl.styl
 document.getElementById('howto').addEventListener('click',()=>{titleEl.style.display='none';helpEl.style.display='block';helpEl.scrollTop=0;});
 document.getElementById('help-back').addEventListener('click',()=>{helpEl.style.display='none';titleEl.style.display='flex';});
 document.getElementById('stages-back').addEventListener('click',()=>{stagesEl.style.display='none';titleEl.style.display='flex';});
-document.getElementById('pick').addEventListener('click',showStages);
-document.getElementById('reset').addEventListener('click',()=>{init();});
-// うえのウィンドウ(せってい)を かくす／ひらく
-const btEl=document.getElementById('bt');
-function applyBar(){
-  barEl.style.display=BAR_HIDDEN?'none':'flex';btEl.textContent=BAR_HIDDEN?'▼':'▲';measureBar();
-  try{localStorage.setItem('sumo_bar',BAR_HIDDEN?'0':'1');}catch(_){}
-}
-btEl.addEventListener('click',()=>{setBarHidden(!BAR_HIDDEN);applyBar();});
-applyBar();
-function setFlick(k){
-  setFlickKey(k);
-  document.querySelectorAll('#bar button[data-flick]').forEach(x=>x.classList.toggle('on',x.dataset.flick===k));
-  try{localStorage.setItem('sumo_flick',k);}catch(_){}
-}
-document.querySelectorAll('#bar button[data-flick]').forEach(b=>{
-  b.addEventListener('click',()=>setFlick(b.dataset.flick));
-});
-setFlick(FLICKKEY);
-document.querySelectorAll('#bar button[data-w]').forEach(b=>{
-  b.addEventListener('click',()=>{
-    setET(b.dataset.w);
-    document.querySelectorAll('#bar button[data-w]').forEach(x=>x.classList.toggle('on',x===b));
-    init();
-  });
-});
-// おもさが こていの ステージでは、上の「てきのおもさ」ボタンは きかない(うすく して おす ことも できない)
-function syncWeightButtons(){
-  const fixed=stageWeight(stageById(stageId))!==null;
-  document.querySelectorAll('#bar button[data-w]').forEach(x=>{x.disabled=fixed;x.style.opacity=fixed?'0.4':'';});
-}
-window.__sumo={setParty,setFormation,init,step,render,skipIntro,tapLock,enemyAt,checkFlick,get S(){return S;},inp,CFG};
+// ---- ポーズ(ユーザー指示 2026-11-22: 右上の メニュー(せってい ウィンドウ)を はいし して ポーズに かえた) ----
+// 右上の ボタンで ゲームを とめ、「つづける／やりなおし／ステージえらび／タイトルへ」を 出す。(てきの おもさ・フリックの 感度の せっていは なくした)
+const pauseEl=document.getElementById('pause');
+function pauseGame(){if(!S||!running)return;setRunning(false);pauseEl.style.display='flex';}
+function resumeGame(){pauseEl.style.display='none';last=performance.now();acc=0;inp.down=false;inp.fwd=0;inp.lat=0;setRunning(true);}
+document.getElementById('pauseBtn').addEventListener('click',pauseGame);
+document.getElementById('p-resume').addEventListener('click',resumeGame);
+document.getElementById('p-retry').addEventListener('click',()=>{pauseEl.style.display='none';resize();init();last=performance.now();acc=0;setRunning(true);});
+document.getElementById('p-stages').addEventListener('click',()=>{pauseEl.style.display='none';showStages();});
+document.getElementById('p-title').addEventListener('click',()=>{pauseEl.style.display='none';setRunning(false);titleEl.style.display='flex';});
+window.__sumo={setET,setParty,setFormation,pauseGame,resumeGame,init,step,render,skipIntro,tapLock,enemyAt,checkFlick,get S(){return S;},inp,CFG};

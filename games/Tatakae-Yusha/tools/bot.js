@@ -10,7 +10,6 @@
 //   --stage ogre1h … ステージ(stages.js の id)。既定は 1つめ
 //   --formation tsuru … 陣(src/formations.js の id)。既定は normal
 //   --party mage,priest,warrior … パーティ(ゆうしゃの ほかの さいだい3人。なし=ゆうしゃだけ。しょくは mage / priest / warrior。同じ しょくを かさねても よい)。既定は mage,priest,warrior
-//   --hidebar 1 … 上の設定ウィンドウを かくして 撮る(背景を見る用)
 //   --shotFly 0.15 … 止めの演出が 0.15秒 すすんだところで止めて 画面を保存
 //   --shot 600 --out dir … 各ページで 1戦目を 600フレームで止めて 画面を PNG に保存(見た目の比較用)
 //
@@ -69,7 +68,7 @@ function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace,party,stage,format
   const G=window.__sumo,cv=document.getElementById('c');
   document.getElementById('intro').style.display='none';
   window.__seed(seed);
-  document.querySelector('#bar button[data-w="'+weight+'"]').click(); // init() が よばれる
+  G.setET(weight);                                                     // てきの おもさ(70/100/160)。おもさが こていの ステージでは むし される
   window.__seed(seed);
   G.setFormation(formation);G.setParty(party);                                                   // パーティ(ゆうしゃの ほかの みかた)
   document.getElementById('start').click();                            // ステージ選択を ひらく
@@ -142,7 +141,6 @@ function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace,party,stage,format
       });
     }
     await ctx.addInitScript(setup);
-    if(opt('hidebar'))await ctx.addInitScript(()=>{try{localStorage.setItem('sumo_bar','0');}catch(_){}});
     const page=await ctx.newPage();
     const errs=[];page.on('pageerror',e=>errs.push(String(e)));
     await page.goto(`http://127.0.0.1:${port}/${pg}`);

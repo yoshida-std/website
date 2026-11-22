@@ -47,7 +47,7 @@ export const CFG={
 export const CAM={back:8.2,h:5.2,fov:0.85};
 export const FLICKS={hi:{h:380,v:800,d:30},mid:{h:450,v:900,d:36},lo:{h:600,v:1100,d:48}}; // 速さ(px/秒)・距離(px)【仮】
 export let FLICKKEY='mid';
-try{const k=localStorage.getItem('sumo_flick');if(k&&FLICKS[k])FLICKKEY=k;}catch(_){}
+// フリックの 感度は「ふつう(mid)」に こてい(せってい ウィンドウを なくした。ユーザー指示 2026-11-22)
 export let FLICK=FLICKS[FLICKKEY];
 export const HERO_Y=0.5; // ゆうしゃの足もとの画面たて位置(0=上 1=下)【仮】
 export const ENEMY_TYPES={

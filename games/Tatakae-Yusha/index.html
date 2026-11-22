@@ -16,14 +16,12 @@ canvas{touch-action:none;display:block;position:absolute;left:0;top:0}
 #wrap{position:fixed;left:0;top:0;right:0;bottom:0;box-sizing:border-box;
   padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 #stage{position:relative;width:100%;height:100%;overflow:hidden}
-#bar{position:absolute;left:6px;right:6px;top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:5px;
-  font-size:12px;background:rgba(8,12,70,.78);border:2px solid #fff;border-radius:8px;padding:5px 7px}
-#bar button{font-size:12px;font-weight:bold;color:#fff;background:#1a2290;border:2px solid #9aa5ff;border-radius:6px;padding:5px 8px}
-#bar button.on{background:#e8b923;color:#222;border-color:#fff}
-#bar{padding-right:44px}
-#bt{position:absolute;right:6px;top:6px;z-index:4;width:34px;height:34px;padding:0;font-size:15px;font-weight:bold;color:#fff;background:rgba(26,34,144,.92);border:2px solid #fff;border-radius:8px}
-#bar #pick{margin-left:auto}
-#bar #reset{background:#6a1a1a;border-color:#ffb0b0}
+#pauseBtn{position:absolute;right:6px;top:6px;z-index:4;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;gap:5px;background:rgba(26,34,144,.92);border:2px solid #fff;border-radius:8px}
+#pauseBtn i{display:block;width:5px;height:16px;background:#fff;border-radius:1px}
+#pause{position:absolute;left:10px;right:10px;top:10px;bottom:10px;background:rgba(5,8,50,.84);border:3px solid #fff;border-radius:12px;z-index:8;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+#pause h1{font-size:24px;margin:0 0 14px;text-shadow:0 3px 0 #1a2290}
+#pause button{width:min(240px,70%);font-size:18px;font-weight:bold;color:#fff;background:#1a2290;border:3px solid #9aa5ff;border-radius:10px;padding:10px 0}
+#pause button.main{background:#e8b923;color:#222;border-color:#fff}
 #intro{display:none;position:absolute;left:10px;right:10px;top:10px;bottom:10px;background:rgba(5,8,50,.96);border:3px solid #fff;border-radius:12px;
   padding:14px 16px;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;font-size:14px;line-height:1.6;z-index:5}
 #intro h1{font-size:18px;margin:0 0 6px}
@@ -89,15 +87,7 @@ canvas{touch-action:none;display:block;position:absolute;left:0;top:0}
 <div id="wrap"><div id="stage">
 <canvas id="gl"></canvas>
 <canvas id="c"></canvas>
-<button id="bt" class="menu" aria-label="うえのウィンドウを かくす／ひらく">▲</button>
-<div id="bar" class="menu">
-  <span>てきのおもさ</span>
-  <button data-w="70">かるい</button><button data-w="100" class="on">ふつう</button><button data-w="160">おもい</button>
-  <span>フリック</span>
-  <button data-flick="hi">びんかん</button><button data-flick="mid" class="on">ふつう</button><button data-flick="lo">にぶめ</button>
-  <button id="pick">ステージえらび</button>
-  <button id="reset">やりなおし</button>
-</div>
+<button id="pauseBtn" class="menu" aria-label="ポーズ"><i></i><i></i></button>
 <div id="title" class="menu">
   <h1>戦え！ゆうしゃ<small>ひとりで たたかう バトルゲーム</small></h1>
   <button id="start">はじめる</button>
@@ -128,7 +118,7 @@ canvas{touch-action:none;display:block;position:absolute;left:0;top:0}
     <li>おして おして おしつづけると「ねばりゲージ」が たまり、てきが はんげきしてくる</li>
     <li>てきの<b>まえ</b>は つよく、<b>よこ・うしろ</b>は おもさが さがる。どひょうの ふちから そとには でられない</li>
   </ul>
-  <div class="note">※ 操作感の確認用です。数値はすべて仮で、コマンドなどは未実装です。上のボタンで てきの おもさを切りかえられます。</div>
+  <div class="note">※ 操作感の確認用です。数値はすべて仮で、コマンドなどは未実装です。</div>
   <button id="help-back" class="back">もどる</button>
 </div>
 <div id="party" class="menu">
@@ -136,6 +126,13 @@ canvas{touch-action:none;display:block;position:absolute;left:0;top:0}
   <div class="board" id="pboard"></div>
   <div class="row fm"><div class="badge"><b>じん</b><small>はいち</small></div><div class="carousel"></div></div>
   <button id="party-back" class="back">もどる</button>
+</div>
+<div id="pause" class="menu">
+  <h1>ポーズ</h1>
+  <button id="p-resume" class="main">つづける</button>
+  <button id="p-retry">やりなおし</button>
+  <button id="p-stages">ステージえらび</button>
+  <button id="p-title">タイトルへ</button>
 </div>
 <div id="stages" class="menu scrollable">
   <h1>ステージを えらぶ</h1>

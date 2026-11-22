@@ -20,7 +20,7 @@ const ONLY=process.argv[2];
  for(const id of ids){
    if(ONLY&&ONLY!==id)continue;
    const box=await pg.evaluate(id=>{
-     document.querySelectorAll('#title,#intro,#stages,#bar,#bt,#c').forEach(e=>{e.style.display='none';});
+     document.querySelectorAll('#title,#intro,#stages,#pause,#pauseBtn,#c').forEach(e=>{e.style.display='none';});
      const G=window.__sumo;G.init(id);G.skipIntro();
      // てきを ステージの いちに とめて、ゆうしゃ(カメラのほう)を むかせる(むきは 描画が すこしずつ かえる)
      const ST=G.S.stage;
