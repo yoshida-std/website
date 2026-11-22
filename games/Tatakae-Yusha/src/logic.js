@@ -20,7 +20,7 @@ export let stageId='ogre4';
 export function setStage(id){stageId=stageById(id).id;}
 // ---- パーティ(ゆうしゃは こてい。のこり3わくを えらぶ。ユーザー指示 2026-11-22) ----
 // kind: 'mage'=まほうつかい / 'priest'=そうりょ / 'warrior'=せんし。ステータスは CFG の ally / priest / warrior
-export const KINDS={mage:{cfg:'ally',name:'まほうつかい'},priest:{cfg:'priest',name:'そうりょ'},warrior:{cfg:'warrior',name:'せんし'}};
+export const KINDS={mage:{cfg:'ally',name:'まほう'},priest:{cfg:'priest',name:'そうりょ'},warrior:{cfg:'warrior',name:'せんし'}};
 export const KIND_LIST=['mage','priest','warrior'];
 // はじまりの いちは 陣(src/formations.js)で きまる。ゆうしゃは HERO_START(0,7.8)
 let partyKinds=[];
