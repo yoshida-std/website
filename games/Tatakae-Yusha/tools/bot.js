@@ -107,7 +107,7 @@ function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace}){
   }
   const S=G.S;
   return {over:S.over||'timeout',t:+S.t.toFixed(2),heroHp:S.hero.hp,allyHp:S.ally.hp,
-    enemyHp:S.enemies.reduce((s,e)=>s+e.hp,0),beamsAtEnd:S.beams.length,swingVAtEnd:S.hero.swingV,swings,parries,frames,hash:hash.toString(16),trace:trace?tr:undefined};
+    enemyHp:S.enemies.reduce((s,e)=>s+e.hp,0),beamsAtEnd:S.beams.length,ringsAtEnd:S.rings.length,swingVAtEnd:S.hero.swingV,swings,parries,frames,hash:hash.toString(16),trace:trace?tr:undefined};
 }
 
 (async()=>{

@@ -73,7 +73,6 @@ function stepIntro(dt){
   S.cam.yaw=introState(S).yaw;
   for(const t of S.texts)t.life-=dt;S.texts=S.texts.filter(t=>t.life>0);
   for(const q of S.pops)q.life-=dt;S.pops=S.pops.filter(q=>q.life>0);
-  for(const r of S.rings)r.t+=dt;S.rings=S.rings.filter(r=>r.t<r.max);
   if(I.t>=INTRO.dur){S.intro=null;S.enemies.forEach(e=>{e.air=0;});S.cam.yaw=introEnd().yaw;}
 }
 // ---- ゆうしゃが まけたとき(ユーザー指示 2026-11-21): たおれて、てきに かこまれて ボコボコに される ----
@@ -304,6 +303,7 @@ function stepFx(dt){
   S.fly=S.fly.filter(f=>f.t<1.6);
   for(const q of S.sparks)q.life-=dt;
   S.sparks=S.sparks.filter(q=>q.life>0);
+  for(const r of S.rings)r.t+=dt;S.rings=S.rings.filter(r=>r.t<r.max); // 地面の 輪(着地・魔法の あたった ところ)。ふだんの間も 消す(きえないと あしもとに のこる)
 }
 function hitHero(dmg,nx,nz,kn,note){
   const h=S.hero;h.hp=Math.max(0,h.hp-dmg);h.flash=0.25;S.shake=Math.max(S.shake,0.4);h.x+=nx*kn;h.z+=nz*kn;
