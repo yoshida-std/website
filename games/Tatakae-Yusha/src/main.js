@@ -1,7 +1,7 @@
 // 移行元: prototype-2d.html の該当部分をそのまま移したもの(import/export だけ足した)
 import {FLICKKEY,setFlickKey,setET,CFG,ET} from './config.js';
 import {stage,barEl,BAR_HIDDEN,measureBar,resize,setBarHidden,CW} from './screen.js';
-import {S,running,setRunning,inp,init,step,tapLock,enemyAt,checkFlick,skipIntro,stageId} from './logic.js';
+import {S,running,setRunning,inp,init,step,tapLock,enemyAt,checkFlick,skipIntro,stageId,setParty,getParty,partyKey,KINDS,KIND_LIST} from './logic.js';
 import {STAGES} from './stages.js';
 import {getBest} from './records.js';
 import {render as render2d} from './render2d.js';
@@ -51,14 +51,33 @@ function buildStageList(){
     const img=document.createElement('img');img.src=st.thumb;img.alt=st.name;img.draggable=false;
     const n=document.createElement('b');n.textContent=st.name;
     if(played&&st.id===lastStage){const i=document.createElement('i');i.textContent='まえに あそんだ';n.appendChild(i);}
-    const best=getBest(st.id,ET.w),c=document.createElement('span');
+    const best=getBest(st.id,ET.w,partyKey()),c=document.createElement('span');
     c.textContent='とうばつタイム  '+(best===null?'きろくなし':'ベスト '+best.toFixed(1)+' びょう')+'  ('+ET.name+')';
     b.append(img,n,c);
     b.addEventListener('click',()=>pickStage(st.id));
     listEl.appendChild(b);
   });
 }
-function showStages(){setRunning(false);buildStageList();stagesEl.style.display='block';}
+// ---- パーティせってい(ユーザー指示 2026-11-22) ----
+// ゆうしゃは こてい。のこり3わくを えらぶ(1ばんめ・2ばんめ=ぜんえい、3・4ばんめ=こうえい)。おなじ しょくを かさねても よい。既定は ゆうしゃだけ。ブラウザに おぼえる
+const partyEl=document.getElementById('party');
+try{const q=JSON.parse(localStorage.getItem('ty_party')||'[]');if(Array.isArray(q))setParty(q);}catch(_){}
+function saveParty(){try{localStorage.setItem('ty_party',JSON.stringify(getParty()));}catch(_){}}
+function partyText(){const k=getParty().filter(Boolean);return 'ゆうしゃ'+(k.length?' ＋ '+k.map(x=>KINDS[x].name).join(' ＋ '):'（ひとりで たたかう）');}
+function buildParty(){
+  const cur=getParty();
+  partyEl.querySelectorAll('.row[data-slot]').forEach(row=>{
+    const i=+row.dataset.slot,box=row.querySelector('.chips');box.innerHTML='';
+    for(const k of [null,...KIND_LIST]){
+      const b=document.createElement('button');b.className='chip'+((cur[i]||null)===k?' on':'');b.textContent=k?KINDS[k].name:'なし';
+      b.addEventListener('click',()=>{const a=getParty();while(a.length<3)a.push(null);a[i]=k;setParty(a);saveParty();buildParty();});
+      box.appendChild(b);
+    }
+  });
+}
+let partyFrom='title';
+function showParty(from){partyFrom=from;titleEl.style.display='none';stagesEl.style.display='none';buildParty();partyEl.style.display='block';partyEl.scrollTop=0;}
+function showStages(){setRunning(false);buildStageList();document.getElementById('stageParty').innerHTML='<b>パーティ</b>'+partyText()+'（タップで へんこう）';stagesEl.style.display='block';}
 function pickStage(id){
   lastStage=id;played=true;try{localStorage.setItem('ty_stage',id);}catch(_){}
   stagesEl.style.display='none';
@@ -70,6 +89,9 @@ document.getElementById('start').addEventListener('click',()=>{
   titleEl.style.display='none';helpEl.style.display='none';
   showStages();
 });
+document.getElementById('partyBtn').addEventListener('click',()=>showParty('title'));
+document.getElementById('stageParty').addEventListener('click',()=>showParty('stages'));
+document.getElementById('party-back').addEventListener('click',()=>{partyEl.style.display='none';if(partyFrom==='stages')showStages();else titleEl.style.display='flex';});
 document.getElementById('howto').addEventListener('click',()=>{titleEl.style.display='none';helpEl.style.display='block';helpEl.scrollTop=0;});
 document.getElementById('help-back').addEventListener('click',()=>{helpEl.style.display='none';titleEl.style.display='flex';});
 document.getElementById('stages-back').addEventListener('click',()=>{stagesEl.style.display='none';titleEl.style.display='flex';});
@@ -99,4 +121,4 @@ document.querySelectorAll('#bar button[data-w]').forEach(b=>{
     init();
   });
 });
-window.__sumo={init,step,render,skipIntro,tapLock,enemyAt,checkFlick,get S(){return S;},inp,CFG};
+window.__sumo={setParty,init,step,render,skipIntro,tapLock,enemyAt,checkFlick,get S(){return S;},inp,CFG};

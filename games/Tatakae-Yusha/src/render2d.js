@@ -3,7 +3,7 @@ import {CFG,CAM,HERO_Y,LETTER,KIND_JP} from './config.js';
 import {ctx as ctx0,CW,CH,DPR,BAR_H,FONT} from './screen.js';
 let ctx=ctx0;
 export function useCtx(c){ctx=c||ctx0;}
-import {S,inp,introState,defeatCam,victoryCam,beatPhase,overShowT,overReadyT,lungeLanding,unitOf,warriorSwingK} from './logic.js';
+import {S,inp,introState,defeatCam,victoryCam,beatPhase,overShowT,overReadyT,lungeLanding,unitOf,warriorSwingK,KINDS} from './logic.js';
 
 // ================= 描画 =================
 export let V=null;
@@ -737,7 +737,7 @@ export function setupView(){
 // ゆかの しるし(ねらい線・てきのまえ・こうげきの よこく・当たり円・おしあいの色)
 export function drawGroundMarks(P){
   P=P||P2D;
-  const h=S.hero,a=S.ally,E=S.enemies.filter(e=>!e.dead),L=S.enemies[S.lock];
+  const h=S.hero,E=S.enemies.filter(e=>!e.dead),L=S.enemies[S.lock];
   // てきのねらい線と、てきのまえ
   for(const e of E){
     if((e.air||0)>0.05)continue; // 空中の てきの しるしは 着地してから
@@ -764,9 +764,8 @@ export function drawGroundMarks(P){
   const st=h.stance;
   P.groundCircle(h.x,h.z,h.r,st==='firm'?'rgba(90,200,255,.45)':(st==='push'?'rgba(255,220,90,.45)':'rgba(120,160,255,.3)'),'#8cf',2);
   if(st==='firm')P.groundCircle(h.x,h.z,h.r+0.22,null,'rgba(120,220,255,.6)',2);
-  if(a.hp>0)P.groundCircle(a.x,a.z,a.r,'rgba(170,120,255,.3)','#c9a0ff',2); // たおれたら しるしを 出さない
-  if(S.priest.hp>0)P.groundCircle(S.priest.x,S.priest.z,S.priest.r,'rgba(130,230,170,.3)','#9dffb8',2);
-  if(S.warrior.hp>0)P.groundCircle(S.warrior.x,S.warrior.z,S.warrior.r,'rgba(255,170,90,.3)','#ffc080',2);
+  const KCOL={mage:['rgba(170,120,255,.3)','#c9a0ff'],priest:['rgba(130,230,170,.3)','#9dffb8'],warrior:['rgba(255,170,90,.3)','#ffc080']};
+  for(const u of S.allies)if(u.hp>0)P.groundCircle(u.x,u.z,u.r,KCOL[u.kind][0],KCOL[u.kind][1],2); // たおれたら しるしを 出さない
   // いやしの じん(のっている あいだ HP が もどる。きえる まえは ひかりが よわくなり、ふちが てんめつする)
   for(const z of S.zones||[]){
     const left=1-z.t/z.dur,pul=0.5+0.5*Math.sin(S.t*4),fade=Math.min(1,left*5),blinkOut=left<0.2?(Math.floor(S.t*8)%2?0.5:1):1;
@@ -796,33 +795,32 @@ export function drawGroundMarks(P){
 }
 // キャラクターの ならび(奥から手前)
 export function charList(){
-  const h=S.hero,a=S.ally,E=S.enemies.filter(e=>!e.dead);
+  const h=S.hero,E=S.enemies.filter(e=>!e.dead);
   const list=[];
   list.push({d:toCam(h.x,h.z).d,k:'h',c:toCam(h.x,h.z)});
-  list.push({d:toCam(a.x,a.z).d,k:'a',c:toCam(a.x,a.z)});
-  list.push({d:toCam(S.priest.x,S.priest.z).d,k:'p',c:toCam(S.priest.x,S.priest.z)});
-  list.push({d:toCam(S.warrior.x,S.warrior.z).d,k:'w',c:toCam(S.warrior.x,S.warrior.z)});
+  for(const u of S.allies)list.push({d:toCam(u.x,u.z).d,k:'m',c:toCam(u.x,u.z),u}); // パーティの みかた(まほうつかい・そうりょ・せんし)
   for(const e of E){const c=toCam(e.x,e.z);list.push({d:c.d,k:'e',c,e});}
   list.sort((p,q)=>q.d-p.d);
   return list;
 }
 // キャラの むき(まほうつかい・てき)。描くまえに よぶ
 export function charPre(it){
-  const h=S.hero,a=S.ally,E=S.enemies.filter(e=>!e.dead);
-  if(it.k==='a'){const ta=E.filter(q=>q.hp>0).sort((m,n)=>Math.hypot(m.x-a.x,m.z-a.z)-Math.hypot(n.x-a.x,n.z-a.z))[0];faceTo(a,ta?ta.x:a.x,ta?ta.z:a.z+1,9);}
-  else if(it.k==='w'){const q=S.warrior,ta=E.filter(r=>r.hp>0).sort((m,n)=>Math.hypot(m.x-q.x,m.z-q.z)-Math.hypot(n.x-q.x,n.z-q.z))[0];faceTo(q,ta?ta.x:q.x,ta?ta.z:q.z+1,9);}
-  else if(it.k==='p'){const p=S.priest,ta=E.filter(q=>q.hp>0).sort((m,n)=>Math.hypot(m.x-p.x,m.z-p.z)-Math.hypot(n.x-p.x,n.z-p.z))[0];faceTo(p,ta?ta.x:p.x,ta?ta.z:p.z+1,9);}
+  const h=S.hero,E=S.enemies.filter(e=>!e.dead);
+  if(it.k==='m'){const u=it.u,ta=E.filter(q=>q.hp>0).sort((m,n)=>Math.hypot(m.x-u.x,m.z-u.z)-Math.hypot(n.x-u.x,n.z-u.z))[0];faceTo(u,ta?ta.x:u.x,ta?ta.z:u.z+1,9);}
   else if(it.k==='e'){const e=it.e,tg=e.target?unitOf(e.target):h;faceTo(e,tg.x,tg.z,7);}
 }
 // キャラの からだ(Canvas 2D の ローポリ箱モデル)
 function charModel(it,blink){
-  const h=S.hero,a=S.ally;
+  const h=S.hero;
   const air=it.k==='e'?(it.e.air||0):0; // 空中の てきは たかさぶん 上に ずらす
   const p=proj(it.c.l,it.c.d,air),s=V.F/it.c.d;
   if(it.k==='h')drawHero(p.x,p.y,s,h.flash>0&&blink,h);
-  else if(it.k==='w'){const q=S.warrior;drawWarrior(p.x,p.y,s,q.flash>0&&blink,q.yaw3,q.mv3||0,q.ph3||0,warriorSwingK(q),warriorShoveK(q),allyDown(q));}
-  else if(it.k==='p'){const q=S.priest,pc=priestCast(q);drawPriest(p.x,p.y,s,q.flash>0&&blink,q.yaw3,q.mv3||0,q.ph3||0,pc.c,pc.kind,allyDown(q));}
-  else if(it.k==='a'){const ac=allyCast(a);drawAlly(p.x,p.y,s,a.flash>0&&blink,a.yaw3,a.mv3||0,a.ph3||0,ac.c,ac.kind,allyDown(a));}
+  else if(it.k==='m'){
+    const q=it.u,fl=q.flash>0&&blink;
+    if(q.kind==='warrior')drawWarrior(p.x,p.y,s,fl,q.yaw3,q.mv3||0,q.ph3||0,warriorSwingK(q),warriorShoveK(q),allyDown(q));
+    else if(q.kind==='priest'){const pc=priestCast(q);drawPriest(p.x,p.y,s,fl,q.yaw3,q.mv3||0,q.ph3||0,pc.c,pc.kind,allyDown(q));}
+    else{const ac=allyCast(q);drawAlly(p.x,p.y,s,fl,q.yaw3,q.mv3||0,q.ph3||0,ac.c,ac.kind,allyDown(q));}
+  }
   else{
     const e=it.e,teleOn=e.tele>0,atkOn=e.atkTele>0;
     const eye=teleOn?'#ff2020':(atkOn?'#ffd000':null);
@@ -879,14 +877,14 @@ export function drawEffects(flyCb){
   }
   // 魔法: えいしょう中の ひかりと、とんでいく ほのお
   {
-    const a=S.ally,fireBall=(x,z,hgt,rad,alpha,strong)=>{
+    const fireBall=(x,z,hgt,rad,alpha,strong)=>{
       const c=toCam(x,z);if(c.d<NEAR)return;const p=proj(c.l,c.d,hgt),r=Math.max(3,rad*V.F/c.d);
       const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r);
       g.addColorStop(0,'rgba(255,250,200,'+alpha+')');g.addColorStop(0.35,'rgba('+(strong?'255,130,40':'255,176,60')+','+(alpha*0.9)+')');g.addColorStop(1,'rgba(255,80,20,0)');
       ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();
     };
     ctx.save();ctx.globalCompositeOperation='lighter';
-    if(a.cast&&a.hp>0){ // つえの さきに ひかりが あつまる(つよい魔法は おおきく ゆれる)
+    for(const a of S.allies)if(a.kind==='mage'&&a.cast&&a.hp>0){ // つえの さきに ひかりが あつまる(つよい魔法は おおきく ゆれる)
       const k=Math.min(1,a.cast.t/a.cast.dur),strong=a.cast.kind==='strong';
       fireBall(a.x,a.z,1.9*MAGE_SCALE,(strong?0.35+0.9*k:0.25+0.3*k)*(1+0.06*Math.sin(S.t*30+a.cast.t*30)),0.55+0.4*k,strong);
     }
@@ -900,14 +898,14 @@ export function drawEffects(flyCb){
   }
   // そうりょ: えいしょう中の みどりの ひかりと、いやしの じんの うえに のぼる ひかりの つぶ
   {
-    const q=S.priest,glow=(x,z,hgt,rad,alpha)=>{
+    const glow=(x,z,hgt,rad,alpha)=>{
       const c=toCam(x,z);if(c.d<NEAR)return;const p=proj(c.l,c.d,hgt),r=Math.max(2,rad*V.F/c.d);
       const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r);
       g.addColorStop(0,'rgba(230,255,235,'+alpha+')');g.addColorStop(0.4,'rgba(120,255,160,'+(alpha*0.8)+')');g.addColorStop(1,'rgba(60,220,120,0)');
       ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();
     };
     ctx.save();ctx.globalCompositeOperation='lighter';
-    if(q.cast&&q.hp>0){const k=Math.min(1,q.cast.t/q.cast.dur);glow(q.x,q.z,1.9*PRIEST_SCALE,0.3+0.5*k,0.5+0.4*k);}
+    for(const q of S.allies)if(q.kind==='priest'&&q.cast&&q.hp>0){const k=Math.min(1,q.cast.t/q.cast.dur);glow(q.x,q.z,1.9*PRIEST_SCALE,0.3+0.5*k,0.5+0.4*k);}
     for(const z of S.zones||[]){
       const left=1-z.t/z.dur,fade=Math.min(1,left*5);
       for(let k=0;k<10;k++){
@@ -969,9 +967,17 @@ export function drawEffects(flyCb){
     ctx.globalAlpha=1;
   }
 }
+// 下のウィンドウ用: みかた1人ぶんの 表示(なまえ・HP・MP・ターン・ひとこと・ターンの いろ)
+function hudMember(u){
+  const base={name:KINDS[u.kind].name,hp:u.hp,hpMax:u.maxHp,mp:Math.floor(u.mp),mpMax:u.maxMp};
+  if(u.kind==='warrior')return {...base,turn:u.swing>0?1-u.swing/CFG.warrior.wind:1-Math.max(0,Math.min(1,u.swingCd/CFG.warrior.cd)),note:u.swing>0?'おので きる':(u.shoveV>0?'おす':''),tcol:u.swing>0?'#ffb070':'#ffb030'};
+  const C=CFG[KINDS[u.kind].cfg],ch=u.cast?Math.min(1,u.cast.t/u.cast.dur):1-Math.max(0,Math.min(1,u.castT/(u.cd||1)));
+  if(u.kind==='priest')return {...base,turn:ch,note:u.cast?C[u.cast.kind].name:'',tcol:u.cast?'#7dff9a':'#ffb030'};
+  return {...base,turn:ch,note:u.cast?C[u.cast.kind].name:'',tcol:u.cast?(u.cast.kind==='strong'?'#ff6a3a':'#ffd08a'):'#ffb030'};
+}
 // 画面に固定の表示(指のあと・スティック・上のHUD・下のウィンドウ・おわりの表示)
 export function drawHud(){
-  const h=S.hero,a=S.ally,L=S.enemies[S.lock];
+  const h=S.hero,L=S.enemies[S.lock];
   // 指のあと(はやく うごかしたときの軌跡。フリックがみとめられると輪が出る)
   {
     const nowT=performance.now();
@@ -1020,10 +1026,9 @@ export function drawHud(){
   {
     const party=[
       {name:'ゆうしゃ',hp:h.hp,hpMax:CFG.hero.hp,mp:CFG.hero.mp,mpMax:CFG.hero.mp,turn:h.sta/CFG.sta.max,note:h.tired?'いきぎれ':'',tcol:h.tired?'#ff5a4a':'#ffb030'},
-      {name:'まほうつかい',hp:a.hp,hpMax:CFG.ally.hp,mp:Math.floor(a.mp),mpMax:CFG.ally.mp,turn:a.cast?Math.min(1,a.cast.t/a.cast.dur):1-Math.max(0,Math.min(1,a.castT/(a.cd||1))),note:a.cast?CFG.ally[a.cast.kind].name:'',tcol:a.cast?(a.cast.kind==='strong'?'#ff6a3a':'#ffd08a'):'#ffb030'},
-      {name:'そうりょ',hp:S.priest.hp,hpMax:CFG.priest.hp,mp:Math.floor(S.priest.mp),mpMax:CFG.priest.mp,turn:S.priest.cast?Math.min(1,S.priest.cast.t/S.priest.cast.dur):1-Math.max(0,Math.min(1,S.priest.castT/(S.priest.cd||1))),note:S.priest.cast?CFG.priest[S.priest.cast.kind].name:'',tcol:S.priest.cast?'#7dff9a':'#ffb030'},
-      {name:'せんし',hp:S.warrior.hp,hpMax:CFG.warrior.hp,mp:S.warrior.mp,mpMax:CFG.warrior.mp,turn:S.warrior.swing>0?1-S.warrior.swing/CFG.warrior.wind:1-Math.max(0,Math.min(1,S.warrior.swingCd/CFG.warrior.cd)),note:S.warrior.swing>0?'おので きる':(S.warrior.shoveV>0?'おす':''),tcol:S.warrior.swing>0?'#ffb070':'#ffb030'}
+      ...[1,2,3].map(i=>{const u=S.allies.find(q=>q.slot===i+1);return u?hudMember(u):null;}) // 2〜4ばんめの わく(あいている わくは null)
     ];
+    // パーティの わくは 4つ(ゆうしゃ+3)
     const M=6,G=5,WN=4,WW=(CW-M*2-G*(WN-1))/WN,WH=108,WY=CH-M-WH;
     for(let i=0;i<WN;i++){
       const m=party[i],x=M+i*(WW+G),dead=m&&m.hp<=0;

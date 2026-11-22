@@ -27,7 +27,7 @@ const ONLY=process.argv[2];
      for(let i=0;i<90;i++){
        window.__T+=1000/60;G.step(1/60);
        G.S.enemies.forEach((e,k)=>{e.x=ST.enemies[k].x;e.z=ST.enemies[k].z;e.target='hero';e.hate.hero=50;e.atkCd=99;e.tele=0;e.atkTele=0;e.kx=0;e.kz=0;});
-       G.S.hero.x=0;G.S.hero.z=7.8;G.S.ally.x=0;G.S.ally.z=5.4;
+       G.S.hero.x=0;G.S.hero.z=7.8;
        G.render();
      }
      const E=G.S.enemies;let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;

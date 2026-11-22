@@ -101,7 +101,8 @@ class BoxModel{
 }
 
 export function makeChars(scene,flyScene){
-  const hero=new BoxModel(80),ally=new BoxModel(80),priest=new BoxModel(80),warrior=new BoxModel(80);scene.add(hero.obj,ally.obj,priest.obj,warrior.obj);
+  const hero=new BoxModel(80);scene.add(hero.obj);
+  const allies=[];    // パーティの みかた(3わく ぶん。しょくが かわっても つかいまわす)
   const enemies=[];   // てき1体に 1つ
   const flyPool=[];   // 止めの演出(ざんぞう4つ × とんでいる数)
   // 画面から見た むき(yaw3。0=カメラのほうを向く)→ 世界の むき
@@ -113,23 +114,25 @@ export function makeChars(scene,flyScene){
   }
   return {
     update(S,blink){
-      const h=S.hero,a=S.ally;
+      const h=S.hero;
       // ゆうしゃ
       const hp=heroParts(h);
       hero.set(hp.parts,1,h.flash>0&&blink);
       hero.obj.position.set(h.x,0,-h.z);hero.obj.rotation.y=worldYaw(S,hp.yaw);
-      // まほうつかい(むき・あるきは 描画の faceTo が きめる。移行元と同じ)
-      const ac=allyCast(a),ap=allyParts(a.yaw3,a.mv3||0,a.ph3||0,ac.c,ac.kind,allyDown(a));
-      ally.set(ap.parts,MAGE_SCALE,a.flash>0&&blink); // ゆうしゃと 見た目の 大きさを あわせる
-      ally.obj.position.set(a.x,0,-a.z);ally.obj.rotation.y=worldYaw(S,ap.yaw);
-      // そうりょ(ヒーラー。むき・あるきは 描画の faceTo が きめる)
-      {const q=S.priest,pc=priestCast(q),pp=priestParts(q.yaw3,q.mv3||0,q.ph3||0,pc.c,pc.kind,allyDown(q));
-       priest.set(pp.parts,PRIEST_SCALE,q.flash>0&&blink);
-       priest.obj.position.set(q.x,0,-q.z);priest.obj.rotation.y=worldYaw(S,pp.yaw);}
-      // せんし(むき・あるきは 描画の faceTo が きめる)
-      {const q=S.warrior,wp=warriorParts(q.yaw3,q.mv3||0,q.ph3||0,warriorSwingK(q),warriorShoveK(q),allyDown(q));
-       warrior.set(wp.parts,WARRIOR_SCALE,q.flash>0&&blink);
-       warrior.obj.position.set(q.x,0,-q.z);warrior.obj.rotation.y=worldYaw(S,wp.yaw);}
+      // パーティの みかた(まほうつかい・そうりょ・せんし。むき・あるきは 描画の faceTo が きめる)
+      for(let i=0;i<3;i++){
+        let m=allies[i];
+        if(!m){m=allies[i]=new BoxModel(80);scene.add(m.obj);}
+        const u=S.allies[i];
+        m.obj.visible=!!u;
+        if(!u)continue;
+        let ap,sc;
+        if(u.kind==='warrior'){ap=warriorParts(u.yaw3,u.mv3||0,u.ph3||0,warriorSwingK(u),warriorShoveK(u),allyDown(u));sc=WARRIOR_SCALE;}
+        else if(u.kind==='priest'){const pc=priestCast(u);ap=priestParts(u.yaw3,u.mv3||0,u.ph3||0,pc.c,pc.kind,allyDown(u));sc=PRIEST_SCALE;}
+        else{const ac=allyCast(u);ap=allyParts(u.yaw3,u.mv3||0,u.ph3||0,ac.c,ac.kind,allyDown(u));sc=MAGE_SCALE;} // ゆうしゃと 見た目の 大きさを あわせる
+        m.set(ap.parts,sc,u.flash>0&&blink);
+        m.obj.position.set(u.x,0,-u.z);m.obj.rotation.y=worldYaw(S,ap.yaw);
+      }
       // てき
       S.enemies.forEach((e,i)=>{
         let m=enemies[i];
