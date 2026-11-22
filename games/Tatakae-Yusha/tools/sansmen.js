@@ -22,14 +22,14 @@ const ROOT=path.resolve(__dirname,'..'),T3=process.env.THREE_DIR||'',OUT=process
    // はいけい
    c.fillStyle='#f3f1ea';c.fillRect(0,0,W,H);
    c.strokeStyle='rgba(60,60,80,.07)';c.lineWidth=1;for(let x=0;x<W;x+=40){c.beginPath();c.moveTo(x,0);c.lineTo(x,H);c.stroke();}for(let y=0;y<H;y+=40){c.beginPath();c.moveTo(0,y);c.lineTo(W,y);c.stroke();}
-   c.fillStyle='#2b2540';c.font='bold 44px '+FONT;c.textBaseline='middle';c.fillText('まほうつかい  三面図',60,62);
+   c.fillStyle='#2b2540';c.font='bold 44px '+FONT;c.textBaseline='middle';c.fillText('まほうつかいの 女の子  三面図',60,62);
    c.font='20px '+FONT;c.fillStyle='#6a6580';c.fillText('「戦え！ゆうしゃ」 ローポリ(箱)モデル。ゲームの 実際の 部品から えがいた もの。単位は ゲーム内の 長さ(ゆうしゃの 背たけ ≒ 2.1)',60,104);
    // 部品(アニメの ない ふだんの ポーズ)
    const model=m.allyParts(Math.PI,0,0,0,'',0).parts;
    let top=0;for(const p of model){const hh=p.c[1]+p.s[1]/2+0.3;if(hh>top)top=hh;}
-   const S=330,baseY=1010,cxs=[330,900,1470],views=[['正面図',0],['側面図',Math.PI/2],['背面図',Math.PI]];
+   const S=290,baseY=1010,cxs=[330,900,1470],views=[['正面図',0],['側面図',Math.PI/2],['背面図',Math.PI]];
    // たかさの ガイド
-   const guides=[[0,'ゆか(足もと)'],[0.74,'おび'],[1.34,'かた'],[1.6,'あご'],[1.8,'ぼうしの つば'],[2.5,'ぼうしの さき']];
+   const guides=[[0,'ゆか(足もと)'],[0.865,'おび'],[1.32,'かた'],[1.41,'あご'],[2.02,'ぼうしの つば'],[2.85,'ぼうしの さき']];
    c.font='18px '+FONT;
    for(const [hh,label] of guides){const y=baseY-hh*S;c.strokeStyle=hh===0?'rgba(40,36,60,.55)':'rgba(120,110,160,.35)';c.setLineDash(hh===0?[]:[10,8]);c.lineWidth=hh===0?2:1.5;c.beginPath();c.moveTo(40,y);c.lineTo(W-40,y);c.stroke();c.setLineDash([]);c.fillStyle='#5a5575';c.textAlign='left';c.fillText(hh.toFixed(2)+'  '+label,48,y-12);}
    // 中心線と モデル
@@ -48,12 +48,12 @@ const ROOT=path.resolve(__dirname,'..'),T3=process.env.THREE_DIR||'',OUT=process
     c.font='20px '+FONT;c.textAlign='left';c.fillStyle='#8a5a2a';c.fillText('まえ',x+240,y);}
    // 寸法(はば・おくゆき)
    const dim=(x1,x2,y,label)=>{c.strokeStyle='#3a3560';c.fillStyle='#3a3560';c.lineWidth=1.5;c.beginPath();c.moveTo(x1,y);c.lineTo(x2,y);c.stroke();for(const x of [x1,x2]){c.beginPath();c.moveTo(x,y-10);c.lineTo(x,y+10);c.stroke();}c.font='19px '+FONT;c.textAlign='center';c.fillText(label,(x1+x2)/2,y+26);};
-   dim(cxs[0]-0.37*S,cxs[0]+0.37*S,baseY+52,'ローブの はば 0.74');
-   dim(cxs[1]-0.25*S,cxs[1]+0.25*S,baseY+52,'ローブの おくゆき 0.50');
-   dim(cxs[2]-0.37*S,cxs[2]+0.37*S,baseY+52,'ローブの はば 0.74');
+   dim(cxs[0]-0.43*S,cxs[0]+0.43*S,baseY+52,'スカートの はば 0.86');
+   dim(cxs[1]-0.33*S,cxs[1]+0.33*S,baseY+52,'スカートの おくゆき 0.66');
+   dim(cxs[2]-0.43*S,cxs[2]+0.43*S,baseY+52,'スカートの はば 0.86');
    c.textAlign='left';
    // いろ
-   const sw=[['#6a46b8','ローブ(中)'],['#5b3aa0','ローブ(こい)'],['#7352c8','ローブ(うす)'],['#3f2a80','えり・ぼうしの つば'],['#4a32a0','ぼうし'],['#e0b84a','金(おび・ふち)'],['#f1c9a0','はだ'],['#e9e6f2','ひげ'],['#a0702a','つえ'],['#7cf5ff','たま(えいしょう中は オレンジ)'],['#4a3320','くつ'],['#14122a','め']];
+   const sw=[['#6a46b8','うわぎ・スカート(した)'],['#5b3aa0','スカート(うえ)・えり'],['#5a32a8','ぼうし'],['#4a2a90','ぼうしの つば・フード'],['#e0b84a','金(おび・ふち・リボン)'],['#f6d9bd','はだ'],['#c9783a','かみ'],['#e0a060','みつあみの さき'],['#f1ece0','くつした・すその ふち'],['#4a3320','くつ'],['#8a5a2a','つえ'],['#7cf5ff','クリスタル(詠唱中は 橙)']];
    c.fillStyle='#2b2540';c.font='bold 26px '+FONT;c.textAlign='left';c.fillText('いろ',60,1170);
    sw.forEach((q,i)=>{const col=i%6,row=Math.floor(i/6),x=190+col*265,y=1145+row*62;
      c.fillStyle=q[0];c.fillRect(x,y-20,38,38);c.strokeStyle='rgba(20,18,40,.6)';c.lineWidth=1.5;c.strokeRect(x,y-20,38,38);

@@ -100,7 +100,7 @@ class BoxModel{
 }
 
 export function makeChars(scene,flyScene){
-  const hero=new BoxModel(80),ally=new BoxModel(60);scene.add(hero.obj,ally.obj);
+  const hero=new BoxModel(80),ally=new BoxModel(80);scene.add(hero.obj,ally.obj);
   const enemies=[];   // てき1体に 1つ
   const flyPool=[];   // 止めの演出(ざんぞう4つ × とんでいる数)
   // 画面から見た むき(yaw3。0=カメラのほうを向く)→ 世界の むき
