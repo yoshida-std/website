@@ -124,7 +124,9 @@ function stepVictory(dt){
   h.yaw3=Math.PI+(C.yaw-V.yaw); // せかいで みた むきを かえずに、カメラが まわった ぶん だけ ゆうしゃも まわる(さいごは カメラのほうを むく)
   const pt=V.t-1.0;
   if(pt>0.3&&!V.said){V.said=true;addText({easy:'パッパッ',normal:'やったー！',close:'ぜぇ…ぜぇ…'}[V.grade],h.x,h.z,2.7,'#ffffff');}
-  if(V.grade==='easy'&&pt>0.3){ // ほこりが ぱらぱら おちる
+  if(V.grade==='close'&&pt>0.3&&V.t>=(V.pantT||0)){V.pantT=V.t+1.9;addText('ぜぇ…ぜぇ…',h.x+(Math.random()-0.5)*0.8,h.z,2.5,'#ffffff');} // いきを あげて ときどき
+  if(V.grade==='easy'&&pt>=3.45&&!V.sheathed){V.sheathed=true;addText('チャキン！',h.x,h.z,2.7,'#cfe8ff');S.shake=Math.max(S.shake,0.15);}
+  if(V.grade==='easy'&&pt>0.4&&pt<2.05){ // ほこりを はらう 3回の あいだだけ ぱらぱら おちる
     V.dustT-=dt;
     while(V.dustT<=0){V.dustT+=0.07;
       S.dust.push({x:h.x+(Math.random()-0.5)*0.9,z:h.z+(Math.random()-0.5)*0.3,h:1.0+Math.random()*0.7,vx:(Math.random()-0.5)*0.8,vz:0,vh:-0.5-Math.random()*0.6,life:0.9,r:1+Math.random()*1.6,col:Math.random()<0.5?'#ffffff':'#d8cfb8'});}
@@ -246,8 +248,10 @@ function separate(a,b,wa,wb){ // 重さの比で重なりを解消
     a.x-=nx*dep*sa;a.z-=nz*dep*sa;b.x+=nx*dep*sb;b.z+=nz*dep*sb;}
 }
 // けっかの 表示と タップで もういちど が できる までの 時間(ゆうしゃが たおれたときは 演出の あと)
-export function overReadyT(kind){return kind==='win'?3.4:(kind==='hero'?3.0:0.7);}
-export function overShowT(kind){return kind==='win'?3.0:(kind==='hero'?2.6:0);}
+// かったときは ポーズが おわる ころ(よゆうは 剣を さやに おさめる まで ながい)に 結果を 出す
+const winShowT=()=>S&&S.victory&&S.victory.grade==='easy'?5.2:3.0;
+export function overReadyT(kind){return kind==='win'?winShowT()+0.4:(kind==='hero'?3.0:0.7);}
+export function overShowT(kind){return kind==='win'?winShowT():(kind==='hero'?2.6:0);}
 function endGame(kind){
   S.over=kind;S.overT=0;inp.down=false;inp.fwd=0;inp.lat=0;inp.flickPending=false;
   if(kind==='win'){ // かった: かちかたで 3つの ポーズ(ゆうしゃの HP の わりあいで きめる)
