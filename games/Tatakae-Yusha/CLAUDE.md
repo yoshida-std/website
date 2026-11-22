@@ -27,6 +27,10 @@
 - `tools/bot.js` … ボット（headless）。使い方は JS 冒頭。`node tools/bot.js --compare prototype-2d.html,index.html` で移行元と勝敗・時間・毎フレームの状態を比べる
 - この作業環境からは cdn.jsdelivr.net に接続できない。確認は `npm i three@0.186.1` をスクラッチに入れ、ボットは環境変数 `THREE_DIR` にその `node_modules/three` を指定する（Playwright で CDN への要求をそこへ回す）
 
+## キャラクターデザインのスキル
+- キャラを足す・デザインを変える・三面図を作る・画像生成AIにデザインを頼む、ときは、プロジェクトのスキル **`.claude/skills/tatakae-character-design/`**（`SKILL.md`）を使う。箱モデルの決まり（部品 80個以内・座標・回転・大きさの倍率）、今のキャラの数値と色、画像AIに渡す文面（三面図・色ちがい・ポーズ・デザイン変更）、チェックリストが入っている
+- キャラの数値を変えたら、`.claude/skills/tatakae-character-design/references/characters.md` の表も合わせて直す
+
 ## 方針
 - ゲームロジックは平面(x,z)の円。描画だけを差し替える。ロジック・数値(CFG)・入力処理は変更しない
 - 返事・UI文言は日本語。ゲーム内の文字はひらがな中心、ドラクエ風の枠
