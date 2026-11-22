@@ -133,7 +133,8 @@ export function makeChars(scene,flyScene){
         m.set(ap.parts,sc,u.flash>0&&blink);
         m.obj.position.set(u.x,0,-u.z);m.obj.rotation.y=worldYaw(S,ap.yaw);
       }
-      // てき
+      // てき(ステージの てきの 数が へったとき、つかわれなくなった モデルは かくす。かくさないと 前の ステージの てきが 宙に のこる)
+      for(let i=S.enemies.length;i<enemies.length;i++)enemies[i].obj.visible=false;
       S.enemies.forEach((e,i)=>{
         let m=enemies[i];
         if(!m){m=enemies[i]=new BoxModel(80);scene.add(m.obj);}
