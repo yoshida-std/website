@@ -3,7 +3,7 @@ import {CFG,CAM,HERO_Y,LETTER,KIND_JP} from './config.js';
 import {ctx as ctx0,CW,CH,DPR,BAR_H,FONT} from './screen.js';
 let ctx=ctx0;
 export function useCtx(c){ctx=c||ctx0;}
-import {S,inp,introState,defeatCam,beatPhase,overShowT,overReadyT} from './logic.js';
+import {S,inp,introState,defeatCam,victoryCam,beatPhase,overShowT,overReadyT} from './logic.js';
 
 // ================= 描画 =================
 export let V=null;
@@ -87,12 +87,19 @@ export function heroParts(h){
   // おす・ふんばるの ポーズ(ユーザー指示 2026-11-21)
   //  おす: りょうてを まえに のばして おす。からだを まえに かたむけ、足は 前後に ひらく
   //  ふんばる: りょうあしを ひらき、りょううでも ひらきぎみに。こきゅうの ように からだが ゆれる
-  const pk=h?(h.pushK||0):0,fk=h?(h.firmK||0):0,br=Math.sin(t*3.0);
-  const bob=Math.sin(t*2)*0.012-Math.abs(Math.sin(ph))*0.04*mv+fk*(-0.05+0.022*br)-pk*0.02;
+  let pk=h?(h.pushK||0):0,fk=h?(h.firmK||0):0;const br=Math.sin(t*3.0);
+  // かったときの ポーズ(ユーザー指示 2026-11-22): カメラが 正面へ まわる あいだに、ふんばりの 姿勢から うつりかわる
+  //  よゆう(easy): ひだりてで 服の ほこりを はらう / ふつう(normal): ガッツポーズ(みぎてに 剣を たかく、ひだりこぶしを つきあげ、はねる)
+  //  しんしょう(close): あぐらで すわりこみ、ひだりてで グッド(おやゆび)
+  const VIC=(S.victory&&S.over==='win'&&h&&h===S.hero)?S.victory:null;
+  let vk=0,vt=0,vg='';
+  if(VIC){vt=Math.max(0,VIC.t-1.0);vk=Math.min(1,vt/0.5);vk=vk*vk*(3-2*vk);vg=VIC.grade;fk=1-vk;pk=0;}
+  const bob=Math.sin(t*2)*0.012-Math.abs(Math.sin(ph))*0.04*mv+fk*(-0.05+0.022*br)-pk*0.02+(vg==='easy'?0.02*Math.sin(vt*5)*vk:0)+(vg==='close'?0.015*Math.sin(vt*2.2)*vk:0);
   // ---- 足(あるくと こうごに ふる) ----
   const legSw=Math.sin(ph)*0.75*mv;
   for(const sx of [-1,1]){
-    const px=sx*0.14,ops=[{t:'x',a:sx*legSw*(1-0.5*pk)+pk*(sx>0?-0.42:0.32),p:[px,0.68,0]},{t:'z',a:sx*0.36*fk,p:[px,0.68,0]}];
+    const px=sx*0.14,LP=[px,0.68,0];
+    const ops=[{t:'x',a:sx*legSw*(1-0.5*pk)+pk*(sx>0?-0.42:0.32)+(vg==='close'?-1.25*vk:0),p:LP},{t:'z',a:sx*(0.36*fk+(vg==='normal'?0.2*vk:0)),p:LP},{t:'y',a:vg==='close'?-sx*0.6*vk:0,p:LP}]; // しんしょうは あぐら(りょうあしを まえへ たおして ×に くむ)
     B(px,0.40,0,0.2,0.56,0.22,'#e3a97c',ops);           // あし
     B(px,0.19,0.01,0.215,0.2,0.235,'#f1ece0',ops);       // しろい たび
     B(px,0.07,0.07,0.24,0.1,0.36,'#7a5230',ops);         // わらじ
@@ -141,12 +148,20 @@ export function heroParts(h){
   const legCount=parts.length; // ここまでが 足。これより うえが からだ(かたむける)
   // ---- ひだりうで(こて・あるくと ふる。おす: まえへ のばす。ふんばる: ひらく) ----
   const sp11=Math.sin(t*11);
-  const aL=-Math.sin(ph)*0.7*mv*(1-pk)+pk*(-1.45+0.05*sp11)+fk*(-0.15);
-  const la=[{t:'x',a:aL,p:[0.38,1.34+bob,0]},{t:'y',a:-0.29*pk,p:[0.38,1.34+bob,0]},{t:'z',a:(0.55+0.07*br)*fk,p:[0.38,1.34+bob,0]}];
+  let aL=-Math.sin(ph)*0.7*mv*(1-pk)+pk*(-1.45+0.05*sp11)+fk*(-0.15),lY=-0.29*pk,lZ=(0.55+0.07*br)*fk;
+  if(vk>0){
+    let tA=aL,tY=lY,tZ=lZ;
+    if(vg==='easy'){tA=-1.0+0.55*Math.sin(vt*10);tY=-0.55;tZ=0;}                 // むねの まえで 上下に はらう
+    else if(vg==='normal'){tA=-1.75-0.35*Math.sin(vt*6.5+Math.PI);tY=-0.25;tZ=0.12;} // こぶしを つきあげる
+    else{tA=-1.85;tY=-0.15;tZ=0;}                                                // グッド
+    aL+=(tA-aL)*vk;lY+=(tY-lY)*vk;lZ+=(tZ-lZ)*vk;
+  }
+  const la=[{t:'x',a:aL,p:[0.38,1.34+bob,0]},{t:'y',a:lY,p:[0.38,1.34+bob,0]},{t:'z',a:lZ,p:[0.38,1.34+bob,0]}];
   B(0.38,1.19+bob,0,0.16,0.3,0.16,'#e8b184',la);
   B(0.38,0.89+bob,0,0.21,0.3,0.21,'#8d96a8',la);
   B(0.38,0.89+bob,0,0.225,0.05,0.225,'#e0b84a',la);
   B(0.38,0.68+bob,0,0.13,0.11,0.13,'#e8b184',la);
+  if(vg==='close'&&vk>0.3)B(0.38,0.68+bob,0.1,0.06,0.07,0.17,'#e8b184',la,0.02); // おやゆび(グッド)
   // ---- みぎうで + 広刃の剣(フリックで ふる) ----
   const a0=-1.15+0.55*fk-0.3*pk+0.05*pk*sp11;let aA=a0,bA=0.29*pk,swK=0,swQ=0,swU=0,swVv=0,swingOps=[];
   const PB=[-0.38,1.34+bob,0];
@@ -172,22 +187,36 @@ export function heroParts(h){
     swQ=q;
     swingOps=[{t:'z',a:-phi,p:PB},{t:'x',a:sgn*TH*q,p:PB},{t:'z',a:phi,p:PB}];
   }
-  const ra=[{t:'x',a:aA,p:PB},{t:'y',a:bA,p:PB},{t:'z',a:-(0.55+0.07*br)*fk*(1-swK),p:PB}].concat(swingOps);
+  let wr=0,rZ=0;
+  if(vk>0){ // かったときの みぎうで(剣)
+    let tA=aA;
+    if(vg==='easy')tA=-0.45;                                        // 剣を おろして もつ
+    else if(vg==='normal'){tA=-2.45+0.25*Math.sin(vt*6.5);rZ=-0.2*vk;} // 剣を たかく かかげる
+    else tA=0.2;                                                    // 剣を ひざに のせる
+    aA+=(tA-aA)*vk;bA*=(1-vk);
+    if(vg==='close')bA-=1.2*vk; // 剣は からだの よこに ねかせる(カメラのほうへ むけない)
+    if(vg==='normal')wr=vk*(-Math.PI/2-aA); else if(vg==='close')wr=vk*(-aA); // 手首: 剣を まっすぐ たてる / ゆかと へいこうに
+  }
+  const ra=[{t:'x',a:aA,p:PB},{t:'y',a:bA,p:PB},{t:'z',a:-(0.55+0.07*br)*fk*(1-swK)+rZ,p:PB}].concat(swingOps);
+  const rs=wr?ra.concat([{t:'x',a:wr,p:h3apply([-0.38,0.70+bob,0],ra)}]):ra; // 剣だけ 手首で まげる
   B(-0.38,1.19+bob,0,0.16,0.3,0.16,'#e8b184',ra);
   B(-0.38,0.89+bob,0,0.21,0.3,0.21,'#8d96a8',ra);
   B(-0.38,0.89+bob,0,0.225,0.05,0.225,'#e0b84a',ra);
   B(-0.38,0.70+bob,0,0.13,0.13,0.13,'#e8b184',ra);
-  B(-0.38,0.70+bob,0.06,0.07,0.07,0.26,'#7a2a2a',ra);                  // つか
-  B(-0.38,0.70+bob,-0.1,0.09,0.09,0.06,'#e0b84a',ra);                  // かしら
-  B(-0.38,0.70+bob,0.2,0.28,0.06,0.06,'#e0b84a',ra);                   // つば
-  B(-0.38,0.70+bob,0.74,0.2,0.04,1.0,'#e4eaf3',ra,0.01);               // 刃(ひろい)
-  B(-0.47,0.70+bob,0.74,0.04,0.07,1.0,'#aab6c8',ra);                   // むね
-  B(-0.38,0.70+bob,1.30,0.12,0.04,0.14,'#e4eaf3',ra);                  // きっさき
-  B(-0.38,0.70+bob,1.38,0.05,0.04,0.06,'#e4eaf3',ra);
+  B(-0.38,0.70+bob,0.06,0.07,0.07,0.26,'#7a2a2a',rs);                  // つか
+  B(-0.38,0.70+bob,-0.1,0.09,0.09,0.06,'#e0b84a',rs);                  // かしら
+  B(-0.38,0.70+bob,0.2,0.28,0.06,0.06,'#e0b84a',rs);                   // つば
+  B(-0.38,0.70+bob,0.74,0.2,0.04,1.0,'#e4eaf3',rs,0.01);               // 刃(ひろい)
+  B(-0.47,0.70+bob,0.74,0.04,0.07,1.0,'#aab6c8',rs);                   // むね
+  B(-0.38,0.70+bob,1.30,0.12,0.04,0.14,'#e4eaf3',rs);                  // きっさき
+  B(-0.38,0.70+bob,1.38,0.05,0.04,0.06,'#e4eaf3',rs);
   // からだ(足より うえ)を こしを中心に かたむける: おす=まえへ、ふんばる=こきゅうで ゆらぐ
   // ふるときは からだも ひねり、うえへ ふれば のけぞり したへ ふれば まえへ かたむく
-  const lean=0.24*pk+0.05*fk+0.035*br*fk-0.14*swVv*swQ,twist=0.3*swU*swQ*cy0;
+  const lean=0.24*pk+0.05*fk+0.035*br*fk-0.14*swVv*swQ+vk*(vg==='easy'?0.1:(vg==='normal'?-0.1+0.03*Math.sin(vt*6.5):(vg==='close'?0.14+0.03*Math.sin(vt*2.2):0))),twist=0.3*swU*swQ*cy0;
   if(lean||twist){const lo=[{t:'y',a:twist,p:[0,0.7,0]},{t:'x',a:lean,p:[0,0.7,0]}];for(let i=legCount;i<parts.length;i++)parts[i].ops=parts[i].ops.concat(lo);}
+  // かったときの うごき: ふつうは はねる / しんしょうは こしを ゆかへ おとす
+  {const ys=vg==='normal'?0.3*Math.max(0,Math.sin(vt*6.5))*vk:(vg==='close'?-0.55*vk:0);
+   if(ys)for(const pt of parts){pt.c=[pt.c[0],pt.c[1]+ys,pt.c[2]];pt.ops=pt.ops.map(o=>({t:o.t,a:o.a,p:[o.p[0],o.p[1]+ys,o.p[2]]}));}}
   // 痛恨の一撃で ふっとぶ / まけて たおれる(ユーザー指示 2026-11-21): うしろむきに 1回転して とび、あおむけに たおれ、(たおれたままでなければ)おきあがる
   let yawOut=yaw;
   const crit=h&&h.hitT>=0&&h.stunMax>0,fallen=h&&h.dead&&!crit;
@@ -436,8 +465,8 @@ export const P2D={
   dot:(m,col)=>{if(m.d>NEAR){const p=proj(m.l,m.d,0.05);ctx.beginPath();ctx.arc(p.x,p.y,Math.max(4,V.F/m.d*0.18),0,Math.PI*2);ctx.fillStyle=col;ctx.globalAlpha=0.9;ctx.fill();ctx.globalAlpha=1;}}
 };
 export function setupView(){
-  if(S.intro||S.defeat){ // スタートの演出(てきを 大きく うつして ひく)/ まけたときの カメラ(ゆうしゃへ よる)
-    const I=S.intro?introState(S):defeatCam(S),fx=Math.sin(I.yaw),fz=Math.cos(I.yaw),F0=CW*I.fov;
+  if(S.intro||S.defeat||(S.victory&&S.over==='win')){ // スタートの演出 / まけたときの カメラ / かったときの カメラ(ゆうしゃの 正面へ まわる)
+    const I=S.intro?introState(S):(S.defeat?defeatCam(S):victoryCam(S)),fx=Math.sin(I.yaw),fz=Math.cos(I.yaw),F0=CW*I.fov;
     const Df=Math.max(0.6,(I.fpx-I.cx)*fx+(I.fpz-I.cz)*fz); // 注目している 点までの きょり
     V={camX:I.cx,camZ:I.cz,fx,fz,rx:fz,rz:-fx,F:F0,HZ:CH*I.yf-I.h*F0/Df,CAMH:I.h};
     return V;
@@ -597,6 +626,12 @@ export function drawEffects(flyCb){
     txt('キラーン！',tx,ty,22,'#ffe36a','center',5);
     ctx.restore();
   }
+  // ほこり(かったときの ほこりはらい)
+  for(const d of S.dust||[]){
+    const c=toCam(d.x,d.z);if(c.d<NEAR)continue;const p=proj(c.l,c.d,d.h);
+    ctx.globalAlpha=Math.min(1,d.life*2)*0.85;ctx.fillStyle=d.col;ctx.beginPath();ctx.arc(p.x,p.y,d.r*V.F/c.d*0.06+1.2,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
   // ダメージ数字
   for(const q of S.pops){
     const c=toCam(q.x,q.z);if(c.d<NEAR)continue;
@@ -684,12 +719,16 @@ export function drawHud(){
   for(const l of hint){if(y<PY+PH-4){txt(l,PX+12,y,fs-1,'#c8cdff');y+=fs*1.45;}}
 
   if(S.over&&S.overT>=overShowT(S.over)){
-    ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(0,0,CW,CH);
-    // ゆうしゃが たおれた ときは 演出(倒れた ゆうしゃと てき)と かさならないよう、文字を 上へ あげる
-    const TY=S.over==='hero'?Math.max(BAR_H+58,CH*0.15):CH*0.38;
-    txt(S.over==='win'?'てきを ぜんぶ たおした！':(S.over==='hero'?'ゆうしゃは たおれた…':'まほうつかいが たおれた…'),CW/2,TY,22,S.over==='win'?'#ffe36a':'#fff','center',5);
-    txt((S.over==='win'?'クリアタイム  ':'もちこたえた時間  ')+S.t.toFixed(1)+' びょう',CW/2,TY+36,18,'#ffe36a','center',4);
-    if(S.overT>overReadyT(S.over))txt('タップで もういちど',CW/2,TY+76,16,'#cfd4ff','center',3);
+    const win=S.over==='win';
+    // ゆうしゃが たおれた/かった ときは 演出と かさならないよう 文字を 上へ あげる(かったときは 暗幕を うすく)
+    const TY=(win||S.over==='hero')?Math.max(BAR_H+58,CH*0.15):CH*0.38;
+    if(win){ctx.fillStyle='rgba(0,0,0,.42)';rr(CW*0.04,TY-28,CW*0.92,win?130:100,12);ctx.fill();}
+    else{ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(0,0,CW,CH);}
+    txt(win?'てきを ぜんぶ たおした！':(S.over==='hero'?'ゆうしゃは たおれた…':'まほうつかいが たおれた…'),CW/2,TY,22,win?'#ffe36a':'#fff','center',5);
+    let ly=TY+36;
+    if(win&&S.victory){txt({easy:'よゆうの しょうり！',normal:'しょうり！',close:'ぎりぎりの しょうり…！'}[S.victory.grade],CW/2,ly,18,'#7dff9a','center',4);ly+=30;}
+    txt((win?'クリアタイム  ':'もちこたえた時間  ')+S.t.toFixed(1)+' びょう',CW/2,ly,win?15:18,'#ffe36a','center',4);ly+=win?28:40;
+    if(S.overT>overReadyT(S.over))txt('タップで もういちど',CW/2,ly,16,'#cfd4ff','center',3);
   }
 }
 

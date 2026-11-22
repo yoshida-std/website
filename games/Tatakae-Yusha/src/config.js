@@ -10,6 +10,8 @@ export const CFG={
   counter:{tele:0.75,dmg:36,dmgFirm:14,stagger:1.2,reach:0.9,knock:7,
     // 痛恨の一撃(ふんばらずに うけた はんげき): ふっとび、しばらく うごけない【仮】
     crit:{dist:7,stun:2.0,k:6}},
+  // 勝ち方(かった ときの ゆうしゃの HP の わりあい): よゆう / ふつう / しんしょう【仮】
+  victory:{easy:0.7,close:0.35},
   enemyAtk:{tele:0.7,dmgAlly:15,dmgHero:18,dmgHeroFirm:8,cd:1.0,reachAlly:0.7,reachHero:0.2},
   atkSweep:{tele:0.95,r:2.6,dmgHero:16,dmgHeroFirm:7,dmgAlly:13,knock:1.4},   // なぎはらい(まわり全部)【仮】
   atkCharge:{tele:0.9,track:0.45,speed:20,minD:3.0,maxD:9.5,over:2.0,dmgHero:20,dmgHeroFirm:9,dmgAlly:18,knock:1.2,rest:0.7}, // とっしん【仮】
