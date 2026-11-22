@@ -52,7 +52,11 @@ canvas{touch-action:none;display:block;position:absolute;left:0;top:0}
 #party .card{flex:0 0 var(--cw);scroll-snap-align:center;position:relative;border:3px solid #6a74c8;border-radius:10px;overflow:hidden;background:#0d1040;opacity:.5;transform:scale(.88);transition:opacity .15s,transform .15s,border-color .15s}
 #party .card.on{opacity:1;transform:scale(1);border-color:#e8b923;box-shadow:0 0 10px rgba(232,185,35,.55)}
 #party .card .art{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;-webkit-user-drag:none;user-select:none}
-#party .card.none .art{display:flex;align-items:center;justify-content:center;font-size:26px;color:#6a74c8;background:repeating-linear-gradient(45deg,#10144a,#10144a 10px,#161a58 10px,#161a58 20px)}
+#party .card.none .art{display:flex;align-items:center;justify-content:center;font-size:calc(var(--cw)*.26);white-space:nowrap;overflow:hidden;color:#6a74c8;background:repeating-linear-gradient(45deg,#10144a,#10144a 10px,#161a58 10px,#161a58 20px)}
+#party .fcard{flex:0 0 94px}
+#party .fcard .nm{position:static;font-size:10px;white-space:nowrap;padding:1px 0;background:rgba(0,0,40,.9)}
+#party .fcard svg.art{aspect-ratio:14/12.2;background:#0f1450}
+#party .row.fm .carousel{padding:3px calc(50% - 47px)}
 #party .card .nm{position:absolute;left:0;right:0;bottom:0;text-align:center;font-weight:bold;font-size:12px;background:rgba(0,0,40,.78);padding:2px 0}
 #party .row.fixed .card{opacity:1;transform:none}
 #party .row.fixed .who{flex:1;text-align:center;font-size:15px;font-weight:bold}
@@ -127,6 +131,7 @@ canvas{touch-action:none;display:block;position:absolute;left:0;top:0}
   <div class="row" data-slot="0"><div class="badge"><b>2</b><small>ぜん</small></div><div class="carousel"></div></div>
   <div class="row" data-slot="1"><div class="badge"><b>3</b><small>こう</small></div><div class="carousel"></div></div>
   <div class="row" data-slot="2"><div class="badge"><b>4</b><small>こう</small></div><div class="carousel"></div></div>
+  <div class="row fm"><div class="badge"><b>じん</b><small>はいち</small></div><div class="carousel"></div></div>
   <button id="party-back" class="back">もどる</button>
 </div>
 <div id="stages" class="menu scrollable">
