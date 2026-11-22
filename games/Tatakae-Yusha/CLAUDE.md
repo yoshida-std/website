@@ -26,7 +26,7 @@
 - 箱モデルの形・アニメは `render2d.js` の `heroParts` / `allyParts` / `enemyParts`（部品のリストを返す）を 2D と WebGL で共用する
 - Three.js は部品を作るときに `Math.random` を使うので、`withOwnRandom` で別の乱数に切りかえてから作る（ゲームの乱数の並びを変えないため）
 - アンチエイリアスは DPR 2 以上では切っている（スマホで重くなるため）
-- `tools/sansmen.js` … キャラクターの**三面図**（正面・側面・背面。高さのガイド・寸法・色見本・くらべる勇者つき）を書きだす。`node tools/sansmen.js` でまほうつかい（`docs/mage-3view.png`）、`node tools/sansmen.js enemy` で敵のどすこいオーガ・ふつうの敵（`docs/enemy-3view.png`）。ゲームの実際のモデルをゲームと同じ大きさで真横から（`h3render` の `pitch=0`）描くので、モデルを変えて再実行すれば図も変わる。glTF などの本番モデルを作るときや、AI に絵を作りなおしてもらうときの資料にする
+- `tools/sansmen.js` … キャラクターの**三面図**（正面・側面・背面。高さのガイド・寸法・色見本・くらべる勇者つき）を書きだす。`node tools/sansmen.js` でまほうつかい（`docs/mage-3view.png`）、`node tools/sansmen.js enemy` で敵のどすこいオーガ・ふつうの敵（`docs/enemy-3view.png`）、`node tools/sansmen.js hero` で勇者（`docs/hero-3view.png`。待機ポーズ・くらべる欄なし）。ゲームの実際のモデルをゲームと同じ大きさで真横から（`h3render` の `pitch=0`）描くので、モデルを変えて再実行すれば図も変わる。glTF などの本番モデルを作るときや、AI に絵を作りなおしてもらうときの資料にする
 - `tools/bot.js` … ボット（headless）。使い方は JS 冒頭。`node tools/bot.js --compare prototype-2d.html,index.html` で移行元と勝敗・時間・毎フレームの状態を比べる
 - この作業環境からは cdn.jsdelivr.net に接続できない。確認は `npm i three@0.186.1` をスクラッチに入れ、ボットは環境変数 `THREE_DIR` にその `node_modules/three` を指定する（Playwright で CDN への要求をそこへ回す）
 

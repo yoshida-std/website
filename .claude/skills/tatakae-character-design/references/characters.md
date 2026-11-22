@@ -84,6 +84,6 @@
 
 ## 三面図
 
-- 作り方: `node tools/sansmen.js`(まほうつかい)/ `node tools/sansmen.js enemy`(敵)。出力は `docs/mage-3view.png` / `docs/enemy-3view.png`。
+- 作り方: `node tools/sansmen.js`(まほうつかい)/ `node tools/sansmen.js enemy`(敵)/ `node tools/sansmen.js hero`(勇者)。出力は `docs/mage-3view.png` / `docs/enemy-3view.png` / `docs/hero-3view.png`。勇者の図は、ちょんまげの先まで入れた高さが 2.23(上の表の 2.17 は あたまの上ではなく 体のおおよその高さ)。
 - 三面図は、ゲームの実際のモデルを、ゲームと同じ大きさで真横から描き、右はしに勇者を並べる。高さのガイド・寸法・色見本つき。
 - 新しいキャラを足すときは、`tools/sansmen.js` の `WHO` の分岐に、設定(`parts` `scale` `S` `W` `cxs` `guides` `dims` `sw`)を足す。

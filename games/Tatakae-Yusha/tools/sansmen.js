@@ -3,14 +3,15 @@
 // つかいかた(games/Tatakae-Yusha で):
 //   node tools/sansmen.js                 … まほうつかい → docs/mage-3view.png
 //   node tools/sansmen.js enemy           … てき(どすこいオーガ・ふつうの てき) → docs/enemy-3view.png
+//   node tools/sansmen.js hero            … ゆうしゃ → docs/hero-3view.png
 //   node tools/sansmen.js mage 出力.png   … 出力の パスを 指定
 // モデルを かえたら もういちど 実行すれば 図も かわる。ゲームと おなじ 大きさで えがき、右はしに くらべる ゆうしゃを ならべる。
 // Three.js は つかわない(Canvas 2D の 箱モデルを まよこから えがく)。
 // この 作業環境のように CDN(cdn.jsdelivr.net)に つながらないときは、環境変数 THREE_DIR に node_modules/three を 指定する
 const {chromium}=require('playwright');const path=require('path'),http=require('http'),fs=require('fs');
 const ROOT=path.resolve(__dirname,'..'),T3=process.env.THREE_DIR||'';
-const WHO=process.argv[2]==='enemy'?'enemy':'mage';
-const OUT=process.argv[3]||path.join(ROOT,'docs',WHO==='enemy'?'enemy-3view.png':'mage-3view.png');
+const WHO=['enemy','hero'].includes(process.argv[2])?process.argv[2]:'mage';
+const OUT=process.argv[3]||path.join(ROOT,'docs',WHO+'-3view.png');
 (async()=>{
  const srv=http.createServer((q,r)=>{const p=path.join(ROOT,decodeURIComponent(q.url.split('?')[0]));if(!p.startsWith(ROOT)||!fs.existsSync(p)||fs.statSync(p).isDirectory()){r.writeHead(404);r.end();return;}r.writeHead(200,{'Content-Type':p.endsWith('.js')?'text/javascript':'text/html; charset=utf-8'});fs.createReadStream(p).pipe(r);}).listen(0);
  await new Promise(r=>srv.on('listening',r));
@@ -32,6 +33,12 @@ const OUT=process.argv[3]||path.join(ROOT,'docs',WHO==='enemy'?'enemy-3view.png'
        guides:[[0,'ゆか(足もと)'],[0.865,'おび'],[1.32,'かた'],[1.41,'あご'],[2.02,'ぼうしの つば'],[2.85,'ぼうしの さき']],
        dims:[[0,0.43,'スカートの はば 0.65'],[1,0.33,'スカートの おくゆき 0.50'],[2,0.43,'スカートの はば 0.65']],
        sw:[['#6a46b8','うわぎ・スカート(した)'],['#5b3aa0','スカート(うえ)・えり'],['#5a32a8','ぼうし'],['#4a2a90','ぼうしの つば・フード'],['#e0b84a','金(おび・ふち・リボン)'],['#f6d9bd','はだ'],['#c9783a','かみ'],['#e0a060','みつあみの さき'],['#f1ece0','くつした・すその ふち'],['#4a3320','くつ'],['#8a5a2a','つえ'],['#7cf5ff','クリスタル(詠唱中は 橙)']]};
+   }else if(WHO==='hero'){
+     CF={title:'ゆうしゃ(りきしの せんし)  三面図',note:'「戦え！ゆうしゃ」 ローポリ(箱)モデル。ゲームの 実際の 部品を ゲームと おなじ 大きさ(×1)で えがいた もの。ゲームの 待機ポーズ(右手に 剣)',
+       parts:heroParts,scale:1,S:290,W:1900,cxs:[440,1010,1580],noCompare:true,
+       guides:[[0,'ゆか(足もと)'],[0.69,'おびの した'],[0.85,'おびの うえ'],[1.47,'かた(かたあて)'],[1.53,'あご'],[1.9,'はちまき'],[2.23,'ちょんまげの さき']],
+       dims:[[0,0.51,'かたの はば(かたあて) 1.02'],[2,0.51,'かたの はば 1.02']],
+       sw:[['#1f9d8a','ベスト'],['#177a6c','ベスト(くらい)'],['#5b2c83','おび'],['#6a3a98','まえだれ'],['#e0b84a','金(ふち・ふさ)'],['#e8b184','はだ(顔・うで)'],['#e3a97c','はだ(足)'],['#2a1f2d','かみ・ちょんまげ'],['#f4f1ea','はちまき'],['#d83a3a','はちまきの 丸'],['#8d96a8','こて'],['#707a8d','かたあて'],['#e4eaf3','けんの 刃'],['#7a2a2a','けんの つか'],['#f1ece0','たび'],['#7a5230','わらじ']]};
    }else{
      const tint='#8a8f9a',e0=m.enemyParts(null,tint,1.0,Math.PI,0,0,false,false,false);
      const sc=e0.scale; // ゲームでの みかけの 倍率(ふつうの てき: 0.8 × ENEMY_LOOK)
@@ -60,7 +67,7 @@ const OUT=process.argv[3]||path.join(ROOT,'docs',WHO==='enemy'?'enemy-3view.png'
      c.fillStyle='#2b2540';c.font='bold 30px '+FONT;c.textAlign='center';c.fillText(name,x,150);
    });
    // くらべる ゆうしゃ(正面。おなじ ものさし)
-   {const x=cxs[3];c.strokeStyle='rgba(120,110,160,.3)';c.setLineDash([14,10]);c.lineWidth=1.5;c.beginPath();c.moveTo(x,170);c.lineTo(x,baseY+20);c.stroke();c.setLineDash([]);
+   if(!CF.noCompare){const x=cxs[3];c.strokeStyle='rgba(120,110,160,.3)';c.setLineDash([14,10]);c.lineWidth=1.5;c.beginPath();c.moveTo(x,170);c.lineTo(x,baseY+20);c.stroke();c.setLineDash([]);
     c.fillStyle='rgba(40,36,60,.12)';c.beginPath();c.ellipse(x,baseY+6,150*S/290*1.4,14,0,0,Math.PI*2);c.fill();
     m.h3render(heroParts,x,baseY,S,false,0,0,0,3.2);
     c.fillStyle='#6a6580';c.font='bold 26px '+FONT;c.textAlign='center';c.fillText('くらべる ゆうしゃ',x,150);c.font='17px '+FONT;c.fillText('(おなじ ものさし)',x,176);}
