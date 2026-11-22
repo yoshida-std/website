@@ -64,7 +64,7 @@ for(const sx of [-1,1]){
 - 呼吸・ゆれ: `bob` と `lean` を、`sin(t*3)` などで少し動かす。
 - ポーズの切りかえ: 状態の強さ(0〜1)を、`logic.js` の `step` でなめらかに変え(`h.pushK` など)、モデル関数で補間する。
 - 倒れる・ふっとぶ: 全部品に `x` 回転を足し、必要なら `y` を持ち上げる(`heroParts` の最後の部分)。
-- 見た目だけの状態(`pushK` `firmK` `swingV` `downT` など)は、**ロジックの結果に影響させない**(ボットで「毎フレーム一致」が崩れる)。
+- 見た目だけの状態(`pushK` `firmK` `swingV` `downT` など)は、**ロジックの結果に影響させない**(ボットの結果=勝敗・時間などが変わってしまう)。
 
 ## 部品の数の目安
 
@@ -84,4 +84,4 @@ for(const sx of [-1,1]){
 2. 描き方を足す: 2D は `drawXxx`、WebGL は `three-chars.js`(`BoxModel(80)` の上限を確認)。
 3. ロジック側にキャラを足すなら、`logic.js` の `init`(`S` にキャラを入れる)・`CFG`(`hp` `r` など)・`step`(動き)を、**別の依頼として**やる。デザインの依頼だけなら触らない。
 4. `tools/sansmen.js` に三面図の設定を足して、`docs/xxx-3view.png` を作る。
-5. ボットで、2D表示とWebGL表示が一致することを確かめる(`node tools/bot.js --compare 'index.html?r=2d,index.html' --seeds 1`)。作業環境でCDNに接続できないときは、環境変数 `THREE_DIR` に `node_modules/three` を指定する。
+5. ボットで、ゲームが最後まで動いてエラーが出ないことを確かめる(`node tools/bot.js --seeds 1`。2D表示との比較は、もうしない)。作業環境でCDNに接続できないときは、環境変数 `THREE_DIR` に `node_modules/three` を指定する。
