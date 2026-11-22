@@ -65,11 +65,18 @@ try{const q=JSON.parse(localStorage.getItem('ty_party')||'[]');if(Array.isArray(
 function saveParty(){try{localStorage.setItem('ty_party',JSON.stringify(getParty()));}catch(_){}}
 function partyText(){const k=getParty().filter(Boolean);return 'ゆうしゃ'+(k.length?' ＋ '+k.map(x=>KINDS[x].name).join(' ＋ '):'（ひとりで たたかう）');}
 // わくごとに「かおの サムネイル」を よこに スライドして えらぶ(まんなかに とまった ものが えらばれる。タップでも えらべる)
-const PARTY_DESC={none:'この わくは あけておく',mage:'はなれて ほのおの まほうを うつ（HP すくなめ）',priest:'こうげきしない。ヒールと いやしの じんで かいふく',warrior:'ちかくで おので きる。ちかづく てきを おす（HP おおい）'};
+// カード1まいの おおきさ(--cw)を 画面の たかさに あわせて きめ、4つの わくが 1画面に おさまる ようにする
+function fitParty(){
+  const H=partyEl.clientHeight; // ないがわの たかさ
+  const fixed=16+30+36+4*32+4; // パネルの うえした+見出し+もどる+わく4つの まわり(ふち・すきま・カードの ふち)+よゆう
+  const cw=Math.max(60,Math.min(128,((H-fixed)/4)/1.25));
+  partyEl.style.setProperty('--cw',Math.floor(cw)+'px');
+}
+window.addEventListener('resize',()=>{if(partyEl.style.display==='block'){fitParty();partyEl.querySelectorAll('.row[data-slot]').forEach(r=>r._init&&r._init());}});
 function buildParty(){
   const cur=getParty();
   partyEl.querySelectorAll('.row[data-slot]').forEach(row=>{
-    const i=+row.dataset.slot,car=row.querySelector('.carousel'),desc=row.querySelector('.desc'),kinds=[null,...KIND_LIST];
+    const i=+row.dataset.slot,car=row.querySelector('.carousel'),kinds=[null,...KIND_LIST];
     car.innerHTML='';const cards=[];
     for(const k of kinds){
       const c=document.createElement('div');c.className='card'+(k?'':' none');
@@ -78,7 +85,7 @@ function buildParty(){
       const nm=document.createElement('div');nm.className='nm';nm.textContent=k?KINDS[k].name:'なし';c.appendChild(nm);
       car.appendChild(c);cards.push(c);
     }
-    const mark=idx=>{cards.forEach((c,j)=>c.classList.toggle('on',j===idx));desc.textContent=PARTY_DESC[kinds[idx]||'none'];};
+    const mark=idx=>{cards.forEach((c,j)=>c.classList.toggle('on',j===idx));};
     const centerOf=c=>c.offsetLeft-(car.clientWidth-c.offsetWidth)/2; // この カードを まんなかに する scrollLeft
     const nearest=()=>{let b=0,bd=1e9;cards.forEach((c,j)=>{const d=Math.abs(centerOf(c)-car.scrollLeft);if(d<bd){bd=d;b=j;}});return b;};
     let sel=Math.max(0,kinds.indexOf(cur[i]||null));
@@ -95,7 +102,7 @@ function buildParty(){
   });
 }
 let partyFrom='title';
-function showParty(from){partyFrom=from;titleEl.style.display='none';stagesEl.style.display='none';buildParty();partyEl.style.display='block';partyEl.scrollTop=0;partyEl.querySelectorAll('.row[data-slot]').forEach(r=>r._init&&r._init());}
+function showParty(from){partyFrom=from;titleEl.style.display='none';stagesEl.style.display='none';buildParty();partyEl.style.display='block';fitParty();partyEl.querySelectorAll('.row[data-slot]').forEach(r=>r._init&&r._init());}
 function showStages(){setRunning(false);buildStageList();document.getElementById('stageParty').innerHTML='<b>パーティ</b>'+partyText()+'（タップで へんこう）';stagesEl.style.display='block';}
 function pickStage(id){
   lastStage=id;played=true;try{localStorage.setItem('ty_stage',id);}catch(_){}
