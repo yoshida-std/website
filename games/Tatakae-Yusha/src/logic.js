@@ -16,8 +16,8 @@ export function init(){
   S={
     t:0,over:null,overT:0,shake:0,texts:[],pops:[],lock:0,
     hero:{x:0,z:7.8,r:CFG.hero.r,hp:CFG.hero.hp,stun:0,flash:0,stance:'firm',pushK:0,firmK:1,hitT:-1,dead:false,hitK:0,swingCd:0,swingT:0,swingV:0,pushT:0,sta:100,tired:false,noParry:0,ph:0,mv:0,fr:0,ff:1,yaw3:Math.PI,faceHold:0,idleT:0},
-    ally:{x:0,z:5.4,r:CFG.ally.r,hp:CFG.ally.hp,flash:0,castT:1.0},
-    enemies:[makeEnemy(0,-3.5,17.5),makeEnemy(1,3.5,18.5)],beams:[],fly:[],sparks:[],rings:[],
+    ally:{x:0,z:5.4,r:CFG.ally.r,hp:CFG.ally.hp,mp:CFG.ally.mp,flash:0,castT:1.0,cd:1.0,cast:null,warnedMp:0},
+    enemies:[makeEnemy(0,-3.5,17.5),makeEnemy(1,3.5,18.5)],beams:[],spells:[],fly:[],sparks:[],rings:[],dust:[],
     cam:{yaw:0}
   };
   // ゲームスタートの演出(ユーザー指示 2026-11-21): カメラが てきを 大きく うつし、てきが 地面に おりたつ。そのあと カメラが ひいて ゲームの いちへ
@@ -73,7 +73,6 @@ function stepIntro(dt){
   S.cam.yaw=introState(S).yaw;
   for(const t of S.texts)t.life-=dt;S.texts=S.texts.filter(t=>t.life>0);
   for(const q of S.pops)q.life-=dt;S.pops=S.pops.filter(q=>q.life>0);
-  for(const r of S.rings)r.t+=dt;S.rings=S.rings.filter(r=>r.t<r.max);
   if(I.t>=INTRO.dur){S.intro=null;S.enemies.forEach(e=>{e.air=0;});S.cam.yaw=introEnd().yaw;}
 }
 // ---- ゆうしゃが まけたとき(ユーザー指示 2026-11-21): たおれて、てきに かこまれて ボコボコに される ----
@@ -109,6 +108,30 @@ function stepDefeat(dt){
     }else e.beat=0;
   }
   S.cam.yaw=defeatCam(S).yaw;
+  for(const t of S.texts)t.life-=dt;S.texts=S.texts.filter(t=>t.life>0);
+  for(const q of S.pops)q.life-=dt;S.pops=S.pops.filter(q=>q.life>0);
+}
+// ---- かったとき(ユーザー指示 2026-11-22): カメラが ゆうしゃの 正面へ まわり、かちかたに あわせた ポーズ ----
+//   よゆう: 服の ほこりを はらう / ふつう: ガッツポーズ / しんしょう: あぐらで すわりこんで グッドポーズ
+export function victoryCam(S0){
+  const V=S0.victory,h=S0.hero,k=ease3((V.t-0.8)/1.3),yaw=V.yaw+Math.PI*k,back=CAM.back+(4.4-CAM.back)*k;
+  return {cx:h.x-Math.sin(yaw)*back,cz:h.z-Math.cos(yaw)*back,yaw,h:CAM.h+(2.2-CAM.h)*k,fov:CAM.fov,fpx:h.x,fpz:h.z,yf:HERO_Y+0.08*k};
+}
+function stepVictory(dt){
+  const V=S.victory,h=S.hero;V.t+=dt;
+  const C=victoryCam(S);S.cam.yaw=C.yaw;
+  h.yaw3=Math.PI+(C.yaw-V.yaw); // せかいで みた むきを かえずに、カメラが まわった ぶん だけ ゆうしゃも まわる(さいごは カメラのほうを むく)
+  const pt=V.t-1.0;
+  if(pt>0.3&&!V.said){V.said=true;addText({easy:'パッパッ',normal:'やったー！',close:'ぜぇ…ぜぇ…'}[V.grade],h.x,h.z,2.7,'#ffffff');}
+  if(V.grade==='close'&&pt>0.3&&V.t>=(V.pantT||0)){V.pantT=V.t+1.9;addText('ぜぇ…ぜぇ…',h.x+(Math.random()-0.5)*0.8,h.z,2.5,'#ffffff');} // いきを あげて ときどき
+  if(V.grade==='easy'&&pt>=3.45&&!V.sheathed){V.sheathed=true;addText('チャキン！',h.x,h.z,2.7,'#cfe8ff');S.shake=Math.max(S.shake,0.15);}
+  if(V.grade==='easy'&&pt>0.4&&pt<2.05){ // ほこりを はらう 3回の あいだだけ ぱらぱら おちる
+    V.dustT-=dt;
+    while(V.dustT<=0){V.dustT+=0.07;
+      S.dust.push({x:h.x+(Math.random()-0.5)*0.9,z:h.z+(Math.random()-0.5)*0.3,h:1.0+Math.random()*0.7,vx:(Math.random()-0.5)*0.8,vz:0,vh:-0.5-Math.random()*0.6,life:0.9,r:1+Math.random()*1.6,col:Math.random()<0.5?'#ffffff':'#d8cfb8'});}
+  }
+  for(const d of S.dust){d.x+=d.vx*dt;d.h+=d.vh*dt;d.life-=dt;}
+  S.dust=S.dust.filter(d=>d.life>0&&d.h>0);
   for(const t of S.texts)t.life-=dt;S.texts=S.texts.filter(t=>t.life>0);
   for(const q of S.pops)q.life-=dt;S.pops=S.pops.filter(q=>q.life>0);
 }
@@ -224,10 +247,18 @@ function separate(a,b,wa,wb){ // 重さの比で重なりを解消
     a.x-=nx*dep*sa;a.z-=nz*dep*sa;b.x+=nx*dep*sb;b.z+=nz*dep*sb;}
 }
 // けっかの 表示と タップで もういちど が できる までの 時間(ゆうしゃが たおれたときは 演出の あと)
-export function overReadyT(kind){return kind==='win'?1.4:(kind==='hero'?3.0:0.7);}
-export function overShowT(kind){return kind==='win'?1.0:(kind==='hero'?2.6:0);}
+// かったときは ポーズが おわる ころ(よゆうは 剣を さやに おさめる まで ながい)に 結果を 出す
+const winShowT=()=>S&&S.victory&&S.victory.grade==='easy'?5.2:3.0;
+export function overReadyT(kind){return kind==='win'?winShowT()+0.4:(kind==='hero'?3.0:0.7);}
+export function overShowT(kind){return kind==='win'?winShowT():(kind==='hero'?2.6:0);}
 function endGame(kind){
   S.over=kind;S.overT=0;inp.down=false;inp.fwd=0;inp.lat=0;inp.flickPending=false;
+  S.beams=[];S.spells=[];S.hero.swingV=0;S.hero.swingT=0; // ゲームの じかんが とまるので、のこっていると 黄色い線(こうげきの ビーム)や 剣の軌跡が きえなくなる
+  if(kind==='win'){ // かった: かちかたで 3つの ポーズ(ゆうしゃの HP の わりあいで きめる)
+    const h=S.hero,r=h.hp/CFG.hero.hp,V=CFG.victory;
+    S.victory={grade:r>=V.easy?'easy':(r<V.close?'close':'normal'),t:0,yaw:S.cam.yaw,said:false,dustT:0};
+    h.stun=0;h.hitT=-1;h.kx=0;h.kz=0;h.swingV=0;h.swingT=0;h.mv=0;h.pushK=0;h.firmK=1;h.stance='firm';
+  }
   if(kind==='hero'){ // ゆうしゃが たおれた: てきに かこまれて ボコボコに される演出
     S.defeat={t:0,yaw:S.cam.yaw};S.hero.dead=true;S.hero.stance='normal';
     for(const e of S.enemies){e.tele=0;e.atkTele=0;e.dash=0;e.beat=0;e.beatT=0;e.beatN=0;}
@@ -246,9 +277,9 @@ function parryEnemy(e,h){ // いなす成功
 }
 
 function addHate(e,who,v){e.hate[who]=Math.min(CFG.hate.max,e.hate[who]+v);}
-function hurtEnemy(e,dmg,who,note){
-  e.hp=Math.max(0,e.hp-dmg);e.flash=0.12;addHate(e,who,dmg*(who==='ally'?CFG.hate.perDmgAlly:CFG.hate.perDmg)); // こうげきは ヘイトが たまりやすい
-  addPop(e.x,e.z,2.6*e.r+0.3,String(Math.round(dmg)),who==='hero'?'#ffe01a':'#d9b8ff',Math.min(62,26+dmg*1.3+(note?6:0)),note,who==='hero');
+function hurtEnemy(e,dmg,who,note,hate){
+  e.hp=Math.max(0,e.hp-dmg);e.flash=0.12;addHate(e,who,dmg*(hate!==undefined?hate:(who==='ally'?CFG.hate.perDmgAlly:CFG.hate.perDmg))); // こうげきは ヘイトが たまりやすい
+  addPop(e.x,e.z,2.6*e.r+0.3,String(Math.round(dmg)),who==='hero'?'#ffe01a':'#ffa24a',Math.min(62,26+dmg*1.3+(note?6:0)),note,who==='hero');
   if(e.hp<=0&&!e.dead){e.dead=true;e.tele=0;e.atkTele=0;e.dash=0;S.shake=Math.max(S.shake,0.5);addText('たおした！',e.x,e.z,3.6,'#ffe36a');launchEnemy(e,who);}
 }
 // 止めをさした敵を、画面の外へ ふっとばす
@@ -272,6 +303,7 @@ function stepFx(dt){
   S.fly=S.fly.filter(f=>f.t<1.6);
   for(const q of S.sparks)q.life-=dt;
   S.sparks=S.sparks.filter(q=>q.life>0);
+  for(const r of S.rings)r.t+=dt;S.rings=S.rings.filter(r=>r.t<r.max); // 地面の 輪(着地・魔法の あたった ところ)。ふだんの間も 消す(きえないと あしもとに のこる)
 }
 function hitHero(dmg,nx,nz,kn,note){
   const h=S.hero;h.hp=Math.max(0,h.hp-dmg);h.flash=0.25;S.shake=Math.max(S.shake,0.4);h.x+=nx*kn;h.z+=nz*kn;
@@ -291,7 +323,7 @@ function fixLock(){
 
 export function step(dt){
   stepFx(dt);
-  if(S.over){S.overT+=dt;S.shake=Math.max(0,S.shake-dt);if(S.defeat)stepDefeat(dt);return;}
+  if(S.over){S.overT+=dt;S.shake=Math.max(0,S.shake-dt);if(S.defeat)stepDefeat(dt);else if(S.victory)stepVictory(dt);return;}
   if(S.intro){stepIntro(dt);return;} // スタートの演出の間は ゲームを とめる
   S.t+=dt;
   const h=S.hero,a=S.ally,A=CFG.arena;
@@ -592,16 +624,48 @@ export function step(dt){
     }
   }
 
-  // --- まほうつかいのこうげき(はなれたところから) ---
-  a.castT-=dt;
-  if(a.castT<=0){
-    let tg=null,bd=CFG.ally.range;
-    for(const e of E){if(e.dead)continue;const d=Math.hypot(e.x-a.x,e.z-a.z);if(d<bd){bd=d;tg=e;}}
-    if(tg){
-      a.castT=CFG.ally.castInt;
-      S.beams.push({x1:a.x,z1:a.z,x2:tg.x,z2:tg.z,y1:1.7,y2:1.3,life:0.28,col:'#c9a0ff'});
-      hurtEnemy(tg,CFG.ally.dmg,'ally');
-    }else a.castT=0.3;
+  // --- まほうつかいのこうげき(はなれたところから。ほのおの魔法で MP を つかう) ---
+  //   弱い炎: すぐ でる・MP すくない・よわい / 強い炎: えいしょうが ながい・MP おおい・つよい(てきが ちかい/ねらわれている ときは つかわない)
+  {
+    const AL=CFG.ally,nearest=()=>{let tg=null,bd=AL.range;for(const e of E){if(e.dead)continue;const d=Math.hypot(e.x-a.x,e.z-a.z);if(d<bd){bd=d;tg=e;}}return tg;};
+    a.mp=Math.min(AL.mp,a.mp+AL.mpRegen*dt);
+    if(a.cast){ // えいしょう中
+      a.cast.t+=dt;
+      if(a.cast.t>=a.cast.dur){
+        const K=AL[a.cast.kind],tg=nearest();
+        if(tg)S.spells.push({kind:a.cast.kind,sx:a.x,sz:a.z,e:tg,t:0,dur:K.fly,dmg:K.dmg,hate:K.hate});
+        a.castT=a.cd=K.cd;a.cast=null;
+      }
+    }else{
+      a.castT-=dt;
+      if(a.castT<=0){
+        const tg=nearest();
+        if(!tg)a.castT=0.3;
+        else{
+          const danger=E.some(e=>!e.dead&&(Math.hypot(e.x-a.x,e.z-a.z)<6||e.target==='ally'));
+          let kind=null;
+          if(a.mp>=AL.strong.cost&&!danger)kind='strong';
+          else if(a.mp>=AL.weak.cost)kind='weak';
+          if(kind){
+            const K=AL[kind];a.mp-=K.cost;a.cast={kind,t:0,dur:K.cast};
+            addText(kind==='strong'?K.name+'…':K.name,a.x,a.z,3.0,kind==='strong'?'#ff9a4a':'#ffd08a');
+          }else{a.castT=0.6;if(S.t-a.warnedMp>3){a.warnedMp=S.t;addText('MPが たりない！',a.x,a.z,3.0,'#9fc8ff');}}
+        }
+      }
+    }
+    // とんでいく ほのお → あたったら ダメージ
+    for(const sp of S.spells){
+      sp.t+=dt;
+      if(sp.t>=sp.dur){
+        sp.done=true;const e=sp.e;
+        if(!e.dead){
+          hurtEnemy(e,sp.dmg,'ally',sp.kind==='strong'?AL.strong.name+'！':'',sp.dmg*sp.hate);
+          S.rings.push({x:e.x,z:e.z,t:0,max:sp.kind==='strong'?0.8:0.45,r:e.r*(sp.kind==='strong'?1.0:0.6),rgb:'255,140,50'});
+          if(sp.kind==='strong')S.shake=Math.max(S.shake,0.4);
+        }
+      }
+    }
+    S.spells=S.spells.filter(sp=>!sp.done);
   }
 
   // --- ねばりゲージとはんげき ---

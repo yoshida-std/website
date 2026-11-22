@@ -107,7 +107,7 @@ function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace}){
   }
   const S=G.S;
   return {over:S.over||'timeout',t:+S.t.toFixed(2),heroHp:S.hero.hp,allyHp:S.ally.hp,
-    enemyHp:S.enemies.reduce((s,e)=>s+e.hp,0),swings,parries,frames,hash:hash.toString(16),trace:trace?tr:undefined};
+    enemyHp:S.enemies.reduce((s,e)=>s+e.hp,0),beamsAtEnd:S.beams.length,ringsAtEnd:S.rings.length,swingVAtEnd:S.hero.swingV,swings,parries,frames,hash:hash.toString(16),trace:trace?tr:undefined};
 }
 
 (async()=>{
@@ -162,6 +162,7 @@ function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace}){
     const sameOutcome=A.filter((r,i)=>r.over===B[i].over).length;
     console.log(`\n毎フレームの状態が完全に一致: ${same}/${A.length} 戦`);
     console.log(`勝敗が一致: ${sameOutcome}/${A.length} 戦`);
+    console.log(`終わったとき のこっていた 線(ビーム)がある戦: ${B.filter(r=>r.beamsAtEnd>0||r.swingVAtEnd>0).length}/${B.length}`);
     if(opt('trace'))A.forEach((r,i)=>{const t2=B[i].trace,k=r.trace.findIndex((x,j)=>x!==t2[j]);
       if(k>=0)console.log(`seed ${r.seed} ${r.policy}: ${k} フレーム目で ずれた\n  A ${r.trace[k-1]}\n  B ${t2[k-1]}\n  A ${r.trace[k]}\n  B ${t2[k]}`);});
   }

@@ -1,8 +1,12 @@
 // 移行元: prototype-2d.html の該当部分をそのまま移したもの(import/export だけ足した)
 export const CFG={
   arena:{cx:0,cz:11,R:22},
-  hero:{r:0.6,w:100,speed:5.2,hp:100,dmg:8,swingCd:0.35,swingReach:2.2,backBonus:1.3},
-  ally:{r:0.5,w:60,hp:120,speed:1.9,keep:2.6,fear:3.6,dmg:8,castInt:2.2,range:16},
+  hero:{r:0.6,w:100,speed:5.2,hp:100,mp:30,dmg:8,swingCd:0.35,swingReach:2.2,backBonus:1.3},
+  // まほうつかい: HP は ゆうしゃより すくなく、MP は おおめ。魔法(ほのお)で MP を つかう【仮】
+  //   weak=弱い炎(すぐ でる・MP すくない・よわい) / strong=強い炎(えいしょうが ながい・MP おおい・つよい)。cast=えいしょう(秒)、cd=つぎの えいしょうまでの 休み(秒)、fly=とぶ 時間、hate=ヘイトの 倍率
+  ally:{r:0.5,w:60,hp:70,mp:80,mpRegen:1.0,speed:1.9,keep:2.6,fear:3.6,range:16,
+    weak:{name:'ほのお',cost:3,cast:0.5,cd:1.7,dmg:8,fly:0.28,hate:4.5},
+    strong:{name:'ごうえん',cost:15,cast:2.2,cd:1.0,dmg:44,fly:0.45,hate:2.2}},
   stanceMult:{push:1.3,firm:1.6,normal:1.0},
   angleMult:{front:1.0,side:0.7,back:0.5},
   thr:{win:1.25,hold:1.0,lose:0.75},
@@ -10,6 +14,8 @@ export const CFG={
   counter:{tele:0.75,dmg:36,dmgFirm:14,stagger:1.2,reach:0.9,knock:7,
     // 痛恨の一撃(ふんばらずに うけた はんげき): ふっとび、しばらく うごけない【仮】
     crit:{dist:7,stun:2.0,k:6}},
+  // 勝ち方(かった ときの ゆうしゃの HP の わりあい): よゆう / ふつう / しんしょう【仮】
+  victory:{easy:0.7,close:0.35},
   enemyAtk:{tele:0.7,dmgAlly:15,dmgHero:18,dmgHeroFirm:8,cd:1.0,reachAlly:0.7,reachHero:0.2},
   atkSweep:{tele:0.95,r:2.6,dmgHero:16,dmgHeroFirm:7,dmgAlly:13,knock:1.4},   // なぎはらい(まわり全部)【仮】
   atkCharge:{tele:0.9,track:0.45,speed:20,minD:3.0,maxD:9.5,over:2.0,dmgHero:20,dmgHeroFirm:9,dmgAlly:18,knock:1.2,rest:0.7}, // とっしん【仮】
