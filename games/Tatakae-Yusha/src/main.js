@@ -1,7 +1,8 @@
 // 移行元: prototype-2d.html の該当部分をそのまま移したもの(import/export だけ足した)
 import {FLICKKEY,setFlickKey,setET,CFG} from './config.js';
 import {stage,barEl,BAR_HIDDEN,measureBar,resize,setBarHidden,CW} from './screen.js';
-import {S,running,setRunning,inp,init,step,tapLock,enemyAt,checkFlick,skipIntro} from './logic.js';
+import {S,running,setRunning,inp,init,step,tapLock,enemyAt,checkFlick,skipIntro,stageId} from './logic.js';
+import {STAGES} from './stages.js';
 import {render as render2d} from './render2d.js';
 import {render as render3d} from './render3d.js';
 // ふだんは WebGL。?r=2d で 移行元と同じ Canvas 2D の描画(くらべる用)
@@ -37,10 +38,35 @@ document.addEventListener('visibilitychange',()=>{last=performance.now();acc=0;i
 resize();init();
 requestAnimationFrame(loop);
 
+// ---- ステージ選択(ユーザー指示 2026-11-22) ----
+// 「はじめる」→ ステージ選択 → えらぶと そのステージで はじまる。上のウィンドウの「ステージえらび」で もどれる
+const stagesEl=document.getElementById('stages'),listEl=document.getElementById('stageList');
+let lastStage=stageId,played=false; // played: まえに あそんだ ステージが ほぞんされていたか
+try{const k=localStorage.getItem('ty_stage');if(k&&STAGES.some(s=>s.id===k)){lastStage=k;played=true;}}catch(_){}
+function buildStageList(){
+  listEl.innerHTML='';
+  STAGES.forEach(st=>{
+    const b=document.createElement('button');b.className='stage'+(st.id===lastStage?' on':'');b.dataset.stage=st.id;
+    const n=document.createElement('b');n.textContent=st.name;
+    if(played&&st.id===lastStage){const i=document.createElement('i');i.textContent='まえに あそんだ';n.appendChild(i);}
+    const d=document.createElement('span');d.textContent=st.desc;
+    const c=document.createElement('span');c.textContent='てき '+st.enemies.length+'ひき';
+    b.append(n,d,c);
+    b.addEventListener('click',()=>pickStage(st.id));
+    listEl.appendChild(b);
+  });
+}
+function showStages(){setRunning(false);buildStageList();stagesEl.style.display='block';}
+function pickStage(id){
+  lastStage=id;played=true;try{localStorage.setItem('ty_stage',id);}catch(_){}
+  stagesEl.style.display='none';
+  resize();init(id);setRunning(true);
+}
 document.getElementById('start').addEventListener('click',()=>{
   document.getElementById('intro').style.display='none';
-  resize();init();setRunning(true);
+  showStages();
 });
+document.getElementById('pick').addEventListener('click',showStages);
 document.getElementById('reset').addEventListener('click',()=>{init();});
 // うえのウィンドウ(せってい)を かくす／ひらく
 const btEl=document.getElementById('bt');

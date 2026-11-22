@@ -65,7 +65,8 @@ function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace}){
   window.__seed(seed);
   document.querySelector('#bar button[data-w="'+weight+'"]').click(); // init() が よばれる
   window.__seed(seed);
-  document.getElementById('start').click();                            // resize(); init(); running=true
+  document.getElementById('start').click();                            // ステージ選択を ひらく
+  document.querySelector('#stageList .stage').click();                 // 1つめの ステージ: resize(); init(); running=true
   G.skipIntro();                                                       // スタートの演出は とばす
   const r=cv.getBoundingClientRect(),CW=r.width,CH=r.height;
   const ev=(type,x,y)=>cv.dispatchEvent(new PointerEvent(type,{pointerId:1,clientX:r.left+x,clientY:r.top+y,bubbles:true,cancelable:true,pointerType:'touch',isPrimary:true}));

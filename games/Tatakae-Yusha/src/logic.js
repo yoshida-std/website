@@ -1,24 +1,30 @@
 // 移行元: prototype-2d.html の該当部分をそのまま移したもの(import/export だけ足した)
 import {CFG,CAM,FLICK,HERO_Y,ET,LETTER,pickPlan} from './config.js';
+import {stageById} from './stages.js';
 import {cv,CW,CH} from './screen.js';
 
 // ================= 状態 =================
 export let S=null,running=false;
 export function setRunning(v){running=v;}
 export const inp={down:false,id:null,ox:0,oy:0,x:0,y:0,sx:0,sy:0,t0:0,travel:0,fwd:0,lat:0,hist:[],flickT:-1000,lastEvt:-1000,flickPending:false,flickDx:1,flickDy:0,trail:[],flickBlocked:false,parryOK:true,onEnemy:-1,noMove:false,flickEnemy:-1,flickPeak:0};
-function makeEnemy(i,x,z){
-  return {i,x,z,r:ET.r,w:ET.w,speed:ET.speed,color:i%2===0?ET.color:ET.color2,
+function makeEnemy(i,x,z,kind){
+  return {i,x,z,kind:kind||'ogre',r:ET.r,w:ET.w,speed:ET.speed,color:i%2===0?ET.color:ET.color2,
     fx:0,fz:-1,gauge:0,tele:0,atkTele:0,atkCd:1.2+i*0.6,stagger:0,flash:0,kx:0,kz:0,
     flankDir:Math.random()<0.5?1:-1,flankT:1.5,target:null,hp:ET.hp,maxHp:ET.hp,dead:false,hate:{hero:0,ally:0},
     air:0,tflash:0,sx:0,sy:0,shw:0,shh:0,sc:30,atkKind:'hit',atkMax:0.7,plan:pickPlan(),dash:0,dashLeft:0,dx:0,dz:1,cx:0,cz:0,hitH:false,hitA:false,info:{contact:false,R:0,wh:0,we:0,angle:'front'}};
 }
-export function init(){
+export let stageId='ogre4';
+export function setStage(id){stageId=stageById(id).id;}
+export function init(id){
+  if(id)setStage(id);
+  const ST=stageById(stageId);
   S={
-    t:0,over:null,overT:0,shake:0,texts:[],pops:[],lock:1,
+    stage:ST,
+    t:0,over:null,overT:0,shake:0,texts:[],pops:[],lock:ST.lock,
     hero:{x:0,z:7.8,r:CFG.hero.r,hp:CFG.hero.hp,stun:0,flash:0,stance:'firm',pushK:0,firmK:1,hitT:-1,dead:false,hitK:0,swingCd:0,swingT:0,swingV:0,pushT:0,sta:100,tired:false,noParry:0,ph:0,mv:0,fr:0,ff:1,yaw3:Math.PI,faceHold:0,idleT:0},
     ally:{x:0,z:5.4,r:CFG.ally.r,hp:CFG.ally.hp,mp:CFG.ally.mp,flash:0,castT:1.0,cd:1.0,cast:null,warnedMp:0},
-    // てきは 4匹(ユーザー指示 2026-11-22)。ゆうしゃの まえに 弧を えがいて ならぶ。さいしょの ロックは まんなかの 左(B)
-    enemies:[makeEnemy(0,-6,16.5),makeEnemy(1,-2,19.5),makeEnemy(2,2,19.5),makeEnemy(3,6,16.5)],beams:[],spells:[],fly:[],sparks:[],rings:[],dust:[],
+    // てきの 数・いち・さいしょの ロックは ステージの データ(src/stages.js)。ogre4 は 4匹が 弧を えがいて ならぶ。さいしょの ロックは まんなかの 左(B)
+    enemies:ST.enemies.map((q,i)=>makeEnemy(i,q.x,q.z,q.kind)),beams:[],spells:[],fly:[],sparks:[],rings:[],dust:[],
     cam:{yaw:0}
   };
   // ゲームスタートの演出(ユーザー指示 2026-11-21): カメラが てきを 大きく うつし、てきが 地面に おりたつ。そのあと カメラが ひいて ゲームの いちへ
@@ -60,7 +66,7 @@ function stepIntro(dt){
   const I=S.intro;I.t+=dt;
   S.shake=Math.max(0,S.shake-dt*1.6);
   S.enemies.forEach((e,i)=>{
-    const tau=I.t-INTRO.start[i],was=e.air;
+    const tau=I.t-(S.stage.introStart[i]??INTRO.start[i]),was=e.air;
     if(tau<0)e.air=INTRO.air;
     else if(tau<INTRO.fall){const r=tau/INTRO.fall;e.air=INTRO.air*(1-r*r);}
     else e.air=0;

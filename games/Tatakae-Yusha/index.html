@@ -22,13 +22,23 @@ canvas{touch-action:none;display:block;position:absolute;left:0;top:0}
 #bar button.on{background:#e8b923;color:#222;border-color:#fff}
 #bar{padding-right:44px}
 #bt{position:absolute;right:6px;top:6px;z-index:4;width:34px;height:34px;padding:0;font-size:15px;font-weight:bold;color:#fff;background:rgba(26,34,144,.92);border:2px solid #fff;border-radius:8px}
-#bar #reset{margin-left:auto;background:#6a1a1a;border-color:#ffb0b0}
+#bar #pick{margin-left:auto}
+#bar #reset{background:#6a1a1a;border-color:#ffb0b0}
 #intro{position:absolute;left:10px;right:10px;top:10px;bottom:10px;background:rgba(5,8,50,.96);border:3px solid #fff;border-radius:12px;
   padding:14px 16px;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;font-size:14px;line-height:1.6;z-index:5}
 #intro h1{font-size:18px;margin:0 0 6px}
 #intro ul{margin:6px 0 8px;padding-left:20px}
 #intro li{margin:3px 0}
 #intro .note{font-size:12px;color:#b9c0ff}
+#stages{position:absolute;left:10px;right:10px;top:10px;bottom:10px;background:rgba(5,8,50,.96);border:3px solid #fff;border-radius:12px;
+  padding:14px 16px;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;font-size:14px;line-height:1.5;z-index:6;display:none}
+#stages h1{font-size:18px;margin:0 0 4px}
+#stages .sub{font-size:12px;color:#b9c0ff;margin-bottom:10px}
+#stages .stage{display:block;width:100%;text-align:left;margin:0 0 10px;color:#fff;background:#1a2290;border:3px solid #9aa5ff;border-radius:10px;padding:10px 12px}
+#stages .stage.on{border-color:#e8b923}
+#stages .stage b{display:block;font-size:16px}
+#stages .stage span{display:block;font-size:12px;color:#d6dbff;margin-top:2px}
+#stages .stage i{font-style:normal;font-size:11px;color:#222;background:#e8b923;border-radius:4px;padding:0 6px;margin-left:6px}
 #intro button{display:block;margin:14px auto 4px;font-size:18px;font-weight:bold;color:#222;background:#e8b923;border:3px solid #fff;border-radius:10px;padding:10px 34px}
 .k{display:inline-block;background:#1a2290;border:1px solid #9aa5ff;border-radius:4px;padding:0 6px;font-weight:bold}
 </style>
@@ -43,11 +53,12 @@ canvas{touch-action:none;display:block;position:absolute;left:0;top:0}
   <button data-w="70">かるい</button><button data-w="100" class="on">ふつう</button><button data-w="160">おもい</button>
   <span>フリック</span>
   <button data-flick="hi">びんかん</button><button data-flick="mid" class="on">ふつう</button><button data-flick="lo">にぶめ</button>
+  <button id="pick">ステージえらび</button>
   <button id="reset">やりなおし</button>
 </div>
 <div id="intro" class="menu scrollable">
   <h1>戦え！ゆうしゃ</h1>
-  <div>あなたは<b>ゆうしゃ</b>。<b>まほうつかい</b>を まもりながら、2たいの てきを たおそう。てきは <b>おしあい・こうげき</b>をした あいてを ねらうようになる（<b>こうげきの ほうが ヘイトがたまる</b>）。</div>
+  <div>あなたは<b>ゆうしゃ</b>。<b>まほうつかい</b>を まもりながら、てきを たおそう。てきは <b>おしあい・こうげき</b>をした あいてを ねらうようになる（<b>こうげきの ほうが ヘイトがたまる</b>）。</div>
   <ul>
     <li>ゆびを <span class="k">↑</span> へ … ロックした てきを <b>おす</b>（おもさ UP）</li>
     <li>ゆびを <span class="k">← →</span> へ … てきを中心に <b>まわりこむ</b></li>
@@ -69,6 +80,11 @@ canvas{touch-action:none;display:block;position:absolute;left:0;top:0}
   </ul>
   <div class="note">※ 操作感の確認用です。数値はすべて仮で、コマンドなどは未実装です。上のボタンで てきの おもさを切りかえられます。</div>
   <button id="start">はじめる</button>
+</div>
+<div id="stages" class="menu scrollable">
+  <h1>ステージを えらぶ</h1>
+  <div class="sub">えらんだ ステージで たたかいが はじまる（ステージは これから ふえていく）</div>
+  <div id="stageList"></div>
 </div>
 </div></div>
 <script type="importmap">
