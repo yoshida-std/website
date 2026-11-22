@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import {LineSegments2} from 'three/addons/lines/LineSegments2.js';
 import {LineSegmentsGeometry} from 'three/addons/lines/LineSegmentsGeometry.js';
 import {LineMaterial} from 'three/addons/lines/LineMaterial.js';
-import {heroParts,allyParts,allyCast,allyDown,enemyParts,ENEMY_LOOK,MAGE_SCALE} from './render2d.js';
+import {heroParts,allyParts,allyCast,allyDown,priestParts,priestCast,PRIEST_SCALE,enemyParts,ENEMY_LOOK,MAGE_SCALE} from './render2d.js';
 
 // ---- 箱の ひな形(1×1×1) ----
 const FACES=[]; // {n:[法線], q:[4つの角]}(外から見て 反時計まわり)
@@ -100,7 +100,7 @@ class BoxModel{
 }
 
 export function makeChars(scene,flyScene){
-  const hero=new BoxModel(80),ally=new BoxModel(80);scene.add(hero.obj,ally.obj);
+  const hero=new BoxModel(80),ally=new BoxModel(80),priest=new BoxModel(80);scene.add(hero.obj,ally.obj,priest.obj);
   const enemies=[];   // てき1体に 1つ
   const flyPool=[];   // 止めの演出(ざんぞう4つ × とんでいる数)
   // 画面から見た むき(yaw3。0=カメラのほうを向く)→ 世界の むき
@@ -121,6 +121,10 @@ export function makeChars(scene,flyScene){
       const ac=allyCast(a),ap=allyParts(a.yaw3,a.mv3||0,a.ph3||0,ac.c,ac.kind,allyDown(a));
       ally.set(ap.parts,MAGE_SCALE,a.flash>0&&blink); // ゆうしゃと 見た目の 大きさを あわせる
       ally.obj.position.set(a.x,0,-a.z);ally.obj.rotation.y=worldYaw(S,ap.yaw);
+      // そうりょ(ヒーラー。むき・あるきは 描画の faceTo が きめる)
+      {const q=S.priest,pc=priestCast(q),pp=priestParts(q.yaw3,q.mv3||0,q.ph3||0,pc.c,pc.kind,allyDown(q));
+       priest.set(pp.parts,PRIEST_SCALE,q.flash>0&&blink);
+       priest.obj.position.set(q.x,0,-q.z);priest.obj.rotation.y=worldYaw(S,pp.yaw);}
       // てき
       S.enemies.forEach((e,i)=>{
         let m=enemies[i];

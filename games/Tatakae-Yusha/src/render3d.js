@@ -242,7 +242,7 @@ function drawGL(h,A,ox,oy,list){
   R.batch.begin(ox,oy);
   // キャラの かげ(土俵の石の 色は シェーダー。ここでは やわらかい かげだけ)
   {const E=S.enemies.filter(e=>!e.dead),sh='rgba(0,0,0,.30)';
-   R.P.groundCircle(h.x,h.z,h.r*1.7,sh,null,0,24);R.P.groundCircle(S.ally.x,S.ally.z,S.ally.r*1.8,sh,null,0,24);
+   R.P.groundCircle(h.x,h.z,h.r*1.7,sh,null,0,24);R.P.groundCircle(S.ally.x,S.ally.z,S.ally.r*1.8,sh,null,0,24);R.P.groundCircle(S.priest.x,S.priest.z,S.priest.r*1.8,sh,null,0,24);
    for(const e of E){const k=1-Math.min(1,(e.air||0)/INTRO.air); // 空中の てきは 着地点に ちいさい かげ→ ちかづくほど おおきく こく
      R.P.groundCircle(e.x,e.z,e.r*ENEMY_LOOK*1.25*(0.35+0.65*k),'rgba(0,0,0,'+(0.12+0.18*k).toFixed(3)+')',null,0,32);}}
   drawGroundMarks(R.P);R.batch.end();

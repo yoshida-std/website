@@ -4,9 +4,15 @@ export const CFG={
   hero:{r:0.6,w:100,speed:5.2,hp:100,mp:30,dmg:8,swingCd:0.35,swingReach:2.2,backBonus:1.3},
   // まほうつかい: HP は ゆうしゃより すくなく、MP は おおめ。魔法(ほのお)で MP を つかう【仮】
   //   weak=弱い炎(すぐ でる・MP すくない・よわい) / strong=強い炎(えいしょうが ながい・MP おおい・つよい)。cast=えいしょう(秒)、cd=つぎの えいしょうまでの 休み(秒)、fly=とぶ 時間、hate=ヘイトの 倍率
-  ally:{r:0.5,w:60,hp:70,mp:80,mpRegen:1.0,react:0.15,speed:1.9,keep:2.6,fear:3.6,range:16,
+  ally:{r:0.5,w:60,hp:70,mp:80,mpRegen:1.0,react:0.15,speed:1.9,keep:2.6,fear:3.6,range:16,stay:7,stayW:0.15,
     weak:{name:'ほのお',cost:3,cast:0.5,cd:1.7,dmg:8,fly:0.28,hate:4.5},
     strong:{name:'ごうえん',cost:15,cast:2.2,cd:1.0,dmg:44,fly:0.45,hate:2.2}},
+  // そうりょ(ユーザー指示 2026-11-22): ヒーラー。こうげきは しない。ちかくの 味方の HP を かいふくし、かいふくの「じん」を ゆかに つくる【仮・きびしめ】
+  //   heal=ヒール(ちかくの 味方ぜんいんを かいふく)/ zone=いやしの じん(のっている あいだ すこしずつ かいふく。dur 秒で きえる。同時に 1つ)
+  //   need=かけている HP が この 以上の 味方が いるときに つかう / stay・stayW=ゆうしゃから はなれすぎないように する(きょりと つよさ)
+  priest:{r:0.5,w:60,hp:80,mp:70,mpRegen:1.0,react:0.15,speed:2.0,stay:4.5,stayW:0.5,
+    heal:{name:'ヒール',cost:10,cast:0.9,cd:5.0,amt:20,radius:4.5,need:12},
+    zone:{name:'いやしの じん',cost:20,cast:1.2,cd:8.0,r:3.0,dur:8.0,rate:4.0,tick:0.5,need:24}},
   stanceMult:{push:1.3,firm:1.6,normal:1.0},
   angleMult:{front:1.0,side:0.7,back:0.5},
   thr:{win:1.25,hold:1.0,lose:0.75},
@@ -30,7 +36,7 @@ export const CFG={
   pushLock:0.3, // 「おす」を この秒数 つづけている間は 剣を ふれない【仮】
   aggro:7.5, // ターゲットなしの敵が、この近さに入った味方に気づく距離【仮】
   planW:{hit:0.4,sweep:0.35,charge:0.25},
-  hate:{decay:1.5,decayK:0.18,pushPush:2,pushHold:0.8,acquire:8,lose:3,switchRatio:1.15,perDmg:2,perDmgAlly:4.5,max:200}
+  hate:{perHeal:0.6,decay:1.5,decayK:0.18,pushPush:2,pushHold:0.8,acquire:8,lose:3,switchRatio:1.15,perDmg:2,perDmgAlly:4.5,max:200}
 };
 // 視野は「ひろい」に決定(ユーザー指示 2026-11-21)。カメラの引き・高さ・画角【仮】
 export const CAM={back:8.2,h:5.2,fov:0.85};
