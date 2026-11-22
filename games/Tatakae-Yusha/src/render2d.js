@@ -1005,20 +1005,9 @@ export function drawHud(){
     ctx.beginPath();ctx.arc(inp.x,inp.y,16,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.35)';ctx.fill();
   }
 
-  // 上のHUD
-  const info=L.info;
-  const HY=BAR_H+16,LY=BAR_H+46;
+  // 上のHUD: じかんだけ(おしあいの 文字「おしかち！」「きっこう」「おされている…」「とっぱされた！」と「おもさ ○ vs ○」は ださない。ユーザー指示 2026-11-22)
+  const HY=BAR_H+16;
   txt('じかん  '+S.t.toFixed(1)+' びょう',12,HY,14,'#fff','left',3);
-  let label='',lc='#fff';
-  if(info.contact){
-    const R=info.R;
-    if(R>=CFG.thr.win){label='おしかち！';lc='#7dff9a';}
-    else if(R>=CFG.thr.hold){label='きっこう（あしどめ）';lc='#ffe36a';}
-    else if(R>=CFG.thr.lose){label='おされている…';lc='#ffa860';}
-    else{label='とっぱされた！';lc='#ff6060';}
-  }else{label='';}
-  txt(label,CW/2,LY,22,lc,'center',5);
-  if(info.contact)txt('おもさ '+Math.round(info.wh)+' vs '+Math.round(info.we)+'  ('+ANGLE_JP[info.angle]+'から)',CW/2,LY+24,12,'#fff','center',3);
 
   // 下のウィンドウ: パーティ(さいだい4人)。4つの まどを 横に ならべ、なまえ・HP・MP・ターンゲージを たてに ならべる(ユーザー指示 2026-11-22)
   //   MP は ひょうじだけ(まだ つかわない)。ターンゲージは コマンド式の ターンの 代わりの めやす:

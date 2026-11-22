@@ -796,7 +796,7 @@ export function step(dt){
   if(h.tired&&h.sta>=CFG.sta.recover)h.tired=false;
   if(inp.flickPending&&inp.flickBlocked){ // おしている間は 剣を ふれない(いなす は できる)
     inp.flickPending=false;inp.flickBlocked=false;inp.flickEnemy=-1;
-    addText('おしている間は ふれない！',h.x,h.z,2.6,'#ff9a90');
+    // (「おしている間は ふれない！」の 文字は ださない。ユーザー指示 2026-11-22)
   }
   if(inp.flickPending){
     // ふる間隔の最中に入れたフリックは、少しのあいだ ためておく(とりこぼしぼうし)
