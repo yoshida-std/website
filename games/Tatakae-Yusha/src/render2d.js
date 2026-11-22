@@ -714,26 +714,36 @@ export function drawHud(){
   txt(label,CW/2,LY,22,lc,'center',5);
   if(info.contact)txt('おもさ '+Math.round(info.wh)+' vs '+Math.round(info.we)+'  ('+ANGLE_JP[info.angle]+'から)',CW/2,LY+24,12,'#fff','center',3);
 
-  // 下のウィンドウ
-  const PX=8,PY=CH*0.735,PW=CW-16,PH=CH-PY-8;
-  ctx.fillStyle='rgba(8,12,70,.93)';rr(PX,PY,PW,PH,10);ctx.fill();
-  ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();
-  const fs=Math.max(11,Math.min(14,PH/15));
-  let y=PY+18;
-  txt('ゆうしゃ',PX+12,y,fs+1,'#fff');bar(PX+92,y-6,PW-190,12,h.hp/CFG.hero.hp,'#3ddc6a');txt(h.hp+'/'+CFG.hero.hp,PX+PW-12,y,fs,'#fff','right');
-  y+=fs*2;
-  txt('まほうつかい',PX+12,y,fs+1,'#fff');bar(PX+92,y-6,PW-190,12,a.hp/CFG.ally.hp,'#b07cff');txt(a.hp+'/'+CFG.ally.hp,PX+PW-12,y,fs,'#fff','right');
-  y+=fs*2;
-  txt('ねばり '+LETTER[S.lock],PX+12,y,fs+1,'#ffe36a');bar(PX+92,y-6,PW-190,12,L.gauge/100,L.gauge>=80?'#ff5a4a':'#ffb030');
-  txt(L.tele>0?'はんげき！':(L.gauge>=80?'もうすぐ…':''),PX+PW-12,y,fs,'#ff9080','right');
-  y+=fs*2;
-  txt('ヘイト '+LETTER[S.lock],PX+12,y,fs+1,'#9fe8ff');
-  {const bw=(PW-110-18)/2;bar(PX+92,y-6,bw,12,L.hate.hero/60,'#ffd36a');bar(PX+92+bw+6,y-6,bw,12,L.hate.ally/60,'#c9a0ff');
-   txt('ゆ',PX+92+bw/2,y,10,'#222','center');txt('ま',PX+92+bw+6+bw/2,y,10,'#222','center');
+  // 下のウィンドウ: パーティ(さいだい4人)。4つの まどを 横に ならべ、なまえ・HP・MP・ターンゲージを たてに ならべる(ユーザー指示 2026-11-22)
+  //   MP は ひょうじだけ(まだ つかわない)。ターンゲージは コマンド式の ターンの 代わりの めやす:
+  //   ゆうしゃ=きりょく(ふるほど へる) / まほうつかい=つぎの まほうまでの チャージ
+  {
+    const party=[
+      {name:'ゆうしゃ',hp:h.hp,hpMax:CFG.hero.hp,mp:CFG.hero.mp,mpMax:CFG.hero.mp,turn:h.sta/CFG.sta.max,note:h.tired?'いきぎれ':'',tcol:h.tired?'#ff5a4a':'#ffb030'},
+      {name:'まほうつかい',hp:a.hp,hpMax:CFG.ally.hp,mp:CFG.ally.mp,mpMax:CFG.ally.mp,turn:1-Math.max(0,Math.min(1,a.castT/CFG.ally.castInt)),note:'',tcol:'#ffb030'}
+    ];
+    const M=6,G=5,WN=4,WW=(CW-M*2-G*(WN-1))/WN,WH=108,WY=CH-M-WH;
+    for(let i=0;i<WN;i++){
+      const m=party[i],x=M+i*(WW+G),dead=m&&m.hp<=0;
+      ctx.fillStyle=m?'rgba(8,12,70,.93)':'rgba(8,12,70,.35)';rr(x,WY,WW,WH,8);ctx.fill();
+      ctx.strokeStyle=m?'#fff':'rgba(255,255,255,.3)';ctx.lineWidth=m?2.5:1.5;ctx.stroke();
+      if(!m)continue; // あいている わく
+      ctx.globalAlpha=dead?0.5:1;
+      txt(m.name,x+WW/2,WY+15,12,dead?'#9a9ab0':'#fff','center',2);
+      const rows=[
+        ['HP',m.hp+'/'+m.hpMax,m.hp/m.hpMax,m.hp/m.hpMax>0.5?'#3ddc6a':(m.hp/m.hpMax>0.25?'#ffd23a':'#ff5a4a'),'#9fe8b0'],
+        ['MP',m.mp+'/'+m.mpMax,m.mp/m.mpMax,'#4aa8ff','#9fc8ff'],
+        ['ターン',m.note,m.turn,m.tcol,'#ffd9a0']
+      ];
+      rows.forEach((r,k)=>{
+        const gy=WY+36+k*25;
+        txt(r[0],x+8,gy,9,r[4],'left',2);
+        if(r[1])txt(r[1],x+WW-8,gy,10,r[0]==='ターン'?'#ff9a90':'#fff','right',2);
+        bar(x+8,gy+6,WW-16,7,r[2],r[3]);
+      });
+      ctx.globalAlpha=1;
+    }
   }
-  y+=fs*1.9;
-  const hint=['↑おす ←→まわりこみ ↓さがる／とめる＝ふんばる','てきに かさねて フリック＝こうげき（はやい・たてほど つよい）','ちょんとタップ＝ロック／「いま！」のフリック＝いなす（ふった直後は×）'];
-  for(const l of hint){if(y<PY+PH-4){txt(l,PX+12,y,fs-1,'#c8cdff');y+=fs*1.45;}}
 
   if(S.over&&S.overT>=overShowT(S.over)){
     const win=S.over==='win';
