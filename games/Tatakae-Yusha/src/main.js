@@ -64,19 +64,38 @@ const partyEl=document.getElementById('party');
 try{const q=JSON.parse(localStorage.getItem('ty_party')||'[]');if(Array.isArray(q))setParty(q);}catch(_){}
 function saveParty(){try{localStorage.setItem('ty_party',JSON.stringify(getParty()));}catch(_){}}
 function partyText(){const k=getParty().filter(Boolean);return 'ゆうしゃ'+(k.length?' ＋ '+k.map(x=>KINDS[x].name).join(' ＋ '):'（ひとりで たたかう）');}
+// わくごとに「かおの サムネイル」を よこに スライドして えらぶ(まんなかに とまった ものが えらばれる。タップでも えらべる)
+const PARTY_DESC={none:'この わくは あけておく',mage:'はなれて ほのおの まほうを うつ（HP すくなめ）',priest:'こうげきしない。ヒールと いやしの じんで かいふく',warrior:'ちかくで おので きる。ちかづく てきを おす（HP おおい）'};
 function buildParty(){
   const cur=getParty();
   partyEl.querySelectorAll('.row[data-slot]').forEach(row=>{
-    const i=+row.dataset.slot,box=row.querySelector('.chips');box.innerHTML='';
-    for(const k of [null,...KIND_LIST]){
-      const b=document.createElement('button');b.className='chip'+((cur[i]||null)===k?' on':'');b.textContent=k?KINDS[k].name:'なし';
-      b.addEventListener('click',()=>{const a=getParty();while(a.length<3)a.push(null);a[i]=k;setParty(a);saveParty();buildParty();});
-      box.appendChild(b);
+    const i=+row.dataset.slot,car=row.querySelector('.carousel'),desc=row.querySelector('.desc'),kinds=[null,...KIND_LIST];
+    car.innerHTML='';const cards=[];
+    for(const k of kinds){
+      const c=document.createElement('div');c.className='card'+(k?'':' none');
+      if(k){const im=document.createElement('img');im.className='art';im.src='img/portrait-'+k+'.jpg';im.alt=KINDS[k].name;im.draggable=false;c.appendChild(im);}
+      else{const a=document.createElement('div');a.className='art';a.textContent='なし';c.appendChild(a);}
+      const nm=document.createElement('div');nm.className='nm';nm.textContent=k?KINDS[k].name:'なし';c.appendChild(nm);
+      car.appendChild(c);cards.push(c);
     }
+    const mark=idx=>{cards.forEach((c,j)=>c.classList.toggle('on',j===idx));desc.textContent=PARTY_DESC[kinds[idx]||'none'];};
+    const centerOf=c=>c.offsetLeft-(car.clientWidth-c.offsetWidth)/2; // この カードを まんなかに する scrollLeft
+    const nearest=()=>{let b=0,bd=1e9;cards.forEach((c,j)=>{const d=Math.abs(centerOf(c)-car.scrollLeft);if(d<bd){bd=d;b=j;}});return b;};
+    let sel=Math.max(0,kinds.indexOf(cur[i]||null));
+    const choose=idx=>{
+      if(idx===sel){mark(idx);return;}
+      sel=idx;mark(idx);
+      const a=getParty();while(a.length<3)a.push(null);a[i]=kinds[idx];setParty(a);saveParty();
+    };
+    mark(sel);
+    let tm=0;
+    car.addEventListener('scroll',()=>{mark(nearest());clearTimeout(tm);tm=setTimeout(()=>choose(nearest()),110);}); // とまったら けってい
+    cards.forEach((c,j)=>c.addEventListener('click',()=>{car.scrollTo({left:centerOf(c),behavior:'smooth'});choose(j);}));
+    row._init=()=>{car.scrollLeft=centerOf(cards[sel]);}; // ひらいた あとで いちを あわせる
   });
 }
 let partyFrom='title';
-function showParty(from){partyFrom=from;titleEl.style.display='none';stagesEl.style.display='none';buildParty();partyEl.style.display='block';partyEl.scrollTop=0;}
+function showParty(from){partyFrom=from;titleEl.style.display='none';stagesEl.style.display='none';buildParty();partyEl.style.display='block';partyEl.scrollTop=0;partyEl.querySelectorAll('.row[data-slot]').forEach(r=>r._init&&r._init());}
 function showStages(){setRunning(false);buildStageList();document.getElementById('stageParty').innerHTML='<b>パーティ</b>'+partyText()+'（タップで へんこう）';stagesEl.style.display='block';}
 function pickStage(id){
   lastStage=id;played=true;try{localStorage.setItem('ty_stage',id);}catch(_){}

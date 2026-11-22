@@ -46,9 +46,16 @@ canvas{touch-action:none;display:block;position:absolute;left:0;top:0}
 #party .grp{font-size:12px;color:#ffe36a;margin:8px 0 4px;font-weight:bold}
 #party .lab{font-size:12px;color:#d6dbff;margin-bottom:5px}
 #party .lab b{display:inline-block;background:#e8b923;color:#222;border-radius:4px;padding:0 7px;margin-right:6px}
-#party .chips{display:flex;flex-wrap:wrap;gap:6px}
-#party .chip{font-size:13px;font-weight:bold;color:#fff;background:#1a2290;border:2px solid #9aa5ff;border-radius:8px;padding:6px 10px}
-#party .chip.on{background:#e8b923;color:#222;border-color:#fff}
+#party .carousel{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;scrollbar-width:none;padding:4px calc(50% - 60px) 6px}
+#party .carousel::-webkit-scrollbar{display:none}
+#party .card{flex:0 0 120px;scroll-snap-align:center;position:relative;border:3px solid #6a74c8;border-radius:10px;overflow:hidden;background:#0d1040;opacity:.5;transform:scale(.88);transition:opacity .15s,transform .15s,border-color .15s}
+#party .card.on{opacity:1;transform:scale(1);border-color:#e8b923;box-shadow:0 0 12px rgba(232,185,35,.55)}
+#party .card .art{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;-webkit-user-drag:none;user-select:none}
+#party .card.none .art{display:flex;align-items:center;justify-content:center;font-size:34px;color:#6a74c8;background:repeating-linear-gradient(45deg,#10144a,#10144a 10px,#161a58 10px,#161a58 20px)}
+#party .card .nm{position:absolute;left:0;right:0;bottom:0;text-align:center;font-weight:bold;font-size:13px;background:rgba(0,0,40,.78);padding:3px 0}
+#party .row.fixedrow{display:flex;align-items:center;gap:10px}
+#party .row.fixedrow .card{opacity:1;transform:none;flex:0 0 96px}
+#party .desc{font-size:12px;color:#ffe36a;text-align:center;min-height:18px}
 #party .who{font-size:15px;font-weight:bold}
 #party .who small{font-size:11px;color:#ffe36a;font-weight:normal;margin-left:6px}
 #party .legend{font-size:12px;color:#d6dbff;margin:6px 0}
@@ -118,14 +125,13 @@ canvas{touch-action:none;display:block;position:absolute;left:0;top:0}
 </div>
 <div id="party" class="menu scrollable">
   <h1>パーティ</h1>
-  <div class="sub">ゆうしゃは こてい。のこり3わくを えらべる。おなじ しょくを かさねても よい。えらんだ ものは このブラウザに おぼえる</div>
+  <div class="sub">ゆうしゃは こてい。のこり3わくの かおを よこに スライドして えらぶ。おなじ しょくを かさねても よい。えらんだ ものは このブラウザに おぼえる</div>
   <div class="grp">ぜんえい（はじまりに まえに ならぶ）</div>
-  <div class="row fixed"><div class="lab"><b>1</b></div><div class="who">ゆうしゃ<small>こてい</small></div></div>
-  <div class="row" data-slot="0"><div class="lab"><b>2</b></div><div class="chips"></div></div>
+  <div class="row fixed fixedrow"><div class="card on"><img class="art" src="img/portrait-hero.jpg" alt="ゆうしゃ" draggable="false"><div class="nm">ゆうしゃ</div></div><div><div class="lab"><b>1</b></div><div class="who">ゆうしゃ<small>こてい</small></div></div></div>
+  <div class="row" data-slot="0"><div class="lab"><b>2</b> よこに スライドして えらぶ</div><div class="carousel"></div><div class="desc"></div></div>
   <div class="grp">こうえい（はじまりに うしろに ならぶ）</div>
-  <div class="row" data-slot="1"><div class="lab"><b>3</b></div><div class="chips"></div></div>
-  <div class="row" data-slot="2"><div class="lab"><b>4</b></div><div class="chips"></div></div>
-  <div class="legend"><b>まほうつかい</b> … はなれて ほのおの まほうを うつ。HP は すくなめ<br><b>そうりょ</b> … こうげきしない。ヒールと いやしの じんで かいふく<br><b>せんし</b> … ちかくで おので きる。ちかづく てきを おす。HP が おおい</div>
+  <div class="row" data-slot="1"><div class="lab"><b>3</b> よこに スライドして えらぶ</div><div class="carousel"></div><div class="desc"></div></div>
+  <div class="row" data-slot="2"><div class="lab"><b>4</b> よこに スライドして えらぶ</div><div class="carousel"></div><div class="desc"></div></div>
   <button id="party-back" class="back">もどる</button>
 </div>
 <div id="stages" class="menu scrollable">
