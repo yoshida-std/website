@@ -320,7 +320,7 @@ function hitHero(dmg,nx,nz,kn,note){
 function hitAlly(dmg,nx,nz,kn,note){
   const a=S.ally;if(a.hp<=0)return; // たおれた まほうつかいは もう ダメージを うけない
   a.hp=Math.max(0,a.hp-dmg);a.flash=0.25;S.shake=Math.max(S.shake,0.35);a.x+=nx*kn;a.z+=nz*kn;
-  addPop(a.x,a.z,2.4,'-'+dmg,'#ff7070',32,note||'',false);
+  addPop(a.x,a.z,1.9,'-'+dmg,'#ff7070',32,note||'',false);
 }
 function fixLock(){
   if(S.enemies[S.lock].dead){
@@ -524,7 +524,7 @@ export function step(dt){
           if(tdL<=reach*1.35+0.2){
             if(e.target==='ally'){
               if(a.hp>0){a.hp=Math.max(0,a.hp-CFG.enemyAtk.dmgAlly);a.flash=0.25;S.shake=Math.max(S.shake,0.35);
-              addPop(a.x,a.z,2.4,'-'+CFG.enemyAtk.dmgAlly,'#ff7070',32,'',false);}
+              addPop(a.x,a.z,1.9,'-'+CFG.enemyAtk.dmgAlly,'#ff7070',32,'',false);}
             }else{
               const dmg=h.stance==='firm'?CFG.enemyAtk.dmgHeroFirm:CFG.enemyAtk.dmgHero;
               h.hp=Math.max(0,h.hp-dmg);h.flash=0.25;S.shake=Math.max(S.shake,0.35);
@@ -668,8 +668,8 @@ export function step(dt){
           else if(a.mp>=AL.weak.cost)kind='weak';
           if(kind){
             const K=AL[kind];a.mp-=K.cost;a.cast={kind,t:0,dur:K.cast};
-            addText(kind==='strong'?K.name+'…':K.name,a.x,a.z,3.0,kind==='strong'?'#ff9a4a':'#ffd08a');
-          }else{a.castT=0.6;if(S.t-a.warnedMp>3){a.warnedMp=S.t;addText('MPが たりない！',a.x,a.z,3.0,'#9fc8ff');}}
+            addText(kind==='strong'?K.name+'…':K.name,a.x,a.z,2.5,kind==='strong'?'#ff9a4a':'#ffd08a');
+          }else{a.castT=0.6;if(S.t-a.warnedMp>3){a.warnedMp=S.t;addText('MPが たりない！',a.x,a.z,2.5,'#9fc8ff');}}
         }
       }
     }

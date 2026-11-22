@@ -384,7 +384,9 @@ export function allyParts(yaw,mv,ph,cast,fire,down){
   }
   return {parts,yaw:yawOut};
 }
-export function drawAlly(x,y,s,fl,yaw,mv,ph,cast,fire,down){const m=allyParts(yaw,mv,ph,cast,fire,down);h3render(m.parts,x,y,s,fl,m.yaw,0);}
+// まほうつかいの 見た目の 大きさ(ユーザー指示 2026-11-22「勇者と スケールを あわせたい」): 勇者の せたけ(2.17)に あわせた(モデルの せたけ 2.85 × 0.76 ≒ 2.17)。当たり判定は かえない
+export const MAGE_SCALE=0.76;
+export function drawAlly(x,y,s,fl,yaw,mv,ph,cast,fire,down){const m=allyParts(yaw,mv,ph,cast,fire,down);h3render(m.parts,x,y,s*MAGE_SCALE,fl,m.yaw,0);}
 // てき: どっしりした「どすこいオーガ」。あたまに つの、おなかが ふくらみ、まわしを しめる
 export function enemyParts(eyeCol,tint,sc,yaw,mv,ph,atk,stag,dash){
   yaw=yaw===undefined?Math.PI:yaw;mv=mv||0;ph=ph||0;
@@ -686,11 +688,11 @@ export function drawEffects(flyCb){
     ctx.save();ctx.globalCompositeOperation='lighter';
     if(a.cast&&a.hp>0){ // つえの さきに ひかりが あつまる(つよい魔法は おおきく ゆれる)
       const k=Math.min(1,a.cast.t/a.cast.dur),strong=a.cast.kind==='strong';
-      fireBall(a.x,a.z,1.9,(strong?0.35+0.9*k:0.25+0.3*k)*(1+0.06*Math.sin(S.t*30+a.cast.t*30)),0.55+0.4*k,strong);
+      fireBall(a.x,a.z,1.9*MAGE_SCALE,(strong?0.35+0.9*k:0.25+0.3*k)*(1+0.06*Math.sin(S.t*30+a.cast.t*30)),0.55+0.4*k,strong);
     }
     for(const sp of S.spells){
       const k=sp.t/sp.dur,e=sp.e,strong=sp.kind==='strong';
-      const at=kk=>({x:sp.sx+(e.x-sp.sx)*kk,z:sp.sz+(e.z-sp.sz)*kk,h:2.0+(1.5-2.0)*kk+(strong?0.5:0.3)*Math.sin(Math.PI*kk)});
+      const at=kk=>({x:sp.sx+(e.x-sp.sx)*kk,z:sp.sz+(e.z-sp.sz)*kk,h:(2.0*MAGE_SCALE)+(1.5-2.0*MAGE_SCALE)*kk+(strong?0.5:0.3)*Math.sin(Math.PI*kk)});
       for(let j=5;j>=1;j--){const kk=Math.max(0,k-j*0.05),q=at(kk);fireBall(q.x,q.z,q.h,(strong?0.5:0.25)*(1-j*0.14),0.4*(1-j*0.15),strong);} // しっぽ
       const q=at(Math.min(1,k));fireBall(q.x,q.z,q.h,strong?0.7:0.34,0.95,strong);
     }
