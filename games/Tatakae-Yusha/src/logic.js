@@ -299,6 +299,7 @@ function launchEnemy(e,who){
   S.fly.push({x0:e.sx,y0:e.sy,x:e.sx,y:e.sy,vx:vx*sp,vy:vy*sp,t:0,spin:(vx>=0?1:-1)*14,s:e.sc||30,r:e.r,color:e.color,out:false});
 }
 function stepFx(dt){
+  if(S.ally.hp<=0)S.ally.downT=(S.ally.downT||0)+dt; // たおれてからの じかん(たおれる 動きに つかう。ゲームの じかんが とまる 場面でも すすむ)
   for(const f of S.fly){
     f.t+=dt;f.x=f.x0+f.vx*f.t;f.y=f.y0+f.vy*f.t;
     if(!f.out&&(f.x<-30||f.x>CW+30||f.y<-30||f.y>CH+30)){
@@ -317,7 +318,8 @@ function hitHero(dmg,nx,nz,kn,note){
   addPop(h.x,h.z,2.6,'-'+dmg,'#ff7070',34,note||'',false);
 }
 function hitAlly(dmg,nx,nz,kn,note){
-  const a=S.ally;a.hp=Math.max(0,a.hp-dmg);a.flash=0.25;S.shake=Math.max(S.shake,0.35);a.x+=nx*kn;a.z+=nz*kn;
+  const a=S.ally;if(a.hp<=0)return; // たおれた まほうつかいは もう ダメージを うけない
+  a.hp=Math.max(0,a.hp-dmg);a.flash=0.25;S.shake=Math.max(S.shake,0.35);a.x+=nx*kn;a.z+=nz*kn;
   addPop(a.x,a.z,2.4,'-'+dmg,'#ff7070',32,note||'',false);
 }
 function fixLock(){
@@ -394,7 +396,7 @@ export function step(dt){
   }
 
   // --- まほうつかいの移動(できるだけ てきから はなれる) ---
-  if(E.length>0){
+  if(E.length>0&&a.hp>0){
     a.rt=(a.rt||0)-dt;
     if(a.rt<=0||a.tx===undefined){
       a.rt=0.25;
@@ -430,7 +432,7 @@ export function step(dt){
       const CH2=CFG.atkCharge,stp=Math.min(e.dashLeft,CH2.speed*dt);
       e.x+=e.dx*stp;e.z+=e.dz*stp;e.dashLeft-=stp;e.fx=e.dx;e.fz=e.dz;
       if(!e.hitH&&Math.hypot(h.x-e.x,h.z-e.z)<=e.r*0.7+h.r+0.1){e.hitH=true;hitHero(h.stance==='firm'?CH2.dmgHeroFirm:CH2.dmgHero,e.dx,e.dz,CH2.knock,'とっしん');}
-      if(!e.hitA&&Math.hypot(a.x-e.x,a.z-e.z)<=e.r*0.7+a.r+0.1){e.hitA=true;hitAlly(CH2.dmgAlly,e.dx,e.dz,CH2.knock,'とっしん');}
+      if(!e.hitA&&a.hp>0&&Math.hypot(a.x-e.x,a.z-e.z)<=e.r*0.7+a.r+0.1){e.hitA=true;hitAlly(CH2.dmgAlly,e.dx,e.dz,CH2.knock,'とっしん');}
       if(e.dashLeft<=0.001){e.dash=0;e.stagger=CH2.rest;e.atkCd=CFG.enemyAtk.cd;e.plan=pickPlan();e.kx=0;e.kz=0;addText('つかれた…',e.x,e.z,3.2,'#9fe8ff');}
       continue;
     }
@@ -438,8 +440,10 @@ export function step(dt){
     const HT=e.hate,HC=CFG.hate;
     // ヘイトは 多いほど はやく へる(大きくためた人も、こうげきを やめると すぐ さがる)
     HT.hero=Math.max(0,HT.hero-(HC.decay+HC.decayK*HT.hero)*dt);HT.ally=Math.max(0,HT.ally-(HC.decay+HC.decayK*HT.ally)*dt);
+    if(a.hp<=0){HT.ally=0;if(e.target==='ally'&&e.tele<=0&&e.atkTele<=0)e.target=null;} // たおれた まほうつかいは ねらわない
     // 範囲に入った味方に気づく(近いほど すこし ヘイトが高い。範囲にいる間は ねらいを うしなわない)
     for(const [who,u] of [['hero',h],['ally',a]]){
+      if(who==='ally'&&a.hp<=0)continue;
       const d=Math.hypot(u.x-e.x,u.z-e.z);
       if(d<=CFG.aggro)HT[who]=Math.max(HT[who],HC.acquire+0.5+(CFG.aggro-d)*0.15);
     }
@@ -519,8 +523,8 @@ export function step(dt){
         if(kind==='hit'){
           if(tdL<=reach*1.35+0.2){
             if(e.target==='ally'){
-              a.hp=Math.max(0,a.hp-CFG.enemyAtk.dmgAlly);a.flash=0.25;S.shake=Math.max(S.shake,0.35);
-              addPop(a.x,a.z,2.4,'-'+CFG.enemyAtk.dmgAlly,'#ff7070',32,'',false);
+              if(a.hp>0){a.hp=Math.max(0,a.hp-CFG.enemyAtk.dmgAlly);a.flash=0.25;S.shake=Math.max(S.shake,0.35);
+              addPop(a.x,a.z,2.4,'-'+CFG.enemyAtk.dmgAlly,'#ff7070',32,'',false);}
             }else{
               const dmg=h.stance==='firm'?CFG.enemyAtk.dmgHeroFirm:CFG.enemyAtk.dmgHero;
               h.hp=Math.max(0,h.hp-dmg);h.flash=0.25;S.shake=Math.max(S.shake,0.35);
@@ -566,8 +570,7 @@ export function step(dt){
     e.info={contact:d<rs+0.1,R,wh:Wh,we:We,angle};
   }
   for(let i=0;i<E.length;i++)for(let j=i+1;j<E.length;j++)separate(E[i],E[j],E[i].w,E[j].w); // てき どうしが かさならない
-  separate(h,a,CFG.hero.w,CFG.ally.w);
-  for(const e of E)separate(a,e,CFG.ally.w,e.w);
+  if(a.hp>0){separate(h,a,CFG.hero.w,CFG.ally.w);for(const e of E)separate(a,e,CFG.ally.w,e.w);} // たおれた まほうつかいは からだが じゃまに ならない
 
   // --- ゆうしゃのこうげき(フリックで けんを ふる) ---
   h.swingCd=Math.max(0,h.swingCd-dt);h.swingT=Math.max(0,h.swingT-dt);h.swingV=Math.max(0,h.swingV-dt);
@@ -642,8 +645,10 @@ export function step(dt){
   //   弱い炎: すぐ でる・MP すくない・よわい / 強い炎: えいしょうが ながい・MP おおい・つよい(てきが ちかい/ねらわれている ときは つかわない)
   {
     const AL=CFG.ally,nearest=()=>{let tg=null,bd=AL.range;for(const e of E){if(e.dead)continue;const d=Math.hypot(e.x-a.x,e.z-a.z);if(d<bd){bd=d;tg=e;}}return tg;};
-    a.mp=Math.min(AL.mp,a.mp+AL.mpRegen*dt);
-    if(a.cast){ // えいしょう中
+    if(a.hp<=0){a.cast=null;a.castT=1;} // たおれたら えいしょうも やめる(すでに とんでいる ほのおは そのまま あたる)
+    else a.mp=Math.min(AL.mp,a.mp+AL.mpRegen*dt);
+    if(a.hp<=0){/* うごけない */}
+    else if(a.cast){ // えいしょう中
       a.cast.t+=dt;
       if(a.cast.t>=a.cast.dur){
         const K=AL[a.cast.kind],tg=nearest();
@@ -734,6 +739,6 @@ export function step(dt){
   for(const q of S.pops)q.life-=dt;
   S.pops=S.pops.filter(q=>q.life>0);
 
-  if(h.hp<=0)endGame('hero');else if(a.hp<=0)endGame('ally');
+  if(h.hp<=0)endGame('hero'); // まけは ゆうしゃが たおれた ときだけ(まほうつかいが たおれても つづける。その場で たおれたまま)
   else if(S.enemies.every(e=>e.dead))endGame('win');
 }

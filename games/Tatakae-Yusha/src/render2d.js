@@ -73,6 +73,8 @@ export function h3apply(p,ops){
 }
 export const H3FACES=[[0,2,6,4],[1,5,7,3],[0,4,5,1],[2,3,7,6],[0,1,3,2],[4,6,7,5]];
 export const H3L=(()=>{const l=[-0.45,0.85,0.55],n=Math.hypot(l[0],l[1],l[2]);return [l[0]/n,l[1]/n,l[2]/n];})();
+// たおれた まほうつかい: たおれてからの 時間 → 0〜1(0.5秒で うしろへ たおれきる)。たおれて いない ときは 0
+export function allyDown(a){return a.hp>0?0:Math.min(1,(a.downT||0)/0.5);}
 // まほうつかいの えいしょうの ようす({c: つえの あげぐあい(強い魔法は 1 をこえて 2 まで), kind})。えいしょう じゃない ときは 0
 export function allyCast(a){
   if(!a.cast)return {c:0,kind:''};
@@ -308,7 +310,7 @@ export function faceTo(o,tx,tz,rate){
   if(Math.hypot(dl,dd)>0.05){const ta=Math.atan2(dl,-dd);let da=ta-(o.yaw3===undefined?Math.PI:o.yaw3);da=Math.atan2(Math.sin(da),Math.cos(da));o.yaw3=(o.yaw3===undefined?Math.PI:o.yaw3)+Math.max(-rate*dt,Math.min(rate*dt,da));}
   else if(o.yaw3===undefined)o.yaw3=Math.PI;
 }
-export function allyParts(yaw,mv,ph,cast,fire){
+export function allyParts(yaw,mv,ph,cast,fire,down){
   const t=performance.now()/1000,bob=Math.sin(t*2.3)*0.02-Math.abs(Math.sin(ph))*0.05*mv;
   const parts=[],B=(cx,cy,cz,sx,sy,sz,col,ops,bias)=>parts.push({c:[cx,cy,cz],s:[sx,sy,sz],col,ops:ops||[],bias:bias||0});
   const sw=Math.sin(ph)*0.5*mv;
@@ -333,9 +335,16 @@ export function allyParts(yaw,mv,ph,cast,fire){
   const pul=0.14+0.04*Math.sin(t*6)+0.08*Math.min(1,cast||0)+0.12*Math.max(0,(cast||0)-1); // つよい 魔法の えいしょう中は たまが 大きくなる
   B(0.34,0.82+bob,1.05,pul*1.5,pul*1.5,pul*1.5,fire?(fire==='strong'?'#ff6a2a':'#ffb040'):'#7cf5ff',ra,0.05);   // たま(ほのおの えいしょう中は オレンジ)
   B(0.34,0.82+bob,0.9,0.16,0.16,0.06,'#e0b84a',ra);
-  return {parts,yaw};
+  // たおれた まほうつかい: うしろへ ばたりと たおれ、よこむきに なって その場に たおれたまま(ゆうしゃと おなじ たおれかた)
+  let yawOut=yaw;
+  if(down>0){
+    const e=down*down*(3-2*down),to=[{t:'x',a:-Math.PI/2*e,p:[0,0.2,-0.3]}];
+    for(const pt of parts)pt.ops=pt.ops.concat(to);
+    yawOut=yaw+Math.PI/2*e;
+  }
+  return {parts,yaw:yawOut};
 }
-export function drawAlly(x,y,s,fl,yaw,mv,ph,cast,fire){const m=allyParts(yaw,mv,ph,cast,fire);h3render(m.parts,x,y,s,fl,m.yaw,0);}
+export function drawAlly(x,y,s,fl,yaw,mv,ph,cast,fire,down){const m=allyParts(yaw,mv,ph,cast,fire,down);h3render(m.parts,x,y,s,fl,m.yaw,0);}
 // てき: どっしりした「どすこいオーガ」。あたまに つの、おなかが ふくらみ、まわしを しめる
 export function enemyParts(eyeCol,tint,sc,yaw,mv,ph,atk,stag,dash){
   yaw=yaw===undefined?Math.PI:yaw;mv=mv||0;ph=ph||0;
@@ -529,7 +538,7 @@ export function drawGroundMarks(P){
   const st=h.stance;
   P.groundCircle(h.x,h.z,h.r,st==='firm'?'rgba(90,200,255,.45)':(st==='push'?'rgba(255,220,90,.45)':'rgba(120,160,255,.3)'),'#8cf',2);
   if(st==='firm')P.groundCircle(h.x,h.z,h.r+0.22,null,'rgba(120,220,255,.6)',2);
-  P.groundCircle(a.x,a.z,a.r,'rgba(170,120,255,.3)','#c9a0ff',2);
+  if(a.hp>0)P.groundCircle(a.x,a.z,a.r,'rgba(170,120,255,.3)','#c9a0ff',2); // たおれたら しるしを 出さない
   for(const e of E){
     if((e.air||0)>0.05)continue;
     const teleOn=e.tele>0;
@@ -571,7 +580,7 @@ function charModel(it,blink){
   const air=it.k==='e'?(it.e.air||0):0; // 空中の てきは たかさぶん 上に ずらす
   const p=proj(it.c.l,it.c.d,air),s=V.F/it.c.d;
   if(it.k==='h')drawHero(p.x,p.y,s,h.flash>0&&blink,h);
-  else if(it.k==='a'){const ac=allyCast(a);drawAlly(p.x,p.y,s,a.flash>0&&blink,a.yaw3,a.mv3||0,a.ph3||0,ac.c,ac.kind);}
+  else if(it.k==='a'){const ac=allyCast(a);drawAlly(p.x,p.y,s,a.flash>0&&blink,a.yaw3,a.mv3||0,a.ph3||0,ac.c,ac.kind,allyDown(a));}
   else{
     const e=it.e,teleOn=e.tele>0,atkOn=e.atkTele>0;
     const eye=teleOn?'#ff2020':(atkOn?'#ffd000':null);

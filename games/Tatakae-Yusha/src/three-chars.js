@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import {LineSegments2} from 'three/addons/lines/LineSegments2.js';
 import {LineSegmentsGeometry} from 'three/addons/lines/LineSegmentsGeometry.js';
 import {LineMaterial} from 'three/addons/lines/LineMaterial.js';
-import {heroParts,allyParts,allyCast,enemyParts,ENEMY_LOOK} from './render2d.js';
+import {heroParts,allyParts,allyCast,allyDown,enemyParts,ENEMY_LOOK} from './render2d.js';
 
 // ---- 箱の ひな形(1×1×1) ----
 const FACES=[]; // {n:[法線], q:[4つの角]}(外から見て 反時計まわり)
@@ -118,7 +118,7 @@ export function makeChars(scene,flyScene){
       hero.set(hp.parts,1,h.flash>0&&blink);
       hero.obj.position.set(h.x,0,-h.z);hero.obj.rotation.y=worldYaw(S,hp.yaw);
       // まほうつかい(むき・あるきは 描画の faceTo が きめる。移行元と同じ)
-      const ac=allyCast(a),ap=allyParts(a.yaw3,a.mv3||0,a.ph3||0,ac.c,ac.kind);
+      const ac=allyCast(a),ap=allyParts(a.yaw3,a.mv3||0,a.ph3||0,ac.c,ac.kind,allyDown(a));
       ally.set(ap.parts,1,a.flash>0&&blink);
       ally.obj.position.set(a.x,0,-a.z);ally.obj.rotation.y=worldYaw(S,ap.yaw);
       // てき
