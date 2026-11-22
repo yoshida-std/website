@@ -73,6 +73,12 @@ export function h3apply(p,ops){
 }
 export const H3FACES=[[0,2,6,4],[1,5,7,3],[0,4,5,1],[2,3,7,6],[0,1,3,2],[4,6,7,5]];
 export const H3L=(()=>{const l=[-0.45,0.85,0.55],n=Math.hypot(l[0],l[1],l[2]);return [l[0]/n,l[1]/n,l[2]/n];})();
+// まほうつかいの えいしょうの ようす({c: つえの あげぐあい(強い魔法は 1 をこえて 2 まで), kind})。えいしょう じゃない ときは 0
+export function allyCast(a){
+  if(!a.cast)return {c:0,kind:''};
+  const p=Math.min(1,a.cast.t/a.cast.dur);
+  return {c:a.cast.kind==='strong'?p*2:p,kind:a.cast.kind};
+}
 // 白くひかる てんめつ(ゲームの じかんが とまる 演出の間も うごく)
 export function blinkNow(){return Math.floor((S.t+(S.overT||0)+(S.intro?S.intro.t:0))*14)%2===0;}
 // 部品のリストを つくる(Canvas 2D と WebGL の両方で つかう)
@@ -302,7 +308,7 @@ export function faceTo(o,tx,tz,rate){
   if(Math.hypot(dl,dd)>0.05){const ta=Math.atan2(dl,-dd);let da=ta-(o.yaw3===undefined?Math.PI:o.yaw3);da=Math.atan2(Math.sin(da),Math.cos(da));o.yaw3=(o.yaw3===undefined?Math.PI:o.yaw3)+Math.max(-rate*dt,Math.min(rate*dt,da));}
   else if(o.yaw3===undefined)o.yaw3=Math.PI;
 }
-export function allyParts(yaw,mv,ph,cast){
+export function allyParts(yaw,mv,ph,cast,fire){
   const t=performance.now()/1000,bob=Math.sin(t*2.3)*0.02-Math.abs(Math.sin(ph))*0.05*mv;
   const parts=[],B=(cx,cy,cz,sx,sy,sz,col,ops,bias)=>parts.push({c:[cx,cy,cz],s:[sx,sy,sz],col,ops:ops||[],bias:bias||0});
   const sw=Math.sin(ph)*0.5*mv;
@@ -324,12 +330,12 @@ export function allyParts(yaw,mv,ph,cast){
   const ca=-0.5-0.9*Math.min(1,cast||0),ra=[{t:'x',a:ca,p:[0.34,1.28+bob,0]}];
   B(0.34,1.05+bob,0,0.16,0.4,0.16,'#6a46b8',ra);B(0.34,0.82+bob,0,0.12,0.1,0.12,'#f1c9a0',ra);
   B(0.34,0.82+bob,0.02,0.07,0.07,1.9,'#a0702a',ra);                  // つえ
-  const pul=0.14+0.04*Math.sin(t*6)+0.08*Math.min(1,cast||0);
-  B(0.34,0.82+bob,1.05,pul*1.5,pul*1.5,pul*1.5,'#7cf5ff',ra,0.05);   // たま
+  const pul=0.14+0.04*Math.sin(t*6)+0.08*Math.min(1,cast||0)+0.12*Math.max(0,(cast||0)-1); // つよい 魔法の えいしょう中は たまが 大きくなる
+  B(0.34,0.82+bob,1.05,pul*1.5,pul*1.5,pul*1.5,fire?(fire==='strong'?'#ff6a2a':'#ffb040'):'#7cf5ff',ra,0.05);   // たま(ほのおの えいしょう中は オレンジ)
   B(0.34,0.82+bob,0.9,0.16,0.16,0.06,'#e0b84a',ra);
   return {parts,yaw};
 }
-export function drawAlly(x,y,s,fl,yaw,mv,ph,cast){const m=allyParts(yaw,mv,ph,cast);h3render(m.parts,x,y,s,fl,m.yaw,0);}
+export function drawAlly(x,y,s,fl,yaw,mv,ph,cast,fire){const m=allyParts(yaw,mv,ph,cast,fire);h3render(m.parts,x,y,s,fl,m.yaw,0);}
 // てき: どっしりした「どすこいオーガ」。あたまに つの、おなかが ふくらみ、まわしを しめる
 export function enemyParts(eyeCol,tint,sc,yaw,mv,ph,atk,stag,dash){
   yaw=yaw===undefined?Math.PI:yaw;mv=mv||0;ph=ph||0;
@@ -534,8 +540,8 @@ export function drawGroundMarks(P){
   // 着地の しょうげきは(ひろがる 輪)
   for(const r of S.rings||[]){
     const k=r.t/r.max,rad=r.r*(1.1+3.2*k),al=0.85*(1-k);
-    P.groundCircle(r.x,r.z,rad,null,'rgba(255,240,200,'+al.toFixed(3)+')',5*(1-k)+1.5,40);
-    P.groundCircle(r.x,r.z,rad*0.62,null,'rgba(255,200,120,'+(al*0.7).toFixed(3)+')',3*(1-k)+1,32);
+    P.groundCircle(r.x,r.z,rad,null,'rgba('+(r.rgb||'255,240,200')+','+al.toFixed(3)+')',5*(1-k)+1.5,40);
+    P.groundCircle(r.x,r.z,rad*0.62,null,'rgba('+(r.rgb?'255,210,120':'255,200,120')+','+(al*0.7).toFixed(3)+')',3*(1-k)+1,32);
   }
 }
 // キャラクターの ならび(奥から手前)
@@ -560,7 +566,7 @@ function charModel(it,blink){
   const air=it.k==='e'?(it.e.air||0):0; // 空中の てきは たかさぶん 上に ずらす
   const p=proj(it.c.l,it.c.d,air),s=V.F/it.c.d;
   if(it.k==='h')drawHero(p.x,p.y,s,h.flash>0&&blink,h);
-  else if(it.k==='a')drawAlly(p.x,p.y,s,a.flash>0&&blink,a.yaw3,a.mv3||0,a.ph3||0,a.castT<0.5?1-a.castT/0.5:0);
+  else if(it.k==='a'){const ac=allyCast(a);drawAlly(p.x,p.y,s,a.flash>0&&blink,a.yaw3,a.mv3||0,a.ph3||0,ac.c,ac.kind);}
   else{
     const e=it.e,teleOn=e.tele>0,atkOn=e.atkTele>0;
     const eye=teleOn?'#ff2020':(atkOn?'#ffd000':null);
@@ -598,9 +604,7 @@ export function charOverlay(it,blink){
     e.sc=s;e.sx=p.x;e.sy=p.y-s*er*1.3;e.shw=Math.max(18,s*er*1.25);e.shh=Math.max(24,s*er*1.45); // タップ・フリック判定用の画面位置と大きさ
     if(inp.down&&inp.onEnemy===e.i){ctx.save();ctx.strokeStyle='#ffe01a';ctx.lineWidth=3;ctx.globalAlpha=0.85;ctx.beginPath();ctx.ellipse(e.sx,e.sy,e.shw+8,e.shh+8,0,0,Math.PI*2);ctx.stroke();ctx.restore();}
     const top=proj(it.c.l,it.c.d,2.9*er+0.2);
-    // ねばりゲージ(小)
-    bar(top.x-22,top.y+11,44,5,e.gauge/100,e.gauge>=80?'#ff5a4a':'#ffb030');
-    bar(top.x-22,top.y+18,44,5,e.hp/e.maxHp,'#5ad06a');
+    bar(top.x-22,top.y+11,44,5,e.hp/e.maxHp,'#5ad06a'); // てきの HP(ねばりゲージは 出さない)
     const top2=proj(it.c.l,it.c.d,2.9*er+0.2+0.8);
     if(teleOn){const w=e.tele<=CFG.parryWin;txt(w?'いま！':'！',top2.x,top2.y-6,Math.max(22,s*0.9)*(w?1.15:1),w?'#7cf5ff':'#ff4040','center',4);}
     else if(atkOn){const w=e.target==='hero'&&e.atkTele<=CFG.parryWin;txt(w?'いま！':'！',top2.x,top2.y-6,Math.max(20,s*0.8)*(w?1.15:1),w?'#7cf5ff':(e.target==='hero'?'#ff9a30':'#ffd000'),'center',4);txt(KIND_JP[e.atkKind]||'',top2.x,top2.y-30,13,'#ffd0a0','center',3);}
@@ -616,6 +620,27 @@ export function drawEffects(flyCb){
     const p1=proj(c1.l,c1.d,b.y1),p2=proj(c2.l,c2.d,b.y2);
     ctx.globalAlpha=Math.min(1,b.life*5);ctx.strokeStyle=b.col;ctx.lineWidth=4;ctx.lineCap='round';
     ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.stroke();ctx.globalAlpha=1;
+  }
+  // 魔法: えいしょう中の ひかりと、とんでいく ほのお
+  {
+    const a=S.ally,fireBall=(x,z,hgt,rad,alpha,strong)=>{
+      const c=toCam(x,z);if(c.d<NEAR)return;const p=proj(c.l,c.d,hgt),r=Math.max(3,rad*V.F/c.d);
+      const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r);
+      g.addColorStop(0,'rgba(255,250,200,'+alpha+')');g.addColorStop(0.35,'rgba('+(strong?'255,130,40':'255,176,60')+','+(alpha*0.9)+')');g.addColorStop(1,'rgba(255,80,20,0)');
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();
+    };
+    ctx.save();ctx.globalCompositeOperation='lighter';
+    if(a.cast&&a.hp>0){ // つえの さきに ひかりが あつまる(つよい魔法は おおきく ゆれる)
+      const k=Math.min(1,a.cast.t/a.cast.dur),strong=a.cast.kind==='strong';
+      fireBall(a.x,a.z,1.9,(strong?0.35+0.9*k:0.25+0.3*k)*(1+0.06*Math.sin(S.t*30+a.cast.t*30)),0.55+0.4*k,strong);
+    }
+    for(const sp of S.spells){
+      const k=sp.t/sp.dur,e=sp.e,strong=sp.kind==='strong';
+      const at=kk=>({x:sp.sx+(e.x-sp.sx)*kk,z:sp.sz+(e.z-sp.sz)*kk,h:2.0+(1.5-2.0)*kk+(strong?0.5:0.3)*Math.sin(Math.PI*kk)});
+      for(let j=5;j>=1;j--){const kk=Math.max(0,k-j*0.05),q=at(kk);fireBall(q.x,q.z,q.h,(strong?0.5:0.25)*(1-j*0.14),0.4*(1-j*0.15),strong);} // しっぽ
+      const q=at(Math.min(1,k));fireBall(q.x,q.z,q.h,strong?0.7:0.34,0.95,strong);
+    }
+    ctx.restore();
   }
   // 浮かぶ文字
   for(const t of S.texts){
@@ -720,7 +745,7 @@ export function drawHud(){
   {
     const party=[
       {name:'ゆうしゃ',hp:h.hp,hpMax:CFG.hero.hp,mp:CFG.hero.mp,mpMax:CFG.hero.mp,turn:h.sta/CFG.sta.max,note:h.tired?'いきぎれ':'',tcol:h.tired?'#ff5a4a':'#ffb030'},
-      {name:'まほうつかい',hp:a.hp,hpMax:CFG.ally.hp,mp:CFG.ally.mp,mpMax:CFG.ally.mp,turn:1-Math.max(0,Math.min(1,a.castT/CFG.ally.castInt)),note:'',tcol:'#ffb030'}
+      {name:'まほうつかい',hp:a.hp,hpMax:CFG.ally.hp,mp:Math.floor(a.mp),mpMax:CFG.ally.mp,turn:a.cast?Math.min(1,a.cast.t/a.cast.dur):1-Math.max(0,Math.min(1,a.castT/(a.cd||1))),note:a.cast?CFG.ally[a.cast.kind].name:'',tcol:a.cast?(a.cast.kind==='strong'?'#ff6a3a':'#ffd08a'):'#ffb030'}
     ];
     const M=6,G=5,WN=4,WW=(CW-M*2-G*(WN-1))/WN,WH=108,WY=CH-M-WH;
     for(let i=0;i<WN;i++){
@@ -738,7 +763,7 @@ export function drawHud(){
       rows.forEach((r,k)=>{
         const gy=WY+36+k*25;
         txt(r[0],x+8,gy,9,r[4],'left',2);
-        if(r[1])txt(r[1],x+WW-8,gy,10,r[0]==='ターン'?'#ff9a90':'#fff','right',2);
+        if(r[1])txt(r[1],x+WW-8,gy,10,r[0]==='ターン'?'#ffd9a0':'#fff','right',2);
         bar(x+8,gy+6,WW-16,7,r[2],r[3]);
       });
       ctx.globalAlpha=1;

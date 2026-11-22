@@ -16,8 +16,8 @@ export function init(){
   S={
     t:0,over:null,overT:0,shake:0,texts:[],pops:[],lock:0,
     hero:{x:0,z:7.8,r:CFG.hero.r,hp:CFG.hero.hp,stun:0,flash:0,stance:'firm',pushK:0,firmK:1,hitT:-1,dead:false,hitK:0,swingCd:0,swingT:0,swingV:0,pushT:0,sta:100,tired:false,noParry:0,ph:0,mv:0,fr:0,ff:1,yaw3:Math.PI,faceHold:0,idleT:0},
-    ally:{x:0,z:5.4,r:CFG.ally.r,hp:CFG.ally.hp,flash:0,castT:1.0},
-    enemies:[makeEnemy(0,-3.5,17.5),makeEnemy(1,3.5,18.5)],beams:[],fly:[],sparks:[],rings:[],dust:[],
+    ally:{x:0,z:5.4,r:CFG.ally.r,hp:CFG.ally.hp,mp:CFG.ally.mp,flash:0,castT:1.0,cd:1.0,cast:null,warnedMp:0},
+    enemies:[makeEnemy(0,-3.5,17.5),makeEnemy(1,3.5,18.5)],beams:[],spells:[],fly:[],sparks:[],rings:[],dust:[],
     cam:{yaw:0}
   };
   // ゲームスタートの演出(ユーザー指示 2026-11-21): カメラが てきを 大きく うつし、てきが 地面に おりたつ。そのあと カメラが ひいて ゲームの いちへ
@@ -254,7 +254,7 @@ export function overReadyT(kind){return kind==='win'?winShowT()+0.4:(kind==='her
 export function overShowT(kind){return kind==='win'?winShowT():(kind==='hero'?2.6:0);}
 function endGame(kind){
   S.over=kind;S.overT=0;inp.down=false;inp.fwd=0;inp.lat=0;inp.flickPending=false;
-  S.beams=[];S.hero.swingV=0;S.hero.swingT=0; // ゲームの じかんが とまるので、のこっていると 黄色い線(こうげきの ビーム)や 剣の軌跡が きえなくなる
+  S.beams=[];S.spells=[];S.hero.swingV=0;S.hero.swingT=0; // ゲームの じかんが とまるので、のこっていると 黄色い線(こうげきの ビーム)や 剣の軌跡が きえなくなる
   if(kind==='win'){ // かった: かちかたで 3つの ポーズ(ゆうしゃの HP の わりあいで きめる)
     const h=S.hero,r=h.hp/CFG.hero.hp,V=CFG.victory;
     S.victory={grade:r>=V.easy?'easy':(r<V.close?'close':'normal'),t:0,yaw:S.cam.yaw,said:false,dustT:0};
@@ -278,9 +278,9 @@ function parryEnemy(e,h){ // いなす成功
 }
 
 function addHate(e,who,v){e.hate[who]=Math.min(CFG.hate.max,e.hate[who]+v);}
-function hurtEnemy(e,dmg,who,note){
-  e.hp=Math.max(0,e.hp-dmg);e.flash=0.12;addHate(e,who,dmg*(who==='ally'?CFG.hate.perDmgAlly:CFG.hate.perDmg)); // こうげきは ヘイトが たまりやすい
-  addPop(e.x,e.z,2.6*e.r+0.3,String(Math.round(dmg)),who==='hero'?'#ffe01a':'#d9b8ff',Math.min(62,26+dmg*1.3+(note?6:0)),note,who==='hero');
+function hurtEnemy(e,dmg,who,note,hate){
+  e.hp=Math.max(0,e.hp-dmg);e.flash=0.12;addHate(e,who,dmg*(hate!==undefined?hate:(who==='ally'?CFG.hate.perDmgAlly:CFG.hate.perDmg))); // こうげきは ヘイトが たまりやすい
+  addPop(e.x,e.z,2.6*e.r+0.3,String(Math.round(dmg)),who==='hero'?'#ffe01a':'#ffa24a',Math.min(62,26+dmg*1.3+(note?6:0)),note,who==='hero');
   if(e.hp<=0&&!e.dead){e.dead=true;e.tele=0;e.atkTele=0;e.dash=0;S.shake=Math.max(S.shake,0.5);addText('たおした！',e.x,e.z,3.6,'#ffe36a');launchEnemy(e,who);}
 }
 // 止めをさした敵を、画面の外へ ふっとばす
@@ -624,16 +624,48 @@ export function step(dt){
     }
   }
 
-  // --- まほうつかいのこうげき(はなれたところから) ---
-  a.castT-=dt;
-  if(a.castT<=0){
-    let tg=null,bd=CFG.ally.range;
-    for(const e of E){if(e.dead)continue;const d=Math.hypot(e.x-a.x,e.z-a.z);if(d<bd){bd=d;tg=e;}}
-    if(tg){
-      a.castT=CFG.ally.castInt;
-      S.beams.push({x1:a.x,z1:a.z,x2:tg.x,z2:tg.z,y1:1.7,y2:1.3,life:0.28,col:'#c9a0ff'});
-      hurtEnemy(tg,CFG.ally.dmg,'ally');
-    }else a.castT=0.3;
+  // --- まほうつかいのこうげき(はなれたところから。ほのおの魔法で MP を つかう) ---
+  //   弱い炎: すぐ でる・MP すくない・よわい / 強い炎: えいしょうが ながい・MP おおい・つよい(てきが ちかい/ねらわれている ときは つかわない)
+  {
+    const AL=CFG.ally,nearest=()=>{let tg=null,bd=AL.range;for(const e of E){if(e.dead)continue;const d=Math.hypot(e.x-a.x,e.z-a.z);if(d<bd){bd=d;tg=e;}}return tg;};
+    a.mp=Math.min(AL.mp,a.mp+AL.mpRegen*dt);
+    if(a.cast){ // えいしょう中
+      a.cast.t+=dt;
+      if(a.cast.t>=a.cast.dur){
+        const K=AL[a.cast.kind],tg=nearest();
+        if(tg)S.spells.push({kind:a.cast.kind,sx:a.x,sz:a.z,e:tg,t:0,dur:K.fly,dmg:K.dmg,hate:K.hate});
+        a.castT=a.cd=K.cd;a.cast=null;
+      }
+    }else{
+      a.castT-=dt;
+      if(a.castT<=0){
+        const tg=nearest();
+        if(!tg)a.castT=0.3;
+        else{
+          const danger=E.some(e=>!e.dead&&(Math.hypot(e.x-a.x,e.z-a.z)<6||e.target==='ally'));
+          let kind=null;
+          if(a.mp>=AL.strong.cost&&!danger)kind='strong';
+          else if(a.mp>=AL.weak.cost)kind='weak';
+          if(kind){
+            const K=AL[kind];a.mp-=K.cost;a.cast={kind,t:0,dur:K.cast};
+            addText(kind==='strong'?K.name+'…':K.name,a.x,a.z,3.0,kind==='strong'?'#ff9a4a':'#ffd08a');
+          }else{a.castT=0.6;if(S.t-a.warnedMp>3){a.warnedMp=S.t;addText('MPが たりない！',a.x,a.z,3.0,'#9fc8ff');}}
+        }
+      }
+    }
+    // とんでいく ほのお → あたったら ダメージ
+    for(const sp of S.spells){
+      sp.t+=dt;
+      if(sp.t>=sp.dur){
+        sp.done=true;const e=sp.e;
+        if(!e.dead){
+          hurtEnemy(e,sp.dmg,'ally',sp.kind==='strong'?AL.strong.name+'！':'',sp.dmg*sp.hate);
+          S.rings.push({x:e.x,z:e.z,t:0,max:sp.kind==='strong'?0.8:0.45,r:e.r*(sp.kind==='strong'?1.0:0.6),rgb:'255,140,50'});
+          if(sp.kind==='strong')S.shake=Math.max(S.shake,0.4);
+        }
+      }
+    }
+    S.spells=S.spells.filter(sp=>!sp.done);
   }
 
   // --- ねばりゲージとはんげき ---

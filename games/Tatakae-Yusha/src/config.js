@@ -2,7 +2,11 @@
 export const CFG={
   arena:{cx:0,cz:11,R:22},
   hero:{r:0.6,w:100,speed:5.2,hp:100,mp:30,dmg:8,swingCd:0.35,swingReach:2.2,backBonus:1.3},
-  ally:{r:0.5,w:60,hp:120,mp:60,speed:1.9,keep:2.6,fear:3.6,dmg:8,castInt:2.2,range:16},
+  // まほうつかい: HP は ゆうしゃより すくなく、MP は おおめ。魔法(ほのお)で MP を つかう【仮】
+  //   weak=弱い炎(すぐ でる・MP すくない・よわい) / strong=強い炎(えいしょうが ながい・MP おおい・つよい)。cast=えいしょう(秒)、cd=つぎの えいしょうまでの 休み(秒)、fly=とぶ 時間、hate=ヘイトの 倍率
+  ally:{r:0.5,w:60,hp:70,mp:80,mpRegen:1.0,speed:1.9,keep:2.6,fear:3.6,range:16,
+    weak:{name:'ほのお',cost:3,cast:0.5,cd:1.7,dmg:8,fly:0.28,hate:4.5},
+    strong:{name:'ごうえん',cost:15,cast:2.2,cd:1.0,dmg:44,fly:0.45,hate:2.2}},
   stanceMult:{push:1.3,firm:1.6,normal:1.0},
   angleMult:{front:1.0,side:0.7,back:0.5},
   thr:{win:1.25,hold:1.0,lose:0.75},
