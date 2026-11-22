@@ -7,17 +7,18 @@ export let S=null,running=false;
 export function setRunning(v){running=v;}
 export const inp={down:false,id:null,ox:0,oy:0,x:0,y:0,sx:0,sy:0,t0:0,travel:0,fwd:0,lat:0,hist:[],flickT:-1000,lastEvt:-1000,flickPending:false,flickDx:1,flickDy:0,trail:[],flickBlocked:false,parryOK:true,onEnemy:-1,noMove:false,flickEnemy:-1,flickPeak:0};
 function makeEnemy(i,x,z){
-  return {i,x,z,r:ET.r,w:ET.w,speed:ET.speed,color:i===0?ET.color:ET.color2,
+  return {i,x,z,r:ET.r,w:ET.w,speed:ET.speed,color:i%2===0?ET.color:ET.color2,
     fx:0,fz:-1,gauge:0,tele:0,atkTele:0,atkCd:1.2+i*0.6,stagger:0,flash:0,kx:0,kz:0,
     flankDir:Math.random()<0.5?1:-1,flankT:1.5,target:null,hp:ET.hp,maxHp:ET.hp,dead:false,hate:{hero:0,ally:0},
     air:0,tflash:0,sx:0,sy:0,shw:0,shh:0,sc:30,atkKind:'hit',atkMax:0.7,plan:pickPlan(),dash:0,dashLeft:0,dx:0,dz:1,cx:0,cz:0,hitH:false,hitA:false,info:{contact:false,R:0,wh:0,we:0,angle:'front'}};
 }
 export function init(){
   S={
-    t:0,over:null,overT:0,shake:0,texts:[],pops:[],lock:0,
+    t:0,over:null,overT:0,shake:0,texts:[],pops:[],lock:1,
     hero:{x:0,z:7.8,r:CFG.hero.r,hp:CFG.hero.hp,stun:0,flash:0,stance:'firm',pushK:0,firmK:1,hitT:-1,dead:false,hitK:0,swingCd:0,swingT:0,swingV:0,pushT:0,sta:100,tired:false,noParry:0,ph:0,mv:0,fr:0,ff:1,yaw3:Math.PI,faceHold:0,idleT:0},
     ally:{x:0,z:5.4,r:CFG.ally.r,hp:CFG.ally.hp,mp:CFG.ally.mp,flash:0,castT:1.0,cd:1.0,cast:null,warnedMp:0},
-    enemies:[makeEnemy(0,-3.5,17.5),makeEnemy(1,3.5,18.5)],beams:[],spells:[],fly:[],sparks:[],rings:[],dust:[],
+    // てきは 4匹(ユーザー指示 2026-11-22)。ゆうしゃの まえに 弧を えがいて ならぶ。さいしょの ロックは まんなかの 左(B)
+    enemies:[makeEnemy(0,-6,16.5),makeEnemy(1,-2,19.5),makeEnemy(2,2,19.5),makeEnemy(3,6,16.5)],beams:[],spells:[],fly:[],sparks:[],rings:[],dust:[],
     cam:{yaw:0}
   };
   // ゲームスタートの演出(ユーザー指示 2026-11-21): カメラが てきを 大きく うつし、てきが 地面に おりたつ。そのあと カメラが ひいて ゲームの いちへ
@@ -29,7 +30,7 @@ export function init(){
 // ---- スタート演出 ----
 export const INTRO={
   dur:4.3,            // ぜんたいの 長さ(秒)
-  start:[0.25,1.75],  // てきA・てきB が おちはじめる 時間
+  start:[0.25,1.0,1.4,1.8],  // てきA〜D が おちはじめる 時間(A を うつし、みぎへ パンしながら B・C・D が つぎつぎ おりる)
   fall:0.6,           // おちる 時間
   air:9,              // おちはじめる たかさ(クローズアップの 画面の うえはし あたりから おちてくる)
   D:3.6,hh:1.9,fov:0.8,yf:0.66, // クローズアップの カメラ: てきとの きょり・たかさ・画角・てきの足もとの 画面たて位置
@@ -41,12 +42,12 @@ function introKf(i){ // てきi の 足もとを 大きく うつす カメラ
   return {cx:e.x-ux*INTRO.D,cz:e.z-uz*INTRO.D,yaw:Math.atan2(ux,uz),h:INTRO.hh,fov:INTRO.fov,fpx:e.x,fpz:e.z,yf:INTRO.yf};
 }
 function introEnd(){ // ゲームの ふだんの カメラ(ゆうしゃの 足もとが 画面のたて半分)
-  const h=S.hero,L=S.enemies[0],yaw=Math.atan2(L.x-h.x,L.z-h.z);
+  const h=S.hero,L=S.enemies[S.lock],yaw=Math.atan2(L.x-h.x,L.z-h.z);
   return {cx:h.x-Math.sin(yaw)*CAM.back,cz:h.z-Math.cos(yaw)*CAM.back,yaw,h:CAM.h,fov:CAM.fov,fpx:h.x,fpz:h.z,yf:HERO_Y};
 }
 export function introState(S0){
   const t=S0.intro.t;
-  const K0=introKf(0),K1=introKf(1),K2=introEnd();
+  const K0=introKf(0),K1=introKf(S0.enemies.length-1),K2=introEnd(); // いちばん ひだりの てき → いちばん みぎの てき(あいだの てきも つぎつぎ おりる)
   let a=K0,b=K0,k=0;
   if(t>=INTRO.holdB){a=K1;b=K2;k=ease3((t-INTRO.holdB)/(INTRO.dur-INTRO.holdB));k=k*k*(3-2*k);}
   else if(t>=INTRO.panB){a=K1;b=K1;}
@@ -76,7 +77,7 @@ function stepIntro(dt){
   if(I.t>=INTRO.dur){S.intro=null;S.enemies.forEach(e=>{e.air=0;});S.cam.yaw=introEnd().yaw;}
 }
 // ---- ゆうしゃが まけたとき(ユーザー指示 2026-11-21): たおれて、てきに かこまれて ボコボコに される ----
-export function beatPhase(e){return ((e.beatT||0)*2.2+e.i*0.5)%1;} // 0〜0.6: ふりあげる / 0.6〜0.85: たたきつける / のこり: もどす
+export function beatPhase(e){return ((e.beatT||0)*2.2+e.i*0.27)%1;} // 0〜0.6: ふりあげる / 0.6〜0.85: たたきつける / のこり: もどす
 export function defeatCam(S0){ // カメラを たかく あげて、ゆうしゃを 見おろす。ゆっくり よりながら、すこし まわりこむ
   const D=S0.defeat,h=S0.hero,k=ease3(D.t/2.0),yaw=D.yaw+0.45*k,back=CAM.back+(6.2-CAM.back)*k;
   return {cx:h.x-Math.sin(yaw)*back,cz:h.z-Math.cos(yaw)*back,yaw,h:CAM.h+(11-CAM.h)*k,fov:CAM.fov,fpx:h.x,fpz:h.z,yf:HERO_Y+0.04*k};
@@ -92,7 +93,7 @@ function stepDefeat(dt){
   for(const e of S.enemies){
     if(e.dead)continue;
     // かこむ いち: ゆうしゃの まえの ひだり・みぎ
-    const sd=side++%2?1:-1,tx=h.x+fx*1.2+rx*1.85*sd,tz=h.z+fz*1.2+rz*1.85*sd;
+    const sl=[[1.2,-1.85],[1.2,1.85],[-0.3,-2.5],[-0.3,2.5]][side++%4],tx=h.x+fx*sl[0]+rx*sl[1],tz=h.z+fz*sl[0]+rz*sl[1]; // ゆうしゃを 4にんで かこむ いち(まえの ひだり・みぎ、よこの ひだり・みぎ)
     const dx=tx-e.x,dz=tz-e.z,dd=Math.hypot(dx,dz);
     if(dd>0.15){const sp=Math.min(dd/Math.max(dt,0.001),9),m=Math.min(dd,sp*dt);e.x+=dx/dd*m;e.z+=dz/dd*m;}
     const hx=h.x-e.x,hz=h.z-e.z,hl=Math.hypot(hx,hz)||1;e.fx+=(hx/hl-e.fx)*Math.min(1,dt*10);e.fz+=(hz/hl-e.fz)*Math.min(1,dt*10);
@@ -564,7 +565,7 @@ export function step(dt){
     }
     e.info={contact:d<rs+0.1,R,wh:Wh,we:We,angle};
   }
-  if(E.length>1)separate(E[0],E[1],E[0].w,E[1].w);
+  for(let i=0;i<E.length;i++)for(let j=i+1;j<E.length;j++)separate(E[i],E[j],E[i].w,E[j].w); // てき どうしが かさならない
   separate(h,a,CFG.hero.w,CFG.ally.w);
   for(const e of E)separate(a,e,CFG.ally.w,e.w);
 

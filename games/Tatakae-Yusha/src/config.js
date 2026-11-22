@@ -45,7 +45,7 @@ export const ENEMY_TYPES={
   160:{w:160,hp:370,speed:2.6,r:1.3,color:'#8a5a45',color2:'#7a4a6a',name:'おもい てき'}
 };
 export let ET=ENEMY_TYPES[100];
-export const LETTER=['A','B'];
+export const LETTER=['A','B','C','D'];
 export const KIND_JP={hit:'たたきつけ',sweep:'なぎはらい',charge:'とっしん'};
 export function pickPlan(){const w=CFG.planW;let r=Math.random()*(w.hit+w.sweep+w.charge);if((r-=w.hit)<0)return 'hit';if((r-=w.sweep)<0)return 'sweep';return 'charge';}
 // 設定の切りかえ(UI から呼ぶ。import した変数は外から代入できないため)
