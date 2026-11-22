@@ -277,6 +277,12 @@ function parryEnemy(e,h){ // いなす成功
 }
 
 function addHate(e,who,v){e.hate[who]=Math.min(CFG.hate.max,e.hate[who]+v);}
+// ふみこんだ ときに てきが おりたつ ばしょ(ねらった あいての ほうへ len だけ。あいてに めりこまない)
+export function lungeLanding(e,tgt){
+  const dx=tgt.x-e.x,dz=tgt.z-e.z,d=Math.hypot(dx,dz)||0.001,ux=dx/d,uz=dz/d;
+  const want=(e.atkKind==='sweep'?CFG.lunge.sweep:CFG.lunge.hit)*(tgt===S.ally?CFG.lunge.ally:1),len=Math.max(0,Math.min(want,d-(e.r+tgt.r+0.2)));
+  return {x:e.x+ux*len,z:e.z+uz*len,ux,uz,len};
+}
 function hurtEnemy(e,dmg,who,note,hate){
   e.hp=Math.max(0,e.hp-dmg);e.flash=0.12;addHate(e,who,dmg*(hate!==undefined?hate:(who==='ally'?CFG.hate.perDmgAlly:CFG.hate.perDmg))); // こうげきは ヘイトが たまりやすい
   addPop(e.x,e.z,2.6*e.r+0.3,String(Math.round(dmg)),who==='hero'?'#ffe01a':'#ffa24a',Math.min(62,26+dmg*1.3+(note?6:0)),note,who==='hero');
@@ -410,8 +416,8 @@ export function step(dt){
       a.tx=bx;a.tz=bz;
     }
     let panic=false;
-    for(const e of E){if(e.atkTele>0&&e.target==='ally')panic=true;}
-    const sp=CFG.ally.speed*(panic?1.25:1);
+    for(const e of E){if(e.atkTele>0&&e.target==='ally'&&e.atkMax-e.atkTele>=CFG.ally.react)panic=true;} // こうげきの よこくを 見てから すこし おくれて にげはじめる
+    const sp=CFG.ally.speed*(panic?1.25:1)*(a.cast?0:1); // えいしょう中は うごけない(さがりながら うてない)
     let vx=a.tx-a.x,vz=a.tz-a.z;const vl=Math.hypot(vx,vz);
     if(vl>0.05){const m=Math.min(sp,vl*4);vx=vx/vl*m;vz=vz/vl*m;a.x+=vx*dt;a.z+=vz*dt;}
   }
@@ -489,9 +495,10 @@ export function step(dt){
       if(td<=reach+0.15){ // ちかい: たたきつけ / なぎはらい
         e.atkKind=e.plan==='sweep'?'sweep':'hit';
         e.atkTele=e.atkMax=(e.atkKind==='sweep'?CFG.atkSweep.tele:CFG.enemyAtk.tele);
+        e.lunge=e.hp/e.maxHp>=CFG.lunge.hpRatio; // HP に よゆうが ある ときだけ、あたる しゅんかんに ふみこむ
         if(e.atkKind==='sweep')addText('なぎはらい！',e.x,e.z,3.4,'#ffb090');
       }else if(e.plan==='charge'&&td>=CFG.atkCharge.minD&&td<=CFG.atkCharge.maxD){ // とおい: とっしん
-        e.atkKind='charge';e.atkTele=e.atkMax=CFG.atkCharge.tele;e.cx=tgt.x;e.cz=tgt.z;
+        e.atkKind='charge';e.lunge=false;e.atkTele=e.atkMax=CFG.atkCharge.tele;e.cx=tgt.x;e.cz=tgt.z;
         addText('とっしん！',e.x,e.z,3.4,'#ffb090');
       }
     }
@@ -499,11 +506,17 @@ export function step(dt){
       e.atkTele-=dt;
       const kind=e.atkKind;
       if(kind==='charge'&&e.atkTele>CFG.atkCharge.track){e.cx=tgt.x;e.cz=tgt.z;} // とつぜんの直前までは ねらいを追う
-      const parryR=kind==='hit'?reach+0.8:(kind==='sweep'?e.r+CFG.atkSweep.r+0.6:CFG.atkCharge.maxD+2);
+      const parryR=(kind==='hit'?reach+0.8:(kind==='sweep'?e.r+CFG.atkSweep.r+0.6:CFG.atkCharge.maxD+2))+(e.lunge?(kind==='sweep'?CFG.lunge.sweep:CFG.lunge.hit):0);
       if(e.target==='hero'&&td<parryR&&parryWindow(e.atkTele)){parryEnemy(e,h);}
       else if(e.atkTele<=0){
+        // ふみこみ: あたる しゅんかんに ねらった あいての ほうへ すこし すすむ(ふみこんだ さきで あたりを とる)。あいての からだには めりこまない
+        let lx=e.x,lz=e.z,tdL=td;
+        if(e.lunge&&(kind==='hit'||kind==='sweep')){
+          const L=lungeLanding(e,tgt);lx=L.x;lz=L.z;tdL=Math.hypot(tgt.x-lx,tgt.z-lz);
+          if(L.len>0.05){e.kx+=(L.ux)*L.len*8;e.kz+=(L.uz)*L.len*8;} // かるく すべるように とぶ(ひく 8 で およそ len だけ すすむ)
+        }
         if(kind==='hit'){
-          if(td<=reach*1.35+0.2){
+          if(tdL<=reach*1.35+0.2){
             if(e.target==='ally'){
               a.hp=Math.max(0,a.hp-CFG.enemyAtk.dmgAlly);a.flash=0.25;S.shake=Math.max(S.shake,0.35);
               addPop(a.x,a.z,2.4,'-'+CFG.enemyAtk.dmgAlly,'#ff7070',32,'',false);
@@ -515,9 +528,9 @@ export function step(dt){
           }else addText('かわした',tgt.x,tgt.z,2.0,'#cfd4ff');
         }else if(kind==='sweep'){
           const SW=CFG.atkSweep,R=e.r+SW.r;let any=false;
-          {const dx=h.x-e.x,dz=h.z-e.z,d=Math.hypot(dx,dz)||0.001;
+          {const dx=h.x-lx,dz=h.z-lz,d=Math.hypot(dx,dz)||0.001;
            if(d<=R+h.r){any=true;hitHero(h.stance==='firm'?SW.dmgHeroFirm:SW.dmgHero,dx/d,dz/d,SW.knock,'なぎはらい');}}
-          {const dx=a.x-e.x,dz=a.z-e.z,d=Math.hypot(dx,dz)||0.001;
+          {const dx=a.x-lx,dz=a.z-lz,d=Math.hypot(dx,dz)||0.001;
            if(d<=R+a.r){any=true;hitAlly(SW.dmgAlly,dx/d,dz/d,SW.knock,'なぎはらい');}}
           S.shake=Math.max(S.shake,0.25);
           if(!any)addText('かわした',tgt.x,tgt.z,2.0,'#cfd4ff');
@@ -641,6 +654,7 @@ export function step(dt){
       if(a.castT<=0){
         const tg=nearest();
         if(!tg)a.castT=0.3;
+        else if(E.some(e=>!e.dead&&e.atkTele>0&&e.target==='ally'))a.castT=0.15; // ねらわれて こうげきが くる ときは にげるのを ゆうせん
         else{
           const danger=E.some(e=>!e.dead&&(Math.hypot(e.x-a.x,e.z-a.z)<6||e.target==='ally'));
           let kind=null;

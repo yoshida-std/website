@@ -3,7 +3,7 @@ import {CFG,CAM,HERO_Y,LETTER,KIND_JP} from './config.js';
 import {ctx as ctx0,CW,CH,DPR,BAR_H,FONT} from './screen.js';
 let ctx=ctx0;
 export function useCtx(c){ctx=c||ctx0;}
-import {S,inp,introState,defeatCam,victoryCam,beatPhase,overShowT,overReadyT} from './logic.js';
+import {S,inp,introState,defeatCam,victoryCam,beatPhase,overShowT,overReadyT,lungeLanding} from './logic.js';
 
 // ================= 描画 =================
 export let V=null;
@@ -511,8 +511,13 @@ export function drawGroundMarks(P){
     P.fillPoly(pts,'rgba(255,80,60,.11)');
     if(e.atkTele>0){ // こうげきの よこく(ゆかに赤い範囲)
       const pr=1-e.atkTele/(e.atkMax||1);
+      // ふみこむ こうげきは、ふみこんだ さきに あたり はんいを 出す(ねらった あいての ほうへ うごく)
+      const tg=e.target==='ally'?a:h,Lc=(e.lunge&&(e.atkKind==='sweep'||e.atkKind==='hit'))?lungeLanding(e,tg):null;
       if(e.atkKind==='sweep'){
-        P.groundCircle(e.x,e.z,e.r+CFG.atkSweep.r,'rgba(255,60,40,'+(0.10+0.14*pr)+')','rgba(255,110,80,.85)',2.5,40);
+        P.groundCircle(Lc?Lc.x:e.x,Lc?Lc.z:e.z,e.r+CFG.atkSweep.r,'rgba(255,60,40,'+(0.10+0.14*pr)+')','rgba(255,110,80,.85)',2.5,40);
+      }else if(e.atkKind==='hit'&&Lc){
+        const rr0=(e.r+tg.r+(e.target==='ally'?CFG.enemyAtk.reachAlly:CFG.enemyAtk.reachHero))*1.35+0.2;
+        P.groundCircle(Lc.x,Lc.z,rr0,'rgba(255,60,40,'+(0.10+0.14*pr)+')','rgba(255,110,80,.85)',2.5,32);
       }else if(e.atkKind==='charge'){
         const lw=8+10*pr;
         P.seg(toCam(e.x,e.z),toCam(e.cx,e.cz),'rgba(255,70,50,'+(0.35+0.3*pr)+')',lw);
