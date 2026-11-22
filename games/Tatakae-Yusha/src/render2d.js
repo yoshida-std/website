@@ -267,8 +267,9 @@ export function heroParts(h){
   return {parts,yaw:yawOut};
 }
 export function drawHero(x,y,s,fl,h){const m=heroParts(h);h3render(m.parts,x,y,s,fl,m.yaw,0);}
-export function h3render(parts,x,y,s,fl,yaw,lean){
-  const cy0=Math.cos(yaw),sy0=Math.sin(yaw),PITCH=0.38,cp=Math.cos(PITCH),sp=Math.sin(PITCH);
+// pitch: 上から みおろす かくど(ふだんは 0.38。三面図は 0 = まよこ)、lw: ふちの線の ふとさ(省略は 大きさに あわせる)
+export function h3render(parts,x,y,s,fl,yaw,lean,pitch,lw){
+  const cy0=Math.cos(yaw),sy0=Math.sin(yaw),PITCH=pitch===undefined?0.38:pitch,cp=Math.cos(PITCH),sp=Math.sin(PITCH);
   const faces=[];
   for(const pt of parts){
     const V=[];
@@ -291,7 +292,7 @@ export function h3render(parts,x,y,s,fl,yaw,lean){
   }
   faces.sort((m,n)=>m.d-n.d);
   ctx.save();ctx.translate(x,y);ctx.lineJoin='round';
-  ctx.strokeStyle=fl?'#ffffff':'rgba(12,14,38,.85)';ctx.lineWidth=Math.max(1,s*0.032);
+  ctx.strokeStyle=fl?'#ffffff':'rgba(12,14,38,.85)';ctx.lineWidth=lw||Math.max(1,s*0.032);
   for(const fa of faces){
     ctx.beginPath();
     for(let k=0;k<4;k++){const v=fa.v[k],X=v[0]*s,Y=-(v[1]*cp-v[2]*sp)*s;if(k)ctx.lineTo(X,Y);else ctx.moveTo(X,Y);}
