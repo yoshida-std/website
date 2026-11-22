@@ -5,13 +5,14 @@
 //   node tools/sansmen.js enemy           … てき(どすこいオーガ・ふつうの てき) → docs/enemy-3view.png
 //   node tools/sansmen.js hero            … ゆうしゃ → docs/hero-3view.png
 //   node tools/sansmen.js priest          … そうりょ → docs/priest-3view.png
+//   node tools/sansmen.js warrior         … せんし → docs/warrior-3view.png
 //   node tools/sansmen.js mage 出力.png   … 出力の パスを 指定
 // モデルを かえたら もういちど 実行すれば 図も かわる。ゲームと おなじ 大きさで えがき、右はしに くらべる ゆうしゃを ならべる。
 // Three.js は つかわない(Canvas 2D の 箱モデルを まよこから えがく)。
 // この 作業環境のように CDN(cdn.jsdelivr.net)に つながらないときは、環境変数 THREE_DIR に node_modules/three を 指定する
 const {chromium}=require('playwright');const path=require('path'),http=require('http'),fs=require('fs');
 const ROOT=path.resolve(__dirname,'..'),T3=process.env.THREE_DIR||'';
-const WHO=['enemy','hero','priest'].includes(process.argv[2])?process.argv[2]:'mage';
+const WHO=['enemy','hero','priest','warrior'].includes(process.argv[2])?process.argv[2]:'mage';
 const OUT=process.argv[3]||path.join(ROOT,'docs',WHO+'-3view.png');
 (async()=>{
  const srv=http.createServer((q,r)=>{const p=path.join(ROOT,decodeURIComponent(q.url.split('?')[0]));if(!p.startsWith(ROOT)||!fs.existsSync(p)||fs.statSync(p).isDirectory()){r.writeHead(404);r.end();return;}r.writeHead(200,{'Content-Type':p.endsWith('.js')?'text/javascript':'text/html; charset=utf-8'});fs.createReadStream(p).pipe(r);}).listen(0);
@@ -34,6 +35,12 @@ const OUT=process.argv[3]||path.join(ROOT,'docs',WHO+'-3view.png');
        guides:[[0,'ゆか(足もと)'],[0.865,'おび'],[1.32,'かた'],[1.41,'あご'],[2.02,'ぼうしの つば'],[2.85,'ぼうしの さき']],
        dims:[[0,0.43,'スカートの はば 0.65'],[1,0.33,'スカートの おくゆき 0.50'],[2,0.43,'スカートの はば 0.65']],
        sw:[['#6a46b8','うわぎ・スカート(した)'],['#5b3aa0','スカート(うえ)・えり'],['#5a32a8','ぼうし'],['#4a2a90','ぼうしの つば・フード'],['#e0b84a','金(おび・ふち・リボン)'],['#f6d9bd','はだ'],['#c9783a','かみ'],['#e0a060','みつあみの さき'],['#f1ece0','くつした・すその ふち'],['#4a3320','くつ'],['#8a5a2a','つえ'],['#7cf5ff','クリスタル(詠唱中は 橙)']]};
+   }else if(WHO==='warrior'){
+     CF={title:'せんし(おっさんの せんし)  三面図',note:'「戦え！ゆうしゃ」 ローポリ(箱)モデル。ゲームの 実際の 部品を ゲームと おなじ 大きさ(×1)で えがいた もの。ひげ・かぶと・よろい・おおおの・背中の たて(きんせつの 前衛)',
+       parts:m.warriorParts(Math.PI,0,0,0,0,0).parts,scale:1,S:290,W:1900,cxs:[440,1010,1580],noCompare:true,
+       guides:[[0,'ゆか(足もと)'],[0.84,'ベルト'],[1.35,'かたあて'],[1.46,'あご(ひげ)'],[1.9,'はちがね'],[2.18,'とさかの さき']],
+       dims:[[0,0.62,'かたの はば(かたあて) 1.24'],[2,0.62,'かたの はば 1.24']],
+       sw:[['#7a3a3a','あかい よろいした'],['#8a6a4a','むねあて'],['#8a5e3c','かたあて'],['#5a3a22','ベルト'],['#e0b84a','金(バックル)'],['#7a5a3a','すそよろい'],['#4a3a38','ズボン'],['#7a5230','ブーツ'],['#e8b184','はだ'],['#7a6850','ひげ'],['#7a5a3a','かぶと'],['#8d96a8','はがね'],['#707a8d','はがね(くらい)'],['#9aa4b4','斧の あたま'],['#c8d0dc','斧の は'],['#8a5a2a','斧の え']]};
    }else if(WHO==='priest'){
      const sc=m.PRIEST_SCALE;
      CF={title:'そうりょの 女の子  三面図',note:'「戦え！ゆうしゃ」 ローポリ(箱)モデル。ゲームの 実際の 部品を ゲームと おなじ 大きさ(×'+sc+')で えがいた もの。ゆうしゃと おなじ せたけ(≒ 2.17)。ヒーラー(こうげきは しない)',

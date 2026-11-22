@@ -13,6 +13,11 @@ export const CFG={
   priest:{r:0.5,w:60,hp:80,mp:70,mpRegen:1.0,react:0.15,speed:2.0,stay:4.5,stayW:0.5,
     heal:{name:'ヒール',cost:10,cast:0.9,cd:5.0,amt:20,radius:4.5,need:12},
     zone:{name:'いやしの じん',cost:20,cast:1.2,cd:8.0,r:3.0,dur:8.0,rate:4.0,tick:0.5,need:24}},
+  // せんし(ユーザー指示 2026-11-22): 近距離で 斧で きりかかる。ちかづく 敵を おして とめる。HP が 多く、よろいで ダメージを へらす【仮】
+  //   reach=きりかかる とどく きょり(おたがいの 半径に たす)/ dmg・cd・wind=ダメージ・つぎまでの 休み・ふりはじめて あたるまでの 時間
+  //   shove=おす わざ: ちかくの 敵を うしろへ おしやり、こうげきの よこくを とめる(休み cd 秒)。armor=うける ダメージの わりあい
+  warrior:{r:0.62,w:120,hp:130,mp:20,speed:3.6,armor:0.7,reach:1.6,dmg:14,cd:1.3,wind:0.32,
+    shove:{cd:5.0,range:1.7,k:46,stagger:0.6,hate:12,dur:0.45}},
   stanceMult:{push:1.3,firm:1.6,normal:1.0},
   angleMult:{front:1.0,side:0.7,back:0.5},
   thr:{win:1.25,hold:1.0,lose:0.75},

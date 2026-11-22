@@ -11,7 +11,8 @@ import * as THREE from 'three';
 import {LineSegments2} from 'three/addons/lines/LineSegments2.js';
 import {LineSegmentsGeometry} from 'three/addons/lines/LineSegmentsGeometry.js';
 import {LineMaterial} from 'three/addons/lines/LineMaterial.js';
-import {heroParts,allyParts,allyCast,allyDown,priestParts,priestCast,PRIEST_SCALE,enemyParts,ENEMY_LOOK,MAGE_SCALE} from './render2d.js';
+import {warriorSwingK} from './logic.js';
+import {heroParts,allyParts,allyCast,allyDown,priestParts,priestCast,PRIEST_SCALE,warriorParts,warriorShoveK,WARRIOR_SCALE,enemyParts,ENEMY_LOOK,MAGE_SCALE} from './render2d.js';
 
 // ---- 箱の ひな形(1×1×1) ----
 const FACES=[]; // {n:[法線], q:[4つの角]}(外から見て 反時計まわり)
@@ -100,7 +101,7 @@ class BoxModel{
 }
 
 export function makeChars(scene,flyScene){
-  const hero=new BoxModel(80),ally=new BoxModel(80),priest=new BoxModel(80);scene.add(hero.obj,ally.obj,priest.obj);
+  const hero=new BoxModel(80),ally=new BoxModel(80),priest=new BoxModel(80),warrior=new BoxModel(80);scene.add(hero.obj,ally.obj,priest.obj,warrior.obj);
   const enemies=[];   // てき1体に 1つ
   const flyPool=[];   // 止めの演出(ざんぞう4つ × とんでいる数)
   // 画面から見た むき(yaw3。0=カメラのほうを向く)→ 世界の むき
@@ -125,6 +126,10 @@ export function makeChars(scene,flyScene){
       {const q=S.priest,pc=priestCast(q),pp=priestParts(q.yaw3,q.mv3||0,q.ph3||0,pc.c,pc.kind,allyDown(q));
        priest.set(pp.parts,PRIEST_SCALE,q.flash>0&&blink);
        priest.obj.position.set(q.x,0,-q.z);priest.obj.rotation.y=worldYaw(S,pp.yaw);}
+      // せんし(むき・あるきは 描画の faceTo が きめる)
+      {const q=S.warrior,wp=warriorParts(q.yaw3,q.mv3||0,q.ph3||0,warriorSwingK(q),warriorShoveK(q),allyDown(q));
+       warrior.set(wp.parts,WARRIOR_SCALE,q.flash>0&&blink);
+       warrior.obj.position.set(q.x,0,-q.z);warrior.obj.rotation.y=worldYaw(S,wp.yaw);}
       // てき
       S.enemies.forEach((e,i)=>{
         let m=enemies[i];

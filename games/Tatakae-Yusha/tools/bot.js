@@ -98,7 +98,7 @@ function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace}){
     if(gap>0.6&&!hold){const [x,y]=freeSpot();hold=[x,y-60];q.push(()=>ev('pointerdown',x,y),()=>ev('pointermove',x,y-60));}
     else if(gap<=0.3&&hold)release();
   }
-  let frames=0;const tr=[];let zonesMade=0,zPrev=0,healed=0;const hpPrev={h:null,a:null,p:null};
+  let frames=0;const tr=[];let zonesMade=0,zPrev=0,healed=0,shoves=0,shPrev=0;const hpPrev={h:null,a:null,p:null};
   const mix=v=>{const s=v.toFixed(4);for(let i=0;i<s.length;i++){hash^=s.charCodeAt(i);hash=Math.imul(hash,16777619)>>>0;}};
   while(true){
     const S=G.S;
@@ -109,13 +109,14 @@ function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace}){
     const h=S.hero,a=S.ally;
     // そうりょ: いやしの じんを つくった 数と、味方の HP が ふえた ぶんの ごうけい(かいふくの りょう)
     if(S.zones.length>zPrev)zonesMade+=S.zones.length-zPrev;zPrev=S.zones.length;
-    for(const [k,u] of [['h',h],['a',a],['p',S.priest]]){if(hpPrev[k]!==null&&u.hp>hpPrev[k])healed+=u.hp-hpPrev[k];hpPrev[k]=u.hp;}
+    if(S.warrior.shoveV>shPrev+1e-9)shoves++;shPrev=S.warrior.shoveV; // せんしが「おす」を つかった 数
+    for(const [k,u] of [['h',h],['a',a],['p',S.priest],['w',S.warrior]]){if(hpPrev[k]!==null&&u.hp>hpPrev[k])healed+=u.hp-hpPrev[k];hpPrev[k]=u.hp;}
     mix(h.x);mix(h.z);mix(h.hp);mix(a.x);mix(a.z);mix(a.hp);
     for(const e of S.enemies){mix(e.x);mix(e.z);mix(e.hp);}
     if(trace)tr.push(hash.toString(16)+' t='+S.t.toFixed(3)+' h='+h.x.toFixed(4)+','+h.z.toFixed(4)+' hp='+h.hp+' sx='+S.enemies.map(e=>(e.sx||0).toFixed(2)+'/'+(e.sy||0).toFixed(2)).join(' ')+' fl='+G.inp.flickT+' pend='+G.inp.flickPending);
   }
   const S=G.S;
-  return {over:S.over||'timeout',t:+S.t.toFixed(2),heroHp:S.hero.hp,allyHp:S.ally.hp,priestHp:S.priest.hp,zonesMade,healed,
+  return {over:S.over||'timeout',t:+S.t.toFixed(2),heroHp:S.hero.hp,allyHp:S.ally.hp,priestHp:S.priest.hp,warriorHp:S.warrior.hp,zonesMade,healed,shoves,
     enemyHp:S.enemies.reduce((s,e)=>s+e.hp,0),beamsAtEnd:S.beams.length,ringsAtEnd:S.rings.length,swingVAtEnd:S.hero.swingV,swings,parries,frames,hash:hash.toString(16),trace:trace?tr:undefined};
 }
 

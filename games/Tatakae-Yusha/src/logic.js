@@ -11,8 +11,8 @@ export const inp={down:false,id:null,ox:0,oy:0,x:0,y:0,sx:0,sy:0,t0:0,travel:0,f
 function makeEnemy(i,x,z,kind){
   return {i,x,z,kind:kind||'ogre',r:ET.r,w:ET.w,speed:ET.speed,color:i%2===0?ET.color:ET.color2,
     fx:0,fz:-1,gauge:0,tele:0,atkTele:0,atkCd:1.2+i*0.6,stagger:0,flash:0,kx:0,kz:0,
-    flankDir:Math.random()<0.5?1:-1,flankT:1.5,target:null,hp:ET.hp,maxHp:ET.hp,dead:false,hate:{hero:0,ally:0,priest:0},
-    air:0,tflash:0,sx:0,sy:0,shw:0,shh:0,sc:30,atkKind:'hit',atkMax:0.7,plan:pickPlan(),dash:0,dashLeft:0,dx:0,dz:1,cx:0,cz:0,hitH:false,hitA:false,hitP:false,info:{contact:false,R:0,wh:0,we:0,angle:'front'}};
+    flankDir:Math.random()<0.5?1:-1,flankT:1.5,target:null,hp:ET.hp,maxHp:ET.hp,dead:false,hate:{hero:0,ally:0,priest:0,warrior:0},
+    air:0,tflash:0,sx:0,sy:0,shw:0,shh:0,sc:30,atkKind:'hit',atkMax:0.7,plan:pickPlan(),dash:0,dashLeft:0,dx:0,dz:1,cx:0,cz:0,hitH:false,hitA:false,hitP:false,hitW:false,info:{contact:false,R:0,wh:0,we:0,angle:'front'}};
 }
 export let stageId='ogre4';
 export function setStage(id){stageId=stageById(id).id;}
@@ -26,6 +26,8 @@ export function init(id){
     ally:{x:0,z:5.4,r:CFG.ally.r,hp:CFG.ally.hp,mp:CFG.ally.mp,flash:0,castT:1.0,cd:1.0,cast:null,warnedMp:0},
     // そうりょ(ヒーラー。こうげきしない)。かいふくの じん S.zones は ゆかに できて 一定時間で きえる
     priest:{x:1.8,z:4.6,r:CFG.priest.r,hp:CFG.priest.hp,mp:CFG.priest.mp,flash:0,castT:1.5,cd:1.5,cast:null,warnedMp:0},
+    // せんし(きんせつ。斧で きりかかる・ちかづく てきを おす)
+    warrior:{x:-2.6,z:8.6,r:CFG.warrior.r,hp:CFG.warrior.hp,mp:CFG.warrior.mp,flash:0,armor:CFG.warrior.armor,swingCd:0.8,swing:0,swingT:0,swingTgt:null,shoveCd:2,shoveV:0,warnedMp:0},
     zones:[],
     // てきの 数・いち・さいしょの ロックは ステージの データ(src/stages.js)。ogre4 は 4匹が 弧を えがいて ならぶ。さいしょの ロックは まんなかの 左(B)
     enemies:ST.enemies.map((q,i)=>makeEnemy(i,q.x,q.z,q.kind)),beams:[],spells:[],fly:[],sparks:[],rings:[],dust:[],
@@ -289,17 +291,18 @@ function parryEnemy(e,h){ // いなす成功
 }
 
 // ねらい・ヘイトの なまえ('hero' / 'ally'=まほうつかい / 'priest'=そうりょ)から 本人を 取る
-export const WHO=['hero','ally','priest'];
-export function unitOf(who){return who==='hero'?S.hero:(who==='priest'?S.priest:S.ally);}
+export const WHO=['hero','ally','priest','warrior'];
+export function unitOf(who){return who==='hero'?S.hero:(who==='priest'?S.priest:(who==='warrior'?S.warrior:S.ally));}
+const dmgTo=(u,d)=>Math.max(1,Math.round(d*(u.armor||1))); // よろいを きた 味方は ダメージが へる
 function addHate(e,who,v){e.hate[who]=Math.min(CFG.hate.max,e.hate[who]+v);}
 // ふみこんだ ときに てきが おりたつ ばしょ(ねらった あいての ほうへ len だけ。あいてに めりこまない)
 export function lungeLanding(e,tgt){
   const dx=tgt.x-e.x,dz=tgt.z-e.z,d=Math.hypot(dx,dz)||0.001,ux=dx/d,uz=dz/d;
-  const want=(e.atkKind==='sweep'?CFG.lunge.sweep:CFG.lunge.hit)*(tgt!==S.hero?CFG.lunge.ally:1),len=Math.max(0,Math.min(want,d-(e.r+tgt.r+0.2)));
+  const want=(e.atkKind==='sweep'?CFG.lunge.sweep:CFG.lunge.hit)*((tgt===S.hero||tgt===S.warrior)?1:CFG.lunge.ally),len=Math.max(0,Math.min(want,d-(e.r+tgt.r+0.2)));
   return {x:e.x+ux*len,z:e.z+uz*len,ux,uz,len};
 }
 function hurtEnemy(e,dmg,who,note,hate){
-  e.hp=Math.max(0,e.hp-dmg);e.flash=0.12;addHate(e,who,dmg*(hate!==undefined?hate:(who!=='hero'?CFG.hate.perDmgAlly:CFG.hate.perDmg))); // こうげきは ヘイトが たまりやすい
+  e.hp=Math.max(0,e.hp-dmg);e.flash=0.12;addHate(e,who,dmg*(hate!==undefined?hate:((who==='hero'||who==='warrior')?CFG.hate.perDmg:CFG.hate.perDmgAlly))); // こうげきは ヘイトが たまりやすい
   addPop(e.x,e.z,2.6*e.r+0.3,String(Math.round(dmg)),who==='hero'?'#ffe01a':'#ffa24a',Math.min(62,26+dmg*1.3+(note?6:0)),note,who==='hero');
   if(e.hp<=0&&!e.dead){e.dead=true;e.tele=0;e.atkTele=0;e.dash=0;S.shake=Math.max(S.shake,0.5);addText('たおした！',e.x,e.z,3.6,'#ffe36a');launchEnemy(e,who);}
 }
@@ -313,7 +316,7 @@ function launchEnemy(e,who){
   S.fly.push({x0:e.sx,y0:e.sy,x:e.sx,y:e.sy,vx:vx*sp,vy:vy*sp,t:0,spin:(vx>=0?1:-1)*14,s:e.sc||30,r:e.r,color:e.color,out:false});
 }
 function stepFx(dt){
-  for(const u of [S.ally,S.priest])if(u.hp<=0)u.downT=(u.downT||0)+dt; // たおれてからの じかん(たおれる 動きに つかう。ゲームの じかんが とまる 場面でも すすむ)
+  for(const u of [S.ally,S.priest,S.warrior])if(u.hp<=0)u.downT=(u.downT||0)+dt; // たおれてからの じかん(たおれる 動きに つかう。ゲームの じかんが とまる 場面でも すすむ)
   for(const f of S.fly){
     f.t+=dt;f.x=f.x0+f.vx*f.t;f.y=f.y0+f.vy*f.t;
     if(!f.out&&(f.x<-30||f.x>CW+30||f.y<-30||f.y>CH+30)){
@@ -333,7 +336,7 @@ function hitHero(dmg,nx,nz,kn,note){
 }
 function hitAlly(dmg,nx,nz,kn,note,u){
   const a=u||S.ally;if(a.hp<=0)return; // たおれた 味方(まほうつかい・そうりょ)は もう ダメージを うけない
-  a.hp=Math.max(0,a.hp-dmg);a.flash=0.25;S.shake=Math.max(S.shake,0.35);a.x+=nx*kn;a.z+=nz*kn;
+  dmg=dmgTo(a,dmg);a.hp=Math.max(0,a.hp-dmg);a.flash=0.25;S.shake=Math.max(S.shake,0.35);a.x+=nx*kn;a.z+=nz*kn;
   addPop(a.x,a.z,1.9,'-'+dmg,'#ff7070',32,note||'',false);
 }
 function fixLock(){
@@ -377,13 +380,13 @@ function casterMove(u,id,UC,E,dt){
   let vx=u.tx-u.x,vz=u.tz-u.z;const vl=Math.hypot(vx,vz);
   if(vl>0.05){const m=Math.min(sp,vl*4);vx=vx/vl*m;vz=vz/vl*m;u.x+=vx*dt;u.z+=vz*dt;}
 }
-const maxHpOf=u=>u===S.hero?CFG.hero.hp:(u===S.priest?CFG.priest.hp:CFG.ally.hp);
+const maxHpOf=u=>u===S.hero?CFG.hero.hp:(u===S.priest?CFG.priest.hp:(u===S.warrior?CFG.warrior.hp:CFG.ally.hp));
 // そうりょ: かいふく(ヒール)と いやしの じん。こうげきは しない
 function stepPriest(dt,E){
   const p=S.priest,PC=CFG.priest;
   if(p.hp<=0){p.cast=null;p.castT=1;return;}
   p.mp=Math.min(PC.mp,p.mp+PC.mpRegen*dt);
-  const members=[S.hero,S.ally,p].filter(u=>u.hp>0);
+  const members=[S.hero,S.ally,S.warrior,p].filter(u=>u.hp>0);
   if(p.cast){
     p.cast.t+=dt;
     if(p.cast.t>=p.cast.dur){
@@ -433,7 +436,7 @@ function stepPriest(dt,E){
 }
 // いやしの じん: のっている 味方の HP が すこしずつ もどる。dur 秒で きえる
 function stepZones(dt,E){
-  const members=[S.hero,S.ally,S.priest].filter(u=>u.hp>0);
+  const members=[S.hero,S.ally,S.warrior,S.priest].filter(u=>u.hp>0);
   for(const z of S.zones){
     z.t+=dt;z.tick+=dt;
     while(z.tick>=z.tickLen&&z.t<=z.dur+1e-6){
@@ -449,16 +452,65 @@ function stepZones(dt,E){
   S.zones=S.zones.filter(z=>z.t<z.dur);
 }
 
+// せんし: ちかくの 敵に 斧で きりかかる。ちかづく 敵を「おす」(うしろへ おしやり、こうげきの よこくを とめて よろけさせる)
+//   まほうつかい・そうりょを ねらっている 敵を ゆうせんして まもる。ふりはじめ(swing)から wind 秒で あたる
+export function warriorSwingK(w){ // 見た目用: ふりの すすみ 0〜1(0〜0.4=ふりかぶる、0.4〜0.55=ふりぬく、0.55〜1=もどる)
+  if(w.swing>0)return 0.4*(1-w.swing/CFG.warrior.wind);
+  if(w.swingT>0)return 0.4+0.6*(1-w.swingT/0.35);
+  return 0;
+}
+function stepWarrior(dt,E){
+  const w=S.warrior,WC=CFG.warrior;
+  w.swingCd=Math.max(0,w.swingCd-dt);w.shoveCd=Math.max(0,w.shoveCd-dt);w.shoveV=Math.max(0,w.shoveV-dt);w.swingT=Math.max(0,w.swingT-dt);
+  if(w.hp<=0){w.swing=0;w.swingT=0;w.shoveV=0;return;}
+  const live=E.filter(e=>(e.air||0)<=0.05);
+  if(!live.length){w.swing=0;return;}
+  const sc=e=>Math.hypot(e.x-w.x,e.z-w.z)-((e.target==='ally'||e.target==='priest')?5:0); // ちかい 敵。かよわい 味方を ねらう 敵を ゆうせん
+  let tg=live[0];for(const e of live)if(sc(e)<sc(tg))tg=e;
+  const d=Math.hypot(tg.x-w.x,tg.z-w.z),reach=w.r+tg.r+WC.reach;
+  // おす: ちかくに 来た 敵を うしろへ おしやる(こうげきの よこくは とまり、よろける)
+  if(w.shoveCd<=0&&w.swing<=0){
+    const SV=WC.shove,ne=live.find(e=>e.stagger<=0&&Math.hypot(e.x-w.x,e.z-w.z)<=w.r+e.r+SV.range);
+    if(ne){
+      const dx=ne.x-w.x,dz=ne.z-w.z,dd=Math.hypot(dx,dz)||1;
+      ne.kx+=dx/dd*SV.k;ne.kz+=dz/dd*SV.k;
+      ne.atkTele=0;ne.tele=0;ne.atkCd=Math.max(ne.atkCd,0.8);ne.stagger=Math.max(ne.stagger,SV.stagger);ne.flash=0.12;
+      addHate(ne,'warrior',SV.hate);
+      w.shoveCd=SV.cd;w.shoveV=SV.dur;S.shake=Math.max(S.shake,0.25);
+      addText('おす！',w.x,w.z,2.8,'#ffe0a0');
+      S.rings.push({x:ne.x,z:ne.z,t:0,max:0.5,r:ne.r*0.7,rgb:'255,220,150'});
+      return;
+    }
+  }
+  if(w.swing>0){ // ふりかぶり中(その場で ふんばる)→ あたる
+    w.swing-=dt;
+    if(w.swing<=0){
+      const t=w.swingTgt;w.swing=0;w.swingT=0.35;w.swingCd=WC.cd;
+      if(t&&!t.dead&&Math.hypot(t.x-w.x,t.z-w.z)<=w.r+t.r+WC.reach+0.5){
+        S.beams.push({x1:w.x,z1:w.z,x2:t.x,z2:t.z,y1:1.2,y2:1.2,life:0.12,col:'#ffd9a0'});
+        hurtEnemy(t,WC.dmg,'warrior','');
+        try{if(navigator.vibrate)navigator.vibrate(10);}catch(_){}
+      }
+    }
+    return;
+  }
+  if(d<=reach&&w.swingCd<=0){w.swing=WC.wind;w.swingTgt=tg;return;}
+  if(d>reach*0.9){ // ちかづく
+    const m=WC.speed*dt,ux=(tg.x-w.x)/(d||1),uz=(tg.z-w.z)/(d||1);
+    w.x+=ux*Math.min(m,d-reach*0.85);w.z+=uz*Math.min(m,d-reach*0.85);
+  }
+}
+
 export function step(dt){
   stepFx(dt);
   if(S.over){S.overT+=dt;S.shake=Math.max(0,S.shake-dt);if(S.defeat)stepDefeat(dt);else if(S.victory)stepVictory(dt);return;}
   if(S.intro){stepIntro(dt);return;} // スタートの演出の間は ゲームを とめる
   S.t+=dt;
-  const h=S.hero,a=S.ally,pr=S.priest,A=CFG.arena;
+  const h=S.hero,a=S.ally,pr=S.priest,wr=S.warrior,A=CFG.arena;
   fixLock();
   const E=S.enemies.filter(e=>!e.dead);
   let L=S.enemies[S.lock];
-  h.stun=Math.max(0,h.stun-dt);if(h.hitT>=0){h.hitT+=dt;if(h.hitT>=(h.stunMax||0))h.hitT=-1;}h.flash=Math.max(0,h.flash-dt);a.flash=Math.max(0,a.flash-dt);S.priest.flash=Math.max(0,S.priest.flash-dt);
+  h.stun=Math.max(0,h.stun-dt);if(h.hitT>=0){h.hitT+=dt;if(h.hitT>=(h.stunMax||0))h.hitT=-1;}h.flash=Math.max(0,h.flash-dt);a.flash=Math.max(0,a.flash-dt);S.priest.flash=Math.max(0,S.priest.flash-dt);S.warrior.flash=Math.max(0,S.warrior.flash-dt);
   S.shake=Math.max(0,S.shake-dt*1.6);
   for(const b of S.beams)b.life-=dt;
   S.beams=S.beams.filter(b=>b.life>0);
@@ -517,6 +569,7 @@ export function step(dt){
   // --- まほうつかい・そうりょの移動(できるだけ てきから はなれる。そうりょは ゆうしゃの ちかくに いる) ---
   if(E.length>0&&a.hp>0)casterMove(a,'ally',CFG.ally,E,dt);
   if(E.length>0&&pr.hp>0)casterMove(pr,'priest',CFG.priest,E,dt);
+  stepWarrior(dt,E);
 
   // --- てきの行動(ヘイト・ねらい・移動・こうげき) ---
   for(const e of E){
@@ -527,6 +580,7 @@ export function step(dt){
       if(!e.hitH&&Math.hypot(h.x-e.x,h.z-e.z)<=e.r*0.7+h.r+0.1){e.hitH=true;hitHero(h.stance==='firm'?CH2.dmgHeroFirm:CH2.dmgHero,e.dx,e.dz,CH2.knock,'とっしん');}
       if(!e.hitA&&a.hp>0&&Math.hypot(a.x-e.x,a.z-e.z)<=e.r*0.7+a.r+0.1){e.hitA=true;hitAlly(CH2.dmgAlly,e.dx,e.dz,CH2.knock,'とっしん');}
       if(!e.hitP&&pr.hp>0&&Math.hypot(pr.x-e.x,pr.z-e.z)<=e.r*0.7+pr.r+0.1){e.hitP=true;hitAlly(CH2.dmgAlly,e.dx,e.dz,CH2.knock,'とっしん',pr);}
+      if(!e.hitW&&wr.hp>0&&Math.hypot(wr.x-e.x,wr.z-e.z)<=e.r*0.7+wr.r+0.1){e.hitW=true;hitAlly(CH2.dmgAlly,e.dx,e.dz,CH2.knock*0.5,'とっしん',wr);}
       if(e.dashLeft<=0.001){e.dash=0;e.stagger=CH2.rest;e.atkCd=CFG.enemyAtk.cd;e.plan=pickPlan();e.kx=0;e.kz=0;addText('つかれた…',e.x,e.z,3.2,'#9fe8ff');}
       continue;
     }
@@ -618,8 +672,8 @@ export function step(dt){
         if(kind==='hit'){
           if(tdL<=reach*1.35+0.2){
             if(e.target!=='hero'){
-              if(tgt.hp>0){tgt.hp=Math.max(0,tgt.hp-CFG.enemyAtk.dmgAlly);tgt.flash=0.25;S.shake=Math.max(S.shake,0.35);
-              addPop(tgt.x,tgt.z,1.9,'-'+CFG.enemyAtk.dmgAlly,'#ff7070',32,'',false);}
+              if(tgt.hp>0){const dm=dmgTo(tgt,CFG.enemyAtk.dmgAlly);tgt.hp=Math.max(0,tgt.hp-dm);tgt.flash=0.25;S.shake=Math.max(S.shake,0.35);
+              addPop(tgt.x,tgt.z,1.9,'-'+dm,'#ff7070',32,'',false);}
             }else{
               const dmg=h.stance==='firm'?CFG.enemyAtk.dmgHeroFirm:CFG.enemyAtk.dmgHero;
               h.hp=Math.max(0,h.hp-dmg);h.flash=0.25;S.shake=Math.max(S.shake,0.35);
@@ -630,13 +684,13 @@ export function step(dt){
           const SW=CFG.atkSweep,R=e.r+SW.r;let any=false;
           {const dx=h.x-lx,dz=h.z-lz,d=Math.hypot(dx,dz)||0.001;
            if(d<=R+h.r){any=true;hitHero(h.stance==='firm'?SW.dmgHeroFirm:SW.dmgHero,dx/d,dz/d,SW.knock,'なぎはらい');}}
-          for(const u of [a,pr]){const dx=u.x-lx,dz=u.z-lz,d=Math.hypot(dx,dz)||0.001;
+          for(const u of [a,pr,wr]){const dx=u.x-lx,dz=u.z-lz,d=Math.hypot(dx,dz)||0.001;
            if(u.hp>0&&d<=R+u.r){any=true;hitAlly(SW.dmgAlly,dx/d,dz/d,SW.knock,'なぎはらい',u);}}
           S.shake=Math.max(S.shake,0.25);
           if(!any)addText('かわした',tgt.x,tgt.z,2.0,'#cfd4ff');
         }else{ // とっしん: ねらった場所へ 一気にかけぬける
           const CH2=CFG.atkCharge,ddx=e.cx-e.x,ddz=e.cz-e.z,dd=Math.hypot(ddx,ddz)||0.001;
-          e.dx=ddx/dd;e.dz=ddz/dd;e.dashLeft=Math.min(dd+CH2.over,CH2.maxD+CH2.over);e.dash=1;e.hitH=false;e.hitA=false;e.hitP=false;
+          e.dx=ddx/dd;e.dz=ddz/dd;e.dashLeft=Math.min(dd+CH2.over,CH2.maxD+CH2.over);e.dash=1;e.hitH=false;e.hitA=false;e.hitP=false;e.hitW=false;
         }
         if(kind!=='charge'){e.atkCd=CFG.enemyAtk.cd;e.plan=pickPlan();}
       }
@@ -665,8 +719,9 @@ export function step(dt){
     e.info={contact:d<rs+0.1,R,wh:Wh,we:We,angle};
   }
   for(let i=0;i<E.length;i++)for(let j=i+1;j<E.length;j++)separate(E[i],E[j],E[i].w,E[j].w); // てき どうしが かさならない
-  for(const [u,uw] of [[a,CFG.ally.w],[pr,CFG.priest.w]])if(u.hp>0){separate(h,u,CFG.hero.w,uw);for(const e of E)separate(u,e,uw,e.w);} // たおれた 味方は からだが じゃまに ならない
+  for(const [u,uw] of [[a,CFG.ally.w],[pr,CFG.priest.w],[wr,CFG.warrior.w]])if(u.hp>0){separate(h,u,CFG.hero.w,uw);for(const e of E)separate(u,e,uw,e.w);} // たおれた 味方は からだが じゃまに ならない
   if(a.hp>0&&pr.hp>0)separate(a,pr,CFG.ally.w,CFG.priest.w);
+  if(wr.hp>0){if(a.hp>0)separate(wr,a,CFG.warrior.w,CFG.ally.w);if(pr.hp>0)separate(wr,pr,CFG.warrior.w,CFG.priest.w);}
 
   // --- ゆうしゃのこうげき(フリックで けんを ふる) ---
   h.swingCd=Math.max(0,h.swingCd-dt);h.swingT=Math.max(0,h.swingT-dt);h.swingV=Math.max(0,h.swingV-dt);
@@ -825,7 +880,7 @@ export function step(dt){
   // --- どひょうの外(ダメージなし。ふちで とまる。ユーザー指示 2026-11-21) ---
   clampArena(h,h.r);
   for(const e of E)clampArena(e,e.r);
-  clampArena(a,a.r);clampArena(pr,pr.r);
+  clampArena(a,a.r);clampArena(pr,pr.r);clampArena(wr,wr.r);
 
   // --- カメラ(ロックしたてきを向く) ---
   fixLock();L=S.enemies[S.lock];
