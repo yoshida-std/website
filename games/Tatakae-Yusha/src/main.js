@@ -62,10 +62,15 @@ function pickStage(id){
   stagesEl.style.display='none';
   resize();init(id);setRunning(true);
 }
+// タイトル: 「はじめる」→ ステージ選択 / 「せつめい」→ 説明の画面(「もどる」でタイトルへ)
+const titleEl=document.getElementById('title'),helpEl=document.getElementById('intro');
 document.getElementById('start').addEventListener('click',()=>{
-  document.getElementById('intro').style.display='none';
+  titleEl.style.display='none';helpEl.style.display='none';
   showStages();
 });
+document.getElementById('howto').addEventListener('click',()=>{titleEl.style.display='none';helpEl.style.display='block';helpEl.scrollTop=0;});
+document.getElementById('help-back').addEventListener('click',()=>{helpEl.style.display='none';titleEl.style.display='flex';});
+document.getElementById('stages-back').addEventListener('click',()=>{stagesEl.style.display='none';titleEl.style.display='flex';});
 document.getElementById('pick').addEventListener('click',showStages);
 document.getElementById('reset').addEventListener('click',()=>{init();});
 // うえのウィンドウ(せってい)を かくす／ひらく
