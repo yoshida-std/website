@@ -1,8 +1,8 @@
 // 移行元: prototype-2d.html の該当部分をそのまま移したもの(import/export だけ足した)
-import {FLICKKEY,setFlickKey,setET,CFG,ET} from './config.js';
+import {FLICKKEY,setFlickKey,setET,CFG,ET,ENEMY_TYPES} from './config.js';
 import {stage,barEl,BAR_HIDDEN,measureBar,resize,setBarHidden,CW} from './screen.js';
 import {S,running,setRunning,inp,init,step,tapLock,enemyAt,checkFlick,skipIntro,stageId,setParty,getParty,partyKey,KINDS,KIND_LIST} from './logic.js';
-import {STAGES} from './stages.js';
+import {STAGES,stageById,stageWeight} from './stages.js';
 import {getBest} from './records.js';
 import {render as render2d} from './render2d.js';
 import {render as render3d} from './render3d.js';
@@ -51,8 +51,8 @@ function buildStageList(){
     const img=document.createElement('img');img.src=st.thumb;img.alt=st.name;img.draggable=false;
     const n=document.createElement('b');n.textContent=st.name;
     if(played&&st.id===lastStage){const i=document.createElement('i');i.textContent='まえに あそんだ';n.appendChild(i);}
-    const best=getBest(st.id,ET.w,partyKey()),c=document.createElement('span');
-    c.textContent='とうばつタイム  '+(best===null?'きろくなし':'ベスト '+best.toFixed(1)+' びょう')+'  ('+ET.name+')';
+    const wt=stageWeight(st)||ET.w,best=getBest(st.id,wt,partyKey()),c=document.createElement('span'); // おもさが こていの ステージは その おもさ
+    c.textContent='とうばつタイム  '+(best===null?'きろくなし':'ベスト '+best.toFixed(1)+' びょう')+'  ('+ENEMY_TYPES[wt].name+')';
     b.append(img,n,c);
     b.addEventListener('click',()=>pickStage(st.id));
     listEl.appendChild(b);
@@ -81,7 +81,7 @@ function showStages(){setRunning(false);buildStageList();document.getElementById
 function pickStage(id){
   lastStage=id;played=true;try{localStorage.setItem('ty_stage',id);}catch(_){}
   stagesEl.style.display='none';
-  resize();init(id);setRunning(true);
+  resize();init(id);setRunning(true);syncWeightButtons();
 }
 // タイトル: 「はじめる」→ ステージ選択 / 「せつめい」→ 説明の画面(「もどる」でタイトルへ)
 const titleEl=document.getElementById('title'),helpEl=document.getElementById('intro');
@@ -121,4 +121,9 @@ document.querySelectorAll('#bar button[data-w]').forEach(b=>{
     init();
   });
 });
+// おもさが こていの ステージでは、上の「てきのおもさ」ボタンは きかない(うすく して おす ことも できない)
+function syncWeightButtons(){
+  const fixed=stageWeight(stageById(stageId))!==null;
+  document.querySelectorAll('#bar button[data-w]').forEach(x=>{x.disabled=fixed;x.style.opacity=fixed?'0.4':'';});
+}
 window.__sumo={setParty,init,step,render,skipIntro,tapLock,enemyAt,checkFlick,get S(){return S;},inp,CFG};

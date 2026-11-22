@@ -7,6 +7,7 @@
 //        … 同じ乱数の種で 両方を遊び、勝敗・時間を ならべる。毎フレームの状態(位置・HP)の
 //          チェックサムも くらべるので、ロジックが 完全に同じかも わかる
 //   オプション: --seeds 20  --policy smart,spam  --weight 70,100,160  --maxT 180
+//   --stage ogre1h … ステージ(stages.js の id)。既定は 1つめ
 //   --party mage,priest,warrior … パーティ(ゆうしゃの ほかの さいだい3人。なし=ゆうしゃだけ。しょくは mage / priest / warrior。同じ しょくを かさねても よい)。既定は mage,priest,warrior
 //   --hidebar 1 … 上の設定ウィンドウを かくして 撮る(背景を見る用)
 //   --shotFly 0.15 … 止めの演出が 0.15秒 すすんだところで止めて 画面を保存
@@ -36,6 +37,7 @@ const SEEDS=+(opt('seeds')||20);
 const POLICIES=(opt('policy')||'smart,spam').split(',');
 const WEIGHTS=(opt('weight')||'70,100,160').split(',');
 const MAXT=+(opt('maxT')||180);
+const STAGE=opt('stage')||''; // ステージの id(stages.js)。なければ 1つめ
 const PARTY=(opt('party')===undefined?'mage,priest,warrior':opt('party')).split(',').filter(x=>x&&x!=='none');
 const SHOT=+(opt('shot')||0),SHOTFLY=+(opt('shotFly')||0),OUT=opt('out')||'.';
 
@@ -61,7 +63,7 @@ function setup(){
   window.__adv=ms=>{T+=ms;};
   window.requestAnimationFrame=()=>0;
 }
-function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace,party}){
+function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace,party,stage}){
   const G=window.__sumo,cv=document.getElementById('c');
   document.getElementById('intro').style.display='none';
   window.__seed(seed);
@@ -69,7 +71,7 @@ function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace,party}){
   window.__seed(seed);
   G.setParty(party);                                                   // パーティ(ゆうしゃの ほかの みかた)
   document.getElementById('start').click();                            // ステージ選択を ひらく
-  document.querySelector('#stageList .stage').click();                 // 1つめの ステージ: resize(); init(); running=true
+  document.querySelector(stage?'#stageList .stage[data-stage="'+stage+'"]':'#stageList .stage').click(); // ステージ(既定は 1つめ): resize(); init(); running=true
   G.skipIntro();                                                       // スタートの演出は とばす
   const r=cv.getBoundingClientRect(),CW=r.width,CH=r.height;
   const ev=(type,x,y)=>cv.dispatchEvent(new PointerEvent(type,{pointerId:1,clientX:r.left+x,clientY:r.top+y,bubbles:true,cancelable:true,pointerType:'touch',isPrimary:true}));
@@ -145,12 +147,12 @@ function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace,party}){
     await page.waitForFunction(()=>window.__sumo,null,{timeout:15000});
     res[pg]=[];
     if(SHOT||SHOTFLY){
-      await page.evaluate(runBot,{seed:1,policy:POLICIES[0],weight:WEIGHTS[0],maxT:MAXT,stopAt:SHOT,stopFly:SHOTFLY,party:PARTY});
+      await page.evaluate(runBot,{seed:1,policy:POLICIES[0],weight:WEIGHTS[0],maxT:MAXT,stopAt:SHOT,stopFly:SHOTFLY,party:PARTY,stage:STAGE});
       await page.screenshot({path:path.join(OUT,pg.replace(/\W+/g,'_')+'.png')});
       await ctx.close();continue;
     }
     for(const policy of POLICIES)for(const weight of WEIGHTS)for(let s=1;s<=SEEDS;s++){
-      const r=await page.evaluate(runBot,{seed:s,policy,weight,maxT:MAXT,trace:!!opt('trace'),party:PARTY});
+      const r=await page.evaluate(runBot,{seed:s,policy,weight,maxT:MAXT,trace:!!opt('trace'),party:PARTY,stage:STAGE});
       res[pg].push({policy,weight,seed:s,...r});
     }
     if(errs.length)console.log(pg,'のエラー:',errs.slice(0,5));

@@ -1,6 +1,6 @@
 // 移行元: prototype-2d.html の該当部分をそのまま移したもの(import/export だけ足した)
-import {CFG,CAM,FLICK,HERO_Y,ET,LETTER,pickPlan} from './config.js';
-import {stageById} from './stages.js';
+import {CFG,CAM,FLICK,HERO_Y,ET,ENEMY_TYPES,LETTER,pickPlan} from './config.js';
+import {stageById,stageWeight} from './stages.js';
 import {saveClear} from './records.js';
 import {cv,CW,CH} from './screen.js';
 
@@ -8,10 +8,11 @@ import {cv,CW,CH} from './screen.js';
 export let S=null,running=false;
 export function setRunning(v){running=v;}
 export const inp={down:false,id:null,ox:0,oy:0,x:0,y:0,sx:0,sy:0,t0:0,travel:0,fwd:0,lat:0,hist:[],flickT:-1000,lastEvt:-1000,flickPending:false,flickDx:1,flickDy:0,trail:[],flickBlocked:false,parryOK:true,onEnemy:-1,noMove:false,flickEnemy:-1,flickPeak:0};
-function makeEnemy(i,x,z,kind){
-  return {i,x,z,kind:kind||'ogre',r:ET.r,w:ET.w,speed:ET.speed,color:i%2===0?ET.color:ET.color2,
+function makeEnemy(i,x,z,kind,wt){
+  const T=wt?ENEMY_TYPES[wt]:ET; // ステージで おもさが きまっていれば それ、なければ 上の ボタンの おもさ
+  return {i,x,z,kind:kind||'ogre',r:T.r,w:T.w,speed:T.speed,color:i%2===0?T.color:T.color2,
     fx:0,fz:-1,gauge:0,tele:0,atkTele:0,atkCd:1.2+i*0.6,stagger:0,flash:0,kx:0,kz:0,
-    flankDir:Math.random()<0.5?1:-1,flankT:1.5,target:null,hp:ET.hp,maxHp:ET.hp,dead:false,hate:{hero:0,m0:0,m1:0,m2:0},
+    flankDir:Math.random()<0.5?1:-1,flankT:1.5,target:null,hp:T.hp,maxHp:T.hp,dead:false,hate:{hero:0,m0:0,m1:0,m2:0},
     air:0,tflash:0,sx:0,sy:0,shw:0,shh:0,sc:30,atkKind:'hit',atkMax:0.7,plan:pickPlan(),dash:0,dashLeft:0,dx:0,dz:1,cx:0,cz:0,hitH:false,hitIds:[],info:{contact:false,R:0,wh:0,we:0,angle:'front'}};
 }
 export let stageId='ogre4';
@@ -46,7 +47,7 @@ export function init(id){
     allies:partyKinds.map((k,i)=>k?makeAlly(k,i):null).filter(Boolean),
     zones:[],
     // てきの 数・いち・さいしょの ロックは ステージの データ(src/stages.js)。ogre4 は 4匹が 弧を えがいて ならぶ。さいしょの ロックは まんなかの 左(B)
-    enemies:ST.enemies.map((q,i)=>makeEnemy(i,q.x,q.z,q.kind)),beams:[],spells:[],fly:[],sparks:[],rings:[],dust:[],
+    enemies:ST.enemies.map((q,i)=>makeEnemy(i,q.x,q.z,q.kind,q.w)),beams:[],spells:[],fly:[],sparks:[],rings:[],dust:[],
     cam:{yaw:0}
   };
   // ゲームスタートの演出(ユーザー指示 2026-11-21): カメラが てきを 大きく うつし、てきが 地面に おりたつ。そのあと カメラが ひいて ゲームの いちへ
@@ -285,7 +286,7 @@ function endGame(kind){
   S.beams=[];S.spells=[];S.zones=[];S.hero.swingV=0;S.hero.swingT=0; // ゲームの じかんが とまるので、のこっていると 黄色い線(こうげきの ビーム)や 剣の軌跡が きえなくなる
   if(kind==='win'){ // かった: かちかたで 3つの ポーズ(ゆうしゃの HP の わりあいで きめる)
     const h=S.hero,r=h.hp/CFG.hero.hp,V=CFG.victory;
-    S.record=saveClear(S.stage.id,ET.w,S.t,partyKey()); // とうばつタイム(かかった 時間 S.t)を きろく。しんきろくなら S.record.isNew
+    S.record=saveClear(S.stage.id,stageWeight(S.stage)||ET.w,S.t,partyKey()); // とうばつタイム(かかった 時間 S.t)を きろく。しんきろくなら S.record.isNew
     S.victory={grade:r>=V.easy?'easy':(r<V.close?'close':'normal'),t:0,yaw:S.cam.yaw,said:false,dustT:0};
     h.stun=0;h.hitT=-1;h.kx=0;h.kz=0;h.swingV=0;h.swingT=0;h.mv=0;h.pushK=0;h.firmK=1;h.stance='firm';
   }

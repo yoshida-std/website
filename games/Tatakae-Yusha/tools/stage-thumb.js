@@ -31,12 +31,12 @@ const ONLY=process.argv[2];
        G.render();
      }
      const E=G.S.enemies;let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
-     for(const e of E){x0=Math.min(x0,e.sx-e.shw*1.25);x1=Math.max(x1,e.sx+e.shw*1.25);y0=Math.min(y0,e.sy-e.shh*1.1);y1=Math.max(y1,e.sy+e.shh*0.15);}
+     for(const e of E){x0=Math.min(x0,e.sx-e.shw*1.3);x1=Math.max(x1,e.sx+e.shw*1.3);y0=Math.min(y0,e.sy-e.shh*1.25);y1=Math.max(y1,e.sy+e.shh*1.5);}
      return {x0,x1,y0,y1};
    },id);
    // 960:504 に そろえる(はばを きめ、たかさは そこから。てきの まんなかに あわせる)
    const R=960/504,cx=(box.x0+box.x1)/2,cy=(box.y0+box.y1)/2;
-   let w=Math.max(box.x1-box.x0,(box.y1-box.y0)*R),h=w/R;
+   let w=Math.max(box.x1-box.x0,(box.y1-box.y0)*R,200),h=w/R; // 1ぴきだけの ステージでも ちいさく なりすぎない(はば 200px いじょう)
    const W=390,H=844;w=Math.min(w,W);h=w/R;
    const x=Math.max(0,Math.min(W-w,cx-w/2)),y=Math.max(0,Math.min(H-h,cy-h/2-10)); // 少し上へ(下はしに ゆうしゃの ぼうしが 入らないように)
    fs.mkdirSync(path.join(ROOT,'img'),{recursive:true});
