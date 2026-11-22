@@ -254,6 +254,7 @@ export function overReadyT(kind){return kind==='win'?winShowT()+0.4:(kind==='her
 export function overShowT(kind){return kind==='win'?winShowT():(kind==='hero'?2.6:0);}
 function endGame(kind){
   S.over=kind;S.overT=0;inp.down=false;inp.fwd=0;inp.lat=0;inp.flickPending=false;
+  S.beams=[];S.hero.swingV=0;S.hero.swingT=0; // ゲームの じかんが とまるので、のこっていると 黄色い線(こうげきの ビーム)や 剣の軌跡が きえなくなる
   if(kind==='win'){ // かった: かちかたで 3つの ポーズ(ゆうしゃの HP の わりあいで きめる)
     const h=S.hero,r=h.hp/CFG.hero.hp,V=CFG.victory;
     S.victory={grade:r>=V.easy?'easy':(r<V.close?'close':'normal'),t:0,yaw:S.cam.yaw,said:false,dustT:0};
