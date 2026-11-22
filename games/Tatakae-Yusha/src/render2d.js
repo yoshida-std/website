@@ -3,7 +3,7 @@ import {CFG,CAM,HERO_Y,LETTER,KIND_JP} from './config.js';
 import {ctx as ctx0,CW,CH,DPR,BAR_H,FONT} from './screen.js';
 let ctx=ctx0;
 export function useCtx(c){ctx=c||ctx0;}
-import {S,inp,introState,defeatCam,victoryCam,beatPhase,overShowT,overReadyT,lungeLanding} from './logic.js';
+import {S,inp,introState,defeatCam,victoryCam,beatPhase,overShowT,overReadyT,lungeLanding,unitOf,warriorSwingK,KINDS} from './logic.js';
 
 // ================= 描画 =================
 export let V=null;
@@ -387,6 +387,190 @@ export function allyParts(yaw,mv,ph,cast,fire,down){
 // まほうつかいの 見た目の 大きさ(ユーザー指示 2026-11-22「勇者と スケールを あわせたい」): 勇者の せたけ(2.17)に あわせた(モデルの せたけ 2.85 × 0.76 ≒ 2.17)。当たり判定は かえない
 export const MAGE_SCALE=0.76;
 export function drawAlly(x,y,s,fl,yaw,mv,ph,cast,fire,down){const m=allyParts(yaw,mv,ph,cast,fire,down);h3render(m.parts,x,y,s*MAGE_SCALE,fl,m.yaw,0);}
+// そうりょ(ヒーラー。ユーザー指定のデザイン 2026-11-22): しろい ぼうし(金の ふちの 十字・水いろの おび)、ながい こげちゃの かみ、
+// しろい ローブ(水いろの まえかけ・金の ふち・十字)、水いろの スカート・しろい すそ、しろい くつした・かわの くつ、金の 十字の つえ(クリスタル)。ぜんぶ 箱の 部品
+// cast=つえの あげぐあい(0〜1)、kind='heal'/'zone'(えいしょう中は クリスタルが みどりに ひかる)、down=たおれの すすみ(0〜1)
+export function priestParts(yaw,mv,ph,cast,kind,down){
+  const t=performance.now()/1000,bob=Math.sin(t*2.1+1)*0.02-Math.abs(Math.sin(ph))*0.05*mv;
+  const parts=[],B=(cx,cy,cz,sx,sy,sz,col,ops,bias)=>parts.push({c:[cx,cy,cz],s:[sx,sy,sz],col,ops:ops||[],bias:bias||0});
+  const GOLD='#e0b84a',GOLDL='#f4d56a',WHT='#f2f2ee',WHTD='#d8d8d2',BLU='#9bbcdc',BLUD='#7fa3cb',BAND='#b4cfe9',SKIN='#f6d9bd',HAIR='#5b3f30',HAIRD='#4a3226',SHOE='#a8693a',SHOED='#8a5230',SOCK='#f1ece0',STAFF='#8a5a2a';
+  const sw=Math.sin(ph)*0.5*mv;
+  // ---- あし・くつ ----
+  for(const sx of [-1,1]){
+    const px=sx*0.17,lp=[{t:'x',a:sx*sw,p:[px,0.52,0]}];
+    B(px,0.4,0,0.18,0.24,0.18,SKIN,lp);                    // あし
+    B(px,0.27,0,0.2,0.2,0.2,SOCK,lp);                      // くつした
+    B(px,0.37,0,0.21,0.05,0.21,BAND,lp,0.01);              // くつしたの 水いろの ふち
+    B(px,0.08,0.07,0.24,0.16,0.4,SHOE,lp);                 // くつ
+    B(px,0.14,0.27,0.12,0.06,0.02,GOLD,lp,0.02);           // くつの 金具
+  }
+  // ---- スカート・おび・ローブ ----
+  B(0,0.505+bob,0,0.9,0.035,0.7,GOLD);                     // すその 金の ふち
+  B(0,0.6+bob,0,0.86,0.16,0.66,BLU);                       // スカート(した)
+  B(0,0.6+bob,0.334,0.3,0.16,0.016,WHT,[],0.02);           // スカートの しろい まえ
+  B(0,0.6+bob,0.342,0.32,0.17,0.01,GOLD,[],0.01);          // まえの 金の ふち
+  B(0,0.76+bob,0,0.68,0.16,0.5,BLUD);                      // スカート(うえ)
+  B(0,0.865+bob,0,0.7,0.08,0.5,GOLD);                      // おび
+  B(0,0.865+bob,0.255,0.14,0.09,0.02,GOLDL,[],0.03);       // バックル
+  B(0,1.13+bob,0,0.64,0.46,0.42,WHT);                      // ローブ
+  B(0,1.13+bob,0.216,0.2,0.46,0.016,BLU,[],0.03);          // みずいろの まえかけ
+  B(-0.11,1.13+bob,0.226,0.025,0.46,0.012,GOLD,[],0.04);B(0.11,1.13+bob,0.226,0.025,0.46,0.012,GOLD,[],0.04); // 金の ふち
+  B(0,1.2+bob,0.232,0.04,0.2,0.012,GOLD,[],0.05);B(0,1.24+bob,0.232,0.12,0.04,0.012,GOLD,[],0.05); // 金の 十字
+  B(0,1.38+bob,0,0.58,0.1,0.44,BLU);                       // えり
+  B(0,1.43+bob,0.226,0.1,0.06,0.012,GOLD,[],0.04);         // えりの 金
+  B(0,1.0+bob,-0.226,0.5,0.62,0.016,WHTD,[],0.01);         // せなかの かげ
+  // ---- かみ(ながい こげちゃ) ----
+  B(0,1.34+bob,-0.3,0.74,1.04,0.14,HAIR);                  // うしろの ながい かみ
+  B(0,0.84+bob,-0.3,0.66,0.06,0.14,HAIRD);                 // かみの さき
+  for(const sx of [-1,1]){
+    B(sx*0.34,1.72+bob,-0.02,0.08,0.4,0.46,HAIR);          // よこの かみ(あたま)
+    B(sx*0.37,1.3+bob,0.02,0.14,0.62,0.3,HAIR);            // かたに かかる かみ
+    B(sx*0.37,0.96+bob,0.04,0.13,0.1,0.26,HAIRD);          // かみの さき
+  }
+  // ---- あたま・かお ----
+  B(0,1.68+bob,0,0.6,0.54,0.52,SKIN);                      // かお
+  for(const sx of [-1,1]){
+    B(sx*0.15,1.68+bob,0.262,0.09,0.14,0.02,'#2b1d1a',[],0.03);               // め
+    B(sx*0.15+sx*0.018,1.72+bob,0.272,0.03,0.04,0.01,'#ffffff',[],0.04);      // めの ひかり
+    B(sx*0.22,1.58+bob,0.262,0.1,0.05,0.02,'#f08a7a',[],0.02);                // ほほ
+    B(sx*0.15,1.82+bob,0.264,0.12,0.028,0.02,'#4a3226',[],0.03);              // まゆ
+  }
+  B(0,1.52+bob,0.262,0.08,0.05,0.02,'#c04848',[],0.03);    // くち
+  B(-0.17,1.93+bob,0.27,0.26,0.17,0.07,HAIR,[],0.015);B(0.17,1.93+bob,0.27,0.26,0.17,0.07,HAIR,[],0.015); // まえがみ(まんなかで わける)
+  B(0,1.97+bob,-0.01,0.64,0.12,0.56,HAIR);                 // あたまの うえ
+  // ---- ぼうし(しろ。金の ふち・水いろの おび・十字) ----
+  B(0,2.03+bob,0,0.76,0.04,0.74,GOLD);                     // ふち
+  B(0,2.11+bob,0,0.74,0.12,0.72,BAND);                     // 水いろの おび
+  B(0,2.34+bob,0,0.74,0.34,0.7,WHT);                       // ぼうしの したがわ
+  B(-0.365,2.34+bob,0.356,0.03,0.34,0.012,GOLD,[],0.03);B(0.365,2.34+bob,0.356,0.03,0.34,0.012,GOLD,[],0.03); // よこの 金の ふち
+  B(0,2.62+bob,-0.02,0.46,0.24,0.52,WHT);                  // ぼうしの うえがわ(たかい)
+  B(0,2.62+bob,0.246,0.48,0.26,0.012,GOLD,[],0.02);        // 金の わく
+  B(0,2.62+bob,0.254,0.42,0.2,0.012,WHT,[],0.03);          // わくの なか(しろ)
+  B(0,2.62+bob,0.262,0.05,0.18,0.012,GOLD,[],0.04);B(0,2.65+bob,0.262,0.15,0.05,0.012,GOLD,[],0.04); // 金の 十字
+  B(0,2.78+bob,-0.02,0.34,0.07,0.44,GOLD);                 // てっぺんの 金
+  B(0.38,2.5+bob,-0.16,0.04,0.3,0.1,GOLD);                 // よこの かざり
+  // ---- うで(しろい そで・金の そでぐち)・つえ ----
+  const sh=1.32,la=[{t:'x',a:-sw*0.8,p:[-0.42,sh+bob,0]}];
+  B(-0.42,1.1+bob,0,0.2,0.4,0.2,WHT,la);B(-0.42,0.89+bob,0,0.22,0.05,0.22,GOLD,la);B(-0.42,0.82+bob,0,0.12,0.1,0.12,SKIN,la);
+  const ca=-0.5-0.9*Math.min(1,cast||0),ra=[{t:'x',a:ca,p:[0.42,sh+bob,0]}];
+  B(0.42,1.1+bob,0,0.2,0.4,0.2,WHT,ra);B(0.42,0.89+bob,0,0.22,0.05,0.22,GOLD,ra);B(0.42,0.82+bob,0,0.12,0.1,0.12,SKIN,ra);
+  B(0.42,0.82+bob,0.02,0.07,0.07,1.9,STAFF,ra);            // え
+  B(0.42,0.82+bob,0.9,0.11,0.11,0.05,GOLD,ra);             // 金の わ
+  B(0.42,0.82+bob,1.1,0.05,0.5,0.05,GOLD,ra);B(0.42,0.82+bob,1.18,0.4,0.05,0.05,GOLD,ra); // 金の 十字(たて・よこ)
+  const pul=0.15+0.03*Math.sin(t*5)+0.07*Math.min(1,cast||0);
+  B(0.42,0.82+bob,1.18,pul*1.4,pul*1.4,pul*1.4,kind?'#8dffa8':'#7cf5ff',ra,0.05); // クリスタル(えいしょう中は みどり)
+  // たおれた そうりょ: うしろへ ばたりと たおれ、よこむきに なって その場に たおれたまま(まほうつかいと おなじ)
+  let yawOut=yaw;
+  if(down>0){
+    const e=down*down*(3-2*down),to=[{t:'x',a:-Math.PI/2*e,p:[0,0.2,-0.3]}];
+    for(const pt of parts)pt.ops=pt.ops.concat(to);
+    yawOut=yaw+Math.PI/2*e;
+  }
+  return {parts,yaw:yawOut};
+}
+// そうりょの えいしょうの ようす({c: つえの あげぐあい(0〜1), kind:'heal'/'zone'})。えいしょうじゃ ない ときは 0
+// せんしの「おす」の すすみ(0〜1。おした しゅんかんが 1)
+export function warriorShoveK(w){return w.shoveV>0?Math.min(1,w.shoveV/(CFG.warrior.shove.dur*0.6)):0;}
+export function priestCast(p){
+  if(!p.cast)return {c:0,kind:''};
+  return {c:Math.min(1,p.cast.t/p.cast.dur),kind:p.cast.kind};
+}
+// そうりょの 見た目の 大きさ: まほうつかいと おなじく 勇者の せたけ(2.17)に あわせる(当たり判定は かえない)
+export const PRIEST_SCALE=0.76;
+export function drawPriest(x,y,s,fl,yaw,mv,ph,cast,kind,down){const m=priestParts(yaw,mv,ph,cast,kind,down);h3render(m.parts,x,y,s*PRIEST_SCALE,fl,m.yaw,0);}
+// せんし(ユーザー指定のデザイン 2026-11-22): ひげの おっさんの せんし。かぶと(はちがね・はなあて・とさか)、あかい よろいした・茶いろの むねあて(はがねの すじ)、
+// 茶いろの かたあて、ベルト(金の バックル)、あかい まえだれ・すそよろい、すねあて・かわの ブーツ、背中の まるい たて、おおきな りょうばの 斧(右手)。ぜんぶ 箱の 部品
+// swing=斧の ふりの すすみ(0〜0.5=ふりかぶる、0.5〜1=ふりぬく)、shove=おす わざの 強さ(0〜1。りょううでを まえに のばす)、down=たおれの すすみ
+export function warriorParts(yaw,mv,ph,swing,shove,down){
+  const t=performance.now()/1000,bob=Math.sin(t*2.0+2)*0.018-Math.abs(Math.sin(ph))*0.05*mv;
+  const parts=[],B=(cx,cy,cz,sx,sy,sz,col,ops,bias)=>parts.push({c:[cx,cy,cz],s:[sx,sy,sz],col,ops:ops||[],bias:bias||0});
+  const RED='#7a3a3a',REDL='#8f3f3f',LEA='#8a6a4a',LEAD='#6e4f36',STEEL='#8d96a8',STEELD='#707a8d',PAUL='#8a5e3c',BELT='#5a3a22',GOLD='#e0b84a',TASS='#7a5a3a',LEG='#4a3a38',BOOT='#7a5230',BOOTD='#5e3d22',SKIN='#e8b184',SKIND='#d99f72',BEARD='#7a6850',BEARDD='#615240',HELM='#7a5a3a',HELMD='#634830',DK='#2a1f2d',SHAFT='#8a5a2a',EDGE='#c8d0dc',AXE='#9aa4b4';
+  const sw=Math.sin(ph)*0.75*mv;
+  // ---- あし(すねあて・ブーツ) ----
+  for(const sx of [-1,1]){
+    const px=sx*0.2,lp=[{t:'x',a:sx*sw,p:[px,0.7,0]}];
+    B(px,0.42,0,0.22,0.46,0.24,LEG,lp);                    // ももから すね
+    B(px,0.5,0.13,0.2,0.16,0.05,STEEL,lp,0.02);            // ひざあて
+    B(px,0.2,0.01,0.27,0.26,0.28,BOOT,lp);                 // ブーツ
+    B(px,0.34,0.01,0.29,0.05,0.3,BOOTD,lp,0.01);           // ブーツの ふち
+    B(px,0.07,0.1,0.27,0.13,0.42,BOOT,lp);                 // つまさき
+  }
+  // ---- すそよろい・ベルト・どうたい ----
+  B(0,0.62+bob,0,0.8,0.22,0.52,TASS);                      // すそよろい
+  B(0,0.54+bob,0.265,0.3,0.34,0.03,RED,[],0.02);           // あかい まえだれ
+  B(-0.2,0.6+bob,0.272,0.03,0.28,0.012,STEEL,[],0.03);B(0.2,0.6+bob,0.272,0.03,0.28,0.012,STEEL,[],0.03); // まえだれの はがね
+  B(0,0.79+bob,0,0.82,0.1,0.54,BELT);                      // ベルト
+  B(0,0.79+bob,0.275,0.17,0.1,0.03,GOLD,[],0.04);          // 金の バックル
+  B(0,1.05+bob,0,0.76,0.42,0.48,RED);                      // よろいした
+  B(0,1.16+bob,0.25,0.66,0.38,0.04,LEA,[],0.02);           // むねあて
+  B(0,1.14+bob,0.272,0.26,0.32,0.014,STEEL,[],0.03);       // むねの はがね
+  B(0,0.97+bob,0.25,0.52,0.1,0.035,STEELD,[],0.02);        // はらの はがね
+  B(-0.27,1.3+bob,0.262,0.06,0.2,0.02,BELT,[],0.04);B(0.27,1.3+bob,0.262,0.06,0.2,0.02,BELT,[],0.04); // かたひも
+  B(0,1.1+bob,-0.245,0.7,0.44,0.03,LEAD);                  // せなかの かわ
+  // 背中の まるい たて
+  B(0,1.1+bob,-0.31,0.6,0.6,0.1,PAUL);B(0,1.1+bob,-0.31,0.5,0.7,0.1,PAUL);
+  B(0,1.1+bob,-0.372,0.64,0.64,0.02,STEELD,[],0.02);B(0,1.1+bob,-0.382,0.16,0.16,0.02,GOLD,[],0.04);
+  // ---- かたあて・くび ----
+  for(const sx of [-1,1]){
+    B(sx*0.47,1.43+bob,0,0.3,0.16,0.42,PAUL);
+    B(sx*0.47,1.35+bob,0,0.32,0.05,0.44,STEEL,[],0.01);
+  }
+  B(0,1.43+bob,0,0.34,0.1,0.34,SKIN);                      // くび
+  // ---- あたま・かお ----
+  B(0,1.73+bob,0,0.48,0.42,0.44,SKIN);
+  B(0,1.57+bob,0.17,0.42,0.28,0.14,BEARD);                 // ひげ
+  B(0,1.46+bob,0.2,0.3,0.1,0.1,BEARDD);                    // ひげの さき
+  B(0,1.69+bob,0.236,0.32,0.06,0.04,BEARD,[],0.03);        // くちひげ
+  for(const sx of [-1,1]){
+    B(sx*0.11,1.77+bob,0.222,0.08,0.04,0.02,DK,[],0.04);   // め
+    B(sx*0.11,1.82+bob,0.226,0.14,0.045,0.025,DK,[{t:'z',a:sx*-0.25,p:[sx*0.11,1.82+bob,0.226]}],0.05); // まゆ
+  }
+  B(0,1.72+bob,0.236,0.06,0.09,0.04,SKIND,[],0.03);        // はな
+  // かぶと(はちがね・はなあて・とさか)
+  B(0,1.99+bob,0,0.54,0.2,0.5,HELM);
+  B(0,1.9+bob,0,0.56,0.08,0.52,STEEL);                     // はちがね
+  B(0,1.9+bob,0.265,0.14,0.1,0.015,STEELD,[],0.04);        // まえの かざり
+  B(0,1.82+bob,0.246,0.06,0.2,0.03,STEEL,[],0.04);         // はなあて
+  B(0,2.12+bob,0,0.08,0.12,0.42,STEEL);                    // とさか
+  for(const sx of [-1,1])B(sx*0.275,1.8+bob,0,0.06,0.3,0.38,HELMD); // みみあて
+  // ---- うで(右=斧をもつ / 左)。おすときは りょううでを まえに のばす ----
+  const ak=Math.max(0,Math.min(1,swing||0)),shv=Math.max(0,Math.min(1,shove||0));
+  // 斧の ふり(うでの かくど θ と、斧の あたまの むき a。a は「あたまが 手から 見て どちらか」: 0=真上、π/2=まえ、負=うしろ。てくびで まわす ぶんは φ=a-θ)
+  //   k: 0〜0.4=ふりかぶる(うでを うしろ・うえへ、あたまは うしろへ)/ 0.4〜0.55=ふりぬく(あたまが 頭の 上を こえて まえ・したへ)/ 0.55〜1=もどる
+  const ease=x=>x*x*(3-2*x);
+  let th=0,aa=0;
+  if(ak>0){
+    if(ak<0.4){const q=ease(ak/0.4);th=2.0*q;aa=-0.9*q;}
+    else if(ak<0.55){const q=1-(1-(ak-0.4)/0.15)*(1-(ak-0.4)/0.15);th=2.0-3.0*q;aa=-0.9+3.1*q;}
+    else{const q=ease((ak-0.55)/0.45);th=-1.0*(1-q);aa=2.2*(1-q);}
+  }
+  th=th*(1-shv)+(-1.35)*shv;aa=aa*(1-shv); // おす: うでを まえに のばし、斧は えを まえに(あたまは からだの ほう)
+  const RA=[{t:'x',a:th,p:[-0.52,1.35,0]}];                                  // うで(かたを ちゅうしん)
+  const R=[{t:'x',a:aa-th,p:[-0.52,0.78,0.03]},{t:'x',a:th,p:[-0.52,1.35,0]}]; // 斧(てくびで まわしてから かたで まわす)
+  const L=[{t:'x',a:(-1.35)*shv-sw*0.5*(1-shv),p:[0.52,1.35,0]}];
+  B(-0.52,1.12+bob,0,0.2,0.42,0.2,RED,RA);B(-0.52,0.9+bob,0,0.23,0.14,0.23,STEEL,RA);B(-0.52,0.78+bob,0.03,0.14,0.12,0.14,SKIN,RA);
+  B(0.52,1.12+bob,0,0.2,0.42,0.2,RED,L);B(0.52,0.9+bob,0,0.23,0.14,0.23,STEEL,L);B(0.52,0.78+bob,0.03,0.14,0.12,0.14,SKIN,L);
+  // ---- 斧(りょうばの おおきな 斧) ----
+  B(-0.52,1.0+bob,0.06,0.07,1.56,0.07,SHAFT,R);            // え
+  B(-0.52,0.22+bob,0.06,0.11,0.09,0.11,STEEL,R);           // いしづき
+  B(-0.52,1.74+bob,0.06,0.13,0.34,0.22,AXE,R);             // 斧の あたま(ちゅうしん)
+  for(const sz of [-1,1]){
+    B(-0.52,1.74+bob,0.06+sz*0.18,0.09,0.5,0.14,AXE,R);    // 刃(ひろがる)
+    B(-0.52,1.74+bob,0.06+sz*0.31,0.07,0.68,0.07,EDGE,R,0.03); // りょうばの は
+  }
+  B(-0.52,2.06+bob,0.06,0.06,0.14,0.06,STEELD,R);          // うえの とげ
+  // たおれた せんし: うしろへ ばたりと たおれ、よこむきに なって その場に たおれたまま(まほうつかい・そうりょと おなじ)
+  let yawOut=yaw;
+  if(down>0){
+    const e=down*down*(3-2*down),to=[{t:'x',a:-Math.PI/2*e,p:[0,0.2,-0.3]}];
+    for(const pt of parts)pt.ops=pt.ops.concat(to);
+    yawOut=yaw+Math.PI/2*e;
+  }
+  return {parts,yaw:yawOut};
+}
+// せんしの 見た目の 大きさ: 勇者と おなじ せたけ(2.17〜2.2)。モデルを そのまま つかう(×1)。当たり判定は CFG.warrior.r
+export const WARRIOR_SCALE=1.0;
+export function drawWarrior(x,y,s,fl,yaw,mv,ph,swing,shove,down){const m=warriorParts(yaw,mv,ph,swing,shove,down);h3render(m.parts,x,y,s*WARRIOR_SCALE,fl,m.yaw,0);}
 // てき: どっしりした「どすこいオーガ」。あたまに つの、おなかが ふくらみ、まわしを しめる
 export function enemyParts(eyeCol,tint,sc,yaw,mv,ph,atk,stag,dash){
   yaw=yaw===undefined?Math.PI:yaw;mv=mv||0;ph=ph||0;
@@ -553,7 +737,7 @@ export function setupView(){
 // ゆかの しるし(ねらい線・てきのまえ・こうげきの よこく・当たり円・おしあいの色)
 export function drawGroundMarks(P){
   P=P||P2D;
-  const h=S.hero,a=S.ally,E=S.enemies.filter(e=>!e.dead),L=S.enemies[S.lock];
+  const h=S.hero,E=S.enemies.filter(e=>!e.dead),L=S.enemies[S.lock];
   // てきのねらい線と、てきのまえ
   for(const e of E){
     if((e.air||0)>0.05)continue; // 空中の てきの しるしは 着地してから
@@ -563,11 +747,11 @@ export function drawGroundMarks(P){
     if(e.atkTele>0){ // こうげきの よこく(ゆかに赤い範囲)
       const pr=1-e.atkTele/(e.atkMax||1);
       // ふみこむ こうげきは、ふみこんだ さきに あたり はんいを 出す(ねらった あいての ほうへ うごく)
-      const tg=e.target==='ally'?a:h,Lc=(e.lunge&&(e.atkKind==='sweep'||e.atkKind==='hit'))?lungeLanding(e,tg):null;
+      const tg=unitOf(e.target),Lc=(e.lunge&&(e.atkKind==='sweep'||e.atkKind==='hit'))?lungeLanding(e,tg):null;
       if(e.atkKind==='sweep'){
         P.groundCircle(Lc?Lc.x:e.x,Lc?Lc.z:e.z,e.r+CFG.atkSweep.r,'rgba(255,60,40,'+(0.10+0.14*pr)+')','rgba(255,110,80,.85)',2.5,40);
       }else if(e.atkKind==='hit'&&Lc){
-        const rr0=(e.r+tg.r+(e.target==='ally'?CFG.enemyAtk.reachAlly:CFG.enemyAtk.reachHero))*1.35+0.2;
+        const rr0=(e.r+tg.r+(e.target!=='hero'?CFG.enemyAtk.reachAlly:CFG.enemyAtk.reachHero))*1.35+0.2;
         P.groundCircle(Lc.x,Lc.z,rr0,'rgba(255,60,40,'+(0.10+0.14*pr)+')','rgba(255,110,80,.85)',2.5,32);
       }else if(e.atkKind==='charge'){
         const lw=8+10*pr;
@@ -580,7 +764,16 @@ export function drawGroundMarks(P){
   const st=h.stance;
   P.groundCircle(h.x,h.z,h.r,st==='firm'?'rgba(90,200,255,.45)':(st==='push'?'rgba(255,220,90,.45)':'rgba(120,160,255,.3)'),'#8cf',2);
   if(st==='firm')P.groundCircle(h.x,h.z,h.r+0.22,null,'rgba(120,220,255,.6)',2);
-  if(a.hp>0)P.groundCircle(a.x,a.z,a.r,'rgba(170,120,255,.3)','#c9a0ff',2); // たおれたら しるしを 出さない
+  const KCOL={mage:['rgba(170,120,255,.3)','#c9a0ff'],priest:['rgba(130,230,170,.3)','#9dffb8'],warrior:['rgba(255,170,90,.3)','#ffc080']};
+  for(const u of S.allies)if(u.hp>0)P.groundCircle(u.x,u.z,u.r,KCOL[u.kind][0],KCOL[u.kind][1],2); // たおれたら しるしを 出さない
+  // いやしの じん(のっている あいだ HP が もどる。きえる まえは ひかりが よわくなり、ふちが てんめつする)
+  for(const z of S.zones||[]){
+    const left=1-z.t/z.dur,pul=0.5+0.5*Math.sin(S.t*4),fade=Math.min(1,left*5),blinkOut=left<0.2?(Math.floor(S.t*8)%2?0.5:1):1;
+    P.groundCircle(z.x,z.z,z.r,'rgba(110,255,160,'+(0.16+0.1*pul).toFixed(3)*fade*blinkOut+')','rgba(160,255,190,'+(0.9*fade*blinkOut).toFixed(3)+')',3,48);
+    P.groundCircle(z.x,z.z,z.r*0.62,null,'rgba(190,255,210,'+(0.55*fade*blinkOut).toFixed(3)+')',2,40);
+    const ang=S.t*0.8; // まわる しるし(十字の かたち)
+    for(let k=0;k<4;k++){const t0=ang+k*Math.PI/2;P.seg(toCam(z.x+Math.cos(t0)*z.r*0.25,z.z+Math.sin(t0)*z.r*0.25),toCam(z.x+Math.cos(t0)*z.r*0.62,z.z+Math.sin(t0)*z.r*0.62),'rgba(190,255,210,'+(0.6*fade*blinkOut).toFixed(3)+')',2);}
+  }
   for(const e of E){
     if((e.air||0)>0.05)continue;
     const teleOn=e.tele>0;
@@ -602,27 +795,32 @@ export function drawGroundMarks(P){
 }
 // キャラクターの ならび(奥から手前)
 export function charList(){
-  const h=S.hero,a=S.ally,E=S.enemies.filter(e=>!e.dead);
+  const h=S.hero,E=S.enemies.filter(e=>!e.dead);
   const list=[];
   list.push({d:toCam(h.x,h.z).d,k:'h',c:toCam(h.x,h.z)});
-  list.push({d:toCam(a.x,a.z).d,k:'a',c:toCam(a.x,a.z)});
+  for(const u of S.allies)list.push({d:toCam(u.x,u.z).d,k:'m',c:toCam(u.x,u.z),u}); // パーティの みかた(まほうつかい・そうりょ・せんし)
   for(const e of E){const c=toCam(e.x,e.z);list.push({d:c.d,k:'e',c,e});}
   list.sort((p,q)=>q.d-p.d);
   return list;
 }
 // キャラの むき(まほうつかい・てき)。描くまえに よぶ
 export function charPre(it){
-  const h=S.hero,a=S.ally,E=S.enemies.filter(e=>!e.dead);
-  if(it.k==='a'){const ta=E.filter(q=>q.hp>0).sort((m,n)=>Math.hypot(m.x-a.x,m.z-a.z)-Math.hypot(n.x-a.x,n.z-a.z))[0];faceTo(a,ta?ta.x:a.x,ta?ta.z:a.z+1,9);}
-  else if(it.k==='e'){const e=it.e,tg=e.target==='hero'?h:(e.target==='ally'?a:h);faceTo(e,tg.x,tg.z,7);}
+  const h=S.hero,E=S.enemies.filter(e=>!e.dead);
+  if(it.k==='m'){const u=it.u,ta=E.filter(q=>q.hp>0).sort((m,n)=>Math.hypot(m.x-u.x,m.z-u.z)-Math.hypot(n.x-u.x,n.z-u.z))[0];faceTo(u,ta?ta.x:u.x,ta?ta.z:u.z+1,9);}
+  else if(it.k==='e'){const e=it.e,tg=e.target?unitOf(e.target):h;faceTo(e,tg.x,tg.z,7);}
 }
 // キャラの からだ(Canvas 2D の ローポリ箱モデル)
 function charModel(it,blink){
-  const h=S.hero,a=S.ally;
+  const h=S.hero;
   const air=it.k==='e'?(it.e.air||0):0; // 空中の てきは たかさぶん 上に ずらす
   const p=proj(it.c.l,it.c.d,air),s=V.F/it.c.d;
   if(it.k==='h')drawHero(p.x,p.y,s,h.flash>0&&blink,h);
-  else if(it.k==='a'){const ac=allyCast(a);drawAlly(p.x,p.y,s,a.flash>0&&blink,a.yaw3,a.mv3||0,a.ph3||0,ac.c,ac.kind,allyDown(a));}
+  else if(it.k==='m'){
+    const q=it.u,fl=q.flash>0&&blink;
+    if(q.kind==='warrior')drawWarrior(p.x,p.y,s,fl,q.yaw3,q.mv3||0,q.ph3||0,warriorSwingK(q),warriorShoveK(q),allyDown(q));
+    else if(q.kind==='priest'){const pc=priestCast(q);drawPriest(p.x,p.y,s,fl,q.yaw3,q.mv3||0,q.ph3||0,pc.c,pc.kind,allyDown(q));}
+    else{const ac=allyCast(q);drawAlly(p.x,p.y,s,fl,q.yaw3,q.mv3||0,q.ph3||0,ac.c,ac.kind,allyDown(q));}
+  }
   else{
     const e=it.e,teleOn=e.tele>0,atkOn=e.atkTele>0;
     const eye=teleOn?'#ff2020':(atkOn?'#ffd000':null);
@@ -679,14 +877,14 @@ export function drawEffects(flyCb){
   }
   // 魔法: えいしょう中の ひかりと、とんでいく ほのお
   {
-    const a=S.ally,fireBall=(x,z,hgt,rad,alpha,strong)=>{
+    const fireBall=(x,z,hgt,rad,alpha,strong)=>{
       const c=toCam(x,z);if(c.d<NEAR)return;const p=proj(c.l,c.d,hgt),r=Math.max(3,rad*V.F/c.d);
       const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r);
       g.addColorStop(0,'rgba(255,250,200,'+alpha+')');g.addColorStop(0.35,'rgba('+(strong?'255,130,40':'255,176,60')+','+(alpha*0.9)+')');g.addColorStop(1,'rgba(255,80,20,0)');
       ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();
     };
     ctx.save();ctx.globalCompositeOperation='lighter';
-    if(a.cast&&a.hp>0){ // つえの さきに ひかりが あつまる(つよい魔法は おおきく ゆれる)
+    for(const a of S.allies)if(a.kind==='mage'&&a.cast&&a.hp>0){ // つえの さきに ひかりが あつまる(つよい魔法は おおきく ゆれる)
       const k=Math.min(1,a.cast.t/a.cast.dur),strong=a.cast.kind==='strong';
       fireBall(a.x,a.z,1.9*MAGE_SCALE,(strong?0.35+0.9*k:0.25+0.3*k)*(1+0.06*Math.sin(S.t*30+a.cast.t*30)),0.55+0.4*k,strong);
     }
@@ -695,6 +893,25 @@ export function drawEffects(flyCb){
       const at=kk=>({x:sp.sx+(e.x-sp.sx)*kk,z:sp.sz+(e.z-sp.sz)*kk,h:(2.0*MAGE_SCALE)+(1.5-2.0*MAGE_SCALE)*kk+(strong?0.5:0.3)*Math.sin(Math.PI*kk)});
       for(let j=5;j>=1;j--){const kk=Math.max(0,k-j*0.05),q=at(kk);fireBall(q.x,q.z,q.h,(strong?0.5:0.25)*(1-j*0.14),0.4*(1-j*0.15),strong);} // しっぽ
       const q=at(Math.min(1,k));fireBall(q.x,q.z,q.h,strong?0.7:0.34,0.95,strong);
+    }
+    ctx.restore();
+  }
+  // そうりょ: えいしょう中の みどりの ひかりと、いやしの じんの うえに のぼる ひかりの つぶ
+  {
+    const glow=(x,z,hgt,rad,alpha)=>{
+      const c=toCam(x,z);if(c.d<NEAR)return;const p=proj(c.l,c.d,hgt),r=Math.max(2,rad*V.F/c.d);
+      const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r);
+      g.addColorStop(0,'rgba(230,255,235,'+alpha+')');g.addColorStop(0.4,'rgba(120,255,160,'+(alpha*0.8)+')');g.addColorStop(1,'rgba(60,220,120,0)');
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();
+    };
+    ctx.save();ctx.globalCompositeOperation='lighter';
+    for(const q of S.allies)if(q.kind==='priest'&&q.cast&&q.hp>0){const k=Math.min(1,q.cast.t/q.cast.dur);glow(q.x,q.z,1.9*PRIEST_SCALE,0.3+0.5*k,0.5+0.4*k);}
+    for(const z of S.zones||[]){
+      const left=1-z.t/z.dur,fade=Math.min(1,left*5);
+      for(let k=0;k<10;k++){
+        const ang=k*2.4,rad=z.r*0.85*Math.sqrt((k*0.618)%1),u=(S.t*0.55+k*0.1)%1;
+        glow(z.x+Math.cos(ang)*rad,z.z+Math.sin(ang)*rad,u*2.2,0.16,0.7*(1-u)*fade);
+      }
     }
     ctx.restore();
   }
@@ -750,9 +967,17 @@ export function drawEffects(flyCb){
     ctx.globalAlpha=1;
   }
 }
+// 下のウィンドウ用: みかた1人ぶんの 表示(なまえ・HP・MP・ターン・ひとこと・ターンの いろ)
+function hudMember(u){
+  const base={name:KINDS[u.kind].name,hp:u.hp,hpMax:u.maxHp,mp:Math.floor(u.mp),mpMax:u.maxMp};
+  if(u.kind==='warrior')return {...base,turn:u.swing>0?1-u.swing/CFG.warrior.wind:1-Math.max(0,Math.min(1,u.swingCd/CFG.warrior.cd)),note:u.swing>0?'おので きる':(u.shoveV>0?'おす':''),tcol:u.swing>0?'#ffb070':'#ffb030'};
+  const C=CFG[KINDS[u.kind].cfg],ch=u.cast?Math.min(1,u.cast.t/u.cast.dur):1-Math.max(0,Math.min(1,u.castT/(u.cd||1)));
+  if(u.kind==='priest')return {...base,turn:ch,note:u.cast?C[u.cast.kind].name:'',tcol:u.cast?'#7dff9a':'#ffb030'};
+  return {...base,turn:ch,note:u.cast?C[u.cast.kind].name:'',tcol:u.cast?(u.cast.kind==='strong'?'#ff6a3a':'#ffd08a'):'#ffb030'};
+}
 // 画面に固定の表示(指のあと・スティック・上のHUD・下のウィンドウ・おわりの表示)
 export function drawHud(){
-  const h=S.hero,a=S.ally,L=S.enemies[S.lock];
+  const h=S.hero,L=S.enemies[S.lock];
   // 指のあと(はやく うごかしたときの軌跡。フリックがみとめられると輪が出る)
   {
     const nowT=performance.now();
@@ -801,8 +1026,9 @@ export function drawHud(){
   {
     const party=[
       {name:'ゆうしゃ',hp:h.hp,hpMax:CFG.hero.hp,mp:CFG.hero.mp,mpMax:CFG.hero.mp,turn:h.sta/CFG.sta.max,note:h.tired?'いきぎれ':'',tcol:h.tired?'#ff5a4a':'#ffb030'},
-      {name:'まほうつかい',hp:a.hp,hpMax:CFG.ally.hp,mp:Math.floor(a.mp),mpMax:CFG.ally.mp,turn:a.cast?Math.min(1,a.cast.t/a.cast.dur):1-Math.max(0,Math.min(1,a.castT/(a.cd||1))),note:a.cast?CFG.ally[a.cast.kind].name:'',tcol:a.cast?(a.cast.kind==='strong'?'#ff6a3a':'#ffd08a'):'#ffb030'}
+      ...[1,2,3].map(i=>{const u=S.allies.find(q=>q.slot===i+1);return u?hudMember(u):null;}) // 2〜4ばんめの わく(あいている わくは null)
     ];
+    // パーティの わくは 4つ(ゆうしゃ+3)
     const M=6,G=5,WN=4,WW=(CW-M*2-G*(WN-1))/WN,WH=108,WY=CH-M-WH;
     for(let i=0;i<WN;i++){
       const m=party[i],x=M+i*(WW+G),dead=m&&m.hp<=0;
@@ -830,12 +1056,13 @@ export function drawHud(){
     const win=S.over==='win';
     // ゆうしゃが たおれた/かった ときは 演出と かさならないよう 文字を 上へ あげる(かったときは 暗幕を うすく)
     const TY=(win||S.over==='hero')?Math.max(BAR_H+58,CH*0.15):CH*0.38;
-    if(win){ctx.fillStyle='rgba(0,0,0,.42)';rr(CW*0.04,TY-28,CW*0.92,win?130:100,12);ctx.fill();}
+    if(win){ctx.fillStyle='rgba(0,0,0,.42)';rr(CW*0.04,TY-28,CW*0.92,S.record?170:130,12);ctx.fill();}
     else{ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(0,0,CW,CH);}
     txt(win?'てきを ぜんぶ たおした！':(S.over==='hero'?'ゆうしゃは たおれた…':'まほうつかいが たおれた…'),CW/2,TY,22,win?'#ffe36a':'#fff','center',5);
     let ly=TY+36;
     if(win&&S.victory){txt({easy:'よゆうの しょうり！',normal:'しょうり！',close:'ぎりぎりの しょうり…！'}[S.victory.grade],CW/2,ly,18,'#7dff9a','center',4);ly+=30;}
-    txt((win?'クリアタイム  ':'もちこたえた時間  ')+S.t.toFixed(1)+' びょう',CW/2,ly,win?15:18,'#ffe36a','center',4);ly+=win?28:40;
+    txt((win?'とうばつタイム  ':'もちこたえた時間  ')+S.t.toFixed(1)+' びょう',CW/2,ly,win?15:18,'#ffe36a','center',4);ly+=win?28:40;
+    if(win&&S.record){const R=S.record;txt(R.isNew?'しんきろく！  ベスト '+R.best.toFixed(1)+' びょう':'ベスト  '+R.best.toFixed(1)+' びょう',CW/2,ly,15,R.isNew?'#ff9ad0':'#cfd4ff','center',4);ly+=28;}
     if(S.overT>overReadyT(S.over))txt('タップで もういちど',CW/2,ly,16,'#cfd4ff','center',3);
   }
 }

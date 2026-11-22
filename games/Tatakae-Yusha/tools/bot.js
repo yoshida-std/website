@@ -7,6 +7,8 @@
 //        … 同じ乱数の種で 両方を遊び、勝敗・時間を ならべる。毎フレームの状態(位置・HP)の
 //          チェックサムも くらべるので、ロジックが 完全に同じかも わかる
 //   オプション: --seeds 20  --policy smart,spam  --weight 70,100,160  --maxT 180
+//   --stage ogre1h … ステージ(stages.js の id)。既定は 1つめ
+//   --party mage,priest,warrior … パーティ(ゆうしゃの ほかの さいだい3人。なし=ゆうしゃだけ。しょくは mage / priest / warrior。同じ しょくを かさねても よい)。既定は mage,priest,warrior
 //   --hidebar 1 … 上の設定ウィンドウを かくして 撮る(背景を見る用)
 //   --shotFly 0.15 … 止めの演出が 0.15秒 すすんだところで止めて 画面を保存
 //   --shot 600 --out dir … 各ページで 1戦目を 600フレームで止めて 画面を PNG に保存(見た目の比較用)
@@ -35,6 +37,8 @@ const SEEDS=+(opt('seeds')||20);
 const POLICIES=(opt('policy')||'smart,spam').split(',');
 const WEIGHTS=(opt('weight')||'70,100,160').split(',');
 const MAXT=+(opt('maxT')||180);
+const STAGE=opt('stage')||''; // ステージの id(stages.js)。なければ 1つめ
+const PARTY=(opt('party')===undefined?'mage,priest,warrior':opt('party')).split(',').filter(x=>x&&x!=='none');
 const SHOT=+(opt('shot')||0),SHOTFLY=+(opt('shotFly')||0),OUT=opt('out')||'.';
 
 const MIME={'.html':'text/html; charset=utf-8','.js':'text/javascript','.md':'text/markdown','.json':'application/json','.png':'image/png'};
@@ -59,13 +63,15 @@ function setup(){
   window.__adv=ms=>{T+=ms;};
   window.requestAnimationFrame=()=>0;
 }
-function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace}){
+function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace,party,stage}){
   const G=window.__sumo,cv=document.getElementById('c');
   document.getElementById('intro').style.display='none';
   window.__seed(seed);
   document.querySelector('#bar button[data-w="'+weight+'"]').click(); // init() が よばれる
   window.__seed(seed);
-  document.getElementById('start').click();                            // resize(); init(); running=true
+  G.setParty(party);                                                   // パーティ(ゆうしゃの ほかの みかた)
+  document.getElementById('start').click();                            // ステージ選択を ひらく
+  document.querySelector(stage?'#stageList .stage[data-stage="'+stage+'"]':'#stageList .stage').click(); // ステージ(既定は 1つめ): resize(); init(); running=true
   G.skipIntro();                                                       // スタートの演出は とばす
   const r=cv.getBoundingClientRect(),CW=r.width,CH=r.height;
   const ev=(type,x,y)=>cv.dispatchEvent(new PointerEvent(type,{pointerId:1,clientX:r.left+x,clientY:r.top+y,bubbles:true,cancelable:true,pointerType:'touch',isPrimary:true}));
@@ -97,7 +103,7 @@ function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace}){
     if(gap>0.6&&!hold){const [x,y]=freeSpot();hold=[x,y-60];q.push(()=>ev('pointerdown',x,y),()=>ev('pointermove',x,y-60));}
     else if(gap<=0.3&&hold)release();
   }
-  let frames=0;const tr=[];
+  let frames=0;const tr=[];let zonesMade=0,zPrev=0,healed=0,shoves=0;const hpPrev={},shPrev={};
   const mix=v=>{const s=v.toFixed(4);for(let i=0;i<s.length;i++){hash^=s.charCodeAt(i);hash=Math.imul(hash,16777619)>>>0;}};
   while(true){
     const S=G.S;
@@ -105,13 +111,17 @@ function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace}){
     if(!q.length)plan();
     if(q.length)q.shift()();
     window.__adv(1000/60);G.step(1/60);G.render();frames++;
-    const h=S.hero,a=S.ally;
-    mix(h.x);mix(h.z);mix(h.hp);mix(a.x);mix(a.z);mix(a.hp);
+    const h=S.hero;
+    // そうりょ: いやしの じんを つくった 数 / せんしが「おす」を つかった 数 / 味方の HP が ふえた ぶんの ごうけい(かいふくの りょう)
+    if(S.zones.length>zPrev)zonesMade+=S.zones.length-zPrev;zPrev=S.zones.length;
+    for(const u of S.allies){if(u.kind==='warrior'){if(u.shoveV>(shPrev[u.id]||0)+1e-9)shoves++;shPrev[u.id]=u.shoveV;}}
+    for(const [k,u] of [['h',h],...S.allies.map(q=>[q.id,q])]){if(hpPrev[k]!==undefined&&u.hp>hpPrev[k])healed+=u.hp-hpPrev[k];hpPrev[k]=u.hp;}
+    mix(h.x);mix(h.z);mix(h.hp);for(const u of S.allies){mix(u.x);mix(u.z);mix(u.hp);}
     for(const e of S.enemies){mix(e.x);mix(e.z);mix(e.hp);}
     if(trace)tr.push(hash.toString(16)+' t='+S.t.toFixed(3)+' h='+h.x.toFixed(4)+','+h.z.toFixed(4)+' hp='+h.hp+' sx='+S.enemies.map(e=>(e.sx||0).toFixed(2)+'/'+(e.sy||0).toFixed(2)).join(' ')+' fl='+G.inp.flickT+' pend='+G.inp.flickPending);
   }
   const S=G.S;
-  return {over:S.over||'timeout',t:+S.t.toFixed(2),heroHp:S.hero.hp,allyHp:S.ally.hp,
+  return {over:S.over||'timeout',t:+S.t.toFixed(2),heroHp:S.hero.hp,party:S.allies.map(u=>u.kind+':'+u.hp),zonesMade,healed,shoves,
     enemyHp:S.enemies.reduce((s,e)=>s+e.hp,0),beamsAtEnd:S.beams.length,ringsAtEnd:S.rings.length,swingVAtEnd:S.hero.swingV,swings,parries,frames,hash:hash.toString(16),trace:trace?tr:undefined};
 }
 
@@ -137,12 +147,12 @@ function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace}){
     await page.waitForFunction(()=>window.__sumo,null,{timeout:15000});
     res[pg]=[];
     if(SHOT||SHOTFLY){
-      await page.evaluate(runBot,{seed:1,policy:POLICIES[0],weight:WEIGHTS[0],maxT:MAXT,stopAt:SHOT,stopFly:SHOTFLY});
+      await page.evaluate(runBot,{seed:1,policy:POLICIES[0],weight:WEIGHTS[0],maxT:MAXT,stopAt:SHOT,stopFly:SHOTFLY,party:PARTY,stage:STAGE});
       await page.screenshot({path:path.join(OUT,pg.replace(/\W+/g,'_')+'.png')});
       await ctx.close();continue;
     }
     for(const policy of POLICIES)for(const weight of WEIGHTS)for(let s=1;s<=SEEDS;s++){
-      const r=await page.evaluate(runBot,{seed:s,policy,weight,maxT:MAXT,trace:!!opt('trace')});
+      const r=await page.evaluate(runBot,{seed:s,policy,weight,maxT:MAXT,trace:!!opt('trace'),party:PARTY,stage:STAGE});
       res[pg].push({policy,weight,seed:s,...r});
     }
     if(errs.length)console.log(pg,'のエラー:',errs.slice(0,5));

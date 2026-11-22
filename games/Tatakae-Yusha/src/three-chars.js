@@ -11,7 +11,8 @@ import * as THREE from 'three';
 import {LineSegments2} from 'three/addons/lines/LineSegments2.js';
 import {LineSegmentsGeometry} from 'three/addons/lines/LineSegmentsGeometry.js';
 import {LineMaterial} from 'three/addons/lines/LineMaterial.js';
-import {heroParts,allyParts,allyCast,allyDown,enemyParts,ENEMY_LOOK,MAGE_SCALE} from './render2d.js';
+import {warriorSwingK} from './logic.js';
+import {heroParts,allyParts,allyCast,allyDown,priestParts,priestCast,PRIEST_SCALE,warriorParts,warriorShoveK,WARRIOR_SCALE,enemyParts,ENEMY_LOOK,MAGE_SCALE} from './render2d.js';
 
 // ---- 箱の ひな形(1×1×1) ----
 const FACES=[]; // {n:[法線], q:[4つの角]}(外から見て 反時計まわり)
@@ -100,7 +101,8 @@ class BoxModel{
 }
 
 export function makeChars(scene,flyScene){
-  const hero=new BoxModel(80),ally=new BoxModel(80);scene.add(hero.obj,ally.obj);
+  const hero=new BoxModel(80);scene.add(hero.obj);
+  const allies=[];    // パーティの みかた(3わく ぶん。しょくが かわっても つかいまわす)
   const enemies=[];   // てき1体に 1つ
   const flyPool=[];   // 止めの演出(ざんぞう4つ × とんでいる数)
   // 画面から見た むき(yaw3。0=カメラのほうを向く)→ 世界の むき
@@ -112,16 +114,27 @@ export function makeChars(scene,flyScene){
   }
   return {
     update(S,blink){
-      const h=S.hero,a=S.ally;
+      const h=S.hero;
       // ゆうしゃ
       const hp=heroParts(h);
       hero.set(hp.parts,1,h.flash>0&&blink);
       hero.obj.position.set(h.x,0,-h.z);hero.obj.rotation.y=worldYaw(S,hp.yaw);
-      // まほうつかい(むき・あるきは 描画の faceTo が きめる。移行元と同じ)
-      const ac=allyCast(a),ap=allyParts(a.yaw3,a.mv3||0,a.ph3||0,ac.c,ac.kind,allyDown(a));
-      ally.set(ap.parts,MAGE_SCALE,a.flash>0&&blink); // ゆうしゃと 見た目の 大きさを あわせる
-      ally.obj.position.set(a.x,0,-a.z);ally.obj.rotation.y=worldYaw(S,ap.yaw);
-      // てき
+      // パーティの みかた(まほうつかい・そうりょ・せんし。むき・あるきは 描画の faceTo が きめる)
+      for(let i=0;i<3;i++){
+        let m=allies[i];
+        if(!m){m=allies[i]=new BoxModel(80);scene.add(m.obj);}
+        const u=S.allies[i];
+        m.obj.visible=!!u;
+        if(!u)continue;
+        let ap,sc;
+        if(u.kind==='warrior'){ap=warriorParts(u.yaw3,u.mv3||0,u.ph3||0,warriorSwingK(u),warriorShoveK(u),allyDown(u));sc=WARRIOR_SCALE;}
+        else if(u.kind==='priest'){const pc=priestCast(u);ap=priestParts(u.yaw3,u.mv3||0,u.ph3||0,pc.c,pc.kind,allyDown(u));sc=PRIEST_SCALE;}
+        else{const ac=allyCast(u);ap=allyParts(u.yaw3,u.mv3||0,u.ph3||0,ac.c,ac.kind,allyDown(u));sc=MAGE_SCALE;} // ゆうしゃと 見た目の 大きさを あわせる
+        m.set(ap.parts,sc,u.flash>0&&blink);
+        m.obj.position.set(u.x,0,-u.z);m.obj.rotation.y=worldYaw(S,ap.yaw);
+      }
+      // てき(ステージの てきの 数が へったとき、つかわれなくなった モデルは かくす。かくさないと 前の ステージの てきが 宙に のこる)
+      for(let i=S.enemies.length;i<enemies.length;i++)enemies[i].obj.visible=false;
       S.enemies.forEach((e,i)=>{
         let m=enemies[i];
         if(!m){m=enemies[i]=new BoxModel(80);scene.add(m.obj);}
