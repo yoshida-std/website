@@ -21,6 +21,7 @@
 //
 // 方針:
 //   smart … 「いま！」で いなし、よろけた敵(スキ)を たたく。1.2秒に1回くらい ふつうにも ふる
+//   retreat … うしろへ さがるだけ / kite … よこへ まわりこむだけ(どちらも こうげき・いなしを しない。よけだけで どれだけ ダメージを うけるか)
 //   spam  … 何も考えず 0.2秒ごとに フリックしつづける(設計書 §5.2 の「ふりまくり」)
 'use strict';
 const http=require('http'),fs=require('fs'),path=require('path');
@@ -77,6 +78,10 @@ function runBot({seed,policy,weight,maxT,stopAt,stopFly,trace}){
     const S=G.S,h=S.hero,E=S.enemies.filter(e=>!e.dead),L=S.enemies[S.lock];
     const gap=Math.hypot(L.x-h.x,L.z-h.z)-h.r-L.r;
     const rem=e=>e.tele>0?e.tele:(e.atkTele>0&&e.target==='hero'?e.atkTele:9);
+    if(policy==='retreat'||policy==='kite'){ // よけるだけ(こうげき・いなしは しない): retreat=うしろへ さがりつづける / kite=よこへ まわりこみつづける
+      if(!hold){const [x,y]=freeSpot(),dx=policy==='kite'?70:0,dy=policy==='retreat'?70:0;hold=[x+dx,y+dy];q.push(()=>ev('pointerdown',x,y),()=>ev('pointermove',x+dx,y+dy));}
+      return;
+    }
     if(policy==='spam'){
       if(S.t-lastSwing>=0.2&&L.shw){release();lastSwing=S.t;swings++;flick(L.sx,L.sy,0,90);return;}
     }else{

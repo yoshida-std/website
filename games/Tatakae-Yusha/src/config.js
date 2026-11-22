@@ -4,7 +4,7 @@ export const CFG={
   hero:{r:0.6,w:100,speed:5.2,hp:100,mp:30,dmg:8,swingCd:0.35,swingReach:2.2,backBonus:1.3},
   // まほうつかい: HP は ゆうしゃより すくなく、MP は おおめ。魔法(ほのお)で MP を つかう【仮】
   //   weak=弱い炎(すぐ でる・MP すくない・よわい) / strong=強い炎(えいしょうが ながい・MP おおい・つよい)。cast=えいしょう(秒)、cd=つぎの えいしょうまでの 休み(秒)、fly=とぶ 時間、hate=ヘイトの 倍率
-  ally:{r:0.5,w:60,hp:70,mp:80,mpRegen:1.0,speed:1.9,keep:2.6,fear:3.6,range:16,
+  ally:{r:0.5,w:60,hp:70,mp:80,mpRegen:1.0,react:0.15,speed:1.9,keep:2.6,fear:3.6,range:16,
     weak:{name:'ほのお',cost:3,cast:0.5,cd:1.7,dmg:8,fly:0.28,hate:4.5},
     strong:{name:'ごうえん',cost:15,cast:2.2,cd:1.0,dmg:44,fly:0.45,hate:2.2}},
   stanceMult:{push:1.3,firm:1.6,normal:1.0},
@@ -17,6 +17,10 @@ export const CFG={
   // 勝ち方(かった ときの ゆうしゃの HP の わりあい): よゆう / ふつう / しんしょう【仮】
   victory:{easy:0.7,close:0.35},
   enemyAtk:{tele:0.7,dmgAlly:15,dmgHero:18,dmgHeroFirm:8,cd:1.0,reachAlly:0.7,reachHero:0.2},
+  // 踏みこみ(ユーザー提案 2026-11-22): てきの HP に よゆうが ある(hpRatio いじょう)とき、ちかい こうげき(たたきつけ・なぎはらい)の あたる しゅんかんに、まえへ ふみこむ。
+  //   うしろへ さがるだけでは とどく(さがるのが おそいと あたる)。ふみこむ きょりは hit / sweep【仮】
+  //   ally=まほうつかいが ねらわれた ときの ふみこみの 倍率(まほうつかいは てきより おそいので みじかく)
+  lunge:{hpRatio:0.5,hit:1.5,sweep:1.5,ally:0},
   atkSweep:{tele:0.95,r:2.6,dmgHero:16,dmgHeroFirm:7,dmgAlly:13,knock:1.4},   // なぎはらい(まわり全部)【仮】
   atkCharge:{tele:0.9,track:0.45,speed:20,minD:3.0,maxD:9.5,over:2.0,dmgHero:20,dmgHeroFirm:9,dmgAlly:18,knock:1.2,rest:0.7}, // とっしん【仮】
   sta:{max:100,base:14,perPower:10,regen:18,recover:40}, // 剣のきりょく(ふるほど へる)【仮】
@@ -41,7 +45,7 @@ export const ENEMY_TYPES={
   160:{w:160,hp:370,speed:2.6,r:1.3,color:'#8a5a45',color2:'#7a4a6a',name:'おもい てき'}
 };
 export let ET=ENEMY_TYPES[100];
-export const LETTER=['A','B'];
+export const LETTER=['A','B','C','D'];
 export const KIND_JP={hit:'たたきつけ',sweep:'なぎはらい',charge:'とっしん'};
 export function pickPlan(){const w=CFG.planW;let r=Math.random()*(w.hit+w.sweep+w.charge);if((r-=w.hit)<0)return 'hit';if((r-=w.sweep)<0)return 'sweep';return 'charge';}
 // 設定の切りかえ(UI から呼ぶ。import した変数は外から代入できないため)
