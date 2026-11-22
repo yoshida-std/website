@@ -1,6 +1,7 @@
 // 移行元: prototype-2d.html の該当部分をそのまま移したもの(import/export だけ足した)
 import {CFG,CAM,FLICK,HERO_Y,ET,LETTER,pickPlan} from './config.js';
 import {stageById} from './stages.js';
+import {saveClear} from './records.js';
 import {cv,CW,CH} from './screen.js';
 
 // ================= 状態 =================
@@ -263,6 +264,7 @@ function endGame(kind){
   S.beams=[];S.spells=[];S.hero.swingV=0;S.hero.swingT=0; // ゲームの じかんが とまるので、のこっていると 黄色い線(こうげきの ビーム)や 剣の軌跡が きえなくなる
   if(kind==='win'){ // かった: かちかたで 3つの ポーズ(ゆうしゃの HP の わりあいで きめる)
     const h=S.hero,r=h.hp/CFG.hero.hp,V=CFG.victory;
+    S.record=saveClear(S.stage.id,ET.w,S.t); // とうばつタイム(かかった 時間 S.t)を きろく。しんきろくなら S.record.isNew
     S.victory={grade:r>=V.easy?'easy':(r<V.close?'close':'normal'),t:0,yaw:S.cam.yaw,said:false,dustT:0};
     h.stun=0;h.hitT=-1;h.kx=0;h.kz=0;h.swingV=0;h.swingT=0;h.mv=0;h.pushK=0;h.firmK=1;h.stance='firm';
   }

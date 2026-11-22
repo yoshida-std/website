@@ -1,8 +1,9 @@
 // 移行元: prototype-2d.html の該当部分をそのまま移したもの(import/export だけ足した)
-import {FLICKKEY,setFlickKey,setET,CFG} from './config.js';
+import {FLICKKEY,setFlickKey,setET,CFG,ET} from './config.js';
 import {stage,barEl,BAR_HIDDEN,measureBar,resize,setBarHidden,CW} from './screen.js';
 import {S,running,setRunning,inp,init,step,tapLock,enemyAt,checkFlick,skipIntro,stageId} from './logic.js';
 import {STAGES} from './stages.js';
+import {getBest} from './records.js';
 import {render as render2d} from './render2d.js';
 import {render as render3d} from './render3d.js';
 // ふだんは WebGL。?r=2d で 移行元と同じ Canvas 2D の描画(くらべる用)
@@ -47,11 +48,12 @@ function buildStageList(){
   listEl.innerHTML='';
   STAGES.forEach(st=>{
     const b=document.createElement('button');b.className='stage'+(st.id===lastStage?' on':'');b.dataset.stage=st.id;
+    const img=document.createElement('img');img.src=st.thumb;img.alt=st.name;img.draggable=false;
     const n=document.createElement('b');n.textContent=st.name;
     if(played&&st.id===lastStage){const i=document.createElement('i');i.textContent='まえに あそんだ';n.appendChild(i);}
-    const d=document.createElement('span');d.textContent=st.desc;
-    const c=document.createElement('span');c.textContent='てき '+st.enemies.length+'ひき';
-    b.append(n,d,c);
+    const best=getBest(st.id,ET.w),c=document.createElement('span');
+    c.textContent='とうばつタイム  '+(best===null?'きろくなし':'ベスト '+best.toFixed(1)+' びょう')+'  ('+ET.name+')';
+    b.append(img,n,c);
     b.addEventListener('click',()=>pickStage(st.id));
     listEl.appendChild(b);
   });

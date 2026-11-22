@@ -3,7 +3,7 @@
 //
 // ステージの 項目:
 //   id        … ほぞん・URL(?stage=)・ボットで つかう なまえ(英数字)
-//   name/desc … ステージ選択の 画面に 出す 名前と 説明(ひらがな中心)
+//   name/thumb… ステージ選択の カードに 出す 名前と 絵(説明文は 出さない)。thumb は index.html からの 相対パス
 //   enemies   … てきの 一覧。{kind:てきの しゅるい(ENEMY_KINDS の キー), x, z}。ならびの じゅんが A,B,C,D…(ひだり→みぎ)
 //   lock      … さいしょに ロックする てきの ばんごう(0 はじまり)
 //   introStart… スタート演出で てきが おちはじめる 時間(秒)。てきの 数と おなじ 長さ
@@ -19,7 +19,7 @@ export const ENEMY_KINDS={
 
 export const STAGES=[
   {id:'ogre4',name:'どすこいオーガ ×4',
-   desc:'4ひきの どすこいオーガが どひょうに ふってくる。まほうつかいを まもりながら ぜんぶ たおせ！',
+   thumb:'img/stage-ogre4.jpg',   // カードの 絵。tools/stage-thumb.js で 撮る
    enemies:[{kind:'ogre',x:-6,z:16.5},{kind:'ogre',x:-2,z:19.5},{kind:'ogre',x:2,z:19.5},{kind:'ogre',x:6,z:16.5}],
    lock:1,
    introStart:[0.25,1.0,1.4,1.8]}

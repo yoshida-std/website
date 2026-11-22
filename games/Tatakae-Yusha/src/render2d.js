@@ -830,12 +830,13 @@ export function drawHud(){
     const win=S.over==='win';
     // ゆうしゃが たおれた/かった ときは 演出と かさならないよう 文字を 上へ あげる(かったときは 暗幕を うすく)
     const TY=(win||S.over==='hero')?Math.max(BAR_H+58,CH*0.15):CH*0.38;
-    if(win){ctx.fillStyle='rgba(0,0,0,.42)';rr(CW*0.04,TY-28,CW*0.92,win?130:100,12);ctx.fill();}
+    if(win){ctx.fillStyle='rgba(0,0,0,.42)';rr(CW*0.04,TY-28,CW*0.92,S.record?170:130,12);ctx.fill();}
     else{ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(0,0,CW,CH);}
     txt(win?'てきを ぜんぶ たおした！':(S.over==='hero'?'ゆうしゃは たおれた…':'まほうつかいが たおれた…'),CW/2,TY,22,win?'#ffe36a':'#fff','center',5);
     let ly=TY+36;
     if(win&&S.victory){txt({easy:'よゆうの しょうり！',normal:'しょうり！',close:'ぎりぎりの しょうり…！'}[S.victory.grade],CW/2,ly,18,'#7dff9a','center',4);ly+=30;}
-    txt((win?'クリアタイム  ':'もちこたえた時間  ')+S.t.toFixed(1)+' びょう',CW/2,ly,win?15:18,'#ffe36a','center',4);ly+=win?28:40;
+    txt((win?'とうばつタイム  ':'もちこたえた時間  ')+S.t.toFixed(1)+' びょう',CW/2,ly,win?15:18,'#ffe36a','center',4);ly+=win?28:40;
+    if(win&&S.record){const R=S.record;txt(R.isNew?'しんきろく！  ベスト '+R.best.toFixed(1)+' びょう':'ベスト  '+R.best.toFixed(1)+' びょう',CW/2,ly,15,R.isNew?'#ff9ad0':'#cfd4ff','center',4);ly+=28;}
     if(S.overT>overReadyT(S.over))txt('タップで もういちど',CW/2,ly,16,'#cfd4ff','center',3);
   }
 }
