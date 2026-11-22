@@ -1005,20 +1005,9 @@ export function drawHud(){
     ctx.beginPath();ctx.arc(inp.x,inp.y,16,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.35)';ctx.fill();
   }
 
-  // 上のHUD
-  const info=L.info;
-  const HY=BAR_H+16,LY=BAR_H+46;
+  // 上のHUD: じかんだけ(おしあいの 文字「おしかち！」「きっこう」「おされている…」「とっぱされた！」と「おもさ ○ vs ○」は ださない。ユーザー指示 2026-11-22)
+  const HY=BAR_H+16;
   txt('じかん  '+S.t.toFixed(1)+' びょう',12,HY,14,'#fff','left',3);
-  let label='',lc='#fff';
-  if(info.contact){
-    const R=info.R;
-    if(R>=CFG.thr.win){label='おしかち！';lc='#7dff9a';}
-    else if(R>=CFG.thr.hold){label='きっこう（あしどめ）';lc='#ffe36a';}
-    else if(R>=CFG.thr.lose){label='おされている…';lc='#ffa860';}
-    else{label='とっぱされた！';lc='#ff6060';}
-  }else{label='';}
-  txt(label,CW/2,LY,22,lc,'center',5);
-  if(info.contact)txt('おもさ '+Math.round(info.wh)+' vs '+Math.round(info.we)+'  ('+ANGLE_JP[info.angle]+'から)',CW/2,LY+24,12,'#fff','center',3);
 
   // 下のウィンドウ: パーティ(さいだい4人)。4つの まどを 横に ならべ、なまえ・HP・MP・ターンゲージを たてに ならべる(ユーザー指示 2026-11-22)
   //   MP は ひょうじだけ(まだ つかわない)。ターンゲージは コマンド式の ターンの 代わりの めやす:
@@ -1058,7 +1047,7 @@ export function drawHud(){
     const TY=(win||S.over==='hero')?Math.max(BAR_H+58,CH*0.15):CH*0.38;
     if(win){ctx.fillStyle='rgba(0,0,0,.42)';rr(CW*0.04,TY-28,CW*0.92,S.record?170:130,12);ctx.fill();}
     else{ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(0,0,CW,CH);}
-    txt(win?'てきを ぜんぶ たおした！':(S.over==='hero'?'ゆうしゃは たおれた…':'まほうつかいが たおれた…'),CW/2,TY,22,win?'#ffe36a':'#fff','center',5);
+    txt(win?'てきを ぜんぶ たおした！':(S.over==='hero'?'ゆうしゃは たおれた…':'まほうが たおれた…'),CW/2,TY,22,win?'#ffe36a':'#fff','center',5);
     let ly=TY+36;
     if(win&&S.victory){txt({easy:'よゆうの しょうり！',normal:'しょうり！',close:'ぎりぎりの しょうり…！'}[S.victory.grade],CW/2,ly,18,'#7dff9a','center',4);ly+=30;}
     txt((win?'とうばつタイム  ':'もちこたえた時間  ')+S.t.toFixed(1)+' びょう',CW/2,ly,win?15:18,'#ffe36a','center',4);ly+=win?28:40;

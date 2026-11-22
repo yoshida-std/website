@@ -1,6 +1,7 @@
 // 移行元: prototype-2d.html の該当部分をそのまま移したもの(import/export だけ足した)
 import {CFG,CAM,FLICK,HERO_Y,ET,ENEMY_TYPES,LETTER,pickPlan} from './config.js';
 import {stageById,stageWeight} from './stages.js';
+import {formationById,HERO_START} from './formations.js';
 import {saveClear} from './records.js';
 import {cv,CW,CH} from './screen.js';
 
@@ -19,19 +20,21 @@ export let stageId='ogre4';
 export function setStage(id){stageId=stageById(id).id;}
 // ---- パーティ(ゆうしゃは こてい。のこり3わくを えらぶ。ユーザー指示 2026-11-22) ----
 // kind: 'mage'=まほうつかい / 'priest'=そうりょ / 'warrior'=せんし。ステータスは CFG の ally / priest / warrior
-export const KINDS={mage:{cfg:'ally',name:'まほうつかい'},priest:{cfg:'priest',name:'そうりょ'},warrior:{cfg:'warrior',name:'せんし'}};
-export const KIND_LIST=['mage','priest','warrior'];
-// はじまりの いち(スロット2=ぜんえい、3・4=こうえい)。ゆうしゃは (0,7.8) の ぜんえい
-const SLOT_POS=[[-2.6,8.4],[-1.8,5.0],[1.8,5.0]];
+export const KINDS={mage:{cfg:'ally',name:'まほう'},priest:{cfg:'priest',name:'そうりょ'},warrior:{cfg:'warrior',name:'せんし'}};
+export const KIND_LIST=['warrior','mage','priest']; // パーティ画面で スライドする 順番(せんし → まほう → そうりょ。ユーザー指示 2026-11-22)
+// はじまりの いちは 陣(src/formations.js)で きまる。ゆうしゃは HERO_START(0,7.8)
 let partyKinds=[];
+export let formationId='normal';
+export function setFormation(id){formationId=formationById(id).id;}
 export function getParty(){return partyKinds.slice();}
 // きろくの なまえに つかう パーティの しるし(ゆうしゃだけ=solo。あいている わくは - )
-export function partyKey(){const a=partyKinds.slice();while(a.length&&!a[a.length-1])a.pop();return a.length?a.map(k=>k||'-').join('_'):'solo';}
+// 陣が ふつうの じん いがいの ときは「@陣の id」を つける(陣が ちがうと べつの きろく)
+export function partyKey(){const a=partyKinds.slice();while(a.length&&!a[a.length-1])a.pop();return (a.length?a.map(k=>k||'-').join('_'):'solo')+(formationId!=='normal'?'@'+formationId:'');}
 // あいている わく(null)は つめず そのまま のこす(いちは わくの ばんごうで きまる)
 export function setParty(arr){partyKinds=(arr||[]).slice(0,3).map(k=>KINDS[k]?k:null);}
 function makeAlly(kind,i){
-  const C=CFG[KINDS[kind].cfg],pos=SLOT_POS[i];
-  const u={id:'m'+i,kind,slot:i+2,x:pos[0],z:pos[1],r:C.r,hp:C.hp,maxHp:C.hp,mp:C.mp,maxMp:C.mp,flash:0};
+  const C=CFG[KINDS[kind].cfg],d=formationById(formationId).slots[i];
+  const u={id:'m'+i,kind,slot:i+2,x:HERO_START[0]+d[0],z:HERO_START[1]+d[1],r:C.r,hp:C.hp,maxHp:C.hp,mp:C.mp,maxMp:C.mp,flash:0};
   if(kind==='warrior')Object.assign(u,{armor:C.armor,swingCd:0.8,swing:0,swingT:0,swingTgt:null,shoveCd:2,shoveV:0});
   else Object.assign(u,{castT:kind==='priest'?1.5:1.0,cd:kind==='priest'?1.5:1.0,cast:null,warnedMp:0});
   return u;
@@ -42,7 +45,7 @@ export function init(id){
   S={
     stage:ST,
     t:0,over:null,overT:0,shake:0,texts:[],pops:[],lock:ST.lock,
-    hero:{x:0,z:7.8,r:CFG.hero.r,hp:CFG.hero.hp,stun:0,flash:0,stance:'firm',pushK:0,firmK:1,hitT:-1,dead:false,hitK:0,swingCd:0,swingT:0,swingV:0,pushT:0,sta:100,tired:false,noParry:0,ph:0,mv:0,fr:0,ff:1,yaw3:Math.PI,faceHold:0,idleT:0},
+    hero:{x:HERO_START[0],z:HERO_START[1],r:CFG.hero.r,hp:CFG.hero.hp,stun:0,flash:0,stance:'firm',pushK:0,firmK:1,hitT:-1,dead:false,hitK:0,swingCd:0,swingT:0,swingV:0,pushT:0,sta:100,tired:false,noParry:0,ph:0,mv:0,fr:0,ff:1,yaw3:Math.PI,faceHold:0,idleT:0},
     // みかた(ゆうしゃの ほかに さいだい3人。パーティせっていの じゅん: 1ばんめ・2ばんめ=ぜんえい、3・4ばんめ=こうえい。おなじ しょくも 何人でも いれられる)
     allies:partyKinds.map((k,i)=>k?makeAlly(k,i):null).filter(Boolean),
     zones:[],
@@ -793,7 +796,7 @@ export function step(dt){
   if(h.tired&&h.sta>=CFG.sta.recover)h.tired=false;
   if(inp.flickPending&&inp.flickBlocked){ // おしている間は 剣を ふれない(いなす は できる)
     inp.flickPending=false;inp.flickBlocked=false;inp.flickEnemy=-1;
-    addText('おしている間は ふれない！',h.x,h.z,2.6,'#ff9a90');
+    // (「おしている間は ふれない！」の 文字は ださない。ユーザー指示 2026-11-22)
   }
   if(inp.flickPending){
     // ふる間隔の最中に入れたフリックは、少しのあいだ ためておく(とりこぼしぼうし)
