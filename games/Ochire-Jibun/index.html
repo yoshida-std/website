@@ -708,9 +708,9 @@ const isObst=o=>(o.k==='ledge'||o.k==='slab'||o.k==='rock')&&!o.fly;
 /* ---------- CPU（VSモード） ---------- */
 const CPU_MOVE=250;
 const CPU_LEVELS=[
-  {name:'よわい',mult:.75,skill:.65,accel:1.1,greed:.15,lv:4},
-  {name:'ふつう',mult:.84,skill:.80,accel:1.2,greed:.3,lv:5},
-  {name:'つよい',mult:.94,skill:.92,accel:1.35,greed:.5,lv:6}
+  {name:'よわい',mult:.71,skill:.65,accel:1.1,greed:.06,lv:4},
+  {name:'ふつう',mult:.78,skill:.80,accel:1.2,greed:.12,lv:5},
+  {name:'つよい',mult:.93,skill:.92,accel:1.35,greed:.22,lv:6}
 ];
 let cpuLevel=(()=>{const v=lsGet('ochire_cpulv');return v==null?1:Math.max(0,Math.min(2,+v||0));})();
 function vsRec(){const a=(lsGet('ochire_vs')||'0,0,0').split(',').map(x=>+x||0);return{w:a[0]||0,l:a[1]||0,s:a[2]||0};}
@@ -720,7 +720,7 @@ function makeCpu(){
   const L=CPU_LEVELS[cpuLevel],b=cpuBonus();
   return {x:W/2+70,tx:W/2+70,vx:0,d:0,spd:0,m:1,hurt:0,inv:0,starT:0,coins:0,blind:0,ph:Math.random()*6.28,
     lv:L.lv+(Math.random()<.5?1:0),name:L.name,bonus:b,
-    mult:L.mult+.025*b,skill:Math.min(.98,L.skill+.02*b),accel:L.accel+.02*b,greed:Math.min(.95,L.greed+.02*b),
+    mult:L.mult+.02*b,skill:Math.min(.98,L.skill+.02*b),accel:L.accel+.015*b,greed:Math.min(.95,L.greed+.015*b),
     got:{coin:0,star:0,hit:0}};
 }
 const cpuSprite=(()=>{
@@ -785,8 +785,8 @@ function cpuUpdate(dt){
       const dx=c.x-o.x,dy=cw-o.y;
       if(dx*dx+dy*dy<26*26){
         o.dead=true;
-        if(o.k==='coin'){c.coins++;c.got.coin++;}
-        else{c.starT=3;c.hurt=0;c.inv=0;c.got.star++;}
+        if(o.k==='coin'){c.coins++;c.got.coin++;popCpu('CPU はやさ+1','#5fd4ff');}
+        else{c.starT=3;c.hurt=0;c.inv=0;c.got.star++;popCpu('CPU むてき！','#5fd4ff');}
       }
     }
     // 速さ: 前があいていれば かそく、ぶつかりそうなら ブレーキ
@@ -801,7 +801,7 @@ function cpuUpdate(dt){
     let pen=1;
     if(c.hurt>0){c.hurt-=dt;pen=.1+.9*Math.max(0,1-c.hurt/.3);}
     if(c.starT>0)c.starT=Math.max(0,c.starT-dt);
-    const base=230*scaleFor(c.lv+Math.min(8,c.coins)*.5)*(1+.25*(PLAY_SEC-t)/PLAY_SEC)*c.mult;
+    const base=230*scaleFor(c.lv+c.coins)*(1+.25*(PLAY_SEC-t)/PLAY_SEC)*c.mult;
     c.m+=(tgt-c.m)*Math.min(1,dt*4);
     c.spd=base*c.m*pen;
     if(c.inv>0)c.inv-=dt;
@@ -809,7 +809,7 @@ function cpuUpdate(dt){
       if(!isObst(o)||!hitW(o,c.x,cw))continue;
       if(c.starT>0){flyOff(o,c.x);continue;}   // スター中: ふっとばす
       if(c.inv>0)continue;
-      c.hurt=o.spike?1.6:1.3;c.inv=c.hurt+.15;c.got.hit++;if(c.coins>0)c.coins--;
+      c.hurt=o.spike?1.6:1.3;c.inv=c.hurt+.15;c.got.hit++;if(c.coins>0){c.coins--;popCpu('CPU コイン−1','#ff9a8a');}
       break;
     }
   }else{c.spd=Math.max(0,c.spd-c.spd*dt*3.5);}
@@ -840,6 +840,11 @@ function drawCpuInfo(top){ // 自分より上なら画面の上に「XXm前」�
   g.fillStyle='rgba(0,0,0,.7)';g.fillRect(x0-8,y-17,w+16,26);
   g.strokeStyle=col;g.lineWidth=2;g.strokeRect(x0-8,y-17,w+16,26);
   g.textAlign='left';g.fillStyle=col;g.fillText(txt,x0,y);
+}
+function popCpu(txt,col){ // CPUの頭の上に出す（画面の中にいるときだけ）
+  const y=PY()+(cpu.d-d);
+  if(y<-20||y>H+20)return;
+  pops.push({x:Math.max(80,Math.min(W-80,cpu.x)),y:y+54+(pops.length%3)*20,txt,col,life:1.1,size:13});
 }
 function pop(txt,col){pops.push({x:Math.max(64,Math.min(W-64,px)),y:PY()-40-(pops.length%3)*22,txt,col,life:1.1});}
 function flyOff(o,fx){ // 障害物を画面の外へふっとばす（fx = ぶつかった側のx）
@@ -1055,7 +1060,10 @@ function drawHud(){
   g.font=px2(20);outText(depthM()+'m',14,top+10,'#fff','left');
   g.font=px2(9);
   outText('はやさ '+(baseLv+coins)+(coins?'(+'+coins+')':''),14,top+30,'#ff9a5a','left');
-  if(cpu)drawCpuInfo(top);
+  if(cpu){
+    drawCpuInfo(top);
+    g.font=px2(9);outText('CPU はやさ '+(cpu.lv+cpu.coins)+(cpu.coins?'(+'+cpu.coins+')':''),14,top+(mode!=='rev'?82:48),'#5fd4ff','left');
+  }
   if(mode!=='rev')outText('コイン '+coins,14,top+46,'#ffd23a','left');
   else{ // ふんばりゲージ
     const bx=W/2-64,by=top+10,bw=128,bh=12;
@@ -1080,7 +1088,7 @@ function drawHud(){
 }
 function drawPops(){
   for(const q of pops){
-    g.font=px2(Math.round(17*(1+Math.max(0,q.life-.85)*1.6)));
+    g.font=px2(Math.round((q.size||17)*(1+Math.max(0,q.life-.85)*1.6)));
     g.globalAlpha=Math.min(1,q.life*2);outText(q.txt,q.x,q.y,q.col);}
   g.globalAlpha=1;
 }
