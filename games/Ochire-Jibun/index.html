@@ -83,7 +83,7 @@ canvas,#pad{touch-action:none}
 
 @media (max-height:700px){
   #title{gap:8px}#fallDemo{display:none}.rules{font-size:12px;line-height:1.6;padding:8px 12px}#title h1{font-size:clamp(34px,12vw,48px)}
-  #rules .rcard{padding:6px 12px;gap:1px;margin-bottom:2px}#rules .rcard strong{font-size:18px}#rules .rcard span{font-size:10.5px;line-height:1.35}#rules .rcard em{display:none}#rules .rcard small{font-size:10px}#rules{gap:5px}#rules h2{font-size:16px;margin:0}
+  .rulesScr .rcard{padding:6px 12px;gap:1px;margin-bottom:2px}.rulesScr .rcard strong{font-size:18px}.rulesScr .rcard span{font-size:10.5px;line-height:1.35}.rulesScr .rcard em{display:none}.rulesScr .rcard small{font-size:10px}.rulesScr{gap:5px}.rulesScr h2{font-size:16px;margin:0}
   #rank{gap:7px}#rank h2{font-size:16px}#rankTabs button{height:32px;font-size:13px}#rankNote{display:none}.rr{padding:3px 10px}.rr .th{width:40px;height:40px}.rr .no,.rr .rc{font-size:17px}
   #draw{gap:6px}.edWrap{width:min(92vw,34vh,440px)}.cap{display:none}
   .tool{height:38px;font-size:12px}#prevWrap{height:38px;flex-basis:38px}
@@ -118,8 +118,10 @@ canvas,#pad{touch-action:none}
 #result .btns{gap:8px}
 #result .btns .big.sub{padding:9px 20px}
 #result .rk{font-family:var(--px);font-size:13px;color:var(--yel)}
-#rules{justify-content:center;gap:14px;background:radial-gradient(ellipse at 50% 30%,#2b2540 0,#0d0c16 70%)}
-#rules h2{margin:0;font-family:var(--font);font-size:26px;font-weight:400;color:var(--ink);letter-spacing:.1em;text-shadow:3px 3px 0 #000}
+.rulesScr{justify-content:center;gap:14px;background:radial-gradient(ellipse at 50% 30%,#2b2540 0,#0d0c16 70%)}
+.snote{margin:0;font-size:12px;color:var(--dim);text-align:center;line-height:1.5}
+.snote b{color:var(--yel);font-weight:400}
+.rulesScr h2{margin:0;font-family:var(--font);font-size:26px;font-weight:400;color:var(--ink);letter-spacing:.1em;text-shadow:3px 3px 0 #000}
 .rcard{width:100%;max-width:340px;text-align:left;background:var(--panel);border:4px solid #000;box-shadow:0 0 0 3px var(--c),0 6px 0 3px #000;
   border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;box-sizing:border-box;margin-bottom:4px}
 .rcard:active{transform:translateY(3px);box-shadow:0 0 0 3px var(--c),0 3px 0 3px #000}
@@ -182,7 +184,7 @@ canvas,#pad{touch-action:none}
   </section>
 
   <!-- ルール選択 -->
-  <section id="rules" class="screen" hidden>
+  <section id="rules" class="screen rulesScr" hidden>
     <h2>ルールをえらぶ</h2>
     <button class="rcard" data-mode="normal" style="--c:#ffe03a">
       <small>つうじょう</small><strong>おちまくれ！</strong>
@@ -200,6 +202,25 @@ canvas,#pad{touch-action:none}
       <em>BEST <i data-best="rev">---</i></em>
     </button>
     <button id="rulesBack" class="big sub">もどる</button>
+  </section>
+
+  <!-- CPUの強さ（VS CPU） -->
+  <section id="cpuLv" class="screen rulesScr" hidden>
+    <h2>CPUの強さをえらぶ</h2>
+    <button class="rcard" data-lv="0" style="--c:#6bff5a">
+      <small>★☆☆</small><strong>よわい</strong>
+      <span>ぼんやりして ぶつかりやすい。アイテムも あまり とらない。</span>
+    </button>
+    <button class="rcard" data-lv="1" style="--c:#ffe03a">
+      <small>★★☆</small><strong>ふつう</strong>
+      <span>ふつうに よけて、ときどき アイテムを とって かそくする。</span>
+    </button>
+    <button class="rcard" data-lv="2" style="--c:#ff6a5a">
+      <small>★★★</small><strong>つよい</strong>
+      <span>ほとんど ぶつからず、コインも スターも かそくも ガンガン つかう。</span>
+    </button>
+    <p class="snote" id="streakNote"></p>
+    <button id="cpuBack" class="big sub">もどる</button>
   </section>
 
   <!-- お絵かき -->
@@ -285,7 +306,7 @@ const PAL=['#1a1a1a','#ffffff','#8b8b8b','#e0453a','#f08a2c','#f5d03a','#8fd14f'
 const SAVE_ART='ochire_art', SAVE_BEST='ochire_best';
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
-function show(id){['title','rules','draw','game'].forEach(n=>{$('#'+n).hidden=(n!==id)});}
+function show(id){['title','rules','cpuLv','draw','game'].forEach(n=>{$('#'+n).hidden=(n!==id)});}
 
 /* 音（スタートボタンを押したときに作る） */
 let ac=null;
@@ -653,7 +674,7 @@ function startGame(){
   st='ready';readyT=1.6;
   $('#result').hidden=true;
   bestNow=getBest(mode);fuel=100;locked=false;
-  cpu=mode==='vs'?{x:W/2+70,tx:W/2+70,vx:0,d:0,spd:0,m:1,hurt:0,inv:0,lv:5+(Math.random()*3|0),coins:0,coinT:3,blind:0,ph:Math.random()*6.28}:null;
+  cpu=mode==='vs'?makeCpu():null;
   if(!running){running=true;last=performance.now();requestAnimationFrame(loop);}
 }
 function spawn(y){
@@ -685,7 +706,23 @@ function hitW(o,cx,cy){ // cx,cy = 当たる側の x と ワールドy
 function hitTest(o,sy){return hitW(o,px,d+PY());}
 const isObst=o=>(o.k==='ledge'||o.k==='slab'||o.k==='rock')&&!o.fly;
 /* ---------- CPU（VSモード） ---------- */
-const CPU_MULT=1.0, CPU_MOVE=250, CPU_SKILL=.8;
+const CPU_MOVE=250;
+const CPU_LEVELS=[
+  {name:'よわい',mult:.75,skill:.65,accel:1.1,greed:.15,lv:4},
+  {name:'ふつう',mult:.84,skill:.80,accel:1.2,greed:.3,lv:5},
+  {name:'つよい',mult:.94,skill:.92,accel:1.35,greed:.5,lv:6}
+];
+let cpuLevel=(()=>{const v=lsGet('ochire_cpulv');return v==null?1:Math.max(0,Math.min(2,+v||0));})();
+function vsRec(){const a=(lsGet('ochire_vs')||'0,0,0').split(',').map(x=>+x||0);return{w:a[0]||0,l:a[1]||0,s:a[2]||0};}
+function vsSave(r){lsSet('ochire_vs',r.w+','+r.l+','+r.s);}
+const cpuBonus=()=>Math.min(5,vsRec().s); // 連勝するほどCPUが手ごわくなる（最大+5段階）
+function makeCpu(){
+  const L=CPU_LEVELS[cpuLevel],b=cpuBonus();
+  return {x:W/2+70,tx:W/2+70,vx:0,d:0,spd:0,m:1,hurt:0,inv:0,starT:0,coins:0,blind:0,ph:Math.random()*6.28,
+    lv:L.lv+(Math.random()<.5?1:0),name:L.name,bonus:b,
+    mult:L.mult+.025*b,skill:Math.min(.98,L.skill+.02*b),accel:L.accel+.02*b,greed:Math.min(.95,L.greed+.02*b),
+    got:{coin:0,star:0,hit:0}};
+}
 const cpuSprite=(()=>{
   const a=new Uint8Array(SIZE*SIZE),R=(x0,y0,x1,y1,c)=>{for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)a[y*SIZE+x]=c};
   R(11,1,12,3,3);R(11,0,12,1,4);          // アンテナ
@@ -697,37 +734,65 @@ const cpuSprite=(()=>{
 })();
 function cpuUpdate(dt){
   const c=cpu,cw=c.d+PY(),playing=st==='play';
-  // よける: 前方の障害物のふさがる範囲を調べ、いちばん近いあいた場所へ
+  let tgt=1;
   if(playing){
     c.blind-=dt;
     const look=150+c.spd*.35,blocked=[];
-    for(const o of obs){
-      if(!isObst(o)||o.y<cw-26||o.y>cw+look)continue;
-      if(o.k==='rock')blocked.push([o.x-o.r-PR-6,o.x+o.r+PR+6]);
-      else if(o.side<0)blocked.push([LX,LX+o.len+PR+10]);
-      else blocked.push([RX-o.len-PR-10,RX]);
+    let near=1e9;
+    for(const o of obs){ // 前方の障害物がふさぐ幅
+      if(!isObst(o)||o.y<cw-26||o.y>cw+look*1.5)continue;
+      let iv;
+      if(o.k==='rock')iv=[o.x-o.r-PR-6,o.x+o.r+PR+6];
+      else if(o.side<0)iv=[LX,LX+o.len+PR+10];
+      else iv=[RX-o.len-PR-10,RX];
+      if(o.y<=cw+look)blocked.push(iv);
+      if(c.x>iv[0]-4&&c.x<iv[1]+4)near=Math.min(near,o.y-cw); // 自分のいる列がふさがれている
     }
-    if(blocked.length&&c.blind<=0&&Math.random()<dt*.5*(1-CPU_SKILL)*4)c.blind=.5+Math.random()*.5; // ときどき ぼんやり（見落とし）
-    if(c.blind<=0){
-      let free=[[LX+PR,RX-PR]];
-      for(const [b0,b1] of blocked){
-        const nf=[];
-        for(const [f0,f1] of free){
-          if(b1<=f0||b0>=f1){nf.push([f0,f1]);continue}
-          if(b0>f0)nf.push([f0,b0]);
-          if(b1<f1)nf.push([b1,f1]);
+    const star=c.starT>0;
+    if(!star){
+      if(blocked.length&&c.blind<=0&&Math.random()<dt*2*(1-c.skill))c.blind=.5+Math.random()*.5; // ときどき ぼんやり（見落とし）
+      if(c.blind<=0){
+        let free=[[LX+PR,RX-PR]];
+        for(const [b0,b1] of blocked){
+          const nf=[];
+          for(const [f0,f1] of free){
+            if(b1<=f0||b0>=f1){nf.push([f0,f1]);continue}
+            if(b0>f0)nf.push([f0,b0]);
+            if(b1<f1)nf.push([b1,f1]);
+          }
+          free=nf;
         }
-        free=nf;
+        let best=null,bd=1e9;
+        for(const [f0,f1] of free){
+          const tx=f1-f0>30?Math.max(f0+10,Math.min(f1-10,c.x)):(f0+f1)/2;
+          if(Math.abs(tx-c.x)<bd){bd=Math.abs(tx-c.x);best=tx}
+        }
+        if(best!==null)c.tx=best;
       }
-      let best=null,bd=1e9;
-      for(const [f0,f1] of free){
-        const tx=f1-f0>30?Math.max(f0+10,Math.min(f1-10,c.x)):(f0+f1)/2;
-        if(Math.abs(tx-c.x)<bd){bd=Math.abs(tx-c.x);best=tx}
-      }
-      if(best!==null)c.tx=best;
     }
-    // コイン（CPUは拾ったことにして ときどき おもくなる）
-    c.coinT-=dt;if(c.coinT<=0){c.coinT=3+Math.random()*3;if(Math.random()<.4)c.coins++;}
+    // アイテム: 目についたものを、確率 greed で狙う（障害物に重ならない場所だけ）
+    let item=null,idy=1e9;
+    for(const o of obs){
+      if((o.k!=='coin'&&o.k!=='star')||o.dead||o.y<cw-10||o.y>cw+look)continue;
+      if(o.cpuWant===undefined)o.cpuWant=Math.random()<Math.min(.97,c.greed+(o.k==='star'?.25:0));
+      if(!o.cpuWant)continue;
+      if(!star&&blocked.some(iv=>o.x>iv[0]&&o.x<iv[1]))continue;
+      if(o.y-cw<idy){idy=o.y-cw;item=o}
+    }
+    if(item&&(star||near>90||c.blind>0))c.tx=Math.max(LX+PR,Math.min(RX-PR,item.x));
+    for(const o of obs){ // とった！
+      if((o.k!=='coin'&&o.k!=='star')||o.dead)continue;
+      const dx=c.x-o.x,dy=cw-o.y;
+      if(dx*dx+dy*dy<26*26){
+        o.dead=true;
+        if(o.k==='coin'){c.coins++;c.got.coin++;}
+        else{c.starT=3;c.hurt=0;c.inv=0;c.got.star++;}
+      }
+    }
+    // 速さ: 前があいていれば かそく、ぶつかりそうなら ブレーキ
+    if(c.starT>0)tgt=c.accel;
+    else if(near<70)tgt=.55;
+    else if(near>=1e9)tgt=c.accel;
   }
   const dx=c.tx-c.x;
   c.vx+=((Math.abs(dx)<4?0:Math.sign(dx)*CPU_MOVE)-c.vx)*Math.min(1,dt*12);
@@ -735,15 +800,17 @@ function cpuUpdate(dt){
   if(playing){
     let pen=1;
     if(c.hurt>0){c.hurt-=dt;pen=.1+.9*Math.max(0,1-c.hurt/.3);}
-    const base=230*scaleFor(c.lv+c.coins)*(1+.25*(PLAY_SEC-t)/PLAY_SEC)*CPU_MULT;
-    c.m+=((1+.18*Math.sin(tm*.9+c.ph))-c.m)*Math.min(1,dt*3);
+    if(c.starT>0)c.starT=Math.max(0,c.starT-dt);
+    const base=230*scaleFor(c.lv+Math.min(8,c.coins)*.5)*(1+.25*(PLAY_SEC-t)/PLAY_SEC)*c.mult;
+    c.m+=(tgt-c.m)*Math.min(1,dt*4);
     c.spd=base*c.m*pen;
     if(c.inv>0)c.inv-=dt;
-    else for(const o of obs){
-      if(isObst(o)&&hitW(o,c.x,cw)){
-        c.hurt=o.spike?1.6:1.3;c.inv=c.hurt+.15;if(c.coins>0)c.coins--;
-        break;
-      }
+    for(const o of obs){
+      if(!isObst(o)||!hitW(o,c.x,cw))continue;
+      if(c.starT>0){flyOff(o,c.x);continue;}   // スター中: ふっとばす
+      if(c.inv>0)continue;
+      c.hurt=o.spike?1.6:1.3;c.inv=c.hurt+.15;c.got.hit++;if(c.coins>0)c.coins--;
+      break;
     }
   }else{c.spd=Math.max(0,c.spd-c.spd*dt*3.5);}
   c.d+=c.spd*dt;
@@ -752,6 +819,10 @@ function drawCpu(){
   const y=PY()+(cpu.d-d);
   if(y<-50||y>H+50)return;
   if(cpu.inv>0&&((cpu.inv*14)|0)%2===0)return;
+  if(cpu.starT>0&&(cpu.starT>1||((tm*10)|0)%2)){
+    const hue=(tm*500)%360;
+    g.fillStyle='hsla('+hue+',100%,65%,.45)';g.beginPath();g.arc(cpu.x,y,36+Math.sin(tm*20)*3,0,7);g.fill();
+  }
   g.save();g.translate(cpu.x,y+Math.sin(tm*7+1)*1.5);
   g.rotate(cpu.vx/CPU_MOVE*.28+Math.sin(tm*8+1)*.05);
   g.drawImage(cpuSprite,-26,-26,52,52);
@@ -771,11 +842,14 @@ function drawCpuInfo(top){ // 自分より上なら画面の上に「XXm前」�
   g.textAlign='left';g.fillStyle=col;g.fillText(txt,x0,y);
 }
 function pop(txt,col){pops.push({x:Math.max(64,Math.min(W-64,px)),y:PY()-40-(pops.length%3)*22,txt,col,life:1.1});}
-function launch(o){ // スター中: あたった障害物を画面の外へふっとばす
+function flyOff(o,fx){ // 障害物を画面の外へふっとばす（fx = ぶつかった側のx）
   const cx=o.k==='rock'?o.x:(o.side<0?LX+o.len/2:RX-o.len/2);
-  const dir=cx<px?-1:(cx>px?1:(Math.random()<.5?-1:1));
+  const dir=cx<fx?-1:(cx>fx?1:(Math.random()<.5?-1:1));
   o.fly=true;o.ox=0;o.oy=0;o.r2=0;
   o.vx=dir*(520+Math.random()*260);o.vy=-(380+Math.random()*320);o.vr=dir*(9+Math.random()*7);
+}
+function launch(o){ // スター中: あたった障害物を画面の外へふっとばす
+  flyOff(o,px);
   shake=Math.max(shake,.15);beep(180,.2,'sawtooth',.06,720);beep(900,.08,'square',.04,300);
   pop('ドカーン！','#fff27a');
 }
@@ -994,6 +1068,7 @@ function drawHud(){
   if(starT>0){g.font=px2(10);outText('★ '+starT.toFixed(1),14,top+64,((tm*10)|0)%2?'#fff':'#ffe03a','left');}
   if(st==='ready'){
     g.font=px2(30);outText(readyT>.5?'READY?':'GO!',W/2,H*.5,'#ffe03a');
+    if(cpu){g.font=px2(10);outText('CPU '+cpu.name+(cpu.bonus?'  れんしょう+'+cpu.bonus:''),W/2,H*.5-46,'#5fd4ff');}
     if(mode==='rev'){g.font=px2(11);outText('おちるな！ ▲でふんばれ',W/2,H*.5-46,'#b78cff');}
     g.font=px2(10);
     [['はやさ',params.speed,'#ff7a3a'],['うごき',params.move,'#4aa8f0'],['しょうがい',params.obst,'#b78cff']].forEach((r,i)=>{
@@ -1031,14 +1106,16 @@ function loop(now){
 }
 function finishVs(){
   const m=depthM(),cm=Math.floor(cpu.d/M),res=m>cm?'win':m<cm?'lose':'draw';
-  let [w,l]=(lsGet('ochire_vs')||'0,0').split(',').map(x=>+x||0);
-  if(res==='win')w++;else if(res==='lose')l++;
-  lsSet('ochire_vs',w+','+l);
+  const r=vsRec();
+  if(res==='win'){r.w++;r.s++;}else if(res==='lose'){r.l++;r.s=0;}
+  vsSave(r);
   $('#rTitle').textContent=res==='win'?'YOU WIN!':res==='lose'?'YOU LOSE...':'DRAW';
   $('#rDist').textContent=m;
-  $('#rLab').textContent='CPU '+cm+'m　'+(res==='draw'?'ひきわけ':Math.abs(m-cm)+'m '+(res==='win'?'かち！':'まけ'));
-  $('#rNew').hidden=true;$('#rRank').hidden=true;$('#rankBtn2').hidden=true;
-  $('#rRec').textContent='VS CPU　せんせき '+w+'勝 '+l+'敗';
+  $('#rLab').textContent='CPU('+cpu.name+') '+cm+'m　'+(res==='draw'?'ひきわけ':Math.abs(m-cm)+'m '+(res==='win'?'かち！':'まけ'));
+  $('#rNew').hidden=true;$('#rankBtn2').hidden=true;
+  const msg=res==='win'?'れんしょう '+r.s+'！ CPUが てごわくなる':res==='lose'?'れんしょう ストップ':'';
+  $('#rRank').hidden=!msg;$('#rRank').textContent=msg;
+  $('#rRec').textContent='VS CPU　せんせき '+r.w+'勝 '+r.l+'敗';
   $('#result').hidden=false;
   if(res==='win')beep(660,.4,'square',.06,1320);else beep(330,.4,'triangle',.06,160);
   render();
@@ -1083,11 +1160,22 @@ pad.addEventListener('pointermove',e=>{if(e.pointerId===padId)padSet(e);});
 function goTitle(){stopGame();clearInterval(drawTimer);drawTimer=null;padClear();$('#bestTitle').textContent=+lsGet(SAVE_BEST)||0;show('title');}
 function updateRuleBests(){
   document.querySelectorAll('#rules [data-best]').forEach(el=>{
-    if(el.dataset.best==='vs'){const [w,l]=(lsGet('ochire_vs')||'0,0').split(',').map(x=>+x||0);el.textContent=(w||l)?w+'勝 '+l+'敗':'---';return;}
+    if(el.dataset.best==='vs'){const r=vsRec();el.textContent=(r.w||r.l)?r.w+'勝 '+r.l+'敗'+(r.s?'（'+r.s+'れんしょう中）':''):'---';return;}
     const v=getBest(el.dataset.best);el.textContent=v==null?'---':v+'m';});
 }
 $('#startBtn').addEventListener('click',()=>{initAudio();beep(520,.08);updateRuleBests();show('rules');});
-document.querySelectorAll('#rules .rcard').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;beep(660,.08);startDraw();}));
+function updateStreakNote(){
+  const r=vsRec(),b=Math.min(5,r.s);
+  $('#streakNote').innerHTML=r.s?'いま <b>'+r.s+'れんしょう</b> ！ CPUが <b>+'+b+'</b> つよくなってるよ'+(b>=5?'（さいだい）':''):'かちつづけると CPUが だんだん てごわくなるよ';
+}
+document.querySelectorAll('#rules .rcard').forEach(b=>b.addEventListener('click',()=>{
+  mode=b.dataset.mode;beep(660,.08);
+  if(mode==='vs'){updateStreakNote();show('cpuLv');}else startDraw();
+}));
+document.querySelectorAll('#cpuLv .rcard').forEach(b=>b.addEventListener('click',()=>{
+  cpuLevel=+b.dataset.lv;lsSet('ochire_cpulv',String(cpuLevel));beep(660,.08);startDraw();
+}));
+$('#cpuBack').addEventListener('click',()=>show('rules'));
 $('#rulesBack').addEventListener('click',()=>show('title'));
 $('#againBtn').addEventListener('click',()=>{initAudio();beep(520,.08);startGame();});
 $('#redrawBtn').addEventListener('click',()=>{stopGame();startDraw();});
