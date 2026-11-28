@@ -80,6 +80,15 @@ textarea.field{min-height:110px;resize:vertical;line-height:1.55}
 .extra{border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px;background:var(--bg)}
 .extra .top{display:flex;gap:8px;align-items:center;margin-bottom:8px}
 .extra .top input{flex:1;font-weight:700}
+.outs{display:flex;flex-direction:column;gap:10px}
+.out{display:flex;gap:10px;border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--bg)}
+.out .th{width:72px;height:72px;border-radius:10px;background:var(--chip);flex:none;overflow:hidden;display:grid;place-items:center;color:var(--sub);font-size:11px;text-align:center;position:relative;border:0;padding:0}
+.out .th img{width:100%;height:100%;object-fit:cover}
+.out .th .vid{position:absolute;right:3px;bottom:3px;background:rgba(0,0,0,.65);color:#fff;border-radius:5px;padding:0 5px;font-size:10px}
+.out .f{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.out .f .field{padding:7px 10px;font-size:15px}
+.out .acts{display:flex;gap:6px;flex-wrap:wrap}
+.out a.btn{text-decoration:none;color:var(--accent);display:inline-block}
 .hint{font-size:12px;color:var(--sub);margin:8px 0 0}
 .toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);
   background:rgba(20,20,20,.92);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;
@@ -154,7 +163,7 @@ function renderList() {
   const q = view.q.trim().toLowerCase();
   const list = items
     .filter((i) => !view.cat || i.category === view.cat)
-    .filter((i) => !q || (i.title + ' ' + i.category + ' ' + i.common + ' ' + i.extras.map((e) => e.label + e.text).join(' ')).toLowerCase().includes(q))
+    .filter((i) => !q || (i.title + ' ' + i.category + ' ' + i.common + ' ' + i.extras.map((e) => e.label + e.text).join(' ') + ' ' + i.outputs.map((o) => o.memo + o.url + o.name).join(' ')).toLowerCase().includes(q))
     .sort((a, b) => b.updated - a.updated);
   $('#app').innerHTML = `
     <header class="bar"><h1>AI指示文マネージャー</h1></header>
@@ -166,7 +175,7 @@ function renderList() {
           <div class="thumb">${i.images.length ? `<img src="${urlOf(i.images[0])}" alt="">` : '📝'}</div>
           <div class="body">
             <div class="t">${esc(i.title)}</div>
-            <div class="m">${i.category ? `<span class="tag">${esc(i.category)}</span>` : ''}画像${i.images.length} ・ 個別${i.extras.length}</div>
+            <div class="m">${i.category ? `<span class="tag">${esc(i.category)}</span>` : ''}画像${i.images.length} ・ 個別${i.extras.length}${i.outputs.length ? ' ・ 生成物' + i.outputs.length : ''}</div>
           </div>
         </button>`).join('')
         : `<div class="empty">${items.length ? '見つかりません' : 'まだ指示文がありません。<br>右下の ＋ から作ります。'}</div>`}
@@ -202,7 +211,7 @@ function openNewSheet() {
   $('#nok').onclick = async () => {
     const title = $('#nt').value.trim();
     if (!title) { toast('表題を入力してください'); return; }
-    const it = { id: uid(), category: $('#nc').value.trim(), title, images: [], common: '', extras: [], created: Date.now(), updated: Date.now() };
+    const it = { id: uid(), category: $('#nc').value.trim(), title, images: [], common: '', extras: [], outputs: [], created: Date.now(), updated: Date.now() };
     items.push(it); await saveNow(it);
     closeSheet(); go('editor', it.id);
   };
@@ -257,6 +266,13 @@ function renderEditor() {
       </div>
 
       <div class="sec">
+        <h2>生成物の記録 <span class="sp"></span><button class="btn small" id="addOut">＋ 追加</button></h2>
+        <p class="hint" style="margin-top:0">AIが作った画像・動画のリンクや目印を残します。ファイルそのものは保存しません。共有リンク（Google フォト、ドライブ、iCloud など）のURLを貼り、写真や動画を選ぶと小さなサムネイルだけ作ります。</p>
+        <div class="outs" id="outs"></div>
+        <input type="file" id="outfile" accept="image/*,video/*" hidden>
+      </div>
+
+      <div class="sec">
         <button class="btn block" id="dup">この指示文を複製</button>
         <button class="btn block danger" id="del" style="margin-top:8px">この指示文を削除</button>
       </div>
@@ -284,7 +300,7 @@ function renderEditor() {
     const last = document.querySelector('#extras .extra:last-child textarea'); if (last) last.focus();
   };
   $('#dup').onclick = async () => {
-    const c = { ...it, id: uid(), title: it.title + ' のコピー', images: it.images.map((i) => ({ ...i, id: uid() })), extras: it.extras.map((e) => ({ ...e, id: uid() })), created: Date.now() };
+    const c = { ...it, id: uid(), title: it.title + ' のコピー', images: it.images.map((i) => ({ ...i, id: uid() })), extras: it.extras.map((e) => ({ ...e, id: uid() })), outputs: it.outputs.map((o) => ({ ...o, id: uid() })), created: Date.now() };
     items.push(c); await saveNow(c); toast('複製しました'); go('editor', c.id, false); hs(() => history.replaceState({ name: 'editor', id: c.id }, ''));
   };
   $('#del').onclick = async () => {
@@ -293,6 +309,75 @@ function renderEditor() {
     toast('削除しました'); (hs(() => history.state) && history.state.name === 'editor') ? history.back() : go('list', null, false);
   };
   drawExtras(it);
+  drawOuts(it);
+  $('#addOut').onclick = async () => {
+    it.outputs.push({ id: uid(), url: '', memo: '', name: '', kind: '', thumb: null, added: Date.now() });
+    await saveNow(it); drawOuts(it);
+  };
+  $('#outfile').onchange = async (e) => {
+    const f = e.target.files[0]; e.target.value = '';
+    const o = it.outputs.find((x) => x.id === pickOut); if (!f || !o) return;
+    o.name = f.name || ''; o.kind = f.type.startsWith('video') ? 'video' : 'image';
+    try { o.thumb = await makeThumb(f, o.kind); } catch (_) { o.thumb = null; toast('サムネイルを作れませんでした（名前だけ記録します）'); }
+    await saveNow(it); drawOuts(it);
+  };
+}
+
+let pickOut = null;
+function makeThumb(file, kind) {
+  const W = 240, url = URL.createObjectURL(file);
+  const draw = (src, w, h) => new Promise((res, rej) => {
+    const k = Math.min(1, W / Math.max(w, h)), c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+    c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+    c.toBlob((b) => b ? res(b) : rej(new Error('thumb')), 'image/jpeg', 0.75);
+  });
+  return new Promise((res, rej) => {
+    const end = (fn) => (v) => { URL.revokeObjectURL(url); fn(v); };
+    if (kind === 'video') {
+      const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto';
+      v.onloadeddata = () => { v.currentTime = Math.min(0.1, (v.duration || 1) / 2); };
+      v.onseeked = () => draw(v, v.videoWidth, v.videoHeight).then(end(res), end(rej));
+      v.onerror = end(rej); v.src = url;
+    } else {
+      const im = new Image();
+      im.onload = () => draw(im, im.naturalWidth, im.naturalHeight).then(end(res), end(rej));
+      im.onerror = end(rej); im.src = url;
+    }
+  });
+}
+
+function drawOuts(it) {
+  const box = $('#outs');
+  if (!it.outputs.length) { box.innerHTML = '<p class="hint">まだありません。「＋ 追加」で登録します。</p>'; return; }
+  box.innerHTML = it.outputs.map((o) => `
+    <div class="out" data-id="${o.id}">
+      <button class="th pk" aria-label="写真・動画を選ぶ">${o.thumb ? `<img src="${urlOf({ id: 'o' + o.id, blob: o.thumb })}" alt="">${o.kind === 'video' ? '<span class="vid">動画</span>' : ''}` : '写真・動画<br>を選ぶ'}</button>
+      <div class="f">
+        <input class="field u" type="url" inputmode="url" placeholder="共有リンクのURL" value="${esc(o.url)}" autocomplete="off">
+        <input class="field m" placeholder="メモ（探し方など）" value="${esc(o.memo)}" autocomplete="off">
+        ${o.name ? `<div class="hint" style="margin:0">ファイル名: ${esc(o.name)}</div>` : ''}
+        <div class="acts"><a class="btn small op" target="_blank" rel="noopener" ${/^https?:\/\//i.test(o.url) ? `href="${esc(o.url)}"` : 'hidden'}>リンクを開く</a>
+          <button class="btn small cu">URLをコピー</button><button class="btn small danger rm">削除</button></div>
+      </div>
+    </div>`).join('');
+  box.querySelectorAll('.out').forEach((el) => {
+    const o = it.outputs.find((x) => x.id === el.dataset.id), op = el.querySelector('.op');
+    el.querySelector('.pk').onclick = () => { pickOut = o.id; $('#outfile').click(); };
+    el.querySelector('.u').oninput = (e) => {
+      o.url = e.target.value.trim(); touch(it);
+      if (/^https?:\/\//i.test(o.url)) { op.href = o.url; op.hidden = false; } else { op.hidden = true; }
+    };
+    el.querySelector('.m').oninput = (e) => { o.memo = e.target.value; touch(it); };
+    el.querySelector('.cu').onclick = async () => {
+      if (!o.url) { toast('URLが空です'); return; }
+      try { await navigator.clipboard.writeText(o.url); toast('URLをコピーしました'); } catch (_) { toast('コピーできませんでした'); }
+    };
+    el.querySelector('.rm').onclick = async () => {
+      if (!(await ask('この生成物の記録を削除します。よろしいですか？'))) return;
+      it.outputs = it.outputs.filter((x) => x !== o); await saveNow(it); drawOuts(it);
+    };
+  });
 }
 
 function drawImages(it) {
@@ -396,7 +481,7 @@ async function shareAll(it, e) {
 (async function init() {
   try { db = await openDB(); items = await idbAll(); }
   catch (_) { toast('保存領域を開けませんでした（このブラウザでは保存できません）', 5000); }
-  items.forEach((i) => { i.images = i.images || []; i.extras = i.extras || []; i.common = i.common || ''; });
+  items.forEach((i) => { i.images = i.images || []; i.extras = i.extras || []; i.outputs = i.outputs || []; i.common = i.common || ''; });
   hs(() => history.replaceState({ name: 'list' }, ''));
   render();
 })();
