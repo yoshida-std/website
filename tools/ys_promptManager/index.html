@@ -81,7 +81,9 @@ textarea.field{min-height:110px;resize:vertical;line-height:1.55}
 .extra .top{display:flex;gap:8px;align-items:center;margin-bottom:8px}
 .extra .top input{flex:1;font-weight:700}
 .outs{display:flex;flex-direction:column;gap:10px}
-.out{display:flex;gap:10px;border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--bg)}
+.oh{display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:13px;font-weight:600;color:var(--sub)}
+.extra .outs{margin-top:8px}
+.out{display:flex;gap:10px;border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--card)}
 .out .th{width:72px;height:72px;border-radius:10px;background:var(--chip);flex:none;overflow:hidden;display:grid;place-items:center;color:var(--sub);font-size:11px;text-align:center;position:relative;border:0;padding:0}
 .out .th img{width:100%;height:100%;object-fit:cover}
 .out .th .vid{position:absolute;right:3px;bottom:3px;background:rgba(0,0,0,.65);color:#fff;border-radius:5px;padding:0 5px;font-size:10px}
@@ -163,7 +165,7 @@ function renderList() {
   const q = view.q.trim().toLowerCase();
   const list = items
     .filter((i) => !view.cat || i.category === view.cat)
-    .filter((i) => !q || (i.title + ' ' + i.category + ' ' + i.common + ' ' + i.extras.map((e) => e.label + e.text).join(' ') + ' ' + i.outputs.map((o) => o.memo + o.url + o.name).join(' ')).toLowerCase().includes(q))
+    .filter((i) => !q || (i.title + ' ' + i.category + ' ' + i.common + ' ' + i.extras.map((e) => e.label + e.text).join(' ') + ' ' + i.extras.map((e) => e.outputs.map((o) => o.memo + o.url + o.name).join(' ')).join(' ')).toLowerCase().includes(q))
     .sort((a, b) => b.updated - a.updated);
   $('#app').innerHTML = `
     <header class="bar"><h1>AI指示文マネージャー</h1></header>
@@ -175,7 +177,7 @@ function renderList() {
           <div class="thumb">${i.images.length ? `<img src="${urlOf(i.images[0])}" alt="">` : '📝'}</div>
           <div class="body">
             <div class="t">${esc(i.title)}</div>
-            <div class="m">${i.category ? `<span class="tag">${esc(i.category)}</span>` : ''}画像${i.images.length} ・ 個別${i.extras.length}${i.outputs.length ? ' ・ 生成物' + i.outputs.length : ''}</div>
+            <div class="m">${i.category ? `<span class="tag">${esc(i.category)}</span>` : ''}画像${i.images.length} ・ 個別${i.extras.length}${i.extras.reduce((n, e) => n + e.outputs.length, 0) ? ' ・ 生成物' + i.extras.reduce((n, e) => n + e.outputs.length, 0) : ''}</div>
           </div>
         </button>`).join('')
         : `<div class="empty">${items.length ? '見つかりません' : 'まだ指示文がありません。<br>右下の ＋ から作ります。'}</div>`}
@@ -211,7 +213,7 @@ function openNewSheet() {
   $('#nok').onclick = async () => {
     const title = $('#nt').value.trim();
     if (!title) { toast('表題を入力してください'); return; }
-    const it = { id: uid(), category: $('#nc').value.trim(), title, images: [], common: '', extras: [], outputs: [], created: Date.now(), updated: Date.now() };
+    const it = { id: uid(), category: $('#nc').value.trim(), title, images: [], common: '', extras: [], created: Date.now(), updated: Date.now() };
     items.push(it); await saveNow(it);
     closeSheet(); go('editor', it.id);
   };
@@ -261,16 +263,11 @@ function renderEditor() {
 
       <div class="sec">
         <h2>個別の指示文 <span class="sp"></span><button class="btn small" id="addExtra">＋ 追加</button></h2>
-        <p class="hint" style="margin-top:0">共通の指示文のあとに、個別の指示文が続きます。コピーは「添付画像 → 共通 → 個別」の順です。</p>
+        <p class="hint" style="margin-top:0">共通の指示文のあとに、個別の指示文が続きます。コピーは「添付画像 → 共通 → 個別」の順です。各個別には、AIが作った画像・動画のリンクや目印（ファイル本体は保存しません）を記録できます。</p>
         <div id="extras"></div>
       </div>
 
-      <div class="sec">
-        <h2>生成物の記録 <span class="sp"></span><button class="btn small" id="addOut">＋ 追加</button></h2>
-        <p class="hint" style="margin-top:0">AIが作った画像・動画のリンクや目印を残します。ファイルそのものは保存しません。共有リンク（Google フォト、ドライブ、iCloud など）のURLを貼り、写真や動画を選ぶと小さなサムネイルだけ作ります。</p>
-        <div class="outs" id="outs"></div>
-        <input type="file" id="outfile" accept="image/*,video/*" hidden>
-      </div>
+      <input type="file" id="outfile" accept="image/*,video/*" hidden>
 
       <div class="sec">
         <button class="btn block" id="dup">この指示文を複製</button>
@@ -295,12 +292,12 @@ function renderEditor() {
   $('#copyCommon').onclick = () => copyAll(it, null);
   $('#shareCommon').onclick = () => shareAll(it, null);
   $('#addExtra').onclick = async () => {
-    it.extras.push({ id: uid(), label: '個別' + (it.extras.length + 1), text: '' });
+    it.extras.push({ id: uid(), label: '個別' + (it.extras.length + 1), text: '', outputs: [] });
     await saveNow(it); drawExtras(it);
     const last = document.querySelector('#extras .extra:last-child textarea'); if (last) last.focus();
   };
   $('#dup').onclick = async () => {
-    const c = { ...it, id: uid(), title: it.title + ' のコピー', images: it.images.map((i) => ({ ...i, id: uid() })), extras: it.extras.map((e) => ({ ...e, id: uid() })), outputs: it.outputs.map((o) => ({ ...o, id: uid() })), created: Date.now() };
+    const c = { ...it, id: uid(), title: it.title + ' のコピー', images: it.images.map((i) => ({ ...i, id: uid() })), extras: it.extras.map((e) => ({ ...e, id: uid(), outputs: e.outputs.map((o) => ({ ...o, id: uid() })) })), created: Date.now() };
     items.push(c); await saveNow(c); toast('複製しました'); go('editor', c.id, false); hs(() => history.replaceState({ name: 'editor', id: c.id }, ''));
   };
   $('#del').onclick = async () => {
@@ -309,17 +306,12 @@ function renderEditor() {
     toast('削除しました'); (hs(() => history.state) && history.state.name === 'editor') ? history.back() : go('list', null, false);
   };
   drawExtras(it);
-  drawOuts(it);
-  $('#addOut').onclick = async () => {
-    it.outputs.push({ id: uid(), url: '', memo: '', name: '', kind: '', thumb: null, added: Date.now() });
-    await saveNow(it); drawOuts(it);
-  };
-  $('#outfile').onchange = async (e) => {
-    const f = e.target.files[0]; e.target.value = '';
-    const o = it.outputs.find((x) => x.id === pickOut); if (!f || !o) return;
+  $('#outfile').onchange = async (ev) => {
+    const f = ev.target.files[0]; ev.target.value = '';
+    const o = pickOut && pickOut.ex.outputs.find((x) => x.id === pickOut.id); if (!f || !o) return;
     o.name = f.name || ''; o.kind = f.type.startsWith('video') ? 'video' : 'image';
     try { o.thumb = await makeThumb(f, o.kind); } catch (_) { o.thumb = null; toast('サムネイルを作れませんでした（名前だけ記録します）'); }
-    await saveNow(it); drawOuts(it);
+    await saveNow(it); drawOuts(it, pickOut.ex, pickOut.box);
   };
 }
 
@@ -347,10 +339,9 @@ function makeThumb(file, kind) {
   });
 }
 
-function drawOuts(it) {
-  const box = $('#outs');
-  if (!it.outputs.length) { box.innerHTML = '<p class="hint">まだありません。「＋ 追加」で登録します。</p>'; return; }
-  box.innerHTML = it.outputs.map((o) => `
+function drawOuts(it, ex, box) {
+  if (!ex.outputs.length) { box.innerHTML = ''; return; }
+  box.innerHTML = ex.outputs.map((o) => `
     <div class="out" data-id="${o.id}">
       <button class="th pk" aria-label="写真・動画を選ぶ">${o.thumb ? `<img src="${urlOf({ id: 'o' + o.id, blob: o.thumb })}" alt="">${o.kind === 'video' ? '<span class="vid">動画</span>' : ''}` : '写真・動画<br>を選ぶ'}</button>
       <div class="f">
@@ -362,8 +353,8 @@ function drawOuts(it) {
       </div>
     </div>`).join('');
   box.querySelectorAll('.out').forEach((el) => {
-    const o = it.outputs.find((x) => x.id === el.dataset.id), op = el.querySelector('.op');
-    el.querySelector('.pk').onclick = () => { pickOut = o.id; $('#outfile').click(); };
+    const o = ex.outputs.find((x) => x.id === el.dataset.id), op = el.querySelector('.op');
+    el.querySelector('.pk').onclick = () => { pickOut = { ex, id: o.id, box }; $('#outfile').click(); };
     el.querySelector('.u').oninput = (e) => {
       o.url = e.target.value.trim(); touch(it);
       if (/^https?:\/\//i.test(o.url)) { op.href = o.url; op.hidden = false; } else { op.hidden = true; }
@@ -375,7 +366,7 @@ function drawOuts(it) {
     };
     el.querySelector('.rm').onclick = async () => {
       if (!(await ask('この生成物の記録を削除します。よろしいですか？'))) return;
-      it.outputs = it.outputs.filter((x) => x !== o); await saveNow(it); drawOuts(it);
+      ex.outputs = ex.outputs.filter((x) => x !== o); await saveNow(it); drawOuts(it, ex, box);
     };
   });
 }
@@ -403,12 +394,19 @@ function drawExtras(it) {
         <button class="btn primary cp">個別までコピー</button>
         <button class="btn sh" style="flex:none">共有</button>
       </div>
+      <div class="oh"><span>生成物の記録</span><button class="btn small ao">＋ 追加</button></div>
+      <div class="outs"></div>
     </div>`).join('');
   box.querySelectorAll('.extra').forEach((el) => {
     const e = it.extras.find((x) => x.id === el.dataset.id);
     const ta = el.querySelector('textarea');
     el.querySelector('.lab').oninput = (ev) => { e.label = ev.target.value; touch(it); };
     ta.oninput = () => { e.text = ta.value; touch(it); };
+    const ob = el.querySelector('.outs'); drawOuts(it, e, ob);
+    el.querySelector('.ao').onclick = async () => {
+      e.outputs.push({ id: uid(), url: '', memo: '', name: '', kind: '', thumb: null, added: Date.now() });
+      await saveNow(it); drawOuts(it, e, ob);
+    };
     el.querySelector('.cp').onclick = () => copyAll(it, e);
     el.querySelector('.sh').onclick = () => shareAll(it, e);
     el.querySelector('.rm').onclick = async () => {
@@ -481,7 +479,12 @@ async function shareAll(it, e) {
 (async function init() {
   try { db = await openDB(); items = await idbAll(); }
   catch (_) { toast('保存領域を開けませんでした（このブラウザでは保存できません）', 5000); }
-  items.forEach((i) => { i.images = i.images || []; i.extras = i.extras || []; i.outputs = i.outputs || []; i.common = i.common || ''; });
+  items.forEach((i) => { i.images = i.images || []; i.extras = i.extras || [];
+  if (i.outputs && i.outputs.length) { // 旧形式（指示文全体の生成物）を個別へ移す
+    if (!i.extras.length) i.extras.push({ id: uid(), label: '個別1', text: '', outputs: [] });
+    i.extras[0].outputs = (i.extras[0].outputs || []).concat(i.outputs);
+  }
+  delete i.outputs; i.extras.forEach((e) => { e.outputs = e.outputs || []; }); i.common = i.common || ''; });
   hs(() => history.replaceState({ name: 'list' }, ''));
   render();
 })();
