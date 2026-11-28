@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#fafaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17181a" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="指示文">
+<title>AI指示文マネージャー</title>
+<style>
+:root{
+  --bg:#fafaf7; --card:#fff; --ink:#1d1f23; --sub:#6b7078; --line:#e3e3dc;
+  --accent:#134f7d; --accent-ink:#fff; --danger:#c0392b; --chip:#e8eef4;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#17181a; --card:#222427; --ink:#ececec; --sub:#9aa0a8; --line:#34373b;
+    --accent:#5aa9e6; --accent-ink:#0b1722; --danger:#ff7b6b; --chip:#2a3440; }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.5 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+  touch-action:manipulation;-webkit-text-size-adjust:100%;overscroll-behavior-y:contain}
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+input,textarea{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+header.bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;
+  padding:10px 12px;background:var(--bg);border-bottom:1px solid var(--line)}
+header.bar h1{font-size:18px;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icon-btn{border:0;background:none;font-size:22px;padding:6px 10px;border-radius:10px;line-height:1}
+.icon-btn:active{background:var(--chip)}
+main{padding:12px 14px 120px;max-width:640px;margin:0 auto}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 14px;font-weight:600}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--danger)}
+.btn.small{padding:6px 10px;font-size:14px;border-radius:10px}
+.btn:active{opacity:.7}
+.btn.block{display:block;width:100%}
+.fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:6;
+  width:58px;height:58px;border-radius:50%;border:0;font-size:30px;
+  background:var(--accent);color:var(--accent-ink);box-shadow:0 4px 14px rgba(0,0,0,.3)}
+.search{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;
+  background:var(--card);color:var(--ink);font-size:16px;margin-bottom:10px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:6px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 13px;font-size:14px}
+.chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.item{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--card);
+  border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+.item:active{opacity:.7}
+.item .thumb{width:54px;height:54px;border-radius:10px;background:var(--chip);flex:none;overflow:hidden;
+  display:grid;place-items:center;color:var(--sub);font-size:22px}
+.item .thumb img{width:100%;height:100%;object-fit:cover}
+.item .t{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .m{font-size:13px;color:var(--sub)}
+.item .body{min-width:0;flex:1}
+.tag{display:inline-block;background:var(--chip);color:var(--accent);border-radius:6px;padding:0 7px;font-size:12px;margin-right:6px}
+.empty{text-align:center;color:var(--sub);padding:48px 12px}
+label.l{display:block;font-size:13px;color:var(--sub);margin:16px 0 6px;font-weight:600}
+.field{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;
+  background:var(--card);color:var(--ink);font-size:16px;font-family:inherit}
+textarea.field{min-height:110px;resize:vertical;line-height:1.55}
+.sec{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:14px}
+.sec h2{font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:8px}
+.sec h2 .sp{flex:1}
+.count{font-size:12px;color:var(--sub);font-weight:400}
+.imgs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.imgs .im{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--chip)}
+.imgs .im img{width:100%;height:100%;object-fit:cover;display:block}
+.imgs .im .x{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;border:0;
+  background:rgba(0,0,0,.65);color:#fff;font-size:15px;line-height:1;padding:0}
+.imgs .im .n{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;
+  border-radius:6px;padding:0 6px}
+.imgs .add{aspect-ratio:1;border:2px dashed var(--line);border-radius:10px;background:none;
+  color:var(--sub);font-size:28px}
+.row{display:flex;gap:8px;margin-top:10px}
+.row .btn{flex:1}
+.extra{border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px;background:var(--bg)}
+.extra .top{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.extra .top input{flex:1;font-weight:700}
+.outs{display:flex;flex-direction:column;gap:10px}
+.oh{display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:13px;font-weight:600;color:var(--sub)}
+.extra .outs{margin-top:8px}
+.out{display:flex;gap:10px;border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--card)}
+.out .th{width:72px;height:72px;border-radius:10px;background:var(--chip);flex:none;overflow:hidden;display:grid;place-items:center;color:var(--sub);font-size:11px;text-align:center;position:relative;border:0;padding:0}
+.out .th img{width:100%;height:100%;object-fit:cover}
+.out .th .vid{position:absolute;right:3px;bottom:3px;background:rgba(0,0,0,.65);color:#fff;border-radius:5px;padding:0 5px;font-size:10px}
+.out .f{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.out .f .field{padding:7px 10px;font-size:15px;min-width:0}
+.out .f input[type=datetime-local]{font-family:inherit;min-height:38px}
+.out .acts{display:flex;gap:6px;flex-wrap:wrap}
+.out a.btn{text-decoration:none;color:var(--accent);display:inline-block}
+.hint{font-size:12px;color:var(--sub);margin:8px 0 0}
+.toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  background:rgba(20,20,20,.92);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;
+  z-index:30;max-width:88vw;text-align:center;pointer-events:none;opacity:0;transition:opacity .2s}
+.toast.show{opacity:1}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:640px;border-radius:18px 18px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom))}
+.sheet h2{margin:0 0 4px;font-size:18px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* ===== 保存（IndexedDB。画像も Blob のまま入る） ===== */
+const DB_NAME = 'ys_prompt_manager', STORE = 'items';
+let db;
+function openDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(DB_NAME, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore(STORE, { keyPath: 'id' });
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+const tx = (mode) => db.transaction(STORE, mode).objectStore(STORE);
+const idbAll = () => new Promise((res, rej) => { const r = tx('readonly').getAll(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+const idbPut = (v) => new Promise((res, rej) => { const r = tx('readwrite').put(v); r.onsuccess = () => res(); r.onerror = () => rej(r.error); });
+const idbDel = (id) => new Promise((res, rej) => { const r = tx('readwrite').delete(id); r.onsuccess = () => res(); r.onerror = () => rej(r.error); });
+
+/* ===== 状態 ===== */
+let items = [];
+let view = { name: 'list', id: null, cat: '', q: '' };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const current = () => items.find((i) => i.id === view.id);
+const urls = new Map();
+function urlOf(img) { if (!urls.has(img.id)) urls.set(img.id, URL.createObjectURL(img.blob)); return urls.get(img.id); }
+
+let saveTimer;
+function touch(it) { it.updated = Date.now(); clearTimeout(saveTimer); saveTimer = setTimeout(() => idbPut(it).catch(() => toast('保存に失敗しました')), 300); }
+const saveNow = (it) => { it.updated = Date.now(); clearTimeout(saveTimer); return idbPut(it).catch(() => toast('保存に失敗しました')); };
+
+let toastTimer;
+function toast(msg, ms = 2400) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+/* ===== 画面の切り替え（戻るボタン対応） ===== */
+function hs(fn) { try { return fn(); } catch (_) { return undefined; } }
+function go(name, id = null, push = true) {
+  view.name = name; view.id = id;
+  if (push) hs(() => history.pushState({ name, id }, ''));
+  render(); window.scrollTo(0, 0);
+}
+window.addEventListener('popstate', (e) => {
+  const s = e.state;
+  if (s && s.name === 'editor' && items.some((i) => i.id === s.id)) { view.name = 'editor'; view.id = s.id; } else { view.name = 'list'; view.id = null; }
+  closeSheet(); render();
+});
+
+function render() { view.name === 'editor' && current() ? renderEditor() : renderList(); }
+
+/* ===== 一覧 ===== */
+function renderList() {
+  const cats = [...new Set(items.map((i) => i.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ja'));
+  if (view.cat && !cats.includes(view.cat)) view.cat = '';
+  const q = view.q.trim().toLowerCase();
+  const list = items
+    .filter((i) => !view.cat || i.category === view.cat)
+    .filter((i) => !q || (i.title + ' ' + i.category + ' ' + i.common + ' ' + i.extras.map((e) => e.label + e.text).join(' ') + ' ' + i.extras.map((e) => e.outputs.map((o) => o.memo + o.url + o.name).join(' ')).join(' ')).toLowerCase().includes(q))
+    .sort((a, b) => b.updated - a.updated);
+  $('#app').innerHTML = `
+    <header class="bar"><h1>AI指示文マネージャー</h1></header>
+    <main>
+      ${items.length ? `<input class="search" id="q" type="search" placeholder="さがす" value="${esc(view.q)}">` : ''}
+      ${cats.length ? `<div class="chips"><button class="chip ${view.cat ? '' : 'on'}" data-cat="">すべて</button>${cats.map((c) => `<button class="chip ${view.cat === c ? 'on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}
+      ${list.length ? list.map((i) => `
+        <button class="item" data-id="${i.id}">
+          <div class="thumb">${i.images.length ? `<img src="${urlOf(i.images[0])}" alt="">` : '📝'}</div>
+          <div class="body">
+            <div class="t">${esc(i.title)}</div>
+            <div class="m">${i.category ? `<span class="tag">${esc(i.category)}</span>` : ''}画像${i.images.length} ・ 個別${i.extras.length}${i.extras.reduce((n, e) => n + e.outputs.length, 0) ? ' ・ 生成物' + i.extras.reduce((n, e) => n + e.outputs.length, 0) : ''}</div>
+          </div>
+        </button>`).join('')
+        : `<div class="empty">${items.length ? '見つかりません' : 'まだ指示文がありません。<br>右下の ＋ から作ります。'}</div>`}
+    </main>
+    <button class="fab" id="new" aria-label="新規作成">＋</button>`;
+  $('#new').onclick = openNewSheet;
+  const qi = $('#q');
+  if (qi) qi.oninput = () => { view.q = qi.value; const pos = qi.selectionStart; renderList(); const n = $('#q'); n.focus(); n.setSelectionRange(pos, pos); };
+  document.querySelectorAll('.chip').forEach((b) => b.onclick = () => { view.cat = b.dataset.cat; renderList(); });
+  document.querySelectorAll('.item').forEach((b) => b.onclick = () => go('editor', b.dataset.id));
+}
+
+/* ===== 新規（カテゴリ・表題） ===== */
+function openNewSheet() {
+  const cats = [...new Set(items.map((i) => i.category).filter(Boolean))];
+  const bg = document.createElement('div');
+  bg.className = 'sheet-bg'; bg.id = 'sheet';
+  bg.innerHTML = `<div class="sheet">
+      <h2>新しい指示文</h2>
+      <label class="l">カテゴリ</label>
+      <input class="field" id="nc" list="catlist" placeholder="例: 画像生成、翻訳、コード" value="${esc(view.cat)}" autocomplete="off">
+      <datalist id="catlist">${cats.map((c) => `<option value="${esc(c)}">`).join('')}</datalist>
+      <label class="l">表題</label>
+      <input class="field" id="nt" placeholder="例: キャラ三面図" autocomplete="off">
+      <div class="row" style="margin-top:18px">
+        <button class="btn" id="ncancel">キャンセル</button>
+        <button class="btn primary" id="nok">エディタへ</button>
+      </div></div>`;
+  document.body.appendChild(bg);
+  bg.onclick = (e) => { if (e.target === bg) closeSheet(); };
+  $('#ncancel').onclick = closeSheet;
+  setTimeout(() => $('#nt').focus(), 50);
+  $('#nok').onclick = async () => {
+    const title = $('#nt').value.trim();
+    if (!title) { toast('表題を入力してください'); return; }
+    const it = { id: uid(), category: $('#nc').value.trim(), title, images: [], common: '', extras: [], created: Date.now(), updated: Date.now() };
+    items.push(it); await saveNow(it);
+    closeSheet(); go('editor', it.id);
+  };
+}
+// confirm() は使えない環境があるので、画面内の確認シートを使う
+function ask(msg) {
+  return new Promise((res) => {
+    const bg = document.createElement('div'); bg.className = 'sheet-bg'; bg.id = 'sheet';
+    bg.innerHTML = `<div class="sheet"><h2>確認</h2><p>${esc(msg)}</p><div class="row"><button class="btn" id="ano">やめる</button><button class="btn danger" id="ayes">削除する</button></div></div>`;
+    document.body.appendChild(bg);
+    const done = (v) => { bg.remove(); res(v); };
+    bg.onclick = (e) => { if (e.target === bg) done(false); };
+    $('#ano').onclick = () => done(false); $('#ayes').onclick = () => done(true);
+  });
+}
+function closeSheet() { const s = $('#sheet'); if (s) s.remove(); }
+
+/* ===== エディタ ===== */
+function renderEditor() {
+  const it = current();
+  $('#app').innerHTML = `
+    <header class="bar">
+      <button class="icon-btn" id="back" aria-label="戻る">←</button>
+      <h1>${esc(it.title)}</h1>
+    </header>
+    <main>
+      <label class="l">カテゴリ</label>
+      <input class="field" id="cat" value="${esc(it.category)}" list="catlist2" autocomplete="off">
+      <datalist id="catlist2">${[...new Set(items.map((i) => i.category).filter(Boolean))].map((c) => `<option value="${esc(c)}">`).join('')}</datalist>
+      <label class="l">表題</label>
+      <input class="field" id="title" value="${esc(it.title)}" autocomplete="off">
+
+      <div class="sec">
+        <h2>添付画像 <span class="count" id="imgcount"></span></h2>
+        <div class="imgs" id="imgs"></div>
+        <input type="file" id="file" accept="image/*" multiple hidden>
+      </div>
+
+      <div class="sec">
+        <h2>共通の指示文 <span class="count" id="ccount"></span></h2>
+        <textarea class="field" id="common" placeholder="AIチャットに最初に貼り付ける、共通の指示文">${esc(it.common)}</textarea>
+        <div class="row">
+          <button class="btn primary" id="copyCommon">共通をコピー</button>
+          <button class="btn" id="shareCommon">共有で送る</button>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h2>個別の指示文 <span class="sp"></span><button class="btn small" id="addExtra">＋ 追加</button></h2>
+        <p class="hint" style="margin-top:0">共通の指示文のあとに、個別の指示文が続きます。コピーは「添付画像 → 共通 → 個別」の順です。各個別には、AIが作った画像・動画のリンクや目印（ファイル本体は保存しません）を記録できます。</p>
+        <div id="extras"></div>
+      </div>
+
+      <input type="file" id="outfile" accept="image/*,video/*" hidden>
+
+      <div class="sec">
+        <button class="btn block" id="dup">この指示文を複製</button>
+        <button class="btn block danger" id="del" style="margin-top:8px">この指示文を削除</button>
+      </div>
+    </main>`;
+
+  $('#back').onclick = () => (hs(() => history.state) && history.state.name === 'editor') ? history.back() : go('list', null, false);
+  $('#cat').oninput = (e) => { it.category = e.target.value.trim(); touch(it); };
+  $('#title').oninput = (e) => { it.title = e.target.value; $('header.bar h1').textContent = it.title || '(無題)'; touch(it); };
+  const common = $('#common');
+  const cc = () => { $('#ccount').textContent = common.value.length + '文字'; };
+  common.oninput = () => { it.common = common.value; cc(); touch(it); };
+  cc();
+
+  drawImages(it);
+  $('#file').onchange = async (e) => {
+    const files = [...e.target.files]; e.target.value = '';
+    for (const f of files) it.images.push({ id: uid(), blob: f, name: f.name || 'image', type: f.type });
+    if (files.length) { await saveNow(it); drawImages(it); toast(files.length + '枚追加しました'); }
+  };
+  $('#copyCommon').onclick = () => copyAll(it, null);
+  $('#shareCommon').onclick = () => shareAll(it, null);
+  $('#addExtra').onclick = async () => {
+    it.extras.push({ id: uid(), label: '個別' + (it.extras.length + 1), text: '', outputs: [] });
+    await saveNow(it); drawExtras(it);
+    const last = document.querySelector('#extras .extra:last-child textarea'); if (last) last.focus();
+  };
+  $('#dup').onclick = async () => {
+    const c = { ...it, id: uid(), title: it.title + ' のコピー', images: it.images.map((i) => ({ ...i, id: uid() })), extras: it.extras.map((e) => ({ ...e, id: uid(), outputs: e.outputs.map((o) => ({ ...o, id: uid() })) })), created: Date.now() };
+    items.push(c); await saveNow(c); toast('複製しました'); go('editor', c.id, false); hs(() => history.replaceState({ name: 'editor', id: c.id }, ''));
+  };
+  $('#del').onclick = async () => {
+    if (!(await ask('「' + it.title + '」を削除します。よろしいですか？'))) return;
+    items = items.filter((i) => i !== it); await idbDel(it.id);
+    toast('削除しました'); (hs(() => history.state) && history.state.name === 'editor') ? history.back() : go('list', null, false);
+  };
+  drawExtras(it);
+  $('#outfile').onchange = async (ev) => {
+    const f = ev.target.files[0]; ev.target.value = '';
+    const o = pickOut && pickOut.ex.outputs.find((x) => x.id === pickOut.id); if (!f || !o) return;
+    o.name = f.name || ''; if (f.lastModified) o.at = f.lastModified; o.kind = f.type.startsWith('video') ? 'video' : 'image';
+    try { o.thumb = await makeThumb(f, o.kind); } catch (_) { o.thumb = null; toast('サムネイルを作れませんでした（名前だけ記録します）'); }
+    await saveNow(it); drawOuts(it, pickOut.ex, pickOut.box);
+  };
+}
+
+let pickOut = null;
+function makeThumb(file, kind) {
+  const W = 240, url = URL.createObjectURL(file);
+  const draw = (src, w, h) => new Promise((res, rej) => {
+    const k = Math.min(1, W / Math.max(w, h)), c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+    c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+    c.toBlob((b) => b ? res(b) : rej(new Error('thumb')), 'image/jpeg', 0.75);
+  });
+  return new Promise((res, rej) => {
+    const end = (fn) => (v) => { URL.revokeObjectURL(url); fn(v); };
+    if (kind === 'video') {
+      const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto';
+      v.onloadeddata = () => { v.currentTime = Math.min(0.1, (v.duration || 1) / 2); };
+      v.onseeked = () => draw(v, v.videoWidth, v.videoHeight).then(end(res), end(rej));
+      v.onerror = end(rej); v.src = url;
+    } else {
+      const im = new Image();
+      im.onload = () => draw(im, im.naturalWidth, im.naturalHeight).then(end(res), end(rej));
+      im.onerror = end(rej); im.src = url;
+    }
+  });
+}
+
+const pad2 = (n) => String(n).padStart(2, '0');
+function toLocal(ms) {
+  if (!ms) return '';
+  const d = new Date(ms);
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+}
+function drawOuts(it, ex, box) {
+  if (!ex.outputs.length) { box.innerHTML = ''; return; }
+  box.innerHTML = ex.outputs.map((o) => `
+    <div class="out" data-id="${o.id}">
+      <button class="th pk" aria-label="写真・動画を選ぶ">${o.thumb ? `<img src="${urlOf({ id: 'o' + o.id, blob: o.thumb })}" alt="">${o.kind === 'video' ? '<span class="vid">動画</span>' : ''}` : '写真・動画<br>を選ぶ'}</button>
+      <div class="f">
+        <input class="field u" type="url" inputmode="url" placeholder="共有リンクのURL" value="${esc(o.url)}" autocomplete="off">
+        <input class="field d" type="datetime-local" value="${toLocal(o.at)}" aria-label="日時">
+        <input class="field m" placeholder="メモ（探し方など）" value="${esc(o.memo)}" autocomplete="off">
+        ${o.name ? `<div class="hint" style="margin:0">ファイル名: ${esc(o.name)}</div>` : ''}
+        <div class="acts"><a class="btn small op" target="_blank" rel="noopener" ${/^https?:\/\//i.test(o.url) ? `href="${esc(o.url)}"` : 'hidden'}>リンクを開く</a>
+          <button class="btn small cu">URLをコピー</button><button class="btn small danger rm">削除</button></div>
+      </div>
+    </div>`).join('');
+  box.querySelectorAll('.out').forEach((el) => {
+    const o = ex.outputs.find((x) => x.id === el.dataset.id), op = el.querySelector('.op');
+    el.querySelector('.pk').onclick = () => { pickOut = { ex, id: o.id, box }; $('#outfile').click(); };
+    el.querySelector('.u').oninput = (e) => {
+      o.url = e.target.value.trim(); touch(it);
+      if (/^https?:\/\//i.test(o.url)) { op.href = o.url; op.hidden = false; } else { op.hidden = true; }
+    };
+    el.querySelector('.d').onchange = (ev) => { const t = new Date(ev.target.value).getTime(); o.at = isNaN(t) ? null : t; touch(it); };
+    el.querySelector('.m').oninput = (e) => { o.memo = e.target.value; touch(it); };
+    el.querySelector('.cu').onclick = async () => {
+      if (!o.url) { toast('URLが空です'); return; }
+      try { await navigator.clipboard.writeText(o.url); toast('URLをコピーしました'); } catch (_) { toast('コピーできませんでした'); }
+    };
+    el.querySelector('.rm').onclick = async () => {
+      if (!(await ask('この生成物の記録を削除します。よろしいですか？'))) return;
+      ex.outputs = ex.outputs.filter((x) => x !== o); await saveNow(it); drawOuts(it, ex, box);
+    };
+  });
+}
+
+function drawImages(it) {
+  $('#imgcount').textContent = it.images.length ? it.images.length + '枚' : '';
+  $('#imgs').innerHTML = it.images.map((im, n) => `
+    <div class="im"><img src="${urlOf(im)}" alt=""><span class="n">${n + 1}</span><button class="x" data-id="${im.id}" aria-label="削除">✕</button></div>`).join('')
+    + `<button class="add" id="addImg" aria-label="画像を追加">＋</button>`;
+  $('#addImg').onclick = () => $('#file').click();
+  document.querySelectorAll('#imgs .x').forEach((b) => b.onclick = async () => {
+    it.images = it.images.filter((i) => i.id !== b.dataset.id); await saveNow(it); drawImages(it);
+  });
+}
+
+function drawExtras(it) {
+  const box = $('#extras');
+  if (!it.extras.length) { box.innerHTML = '<p class="hint">個別の指示文はまだありません。「＋ 追加」で登録します。</p>'; return; }
+  box.innerHTML = it.extras.map((e) => `
+    <div class="extra" data-id="${e.id}">
+      <div class="top"><input class="field lab" value="${esc(e.label)}" placeholder="名前" autocomplete="off">
+        <button class="icon-btn rm" aria-label="削除">🗑</button></div>
+      <textarea class="field" placeholder="共通の指示文に続けて貼り付ける、個別の指示文">${esc(e.text)}</textarea>
+      <div class="row">
+        <button class="btn primary cp">個別までコピー</button>
+        <button class="btn sh" style="flex:none">共有</button>
+      </div>
+      <div class="oh"><span>生成物の記録</span><button class="btn small ao">＋ 追加</button></div>
+      <div class="outs"></div>
+    </div>`).join('');
+  box.querySelectorAll('.extra').forEach((el) => {
+    const e = it.extras.find((x) => x.id === el.dataset.id);
+    const ta = el.querySelector('textarea');
+    el.querySelector('.lab').oninput = (ev) => { e.label = ev.target.value; touch(it); };
+    ta.oninput = () => { e.text = ta.value; touch(it); };
+    const ob = el.querySelector('.outs'); drawOuts(it, e, ob);
+    el.querySelector('.ao').onclick = async () => {
+      e.outputs.push({ id: uid(), url: '', memo: '', name: '', kind: '', thumb: null, at: Date.now() });
+      await saveNow(it); drawOuts(it, e, ob);
+    };
+    el.querySelector('.cp').onclick = () => copyAll(it, e);
+    el.querySelector('.sh').onclick = () => shareAll(it, e);
+    el.querySelector('.rm').onclick = async () => {
+      if (!(await ask('「' + (e.label || '個別') + '」を削除します。よろしいですか？'))) return;
+      it.extras = it.extras.filter((x) => x !== e); await saveNow(it); drawExtras(it);
+    };
+  });
+}
+
+/* ===== コピー・共有 ===== */
+const buildText = (it, e) => [it.common.trim(), e ? e.text.trim() : ''].filter(Boolean).join('\n\n');
+
+// クリップボードに入る画像は PNG だけなので変換する
+function toPng(blob) {
+  if (blob.type === 'image/png') return Promise.resolve(blob);
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(blob), img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0); URL.revokeObjectURL(url);
+      c.toBlob((b) => b ? res(b) : rej(new Error('png')), 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('load')); };
+    img.src = url;
+  });
+}
+const textBlob = (t) => new Blob([t], { type: 'text/plain' });
+
+async function copyAll(it, e) {
+  const text = buildText(it, e), imgs = it.images;
+  if (!text && !imgs.length) { toast('コピーする内容がありません'); return; }
+  if (!navigator.clipboard) { toast('このブラウザはコピーに対応していません'); return; }
+  // 1) 画像すべて＋テキストを一度に入れてみる
+  // 2) 複数に対応していない端末では「1枚目の画像＋テキスト」にする
+  // 3) 画像に対応していなければテキストだけ
+  const first = {};
+  if (text) first['text/plain'] = textBlob(text);
+  try {
+    if (imgs.length) first['image/png'] = toPng(imgs[0].blob);
+    const rest = imgs.slice(1).map((im) => new ClipboardItem({ 'image/png': toPng(im.blob) }));
+    await navigator.clipboard.write([new ClipboardItem(first), ...rest]);
+    toast('コピーしました（画像' + imgs.length + '枚＋テキスト）\nAIチャットに貼り付けてください');
+    return;
+  } catch (_) { /* 次の方法へ */ }
+  try {
+    const one = {};
+    if (text) one['text/plain'] = textBlob(text);
+    if (imgs.length) one['image/png'] = toPng(imgs[0].blob);
+    await navigator.clipboard.write([new ClipboardItem(one)]);
+    toast(imgs.length > 1
+      ? '画像は1枚目のみコピーしました。全部送るなら「共有」を使ってください'
+      : 'コピーしました。AIチャットに貼り付けてください', 4200);
+    return;
+  } catch (_) { /* 次の方法へ */ }
+  try { await navigator.clipboard.writeText(text); toast(imgs.length ? 'テキストだけコピーしました（画像は共有ボタンで）' : 'コピーしました', 3600); }
+  catch (_) { toast('コピーできませんでした'); }
+}
+
+async function shareAll(it, e) {
+  const text = buildText(it, e);
+  const files = it.images.map((im, n) => new File([im.blob], im.name || ('image' + (n + 1) + '.png'), { type: im.type || 'image/png' }));
+  const data = { text }; if (files.length) data.files = files;
+  if (!navigator.share || (navigator.canShare && !navigator.canShare(data))) {
+    toast('この端末は共有に対応していません。コピーを使ってください'); return;
+  }
+  try { await navigator.share(data); } catch (err) { if (err && err.name !== 'AbortError') toast('共有できませんでした'); }
+}
+
+/* ===== 起動 ===== */
+(async function init() {
+  try { db = await openDB(); items = await idbAll(); }
+  catch (_) { toast('保存領域を開けませんでした（このブラウザでは保存できません）', 5000); }
+  items.forEach((i) => { i.images = i.images || []; i.extras = i.extras || [];
+  if (i.outputs && i.outputs.length) { // 旧形式（指示文全体の生成物）を個別へ移す
+    if (!i.extras.length) i.extras.push({ id: uid(), label: '個別1', text: '', outputs: [] });
+    i.extras[0].outputs = (i.extras[0].outputs || []).concat(i.outputs);
+  }
+  delete i.outputs; i.extras.forEach((e) => { e.outputs = e.outputs || []; e.outputs.forEach((o) => { if (!('at' in o)) o.at = o.added || null; }); }); i.common = i.common || ''; });
+  hs(() => history.replaceState({ name: 'list' }, ''));
+  render();
+})();
+// ダブルタップ拡大・ピンチの抑止
+let lastTouch = 0;
+document.addEventListener('touchend', (e) => { const n = Date.now(); if (n - lastTouch < 350 && !/INPUT|TEXTAREA/.test(e.target.tagName)) e.preventDefault(); lastTouch = n; }, { passive: false });
+['gesturestart', 'gesturechange', 'gestureend'].forEach((t) => document.addEventListener(t, (e) => e.preventDefault()));
+</script>
+</body>
+</html>

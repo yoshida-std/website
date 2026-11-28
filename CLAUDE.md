@@ -4,7 +4,7 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 公開URL: `https://yoshida-std.github.io/website/`
 
 - `games/` … ブラウザゲーム（Aitsu-bom, Taijiros-yan, umi, Mogurush, judge2, Susume-Yusha, Horihori-Robo, Knife-Master, Chibiupa-Tank）
-- `tools/` … 制作ツール（ys_*。`ys_spriteSheetEditer` は すすめ！ゆうしゃ のキャラの絵のエディタ）
+- `tools/` … 制作ツール（ys_*。`ys_promptManager` はAI指示文の管理（スマホ用、IndexedDB保存、画像＋共通＋個別をクリップボードへコピー／共有）。`ys_spriteSheetEditer` は すすめ！ゆうしゃ のキャラの絵のエディタ）
 - `portfolio/` … ヨシダスタジオのポートフォリオサイト（下の「ポートフォリオ」）
 - `common/line-promo/` … ゲームから LINE スタンプ／絵文字へ誘導する共通部品（下の「LINEスタンプ誘導」）
 - ビルドなし。各作品は基本的に `index.html` 1枚で完結する
@@ -18,16 +18,16 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 - スマホ向けゲームは、ダブルタップ拡大・ピンチ・スクロール・長押しの抑止を必ず入れる（Mogurush の冒頭のコードを参照）
 - コピーライト表記は「©YoshidaStudio, ©PANICPUMPKIN」（絵文字の ©️ は使わない）
 
-## ゲームはプッシュ前に Artifact で確認（必ず守る）
+## ゲーム・ツールはプッシュ前に Artifact で確認（必ず守る）
 
-`games/` のゲームを変更したときは、変更後のゲームを Artifact に置いてユーザーに遊んでもらい、**OK をもらってから** プッシュする。
+`games/` のゲームと `tools/` のツールを変更したときは、変更後のものを Artifact に置いてユーザーに試してもらい、**OK をもらってから** プッシュする。
 
 1. 変更を作り、Playwright での動作確認を済ませてローカルでコミットする（まだプッシュしない）
-2. そのゲームの `index.html` を Artifact で公開する。音声・画像など相対パスで読むファイルは `files` で同じパスに載せる（例: Mogurush は `sound/*.mp3`）。各ゲームの確認用 Artifact の URL はそのゲームの `CLAUDE.md` に書いておき、毎回その URL を更新する（`url` を渡して公開。新しい URL を作らない）
+2. そのゲームの `index.html` を Artifact で公開する。音声・画像など相対パスで読むファイルは `files` で同じパスに載せる（例: Mogurush は `sound/*.mp3`）。各ゲーム・ツールの確認用 Artifact の URL はそのフォルダの `CLAUDE.md` に書いておき（`CLAUDE.md` が無ければ作る）、毎回その URL を更新する（`url` を渡して公開。新しい URL を作らない）
 3. Artifact の URL と、何を変えたか・どこを見てほしいかを伝え、ユーザーの返事を待つ
 4. OK が出たらプッシュする。直しを頼まれたら、直してから 2 に戻る
 
-- ゲーム以外の変更（`CLAUDE.md`、`tools/` など）は Artifact での確認なしでプッシュしてよい
+- ゲーム・ツール以外の変更（`CLAUDE.md`、`portfolio/` など）は Artifact での確認なしでプッシュしてよい
 - 強制プッシュしない、PR は頼まれたときだけ作る、は今までどおり
 
 ## LINEスタンプ誘導（`common/line-promo/`）
