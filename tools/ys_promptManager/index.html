@@ -57,6 +57,7 @@ main{padding:12px 14px 120px;max-width:640px;margin:0 auto}
 .item .m{font-size:13px;color:var(--sub)}
 .item .body{min-width:0;flex:1}
 .tag{display:inline-block;background:var(--chip);color:var(--accent);border-radius:6px;padding:0 7px;font-size:12px;margin-right:6px}
+.banner{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--chip);color:var(--ink);border-radius:12px;padding:8px 12px;margin-bottom:10px;font-size:14px}
 .empty{text-align:center;color:var(--sub);padding:48px 12px}
 label.l{display:block;font-size:13px;color:var(--sub);margin:16px 0 6px;font-weight:600}
 .field{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;
@@ -111,6 +112,7 @@ textarea.field{min-height:110px;resize:vertical;line-height:1.55}
 
 <script>
 'use strict';
+const APP_VERSION = '2026-11-28 b';
 /* ===== 保存（IndexedDB。画像も Blob のまま入る） ===== */
 const DB_NAME = 'ys_prompt_manager', STORE = 'items';
 let db;
@@ -162,6 +164,22 @@ window.addEventListener('popstate', (e) => {
 
 function render() { view.name === 'editor' && current() ? renderEditor() : renderList(); }
 
+/* ===== 最新版への更新（ホーム画面から開いても古い版が残らないように） ===== */
+let newVersion = false;
+function reloadLatest() {
+  toast('更新しています…', 1500);
+  try { const u = new URL(location.href); u.searchParams.set('v', Date.now()); location.replace(u.toString()); }
+  catch (_) { location.reload(); }
+}
+async function checkUpdate() {
+  try {
+    const r = await fetch(location.pathname + '?c=' + Date.now(), { cache: 'no-store' });
+    const m = (await r.text()).match(/APP_VERSION = '([^']+)'/);
+    if (m && m[1] !== APP_VERSION && !newVersion) { newVersion = true; if (view.name === 'list') renderList(); }
+  } catch (_) { /* 確認できないときは何も出さない */ }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
+
 /* ===== 一覧 ===== */
 function renderList() {
   const cats = [...new Set(items.map((i) => i.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ja'));
@@ -172,8 +190,9 @@ function renderList() {
     .filter((i) => !q || (i.title + ' ' + i.category + ' ' + i.common + ' ' + i.extras.map((e) => e.label + e.text).join(' ') + ' ' + i.extras.map((e) => e.outputs.map((o) => o.memo + o.url + o.name).join(' ')).join(' ')).toLowerCase().includes(q))
     .sort((a, b) => b.updated - a.updated);
   $('#app').innerHTML = `
-    <header class="bar"><h1>AI指示文マネージャー</h1></header>
+    <header class="bar"><h1>AI指示文マネージャー</h1><button class="btn small" id="upd">最新に更新</button></header>
     <main>
+      ${newVersion ? '<div class="banner">新しい版があります。<button class="btn small primary" id="upd2">今すぐ更新</button></div>' : ''}
       ${items.length ? `<input class="search" id="q" type="search" placeholder="さがす" value="${esc(view.q)}">` : ''}
       ${cats.length ? `<div class="chips"><button class="chip ${view.cat ? '' : 'on'}" data-cat="">すべて</button>${cats.map((c) => `<button class="chip ${view.cat === c ? 'on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}
       ${list.length ? list.map((i) => `
@@ -185,9 +204,12 @@ function renderList() {
           </div>
         </button>`).join('')
         : `<div class="empty">${items.length ? '見つかりません' : 'まだ指示文がありません。<br>右下の ＋ から作ります。'}</div>`}
+      <p class="hint" style="text-align:center;margin-top:24px">版 ${APP_VERSION}</p>
     </main>
     <button class="fab" id="new" aria-label="新規作成">＋</button>`;
   $('#new').onclick = openNewSheet;
+  $('#upd').onclick = reloadLatest;
+  const u2 = $('#upd2'); if (u2) u2.onclick = reloadLatest;
   const qi = $('#q');
   if (qi) qi.oninput = () => { view.q = qi.value; const pos = qi.selectionStart; renderList(); const n = $('#q'); n.focus(); n.setSelectionRange(pos, pos); };
   document.querySelectorAll('.chip').forEach((b) => b.onclick = () => { view.cat = b.dataset.cat; renderList(); });
@@ -391,6 +413,7 @@ function drawImages(it) {
     + `<button class="add" id="addImg" aria-label="画像を追加">＋</button>`;
   $('#addImg').onclick = () => $('#file').click();
   $('#mgrow').hidden = it.images.length < 2;
+  if (it.images.length > 1 && it.merge !== false) collageFor(it); // コピーの前に作っておく
   const mg = $('#merge'); mg.checked = it.merge !== false;
   mg.onchange = () => { it.merge = mg.checked; touch(it); };
   document.querySelectorAll('#imgs .c').forEach((b) => b.onclick = async () => {
@@ -454,6 +477,14 @@ function toPng(blob) {
     img.src = url;
   });
 }
+const colCache = new Map();
+function collageFor(it) {
+  const key = it.images.map((i) => i.id).join(',');
+  const c = colCache.get(it.id);
+  if (c && c.key === key) return c.p;
+  const p = collage(it.images); p.catch(() => {});
+  colCache.set(it.id, { key, p }); return p;
+}
 // 複数枚を番号つきの1枚にまとめる（貼り付けで全部入るように）
 async function collage(images) {
   const n = images.length, cols = n <= 4 ? 2 : 3, rows = Math.ceil(n / cols), cell = 720, gap = 12;
@@ -481,14 +512,16 @@ async function copyAll(it, e) {
   // 1) 画像すべて＋テキストを一度に入れてみる
   // 2) 複数に対応していない端末では「1枚目の画像＋テキスト」にする
   // 3) 画像に対応していなければテキストだけ
+  let lastErr = null;
   if (imgs.length > 1 && it.merge !== false) {
     try {
-      const one = { 'image/png': collage(imgs) };
+      const one = {};
       if (text) one['text/plain'] = textBlob(text);
+      one['image/png'] = collageFor(it);
       await navigator.clipboard.write([new ClipboardItem(one)]);
       toast('コピーしました（画像' + imgs.length + '枚を1枚にまとめ、番号つき＋テキスト）\nAIチャットに貼り付けてください', 4200);
       return;
-    } catch (_) { /* 通常の方法へ */ }
+    } catch (err) { lastErr = err; /* 通常の方法へ */ }
   }
   const first = {};
   if (text) first['text/plain'] = textBlob(text);
@@ -498,7 +531,7 @@ async function copyAll(it, e) {
     await navigator.clipboard.write([new ClipboardItem(first), ...rest]);
     toast(imgs.length > 1 ? 'コピーしました（画像' + imgs.length + '枚＋テキスト）\nAIチャットに貼り付けてください' : 'コピーしました。AIチャットに貼り付けてください');
     return;
-  } catch (_) { /* 次の方法へ */ }
+  } catch (err) { lastErr = err; /* 次の方法へ */ }
   try {
     const one = {};
     if (text) one['text/plain'] = textBlob(text);
@@ -508,8 +541,8 @@ async function copyAll(it, e) {
       ? '画像は1枚目のみコピーしました。全部送るなら「共有」を使ってください'
       : 'コピーしました。AIチャットに貼り付けてください', 4200);
     return;
-  } catch (_) { /* 次の方法へ */ }
-  try { await navigator.clipboard.writeText(text); toast(imgs.length ? 'テキストだけコピーしました（画像は共有ボタンで）' : 'コピーしました', 3600); }
+  } catch (err) { lastErr = err; /* 次の方法へ */ }
+  try { await navigator.clipboard.writeText(text); toast(imgs.length ? 'テキストだけコピーしました。画像は入りませんでした（' + (lastErr && lastErr.name || '不明') + '）' : 'コピーしました', 6000); }
   catch (_) { toast('コピーできませんでした'); }
 }
 
@@ -534,7 +567,7 @@ async function shareAll(it, e) {
   }
   delete i.outputs; i.extras.forEach((e) => { e.outputs = e.outputs || []; e.outputs.forEach((o) => { if (!('at' in o)) o.at = o.added || null; }); }); i.common = i.common || ''; });
   hs(() => history.replaceState({ name: 'list' }, ''));
-  render();
+  render(); checkUpdate();
 })();
 // ダブルタップ拡大・ピンチの抑止
 let lastTouch = 0;
