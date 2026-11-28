@@ -73,6 +73,9 @@ textarea.field{min-height:110px;resize:vertical;line-height:1.55}
   background:rgba(0,0,0,.65);color:#fff;font-size:15px;line-height:1;padding:0}
 .imgs .im .n{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;
   border-radius:6px;padding:0 6px}
+.mg{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--sub);margin-top:10px;-webkit-user-select:none}
+.mg input{width:20px;height:20px;flex:none;margin:0}
+.imgs .im .c{position:absolute;right:4px;bottom:4px;border:0;border-radius:6px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;padding:2px 7px}
 .imgs .add{aspect-ratio:1;border:2px dashed var(--line);border-radius:10px;background:none;
   color:var(--sub);font-size:28px}
 .row{display:flex;gap:8px;margin-top:10px}
@@ -250,6 +253,7 @@ function renderEditor() {
       <div class="sec">
         <h2>添付画像 <span class="count" id="imgcount"></span></h2>
         <div class="imgs" id="imgs"></div>
+        <label class="mg" id="mgrow" hidden><input type="checkbox" id="merge"> コピーするとき1枚にまとめる（番号つき。貼り付けで全部入ります）</label>
         <input type="file" id="file" accept="image/*" multiple hidden>
       </div>
 
@@ -383,9 +387,17 @@ function drawOuts(it, ex, box) {
 function drawImages(it) {
   $('#imgcount').textContent = it.images.length ? it.images.length + '枚' : '';
   $('#imgs').innerHTML = it.images.map((im, n) => `
-    <div class="im"><img src="${urlOf(im)}" alt=""><span class="n">${n + 1}</span><button class="x" data-id="${im.id}" aria-label="削除">✕</button></div>`).join('')
+    <div class="im"><img src="${urlOf(im)}" alt=""><span class="n">${n + 1}</span><button class="c" data-id="${im.id}">コピー</button><button class="x" data-id="${im.id}" aria-label="削除">✕</button></div>`).join('')
     + `<button class="add" id="addImg" aria-label="画像を追加">＋</button>`;
   $('#addImg').onclick = () => $('#file').click();
+  $('#mgrow').hidden = it.images.length < 2;
+  const mg = $('#merge'); mg.checked = it.merge !== false;
+  mg.onchange = () => { it.merge = mg.checked; touch(it); };
+  document.querySelectorAll('#imgs .c').forEach((b) => b.onclick = async () => {
+    const im = it.images.find((i) => i.id === b.dataset.id); if (!im || !navigator.clipboard) { toast('コピーできませんでした'); return; }
+    try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': toPng(im.blob) })]); toast((it.images.indexOf(im) + 1) + '枚目の画像をコピーしました'); }
+    catch (_) { toast('コピーできませんでした'); }
+  });
   document.querySelectorAll('#imgs .x').forEach((b) => b.onclick = async () => {
     it.images = it.images.filter((i) => i.id !== b.dataset.id); await saveNow(it); drawImages(it);
   });
@@ -442,6 +454,24 @@ function toPng(blob) {
     img.src = url;
   });
 }
+// 複数枚を番号つきの1枚にまとめる（貼り付けで全部入るように）
+async function collage(images) {
+  const n = images.length, cols = n <= 4 ? 2 : 3, rows = Math.ceil(n / cols), cell = 720, gap = 12;
+  const c = document.createElement('canvas');
+  c.width = cols * cell + (cols + 1) * gap; c.height = rows * cell + (rows + 1) * gap;
+  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+  for (let i = 0; i < n; i++) {
+    const url = URL.createObjectURL(images[i].blob);
+    const img = await new Promise((res, rej) => { const m = new Image(); m.onload = () => res(m); m.onerror = rej; m.src = url; });
+    URL.revokeObjectURL(url);
+    const x = gap + (i % cols) * (cell + gap), y = gap + Math.floor(i / cols) * (cell + gap), k = Math.min(cell / img.naturalWidth, cell / img.naturalHeight);
+    const w = img.naturalWidth * k, h = img.naturalHeight * k;
+    g.drawImage(img, x + (cell - w) / 2, y + (cell - h) / 2, w, h);
+    g.fillStyle = 'rgba(0,0,0,.75)'; g.fillRect(x, y, 64, 64);
+    g.fillStyle = '#fff'; g.font = 'bold 40px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(i + 1), x + 32, y + 33);
+  }
+  return new Promise((res, rej) => c.toBlob((b) => b ? res(b) : rej(new Error('collage')), 'image/png'));
+}
 const textBlob = (t) => new Blob([t], { type: 'text/plain' });
 
 async function copyAll(it, e) {
@@ -451,13 +481,22 @@ async function copyAll(it, e) {
   // 1) 画像すべて＋テキストを一度に入れてみる
   // 2) 複数に対応していない端末では「1枚目の画像＋テキスト」にする
   // 3) 画像に対応していなければテキストだけ
+  if (imgs.length > 1 && it.merge !== false) {
+    try {
+      const one = { 'image/png': collage(imgs) };
+      if (text) one['text/plain'] = textBlob(text);
+      await navigator.clipboard.write([new ClipboardItem(one)]);
+      toast('コピーしました（画像' + imgs.length + '枚を1枚にまとめ、番号つき＋テキスト）\nAIチャットに貼り付けてください', 4200);
+      return;
+    } catch (_) { /* 通常の方法へ */ }
+  }
   const first = {};
   if (text) first['text/plain'] = textBlob(text);
   try {
     if (imgs.length) first['image/png'] = toPng(imgs[0].blob);
     const rest = imgs.slice(1).map((im) => new ClipboardItem({ 'image/png': toPng(im.blob) }));
     await navigator.clipboard.write([new ClipboardItem(first), ...rest]);
-    toast('コピーしました（画像' + imgs.length + '枚＋テキスト）\nAIチャットに貼り付けてください');
+    toast(imgs.length > 1 ? 'コピーしました（画像' + imgs.length + '枚＋テキスト）\nAIチャットに貼り付けてください' : 'コピーしました。AIチャットに貼り付けてください');
     return;
   } catch (_) { /* 次の方法へ */ }
   try {
