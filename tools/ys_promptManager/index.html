@@ -93,6 +93,11 @@ textarea.field{min-height:110px;resize:vertical;line-height:1.55}
 .ai .sw input{width:22px;height:22px;margin:0}
 .ai.off textarea,.ai.off .lab{opacity:.45}
 .ai textarea{min-height:80px}
+.extra .top .tg{padding:4px 8px;font-size:16px;color:var(--sub)}
+.extra .peek{display:none;font-size:13px;color:var(--sub);margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.extra.collapsed .xbody{display:none}
+.extra.collapsed .peek{display:block}
+.extra.collapsed .top{margin-bottom:0}
 .oh{display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:13px;font-weight:600;color:var(--sub)}
 .extra .outs{margin-top:8px}
 .out{display:flex;gap:10px;border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--card)}
@@ -120,7 +125,7 @@ textarea.field{min-height:110px;resize:vertical;line-height:1.55}
 
 <script>
 'use strict';
-const APP_VERSION = '2026-11-28 f';
+const APP_VERSION = '2026-11-28 g';
 /* ===== 保存（IndexedDB。画像も Blob のまま入る） ===== */
 const DB_NAME = 'ys_prompt_manager', STORE = 'items';
 let db;
@@ -300,7 +305,7 @@ function renderEditor() {
       </div>
 
       <div class="sec">
-        <h2>個別の指示文 <span class="sp"></span><button class="btn small" id="addExtra">＋ 追加</button></h2>
+        <h2>個別の指示文 <span class="sp"></span><button class="btn small" id="foldAll" hidden></button><button class="btn small" id="addExtra">＋ 追加</button></h2>
         <p class="hint" style="margin-top:0">共通の指示文のあとに、個別の指示文が続きます。コピーは「添付画像 → 共通 → 個別」の順です。各個別には、AIが作った画像・動画のリンクや目印（ファイル本体は保存しません）を記録できます。</p>
         <div id="extras"></div>
       </div>
@@ -337,6 +342,10 @@ function renderEditor() {
   $('#shareCommon').onclick = () => shareAll(it, null);
   $('#ctCommon').onclick = () => copyText(it, null);
   $('#ciCommon').onclick = () => copyImages(it);
+  $('#foldAll').onclick = async () => {
+    const fold = it.extras.some((e) => !e.collapsed);
+    it.extras.forEach((e) => { e.collapsed = fold; }); await saveNow(it); drawExtras(it);
+  };
   $('#addExtra').onclick = async () => {
     it.extras.push({ id: uid(), label: '個別' + (it.extras.length + 1), text: '', outputs: [] });
     await saveNow(it); drawExtras(it);
@@ -473,13 +482,22 @@ function drawImages(it) {
   });
 }
 
+function foldBtn(it) {
+  const b = $('#foldAll'); if (!b) return;
+  b.hidden = it.extras.length < 2;
+  b.textContent = it.extras.some((e) => !e.collapsed) ? 'すべて折りたたむ' : 'すべて開く';
+}
 function drawExtras(it) {
   const box = $('#extras');
+  foldBtn(it);
   if (!it.extras.length) { box.innerHTML = '<p class="hint">個別の指示文はまだありません。「＋ 追加」で登録します。</p>'; return; }
   box.innerHTML = it.extras.map((e) => `
-    <div class="extra" data-id="${e.id}">
-      <div class="top"><input class="field lab" value="${esc(e.label)}" placeholder="名前" autocomplete="off">
+    <div class="extra${e.collapsed ? ' collapsed' : ''}" data-id="${e.id}">
+      <div class="top"><button class="icon-btn tg" aria-expanded="${e.collapsed ? 'false' : 'true'}" aria-label="折りたたみ">${e.collapsed ? '▶' : '▼'}</button>
+        <input class="field lab" value="${esc(e.label)}" placeholder="名前" autocomplete="off">
         <button class="icon-btn rm" aria-label="削除">🗑</button></div>
+      <div class="peek">${esc(e.text.trim().slice(0, 60)) || '（文は未入力）'}${e.outputs.length ? ' ・ 生成物' + e.outputs.length : ''}</div>
+      <div class="xbody">
       <textarea class="field" placeholder="共通の指示文に続けて貼り付ける、個別の指示文">${esc(e.text)}</textarea>
       <div class="row">
         <button class="btn primary step cp"></button>
@@ -488,10 +506,18 @@ function drawExtras(it) {
       <div class="row"><button class="btn small ct">文だけコピー</button><button class="btn small ci">画像だけコピー</button></div>
       <div class="oh"><span>生成物の記録</span><button class="btn small ao">＋ 追加</button></div>
       <div class="outs"></div>
+      </div>
     </div>`).join('');
   box.querySelectorAll('.extra').forEach((el) => {
     const e = it.extras.find((x) => x.id === el.dataset.id);
     const ta = el.querySelector('textarea');
+    el.querySelector('.tg').onclick = () => {
+      e.collapsed = !e.collapsed; touch(it);
+      el.classList.toggle('collapsed', e.collapsed);
+      const tg = el.querySelector('.tg'); tg.textContent = e.collapsed ? '▶' : '▼'; tg.setAttribute('aria-expanded', e.collapsed ? 'false' : 'true');
+      el.querySelector('.peek').textContent = (e.text.trim().slice(0, 60) || '（文は未入力）') + (e.outputs.length ? ' ・ 生成物' + e.outputs.length : '');
+      foldBtn(it);
+    };
     el.querySelector('.lab').oninput = (ev) => { e.label = ev.target.value; touch(it); };
     ta.oninput = () => { e.text = ta.value; touch(it); relabelSteps(); };
     const ob = el.querySelector('.outs'); drawOuts(it, e, ob);
