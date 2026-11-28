@@ -133,9 +133,10 @@ function toast(msg, ms = 2400) {
 }
 
 /* ===== 画面の切り替え（戻るボタン対応） ===== */
+function hs(fn) { try { return fn(); } catch (_) { return undefined; } }
 function go(name, id = null, push = true) {
   view.name = name; view.id = id;
-  if (push) history.pushState({ name, id }, '');
+  if (push) hs(() => history.pushState({ name, id }, ''));
   render(); window.scrollTo(0, 0);
 }
 window.addEventListener('popstate', (e) => {
@@ -261,7 +262,7 @@ function renderEditor() {
       </div>
     </main>`;
 
-  $('#back').onclick = () => history.state && history.state.name === 'editor' ? history.back() : go('list', null, false);
+  $('#back').onclick = () => (hs(() => history.state) && history.state.name === 'editor') ? history.back() : go('list', null, false);
   $('#cat').oninput = (e) => { it.category = e.target.value.trim(); touch(it); };
   $('#title').oninput = (e) => { it.title = e.target.value; $('header.bar h1').textContent = it.title || '(無題)'; touch(it); };
   const common = $('#common');
@@ -284,12 +285,12 @@ function renderEditor() {
   };
   $('#dup').onclick = async () => {
     const c = { ...it, id: uid(), title: it.title + ' のコピー', images: it.images.map((i) => ({ ...i, id: uid() })), extras: it.extras.map((e) => ({ ...e, id: uid() })), created: Date.now() };
-    items.push(c); await saveNow(c); toast('複製しました'); go('editor', c.id, false); history.replaceState({ name: 'editor', id: c.id }, '');
+    items.push(c); await saveNow(c); toast('複製しました'); go('editor', c.id, false); hs(() => history.replaceState({ name: 'editor', id: c.id }, ''));
   };
   $('#del').onclick = async () => {
     if (!(await ask('「' + it.title + '」を削除します。よろしいですか？'))) return;
     items = items.filter((i) => i !== it); await idbDel(it.id);
-    toast('削除しました'); history.state && history.state.name === 'editor' ? history.back() : go('list', null, false);
+    toast('削除しました'); (hs(() => history.state) && history.state.name === 'editor') ? history.back() : go('list', null, false);
   };
   drawExtras(it);
 }
@@ -396,7 +397,7 @@ async function shareAll(it, e) {
   try { db = await openDB(); items = await idbAll(); }
   catch (_) { toast('保存領域を開けませんでした（このブラウザでは保存できません）', 5000); }
   items.forEach((i) => { i.images = i.images || []; i.extras = i.extras || []; i.common = i.common || ''; });
-  history.replaceState({ name: 'list' }, '');
+  hs(() => history.replaceState({ name: 'list' }, ''));
   render();
 })();
 // ダブルタップ拡大・ピンチの抑止
