@@ -15,7 +15,7 @@
   --accent:#134f7d; --accent-ink:#fff; --danger:#c0392b; --chip:#e8eef4;
 }
 @media (prefers-color-scheme: dark){
-  :root{ --bg:#17181a; --card:#222427; --ink:#ececec; --sub:#9aa0a8; --line:#34373b;
+  :root:not([data-theme="light"]){ --bg:#17181a; --card:#222427; --ink:#ececec; --sub:#9aa0a8; --line:#34373b;
     --accent:#5aa9e6; --accent-ink:#0b1722; --danger:#ff7b6b; --chip:#2a3440; }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -206,6 +206,17 @@ function openNewSheet() {
     closeSheet(); go('editor', it.id);
   };
 }
+// confirm() は使えない環境があるので、画面内の確認シートを使う
+function ask(msg) {
+  return new Promise((res) => {
+    const bg = document.createElement('div'); bg.className = 'sheet-bg'; bg.id = 'sheet';
+    bg.innerHTML = `<div class="sheet"><h2>確認</h2><p>${esc(msg)}</p><div class="row"><button class="btn" id="ano">やめる</button><button class="btn danger" id="ayes">削除する</button></div></div>`;
+    document.body.appendChild(bg);
+    const done = (v) => { bg.remove(); res(v); };
+    bg.onclick = (e) => { if (e.target === bg) done(false); };
+    $('#ano').onclick = () => done(false); $('#ayes').onclick = () => done(true);
+  });
+}
 function closeSheet() { const s = $('#sheet'); if (s) s.remove(); }
 
 /* ===== エディタ ===== */
@@ -276,7 +287,7 @@ function renderEditor() {
     items.push(c); await saveNow(c); toast('複製しました'); go('editor', c.id, false); history.replaceState({ name: 'editor', id: c.id }, '');
   };
   $('#del').onclick = async () => {
-    if (!confirm('「' + it.title + '」を削除します。よろしいですか？')) return;
+    if (!(await ask('「' + it.title + '」を削除します。よろしいですか？'))) return;
     items = items.filter((i) => i !== it); await idbDel(it.id);
     toast('削除しました'); history.state && history.state.name === 'editor' ? history.back() : go('list', null, false);
   };
@@ -315,7 +326,7 @@ function drawExtras(it) {
     el.querySelector('.cp').onclick = () => copyAll(it, e);
     el.querySelector('.sh').onclick = () => shareAll(it, e);
     el.querySelector('.rm').onclick = async () => {
-      if (!confirm('「' + (e.label || '個別') + '」を削除します。よろしいですか？')) return;
+      if (!(await ask('「' + (e.label || '個別') + '」を削除します。よろしいですか？'))) return;
       it.extras = it.extras.filter((x) => x !== e); await saveNow(it); drawExtras(it);
     };
   });
