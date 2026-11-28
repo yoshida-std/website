@@ -112,7 +112,7 @@ textarea.field{min-height:110px;resize:vertical;line-height:1.55}
 
 <script>
 'use strict';
-const APP_VERSION = '2026-11-28 b';
+const APP_VERSION = '2026-11-28 c';
 /* ===== 保存（IndexedDB。画像も Blob のまま入る） ===== */
 const DB_NAME = 'ys_prompt_manager', STORE = 'items';
 let db;
@@ -482,9 +482,13 @@ function collageFor(it) {
   const key = it.images.map((i) => i.id).join(',');
   const c = colCache.get(it.id);
   if (c && c.key === key) return c.p;
-  const p = collage(it.images); p.catch(() => {});
-  colCache.set(it.id, { key, p }); return p;
+  const ent = { key, blob: null, err: null };
+  ent.p = collage(it.images).then((b) => { ent.blob = b; return b; }, (e) => { ent.err = e; throw e; });
+  ent.p.catch(() => {});
+  colCache.set(it.id, ent); return ent.p;
 }
+// できあがったまとめ画像（Blob）。iPhone は押した瞬間に渡せるものでないと貼り付けが失敗しやすい
+function collageReady(it) { collageFor(it); return colCache.get(it.id); }
 // 複数枚を番号つきの1枚にまとめる（貼り付けで全部入るように）
 async function collage(images) {
   const n = images.length, cols = n <= 4 ? 2 : 3, rows = Math.ceil(n / cols), cell = 720, gap = 12;
@@ -515,9 +519,12 @@ async function copyAll(it, e) {
   let lastErr = null;
   if (imgs.length > 1 && it.merge !== false) {
     try {
+      const ent = collageReady(it);
+      if (ent.err) throw ent.err;
+      if (!ent.blob) { toast('まとめ画像を作っています。1〜2秒後にもう一度押してください', 3500); return; }
       const one = {};
       if (text) one['text/plain'] = textBlob(text);
-      one['image/png'] = collageFor(it);
+      one['image/png'] = ent.blob;
       await navigator.clipboard.write([new ClipboardItem(one)]);
       toast('コピーしました（画像' + imgs.length + '枚を1枚にまとめ、番号つき＋テキスト）\nAIチャットに貼り付けてください', 4200);
       return;
@@ -538,8 +545,8 @@ async function copyAll(it, e) {
     if (imgs.length) one['image/png'] = toPng(imgs[0].blob);
     await navigator.clipboard.write([new ClipboardItem(one)]);
     toast(imgs.length > 1
-      ? '画像は1枚目のみコピーしました。全部送るなら「共有」を使ってください'
-      : 'コピーしました。AIチャットに貼り付けてください', 4200);
+      ? '画像は1枚目のみコピーしました（まとめ失敗: ' + (lastErr && (lastErr.name + ' ' + lastErr.message) || '不明') + '）'
+      : 'コピーしました。AIチャットに貼り付けてください', 7000);
     return;
   } catch (err) { lastErr = err; /* 次の方法へ */ }
   try { await navigator.clipboard.writeText(text); toast(imgs.length ? 'テキストだけコピーしました。画像は入りませんでした（' + (lastErr && lastErr.name || '不明') + '）' : 'コピーしました', 6000); }
