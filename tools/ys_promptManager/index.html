@@ -112,7 +112,7 @@ textarea.field{min-height:110px;resize:vertical;line-height:1.55}
 
 <script>
 'use strict';
-const APP_VERSION = '2026-11-28 c';
+const APP_VERSION = '2026-11-28 d';
 /* ===== 保存（IndexedDB。画像も Blob のまま入る） ===== */
 const DB_NAME = 'ys_prompt_manager', STORE = 'items';
 let db;
@@ -286,6 +286,7 @@ function renderEditor() {
           <button class="btn primary" id="copyCommon">共通をコピー</button>
           <button class="btn" id="shareCommon">共有で送る</button>
         </div>
+        <div class="row"><button class="btn small" id="ctCommon">文だけコピー</button><button class="btn small" id="ciCommon">画像だけコピー</button></div>
       </div>
 
       <div class="sec">
@@ -318,6 +319,8 @@ function renderEditor() {
   };
   $('#copyCommon').onclick = () => copyAll(it, null);
   $('#shareCommon').onclick = () => shareAll(it, null);
+  $('#ctCommon').onclick = () => copyText(it, null);
+  $('#ciCommon').onclick = () => copyImages(it);
   $('#addExtra').onclick = async () => {
     it.extras.push({ id: uid(), label: '個別' + (it.extras.length + 1), text: '', outputs: [] });
     await saveNow(it); drawExtras(it);
@@ -438,6 +441,7 @@ function drawExtras(it) {
         <button class="btn primary cp">個別までコピー</button>
         <button class="btn sh" style="flex:none">共有</button>
       </div>
+      <div class="row"><button class="btn small ct">文だけコピー</button><button class="btn small ci">画像だけコピー</button></div>
       <div class="oh"><span>生成物の記録</span><button class="btn small ao">＋ 追加</button></div>
       <div class="outs"></div>
     </div>`).join('');
@@ -452,6 +456,8 @@ function drawExtras(it) {
       await saveNow(it); drawOuts(it, e, ob);
     };
     el.querySelector('.cp').onclick = () => copyAll(it, e);
+    el.querySelector('.ct').onclick = () => copyText(it, e);
+    el.querySelector('.ci').onclick = () => copyImages(it);
     el.querySelector('.sh').onclick = () => shareAll(it, e);
     el.querySelector('.rm').onclick = async () => {
       if (!(await ask('「' + (e.label || '個別') + '」を削除します。よろしいですか？'))) return;
@@ -509,6 +515,29 @@ async function collage(images) {
 }
 const textBlob = (t) => new Blob([t], { type: 'text/plain' });
 
+// 文だけ・画像だけは、1回の書き込みで済むので iPhone でも断られにくい
+async function copyText(it, e) {
+  const text = buildText(it, e);
+  if (!text) { toast('コピーする文がありません'); return; }
+  try { await navigator.clipboard.writeText(text); toast('文をコピーしました。AIチャットに貼り付けてください'); }
+  catch (err) { toast('コピーできませんでした（' + (err && err.name || '不明') + '）', 5000); }
+}
+async function copyImages(it) {
+  const imgs = it.images;
+  if (!imgs.length) { toast('添付画像がありません'); return; }
+  try {
+    let blob, label;
+    if (imgs.length > 1 && it.merge !== false) {
+      const ent = collageReady(it);
+      if (ent.err) throw ent.err;
+      if (!ent.blob) { toast('まとめ画像を作っています。1〜2秒後にもう一度押してください', 3500); return; }
+      blob = ent.blob; label = '画像' + imgs.length + '枚を1枚にまとめてコピーしました（番号つき）';
+    } else { blob = await toPng(imgs[0].blob); label = imgs.length > 1 ? '1枚目の画像をコピーしました' : '画像をコピーしました'; }
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    toast(label + '。AIチャットに貼り付けてください', 4000);
+  } catch (err) { toast('画像をコピーできませんでした（' + (err && err.name || '不明') + ' ' + (err && err.message || '') + '）', 7000); }
+}
+
 async function copyAll(it, e) {
   const text = buildText(it, e), imgs = it.images;
   if (!text && !imgs.length) { toast('コピーする内容がありません'); return; }
@@ -516,7 +545,7 @@ async function copyAll(it, e) {
   // 1) 画像すべて＋テキストを一度に入れてみる
   // 2) 複数に対応していない端末では「1枚目の画像＋テキスト」にする
   // 3) 画像に対応していなければテキストだけ
-  let lastErr = null;
+  let lastErr = null, firstErr = null;
   if (imgs.length > 1 && it.merge !== false) {
     try {
       const ent = collageReady(it);
@@ -528,7 +557,7 @@ async function copyAll(it, e) {
       await navigator.clipboard.write([new ClipboardItem(one)]);
       toast('コピーしました（画像' + imgs.length + '枚を1枚にまとめ、番号つき＋テキスト）\nAIチャットに貼り付けてください', 4200);
       return;
-    } catch (err) { lastErr = err; /* 通常の方法へ */ }
+    } catch (err) { lastErr = err; firstErr = firstErr || err; /* 通常の方法へ */ }
   }
   const first = {};
   if (text) first['text/plain'] = textBlob(text);
@@ -538,18 +567,18 @@ async function copyAll(it, e) {
     await navigator.clipboard.write([new ClipboardItem(first), ...rest]);
     toast(imgs.length > 1 ? 'コピーしました（画像' + imgs.length + '枚＋テキスト）\nAIチャットに貼り付けてください' : 'コピーしました。AIチャットに貼り付けてください');
     return;
-  } catch (err) { lastErr = err; /* 次の方法へ */ }
+  } catch (err) { lastErr = err; firstErr = firstErr || err; /* 次の方法へ */ }
   try {
     const one = {};
     if (text) one['text/plain'] = textBlob(text);
     if (imgs.length) one['image/png'] = toPng(imgs[0].blob);
     await navigator.clipboard.write([new ClipboardItem(one)]);
     toast(imgs.length > 1
-      ? '画像は1枚目のみコピーしました（まとめ失敗: ' + (lastErr && (lastErr.name + ' ' + lastErr.message) || '不明') + '）'
+      ? '画像は1枚目のみコピーしました（まとめ失敗: ' + (firstErr && (firstErr.name + ' ' + firstErr.message) || '不明') + '）'
       : 'コピーしました。AIチャットに貼り付けてください', 7000);
     return;
-  } catch (err) { lastErr = err; /* 次の方法へ */ }
-  try { await navigator.clipboard.writeText(text); toast(imgs.length ? 'テキストだけコピーしました。画像は入りませんでした（' + (lastErr && lastErr.name || '不明') + '）' : 'コピーしました', 6000); }
+  } catch (err) { lastErr = err; firstErr = firstErr || err; /* 次の方法へ */ }
+  try { await navigator.clipboard.writeText(text); toast(imgs.length ? 'テキストだけコピーしました。画像は入りませんでした（最初のエラー: ' + (firstErr && firstErr.name + ' ' + firstErr.message || '不明') + '）。「画像だけコピー」を使ってください' : 'コピーしました', 6000); }
   catch (_) { toast('コピーできませんでした'); }
 }
 
