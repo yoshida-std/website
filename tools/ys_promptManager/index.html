@@ -88,7 +88,8 @@ textarea.field{min-height:110px;resize:vertical;line-height:1.55}
 .out .th img{width:100%;height:100%;object-fit:cover}
 .out .th .vid{position:absolute;right:3px;bottom:3px;background:rgba(0,0,0,.65);color:#fff;border-radius:5px;padding:0 5px;font-size:10px}
 .out .f{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
-.out .f .field{padding:7px 10px;font-size:15px}
+.out .f .field{padding:7px 10px;font-size:15px;min-width:0}
+.out .f input[type=datetime-local]{font-family:inherit;min-height:38px}
 .out .acts{display:flex;gap:6px;flex-wrap:wrap}
 .out a.btn{text-decoration:none;color:var(--accent);display:inline-block}
 .hint{font-size:12px;color:var(--sub);margin:8px 0 0}
@@ -309,7 +310,7 @@ function renderEditor() {
   $('#outfile').onchange = async (ev) => {
     const f = ev.target.files[0]; ev.target.value = '';
     const o = pickOut && pickOut.ex.outputs.find((x) => x.id === pickOut.id); if (!f || !o) return;
-    o.name = f.name || ''; o.kind = f.type.startsWith('video') ? 'video' : 'image';
+    o.name = f.name || ''; if (f.lastModified) o.at = f.lastModified; o.kind = f.type.startsWith('video') ? 'video' : 'image';
     try { o.thumb = await makeThumb(f, o.kind); } catch (_) { o.thumb = null; toast('サムネイルを作れませんでした（名前だけ記録します）'); }
     await saveNow(it); drawOuts(it, pickOut.ex, pickOut.box);
   };
@@ -339,6 +340,12 @@ function makeThumb(file, kind) {
   });
 }
 
+const pad2 = (n) => String(n).padStart(2, '0');
+function toLocal(ms) {
+  if (!ms) return '';
+  const d = new Date(ms);
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+}
 function drawOuts(it, ex, box) {
   if (!ex.outputs.length) { box.innerHTML = ''; return; }
   box.innerHTML = ex.outputs.map((o) => `
@@ -346,6 +353,7 @@ function drawOuts(it, ex, box) {
       <button class="th pk" aria-label="写真・動画を選ぶ">${o.thumb ? `<img src="${urlOf({ id: 'o' + o.id, blob: o.thumb })}" alt="">${o.kind === 'video' ? '<span class="vid">動画</span>' : ''}` : '写真・動画<br>を選ぶ'}</button>
       <div class="f">
         <input class="field u" type="url" inputmode="url" placeholder="共有リンクのURL" value="${esc(o.url)}" autocomplete="off">
+        <input class="field d" type="datetime-local" value="${toLocal(o.at)}" aria-label="日時">
         <input class="field m" placeholder="メモ（探し方など）" value="${esc(o.memo)}" autocomplete="off">
         ${o.name ? `<div class="hint" style="margin:0">ファイル名: ${esc(o.name)}</div>` : ''}
         <div class="acts"><a class="btn small op" target="_blank" rel="noopener" ${/^https?:\/\//i.test(o.url) ? `href="${esc(o.url)}"` : 'hidden'}>リンクを開く</a>
@@ -359,6 +367,7 @@ function drawOuts(it, ex, box) {
       o.url = e.target.value.trim(); touch(it);
       if (/^https?:\/\//i.test(o.url)) { op.href = o.url; op.hidden = false; } else { op.hidden = true; }
     };
+    el.querySelector('.d').onchange = (ev) => { const t = new Date(ev.target.value).getTime(); o.at = isNaN(t) ? null : t; touch(it); };
     el.querySelector('.m').oninput = (e) => { o.memo = e.target.value; touch(it); };
     el.querySelector('.cu').onclick = async () => {
       if (!o.url) { toast('URLが空です'); return; }
@@ -404,7 +413,7 @@ function drawExtras(it) {
     ta.oninput = () => { e.text = ta.value; touch(it); };
     const ob = el.querySelector('.outs'); drawOuts(it, e, ob);
     el.querySelector('.ao').onclick = async () => {
-      e.outputs.push({ id: uid(), url: '', memo: '', name: '', kind: '', thumb: null, added: Date.now() });
+      e.outputs.push({ id: uid(), url: '', memo: '', name: '', kind: '', thumb: null, at: Date.now() });
       await saveNow(it); drawOuts(it, e, ob);
     };
     el.querySelector('.cp').onclick = () => copyAll(it, e);
@@ -484,7 +493,7 @@ async function shareAll(it, e) {
     if (!i.extras.length) i.extras.push({ id: uid(), label: '個別1', text: '', outputs: [] });
     i.extras[0].outputs = (i.extras[0].outputs || []).concat(i.outputs);
   }
-  delete i.outputs; i.extras.forEach((e) => { e.outputs = e.outputs || []; }); i.common = i.common || ''; });
+  delete i.outputs; i.extras.forEach((e) => { e.outputs = e.outputs || []; e.outputs.forEach((o) => { if (!('at' in o)) o.at = o.added || null; }); }); i.common = i.common || ''; });
   hs(() => history.replaceState({ name: 'list' }, ''));
   render();
 })();
