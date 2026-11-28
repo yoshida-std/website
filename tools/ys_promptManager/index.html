@@ -85,6 +85,14 @@ textarea.field{min-height:110px;resize:vertical;line-height:1.55}
 .extra .top{display:flex;gap:8px;align-items:center;margin-bottom:8px}
 .extra .top input{flex:1;font-weight:700}
 .outs{display:flex;flex-direction:column;gap:10px}
+.ah{display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:13px;font-weight:600;color:var(--sub)}
+.ai{border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px;background:var(--bg)}
+.ai .top{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.ai .top .lab{flex:1;min-width:0;font-weight:700}
+.ai .sw{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;flex:none;-webkit-user-select:none}
+.ai .sw input{width:22px;height:22px;margin:0}
+.ai.off textarea,.ai.off .lab{opacity:.45}
+.ai textarea{min-height:80px}
 .oh{display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:13px;font-weight:600;color:var(--sub)}
 .extra .outs{margin-top:8px}
 .out{display:flex;gap:10px;border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--card)}
@@ -112,7 +120,7 @@ textarea.field{min-height:110px;resize:vertical;line-height:1.55}
 
 <script>
 'use strict';
-const APP_VERSION = '2026-11-28 e';
+const APP_VERSION = '2026-11-28 f';
 /* ===== 保存（IndexedDB。画像も Blob のまま入る） ===== */
 const DB_NAME = 'ys_prompt_manager', STORE = 'items';
 let db;
@@ -187,7 +195,7 @@ function renderList() {
   const q = view.q.trim().toLowerCase();
   const list = items
     .filter((i) => !view.cat || i.category === view.cat)
-    .filter((i) => !q || (i.title + ' ' + i.category + ' ' + i.common + ' ' + i.extras.map((e) => e.label + e.text).join(' ') + ' ' + i.extras.map((e) => e.outputs.map((o) => o.memo + o.url + o.name).join(' ')).join(' ')).toLowerCase().includes(q))
+    .filter((i) => !q || (i.title + ' ' + i.category + ' ' + i.common + ' ' + i.commonAdds.map((a) => a.label + a.text).join(' ') + ' ' + i.extras.map((e) => e.label + e.text).join(' ') + ' ' + i.extras.map((e) => e.outputs.map((o) => o.memo + o.url + o.name).join(' ')).join(' ')).toLowerCase().includes(q))
     .sort((a, b) => b.updated - a.updated);
   $('#app').innerHTML = `
     <header class="bar"><h1>AI指示文マネージャー</h1><button class="btn small" id="upd">最新に更新</button></header>
@@ -239,7 +247,7 @@ function openNewSheet() {
   $('#nok').onclick = async () => {
     const title = $('#nt').value.trim();
     if (!title) { toast('表題を入力してください'); return; }
-    const it = { id: uid(), category: $('#nc').value.trim(), title, images: [], common: '', extras: [], created: Date.now(), updated: Date.now() };
+    const it = { id: uid(), category: $('#nc').value.trim(), title, images: [], common: '', commonAdds: [], extras: [], created: Date.now(), updated: Date.now() };
     items.push(it); await saveNow(it);
     closeSheet(); go('editor', it.id);
   };
@@ -282,6 +290,8 @@ function renderEditor() {
       <div class="sec">
         <h2>共通の指示文 <span class="count" id="ccount"></span></h2>
         <textarea class="field" id="common" placeholder="AIチャットに最初に貼り付ける、共通の指示文">${esc(it.common)}</textarea>
+        <div class="ah"><span>共通への追加分 <span class="count" id="addcount"></span></span><button class="btn small" id="addAdd">＋ 追加</button></div>
+        <div id="adds"></div>
         <div class="row">
           <button class="btn primary step" id="copyCommon"></button>
           <button class="btn" id="shareCommon">共有で送る</button>
@@ -318,6 +328,12 @@ function renderEditor() {
     if (files.length) { await saveNow(it); drawImages(it); toast(files.length + '枚追加しました'); }
   };
   wireStep($('#copyCommon'), it, null);
+  drawAdds(it);
+  $('#addAdd').onclick = async () => {
+    it.commonAdds.push({ id: uid(), label: '追加' + (it.commonAdds.length + 1), text: '', on: true });
+    await saveNow(it); drawAdds(it); relabelSteps();
+    const last = document.querySelector('#adds .ai:last-child textarea'); if (last) last.focus();
+  };
   $('#shareCommon').onclick = () => shareAll(it, null);
   $('#ctCommon').onclick = () => copyText(it, null);
   $('#ciCommon').onclick = () => copyImages(it);
@@ -327,7 +343,7 @@ function renderEditor() {
     const last = document.querySelector('#extras .extra:last-child textarea'); if (last) last.focus();
   };
   $('#dup').onclick = async () => {
-    const c = { ...it, id: uid(), title: it.title + ' のコピー', images: it.images.map((i) => ({ ...i, id: uid() })), extras: it.extras.map((e) => ({ ...e, id: uid(), outputs: e.outputs.map((o) => ({ ...o, id: uid() })) })), created: Date.now() };
+    const c = { ...it, id: uid(), title: it.title + ' のコピー', images: it.images.map((i) => ({ ...i, id: uid() })), commonAdds: it.commonAdds.map((a) => ({ ...a, id: uid() })), extras: it.extras.map((e) => ({ ...e, id: uid(), outputs: e.outputs.map((o) => ({ ...o, id: uid() })) })), created: Date.now() };
     items.push(c); await saveNow(c); toast('複製しました'); go('editor', c.id, false); hs(() => history.replaceState({ name: 'editor', id: c.id }, ''));
   };
   $('#del').onclick = async () => {
@@ -409,6 +425,33 @@ function drawOuts(it, ex, box) {
   });
 }
 
+function drawAdds(it) {
+  const box = $('#adds');
+  const upd = () => { const n = it.commonAdds.filter((a) => a.on).length; $('#addcount').textContent = it.commonAdds.length ? n + '/' + it.commonAdds.length + 'がオン' : ''; };
+  upd();
+  if (!it.commonAdds.length) { box.innerHTML = '<p class="hint">共通の指示文に付け足す文を登録できます。オンのものだけ、共通のあとに続けてコピーされます。</p>'; return; }
+  box.innerHTML = it.commonAdds.map((a) => `
+    <div class="ai ${a.on ? '' : 'off'}" data-id="${a.id}">
+      <div class="top"><label class="sw"><input type="checkbox" class="on" ${a.on ? 'checked' : ''}><span class="st">${a.on ? 'オン' : 'オフ'}</span></label>
+        <input class="field lab" value="${esc(a.label)}" placeholder="名前" autocomplete="off">
+        <button class="icon-btn rm" aria-label="削除">🗑</button></div>
+      <textarea class="field" placeholder="共通の指示文に付け足す文">${esc(a.text)}</textarea>
+    </div>`).join('');
+  box.querySelectorAll('.ai').forEach((el) => {
+    const a = it.commonAdds.find((x) => x.id === el.dataset.id);
+    el.querySelector('.on').onchange = (ev) => {
+      a.on = ev.target.checked; el.classList.toggle('off', !a.on); el.querySelector('.st').textContent = a.on ? 'オン' : 'オフ';
+      touch(it); upd(); relabelSteps();
+    };
+    el.querySelector('.lab').oninput = (ev) => { a.label = ev.target.value; touch(it); };
+    el.querySelector('textarea').oninput = (ev) => { a.text = ev.target.value; touch(it); relabelSteps(); };
+    el.querySelector('.rm').onclick = async () => {
+      if (!(await ask('「' + (a.label || '追加') + '」を削除します。よろしいですか？'))) return;
+      it.commonAdds = it.commonAdds.filter((x) => x !== a); await saveNow(it); drawAdds(it); relabelSteps();
+    };
+  });
+}
+
 function drawImages(it) {
   $('#imgcount').textContent = it.images.length ? it.images.length + '枚' : '';
   $('#imgs').innerHTML = it.images.map((im, n) => `
@@ -468,7 +511,7 @@ function drawExtras(it) {
 }
 
 /* ===== コピー・共有 ===== */
-const buildText = (it, e) => [it.common.trim(), e ? e.text.trim() : ''].filter(Boolean).join('\n\n');
+const buildText = (it, e) => [it.common.trim(), ...(it.commonAdds || []).filter((a) => a.on && a.text.trim()).map((a) => a.text.trim()), e ? e.text.trim() : ''].filter(Boolean).join('\n\n');
 
 // クリップボードに入る画像は PNG だけなので変換する
 function toPng(blob) {
@@ -577,7 +620,7 @@ async function shareAll(it, e) {
 (async function init() {
   try { db = await openDB(); items = await idbAll(); }
   catch (_) { toast('保存領域を開けませんでした（このブラウザでは保存できません）', 5000); }
-  items.forEach((i) => { i.images = i.images || []; i.extras = i.extras || [];
+  items.forEach((i) => { i.images = i.images || []; i.extras = i.extras || []; i.commonAdds = i.commonAdds || [];
   if (i.outputs && i.outputs.length) { // 旧形式（指示文全体の生成物）を個別へ移す
     if (!i.extras.length) i.extras.push({ id: uid(), label: '個別1', text: '', outputs: [] });
     i.extras[0].outputs = (i.extras[0].outputs || []).concat(i.outputs);
