@@ -4,7 +4,7 @@ GitHub Pages で公開しているリポジトリ（公開元は `main`）。
 公開URL: `https://yoshida-std.github.io/website/`
 
 - `games/` … ブラウザゲーム（Aitsu-bom, Taijiros-yan, umi, Mogurush, judge2, Susume-Yusha, Horihori-Robo, Knife-Master, Chibiupa-Tank）
-- `tools/` … 制作ツール（ys_*。`ys_promptManager` はAI指示文の管理（スマホ用、IndexedDB保存、画像＋共通＋個別をクリップボードへコピー／共有）。`ys_spriteSheetEditer` は すすめ！ゆうしゃ のキャラの絵のエディタ）
+- `tools/` … 制作ツール（ys_*。`ys_promptManager` はAI指示文の管理（スマホ用、IndexedDB保存、画像→文の2段階コピー、生成物の記録、共有）。`ys_spriteSheetEditer` は すすめ！ゆうしゃ のキャラの絵のエディタ）
 - `portfolio/` … ヨシダスタジオのポートフォリオサイト（下の「ポートフォリオ」）
 - `common/line-promo/` … ゲームから LINE スタンプ／絵文字へ誘導する共通部品（下の「LINEスタンプ誘導」）
 - ビルドなし。各作品は基本的に `index.html` 1枚で完結する
